@@ -106,7 +106,10 @@ union FloatAccess {
   float as_f[4];
   __m128 as_n;
 };
-
+union IntAccess {
+  int32_t as_i[4];
+  __m128i as_n;
+};
 } // namespace
 
 // We are multiplying A * B^T, as opposed to A * B. This is important because it means we can do consecutive memory access on A * B^T which allows to to take the most
@@ -117,7 +120,6 @@ union FloatAccess {
 // A and B must be 64-byte aligned.
 // C should be the usual 4-byte alignment.
 void AVX_MatrixMult(const __m512i * A, const __m512i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
-    assert(num_A_rows % 4 == 0);
     assert(width % 32 == 0);
     assert(reinterpret_cast<uintptr_t>(A) % 64 == 0);
     assert(reinterpret_cast<uintptr_t>(B) % 64 == 0);
@@ -137,7 +139,10 @@ void AVX_MatrixMult(const __m512i * A, const __m512i * B, float * C, float unqua
     // The justification is that A is typically small enough that it can live in L1 cache.
     // B is usually a larger weight matrix, so it might not be able to. However, we are using
     // each element of B four times while it's still in a register, so caching is not as important.
-    for (int i = 0; i < num_A_rows; i += 4) {
+
+    // Round down to a multiple of 4.
+    int num_unroll_rows = num_A_rows & ~3;
+    for (int i = 0; i < num_unroll_rows; i += 4) {
         const __m512i * A1_row = A + (i+0)*sse_width;
         const __m512i * A2_row = A + (i+1)*sse_width;
         const __m512i * A3_row = A + (i+2)*sse_width;
@@ -188,5 +193,25 @@ void AVX_MatrixMult(const __m512i * A, const __m512i * B, float * C, float unqua
              * _mm_i32scatter_ps(C + i * num_B_rows + j, num_b_rows_scatter, float_sums, sizeof(float));
              */
         }
+    }
+    // Handle the non-multiples of 4 rows.
+    // TODO: efficient version for 3 rows, 2 rows, etc.
+    for (int i = num_unroll_rows; i < num_A_rows; ++i) {
+      const __m512i * A1_row = A + i * sse_width;
+      for (int j = 0; j < num_B_rows; j++) {
+        __m512i sum1 = _mm512_setzero_si512();
+        for (int k = 0; k < sse_width; k++) {
+          const __m512i * B_row = B + j*sse_width;
+          __m512i b = *(B_row + k);
+          __m512i a1 = *(A1_row + k);
+          sum1 = _mm512_add_epi32(sum1, _mm512_madd_epi16(b, a1));
+        }
+        // Fold register over itself.
+        __m256i halves = _mm256_add_epi32(_mm512_castsi512_si256(sum1), _mm512_extracti64x4_epi64(sum1, 1));
+        IntAccess a;
+        a.as_n = _mm_add_epi32(_mm256_castsi256_si128(halves), _mm256_extracti128_si256(halves, 1));
+        // TODO is there a more efficient way?
+        *(C + (i)*num_B_rows + j) = unquant_mult * static_cast<float>(a.as_i[0] + a.as_i[1] + a.as_i[2] + a.as_i[3]);
+      }
     }
 }
