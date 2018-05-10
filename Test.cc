@@ -28,6 +28,7 @@
 #include <cmath>
 #include <cstring>
 #include <cstdio>
+#include <cstdlib>
 
 // Compute A*B^T very naively.
 void SlowRef_MatrixMult(const float * A, const float * B, float * C, int num_A_rows, int num_B_rows, int width)
@@ -64,7 +65,7 @@ void SlowRef_16(const int16_t * A, const int16_t * B, float * C, float quant_mul
 
 // Program takes no input
 int main(int argc, char ** argv) {
-    srand(45678);
+    std::srand(45678);
 
     // A is usually an activation matrix, B is usually a weight matrix.
     // We actually compute A * B^T. num_B_rows is the rows in B^T. 
