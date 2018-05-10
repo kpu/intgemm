@@ -22,7 +22,7 @@
 
 #include "AVX_Matrix_Mult.h"
 #include "SSE_Matrix_Mult.h"
-#include "stopwatch.h"
+#include "StopWatch.h"
 
 #include <cassert>
 #include <cmath>
