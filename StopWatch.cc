@@ -1,4 +1,4 @@
-#include "stopwatch.h"
+#include "StopWatch.h"
 
 #include <iostream>
 #include <err.h>
