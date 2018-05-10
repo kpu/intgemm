@@ -29,6 +29,8 @@
 #include <cstring>
 #include <cstdio>
 
+#include <memory>
+
 // Compute A*B^T very naively.
 void SlowRef_MatrixMult(const float * A, const float * B, float * C, int num_A_rows, int num_B_rows, int width)
 {
@@ -74,8 +76,11 @@ int main(int argc, char ** argv) {
     }
     
     // C will thus be num_A_rows x num_B_rows
-    float * ref_C = new float[num_A_rows*num_B_rows];
-    SlowRef_MatrixMult(A, B, ref_C, num_A_rows, num_B_rows, width);
+    std::unique_ptr<float[]> ref_C(new float[num_A_rows*num_B_rows]);
+    {
+      StopWatch w("Reference multiply");
+      SlowRef_MatrixMult(A, B, ref_C.get(), num_A_rows, num_B_rows, width);
+    }
 
     // The quantized version of C is never explicity created. We de-quantize on the fly
     // to avoid extraneous memory accesses.
@@ -118,6 +123,11 @@ int main(int argc, char ** argv) {
       StopWatch w("AVX multiply");
       AVX_MatrixMult(quant_A, quant_B, AVX_C, (float)unquant_mult, num_A_rows, num_B_rows, width);
     }
+
+    free(A);
+    free(B);
+    free(quant_A);
+    free(quant_B);
     
     double max_diff = 0.0;
     double mean_diff = 0.0;
