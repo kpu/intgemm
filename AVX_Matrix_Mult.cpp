@@ -21,6 +21,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include "AVX_Matrix_Mult.h"
+
 #include <cassert>
 #include <emmintrin.h>
 #include <immintrin.h>

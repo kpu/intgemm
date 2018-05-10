@@ -22,7 +22,7 @@
 // SOFTWARE.
 
 #pragma once
-#include <emmintrin.h>
+#include <immintrin.h>
 
 // ***************************************
 // ************** IMPORTANT **************

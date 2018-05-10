@@ -22,6 +22,12 @@
 
 #include "AVX_Matrix_Mult.h"
 #include "SSE_Matrix_Mult.h"
+#include "stopwatch.h"
+
+#include <cassert>
+#include <cmath>
+#include <cstring>
+#include <cstdio>
 
 // Compute A*B^T very naively.
 void SlowRef_MatrixMult(const float * A, const float * B, float * C, int num_A_rows, int num_B_rows, int width)
@@ -69,7 +75,6 @@ int main(int argc, char ** argv) {
     
     // C will thus be num_A_rows x num_B_rows
     float * ref_C = new float[num_A_rows*num_B_rows];
-    memset(ref_C, 0, sizeof(float)*num_A_rows*num_B_rows);
     SlowRef_MatrixMult(A, B, ref_C, num_A_rows, num_B_rows, width);
 
     // The quantized version of C is never explicity created. We de-quantize on the fly
@@ -120,7 +125,7 @@ int main(int argc, char ** argv) {
         for (int j = 0; j < num_B_rows; j++) {
             float r = SSE_C[i*num_B_rows + j];
             float f = AVX_C[i*num_B_rows + j];
-            double diff = fabs(r-f);
+            double diff = std::fabs(r-f);
             if (diff > max_diff) {
                 max_diff = diff;
             }
@@ -130,9 +135,9 @@ int main(int argc, char ** argv) {
     
     mean_diff /= (double)num_A_rows*(double)num_B_rows;
 
-    printf("Diff between AVX512 and SSE:\n");
-    printf("  Mean = %g\n", mean_diff);
-    printf("  Max = %g\n", max_diff);
+    std::printf("Diff between AVX512 and SSE:\n");
+    std::printf("  Mean = %g\n", mean_diff);
+    std::printf("  Max = %g\n", max_diff);
     
     return 0;
 }
