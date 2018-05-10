@@ -60,7 +60,7 @@
 void AVX_Quantize(const float * input, __m256i * output, float quant_mult, int size) {
     assert(size % 16 == 0);
     assert(reinterpret_cast<uintptr_t>(input) % 64 == 0);
-    assert(reinterpret_cast<uintptr_t>(output) % 64 == 0);
+    assert(reinterpret_cast<uintptr_t>(output) % 32 == 0);
     // Annoyingly, _mm512_packs_epi32 requires AVX512BW which isn't supported
     // on my target.  Therefore I use _mm256_packs_epi32.
 
