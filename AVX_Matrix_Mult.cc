@@ -251,45 +251,63 @@ void AVX_MatrixMult16(const __m512i * A, const __m512i * B, float * C, float unq
     }
 }
 
-inline void Accum(const __m256i ones, __m256i a, const __m256i b, const __m256i b_positive, __m256i &sum) {
+namespace {
+
+inline __m256i FirstHalf(__m512i val) {
+  return _mm512_castsi512_si256(val);
+}
+
+inline __m256i SecondHalf(__m512i val) {
+  return _mm512_extracti64x4_epi64(val, 1);
+}
+
+// Single instruction to concatenate 256s into 512.
+inline __m512i Concat(const __m256i first, const __m256i second) {
+  return _mm512_inserti64x4(_mm512_castsi256_si512(first), second, 1);
+}
+
+inline void Accum(const __m512i ones, __m512i a, const __m512i b, const __m512i b_positive, __m512i &sum) {
   // Apply sign bits.
-  a = _mm256_sign_epi8(a, b);
+  __m256i a_first = _mm256_sign_epi8(FirstHalf(a), FirstHalf(b));
+  __m256i a_second = _mm256_sign_epi8(SecondHalf(a), SecondHalf(b));
   // The magic 8-bit multiply then horizontal sum into 16-bit.
-  __m256i multiplied = _mm256_maddubs_epi16(b_positive, a);
+  __m512i multiplied = _mm512_maddubs_epi16(b_positive, Concat(a_first, a_second));
   // Now we have 16-bit results that are the sum of two multiplies.
   // Options:
   // - Sum for a few iterations in 16-bit _mm512_adds_epi16
   // - Expand to 32-bit with two _mm512_cvtepi16_epi32 and sum there.
-  // - _mm256_hadds_epi16 is a horizontal add and saturate but only does 256-wide.
+  // - _mm512_hadds_epi16 is a horizontal add and saturate but only does 512-wide.
   // - https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67
   // TODO: try adding to each other then to sum1 for latency reasons.
 
   // Trick from https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67 under Apache license.
   // This does a horizontal add and expansion into 32-bit.
-  multiplied = _mm256_madd_epi16(multiplied, ones);
-  sum =  _mm256_add_epi32(sum, multiplied);
+  multiplied = _mm512_madd_epi16(multiplied, ones);
+  sum =  _mm512_add_epi32(sum, multiplied);
 }
 
-void AVX_MatrixMult8(const __m256i * A, const __m256i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
+} // namespace
+
+void AVX_MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
   assert(width % 32 == 0);
   assert(reinterpret_cast<uintptr_t>(A) % 64 == 0);
   assert(reinterpret_cast<uintptr_t>(B) % 64 == 0);
-  const __m256i ones = _mm256_set1_epi16(1);
-  const int sse_width = width/32;
+  const __m512i ones = _mm512_set1_epi16(1);
+  const int sse_width = width/64;
   for (int i = 0; i < num_A_rows; i += 4) {
-    const __m256i *A1_row = A + (i+0)*sse_width;
-    const __m256i *A2_row = A + (i+1)*sse_width;
-    const __m256i *A3_row = A + (i+2)*sse_width;
-    const __m256i *A4_row = A + (i+3)*sse_width;
+    const __m512i *A1_row = A + (i+0)*sse_width;
+    const __m512i *A2_row = A + (i+1)*sse_width;
+    const __m512i *A3_row = A + (i+2)*sse_width;
+    const __m512i *A4_row = A + (i+3)*sse_width;
     for (int j = 0; j < num_B_rows; j++) {
-      const __m256i *B_row = B + j*sse_width;
-      __m256i sum1 = _mm256_setzero_si256();
-      __m256i sum2 = _mm256_setzero_si256();
-      __m256i sum3 = _mm256_setzero_si256();
-      __m256i sum4 = _mm256_setzero_si256();
+      const __m512i *B_row = B + j*sse_width;
+      __m512i sum1 = _mm512_setzero_si512();
+      __m512i sum2 = _mm512_setzero_si512();
+      __m512i sum3 = _mm512_setzero_si512();
+      __m512i sum4 = _mm512_setzero_si512();
       for (int k = 0; k < sse_width; k++) {
-        __m256i b = *(B_row + k);
-        __m256i b_positive = _mm256_sign_epi8(b, b);
+        __m512i b = *(B_row + k);
+        __m512i b_positive = _mm512_abs_epi8(b);
         Accum(ones, *(A1_row + k), b, b_positive, sum1);
         Accum(ones, *(A2_row + k), b, b_positive, sum2);
         Accum(ones, *(A3_row + k), b, b_positive, sum3);

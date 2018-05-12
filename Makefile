@@ -11,7 +11,7 @@ Test: ${OBJ} Test.o
 QuantizeTest: ${OBJ} QuantizeTest.o
 	${CXX} ${CXXFLAGS} ${OBJ} QuantizeTest.o -o QuantizeTest
 
-.c.o:
+.c.o: AVX_Matrix_Mult.h
 	${CXX} ${CXXFLAGS} -c $<
 
 clean:

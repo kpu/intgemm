@@ -141,11 +141,11 @@ void Time(int num_A_rows, int num_B_rows, int width) {
     AVX_Quantize8(B, (int8_t*)quant_B, quant_mult, num_B_rows * width);
     AVX_Quantize8(A, (int8_t*)quant_A, quant_mult, num_A_rows * width);
 
-    AVX_MatrixMult8((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
+    AVX_MatrixMult8((const __m512i *)quant_A, (const __m512i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     {
       StopWatch w("8-bit");
       for (int i = 0; i < 10; ++i)
-        AVX_MatrixMult8((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
+        AVX_MatrixMult8((const __m512i *)quant_A, (const __m512i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     }
     SlowRef8((const int8_t*)quant_A, (const int8_t*)quant_B, ref_C, unquant_mult, num_A_rows, num_B_rows, width);
     Compare(float_C, ref_C, AVX_C, num_A_rows*num_B_rows);
