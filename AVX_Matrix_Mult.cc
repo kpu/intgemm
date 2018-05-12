@@ -119,6 +119,47 @@ inline int32_t Reduce(__m512i sum1) {
   return Reduce(_mm256_add_epi32(_mm512_castsi512_si256(sum1), _mm512_extracti64x4_epi64(sum1, 1)));
 }
 
+class ScatterPut {
+  public:
+    explicit ScatterPut(float unquant_mult, int num_B_rows)
+      : unquant_mult_(_mm_set1_ps(unquant_mult)),
+#ifdef __AVX512VL__
+       num_b_rows_scatter_(_mm_set_epi32(num_B_rows * 3 * sizeof(float), num_B_rows * 2 * sizeof(float), num_B_rows * 1 * sizeof(float), num_B_rows * 0 * sizeof(float)))
+#else
+       num_B_rows_(num_B_rows)
+#endif
+    {}
+
+    inline void Write(float *base, __m128i reduced) {
+      __m128 float_sums = _mm_cvtepi32_ps(reduced);
+      float_sums = _mm_mul_ps(float_sums, unquant_mult_);
+#ifdef __AVX512VL__
+      // The scatter instruction requires avx512vl
+      _mm_i32scatter_ps(base, num_b_rows_scatter_, float_sums, 1);
+#else
+      FloatAccess a;
+      // Get floats for each of the sums to write.
+      a.as_n = float_sums;
+      // Also note that the memory acceses on C are not consecutive, but this is a tradeoff that we have to make.
+      // We can't have consecutive accesses of A, B, *and* C. But we access A and B a lot more so it makes
+      // sense to do it this way.
+      // Scatter to outputs:
+      base[0] = a.as_f[0];
+      base[num_B_rows] = a.as_f[1];
+      base[2*num_B_rows] = a.as_f[2];
+      base[3*num_B_rows] = a.as_f[3];
+#endif
+    }
+
+  private:
+    const __m128 unquant_mult_;
+#ifdef __AVX512VL__
+    const __m128i num_b_rows_scatter_;
+#else
+    const int num_B_rows_;
+#endif
+};
+
 } // namespace
 
 
@@ -158,10 +199,7 @@ void AVX_MatrixMult16(const __m512i * A, const __m512i * B, float * C, float unq
     assert(reinterpret_cast<uintptr_t>(A) % 64 == 0);
     assert(reinterpret_cast<uintptr_t>(B) % 64 == 0);
 
-    const __m128 unquant_mult_sse = _mm_set1_ps(unquant_mult);
-#ifdef __AVX512VL__
-    const __m128i num_b_rows_scatter = _mm_set_epi32(num_B_rows * 3 * sizeof(float), num_B_rows * 2 * sizeof(float), num_B_rows * 1 * sizeof(float), num_B_rows * 0 * sizeof(float));
-#endif
+    ScatterPut put(unquant_mult, num_B_rows);
 
     const int sse_width = width/32;
 
@@ -213,24 +251,7 @@ void AVX_MatrixMult16(const __m512i * A, const __m512i * B, float * C, float unq
                 sum3 = _mm512_add_epi32(sum3, _mm512_madd_epi16(b, a3));
                 sum4 = _mm512_add_epi32(sum4, _mm512_madd_epi16(b, a4));
             }
-            __m128 float_sums = _mm_cvtepi32_ps(Reduce(sum1, sum2, sum3, sum4));
-            float_sums = _mm_mul_ps(float_sums, unquant_mult_sse);
-#ifdef __AVX512VL__
-            // The scatter instruction requires avx512vl
-            _mm_i32scatter_ps(C + i * num_B_rows + j, num_b_rows_scatter, float_sums, 1);
-#else
-            FloatAccess a;
-            // Get floats for each of the sums to write.
-            a.as_n = float_sums;
-            // Also note that the memory acceses on C are not consecutive, but this is a tradeoff that we have to make.
-            // We can't have consecutive accesses of A, B, *and* C. But we access A and B a lot more so it makes
-            // sense to do it this way.
-            // Scatter to outputs:
-            *(C + (i+0)*num_B_rows + j) = a.as_f[0];
-            *(C + (i+1)*num_B_rows + j) = a.as_f[1];
-            *(C + (i+2)*num_B_rows + j) = a.as_f[2];
-            *(C + (i+3)*num_B_rows + j) = a.as_f[3];
-#endif
+            put.Write(C + i * num_B_rows + j, Reduce(sum1, sum2, sum3, sum4));
         }
     }
     // Handle the non-multiples of 4 rows.
@@ -292,6 +313,7 @@ void AVX_MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unqu
   assert(width % 32 == 0);
   assert(reinterpret_cast<uintptr_t>(A) % 64 == 0);
   assert(reinterpret_cast<uintptr_t>(B) % 64 == 0);
+  ScatterPut put(unquant_mult, num_B_rows);
   const __m512i ones = _mm512_set1_epi16(1);
   const int sse_width = width/64;
   for (int i = 0; i < num_A_rows; i += 4) {
@@ -314,10 +336,7 @@ void AVX_MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unqu
         Accum(ones, *(A3_row + k), b, b_positive, b_second, sum3);
         Accum(ones, *(A4_row + k), b, b_positive, b_second, sum4);
       }
-      *(C + (i)*num_B_rows + j) = unquant_mult * static_cast<float>(Reduce(sum1));
-      *(C + (i+1)*num_B_rows + j) = unquant_mult * static_cast<float>(Reduce(sum2));
-      *(C + (i+2)*num_B_rows + j) = unquant_mult * static_cast<float>(Reduce(sum3));
-      *(C + (i+3)*num_B_rows + j) = unquant_mult * static_cast<float>(Reduce(sum4));
+      put.Write(C + i *num_B_rows + j, Reduce(sum1, sum2, sum3, sum4));
     }
   }
 }
