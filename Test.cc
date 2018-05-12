@@ -99,11 +99,11 @@ void Time(int num_A_rows, int num_B_rows, int width) {
     float * AVX_C = new float[num_A_rows*num_B_rows];
     memset(AVX_C, 0, sizeof(float) * num_A_rows*num_B_rows);
     // Burn in
-    AVX_MatrixMult(quant_A, quant_B, AVX_C, (float)unquant_mult, num_A_rows, num_B_rows, width);
+    AVX_MatrixMult16(quant_A, quant_B, AVX_C, (float)unquant_mult, num_A_rows, num_B_rows, width);
     {
       StopWatch w("AVX");
       for (int i = 0; i < 10; ++i)
-        AVX_MatrixMult(quant_A, quant_B, AVX_C, (float)unquant_mult, num_A_rows, num_B_rows, width);
+        AVX_MatrixMult16(quant_A, quant_B, AVX_C, (float)unquant_mult, num_A_rows, num_B_rows, width);
     }
 
     float * ref_C = new float[num_A_rows*num_B_rows];

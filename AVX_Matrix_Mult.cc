@@ -117,7 +117,7 @@ union IntAccess {
 // A is typically an activation minibatch matrix.
 // A and B must be 64-byte aligned.
 // C should be the usual 4-byte alignment.
-void AVX_MatrixMult(const __m512i * A, const __m512i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
+void AVX_MatrixMult16(const __m512i * A, const __m512i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
     assert(width % 32 == 0);
     assert(reinterpret_cast<uintptr_t>(A) % 64 == 0);
     assert(reinterpret_cast<uintptr_t>(B) % 64 == 0);
