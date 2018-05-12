@@ -1,26 +1,3 @@
-// This is an AVX512F implementation of int16_t multiply based on Jacob
-// Devlin's SSE code.  The original SSE code was:
-
-// Copyright (c) 2017 Microsoft Corporation
-
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-
 #include "AVX_Matrix_Mult.h"
 
 #include <cassert>
@@ -34,52 +11,48 @@
 #include <tmmintrin.h>
 #include <xmmintrin.h>
 
-// TODO: Additional improvements can also be made from unrolling the for loop over num_B_rows in SSE_MatrixMult, which is not done here for clarity.
+namespace {
+// Load from memory, multiply, and convert to int32_t.
+inline __m512i QuantizerGrab(const float *input, const __m512 quant_mult_reg) {
+  // Load 16 floats
+  __m512 val = _mm512_load_ps(input);
+  // Multiply each by the quantization factor.
+  val = _mm512_mul_ps(val, quant_mult_reg);
+  // Cast to 32-bit int
+  return _mm512_cvtps_epi32(val);
+}
+} // namespace
 
-// ***************************************
-// ************** IMPORTANT **************
-// ***************************************
-// The biggest "gotcha" when using this type of multiplication is dealing with overflow related to quantization.
-// It is NOT enough to simply ensure that A and B fit into 16 bit integers. If A and B are quantized with $n$ bits,
-// the result of multiplying them together will be quantized to $n^2$ bits. So if they are near the boundary of the 16-bit
-// mark, then the result will be near 32-bits and overflow. However, if we use, say, n = 10 bits, then the product is 20 bits.
-// This gives us 12 bits left over for the accumulation. So as long as the width of the common dimension is less than 2^12 = 4096, it is
-// *impossible* to overflow. If we used, say, n = 12 bits, then we have 32-(12*2) = 8 bits left over. So we *could* overflow if width > 2^8.
-//
-// So, the tradeoff is between quantization precision and possibility of overflow. A good general value is 10 bits, since this gives high precision
-// (precision is 1/2^10 ~= 0.001, which is more than what's needed for almost all neural nets), and cannot overflow unless the matrix width is > 4096. 
-
-// This quantizes floating point values into fixed-point 16-bit integers. Effectively, we are performing an SSE version of
-// float x = ...;
-// int16_t y = (int16_t)(quant_mult*x);
-// 
-// Except that the casting is saturated. However, you should always ensure that the input fits into a fixed range anyways.
-// I.e., you should ensure that quant_mult*x fits into the range [-2^15, 2^15].
-// This should always be possible because the value you're quantizing will either be NN weights or NN activations, both of
-// which can be clipped to a fixed range during training.
-void AVX_Quantize(const float * input, __m256i * output, float quant_mult, int size) {
+// Convert 
+void AVX_Quantize16(const float *input, int16_t *output, float quant_mult, std::size_t size) {
     assert(size % 16 == 0);
     assert(reinterpret_cast<uintptr_t>(input) % 64 == 0);
-    assert(reinterpret_cast<uintptr_t>(output) % 32 == 0);
-    // Annoyingly, _mm512_packs_epi32 requires AVX512BW which isn't supported
-    // on my target.  Therefore I use _mm256_packs_epi32.
-
     // Fill with the quantization multiplier.
     const __m512 quant_mult_reg = _mm512_set1_ps(quant_mult);
     const float *end = input + size;
+    for (; input != end; input += 16, output += 16) {
+      // There doesn't seem to be an unmasked version.
+      _mm512_mask_cvtsepi32_storeu_epi16(output, 0xffff, QuantizerGrab(input, quant_mult_reg));
+    }
+}
 
-    for (; input != end; input += 16, output += 1) {
-      // Load 16 floats
-      __m512 val = _mm512_load_ps(input);
-      // Multiply each by the quantization factor.
-      val = _mm512_mul_ps(val, quant_mult_reg);
-      // Cast to 32-bit int
-      __m512i as_int =  _mm512_cvtps_epi32(val);
-      // Pack into 16-bit ints with saturation.
-      // I would do two AVX512 registers and _mm512_packs_epi32 but that's not
-      // AVX515F.
-      *output = _mm256_packs_epi32(_mm512_castsi512_si256(as_int), _mm512_extracti64x4_epi64(as_int, 1));
-    }    
+void AVX_Quantize8(const float *input, int8_t *output, float quant_mult, std::size_t size) {
+  assert(size % 16 == 0);
+  assert(reinterpret_cast<uintptr_t>(input) % 64 == 0);
+  const __m512i neg127 = _mm512_set1_epi32(-127);
+  const __m512 quant_mult_reg = _mm512_set1_ps(quant_mult);
+  const float *end = input + size;
+  for (; input < end; input += 16, output += 16) {
+    __m512i asint = QuantizerGrab(input, quant_mult_reg);
+    /* Ban -128.
+     * The largest possbile product is -128 * -128 = 2^14. If two of those are
+     * summed that's 2^15 which is too large for int16_t. By banning -128 we
+     * can accumulate two in int16_t w/o saturation before going to int32_t.
+     */
+    asint = _mm512_max_epi32(asint, neg127);
+    // There doesn't seem to be an unmasked version.
+    _mm512_mask_cvtsepi32_storeu_epi8(output, 0xffff, asint);
+  }
 }
 
 namespace {
@@ -111,6 +84,31 @@ union IntAccess {
   __m128i as_n;
 };
 } // namespace
+
+
+// This is an AVX512F implementation of int16_t multiply based on Jacob
+// Devlin's SSE code.  The original SSE code was:
+
+// Copyright (c) 2017 Microsoft Corporation
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 
 // We are multiplying A * B^T, as opposed to A * B. This is important because it means we can do consecutive memory access on A * B^T which allows to to take the most
 // advantage of L1 cache.

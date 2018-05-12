@@ -23,6 +23,7 @@
 
 #pragma once
 #include <immintrin.h>
+#include <cstddef>
 
 // ***************************************
 // ************** IMPORTANT **************
@@ -45,7 +46,10 @@
 // I.e., you should ensure that quant_mult*x fits into the range [-2^15, 2^15].
 // This should always be possible because the value you're quantizing will either be NN weights or NN activations, both of
 // which can be clipped to a fixed range during training.
-void AVX_Quantize(const float * input, __m256i * output, float quant_mult, int size);
+
+// input must be 64-byte aligned.
+void AVX_Quantize16(const float *input, int16_t *output, float quant_mult, std::size_t size);
+void AVX_Quantize8(const float *input, int32_t* output, float quant_mult, std::size_t size);
 
 // We are multiplying A * B^T, as opposed to A * B. This is important because it means we can do consecutive memory access on A * B^T which allows to to take the most
 // advantage of L1 cache.

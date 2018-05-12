@@ -1,12 +1,15 @@
 CXX := g++
-CXXFLAGS := -Wall -Werror -fPIC -O3 -march=native
-SRC := AVX_Matrix_Mult.cc  SSE_Matrix_Mult.cc  StopWatch.cc  Test.cc
+CXXFLAGS := -Wall -Werror -fPIC -O3 -march=native -mavx512vl
+SRC := AVX_Matrix_Mult.cc  SSE_Matrix_Mult.cc  StopWatch.cc
 OBJ := ${SRC:.cc=.o}
 
-all: Test
+all: Test QuantizeTest
 
-Test: ${OBJ}
-	${CXX} ${CXXFLAGS} ${OBJ} -o Test
+Test: ${OBJ} Test.o
+	${CXX} ${CXXFLAGS} ${OBJ} Test.o -o Test
+
+QuantizeTest: ${OBJ} QuantizeTest.o
+	${CXX} ${CXXFLAGS} ${OBJ} QuantizeTest.o -o QuantizeTest
 
 .c.o:
 	${CXX} ${CXXFLAGS} -c $<
