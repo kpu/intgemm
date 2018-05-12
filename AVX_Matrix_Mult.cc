@@ -123,6 +123,9 @@ void AVX_MatrixMult(const __m512i * A, const __m512i * B, float * C, float unqua
     assert(reinterpret_cast<uintptr_t>(B) % 64 == 0);
 
     const __m128 unquant_mult_sse = _mm_set1_ps(unquant_mult);
+#ifdef __AVX512VL__
+    const __m128i num_b_rows_scatter = _mm_set_epi32(num_B_rows * 3 * sizeof(float), num_B_rows * 2 * sizeof(float), num_B_rows * 1 * sizeof(float), num_B_rows * 0 * sizeof(float));
+#endif
 
     const int sse_width = width/32;
 
@@ -174,11 +177,15 @@ void AVX_MatrixMult(const __m512i * A, const __m512i * B, float * C, float unqua
                 sum3 = _mm512_add_epi32(sum3, _mm512_madd_epi16(b, a3));
                 sum4 = _mm512_add_epi32(sum4, _mm512_madd_epi16(b, a4));
             }
+            __m128 float_sums = _mm_cvtepi32_ps(Reduce(sum1, sum2, sum3, sum4));
+            float_sums = _mm_mul_ps(float_sums, unquant_mult_sse);
+#ifdef __AVX512VL__
+            // The scatter instruction requires avx512vl
+            _mm_i32scatter_ps(C + i * num_B_rows + j, num_b_rows_scatter, float_sums, 1);
+#else
             FloatAccess a;
             // Get floats for each of the sums to write.
-            a.as_n = _mm_cvtepi32_ps(Reduce(sum1, sum2, sum3, sum4));
-            // Undo quantization scaling.
-            a.as_n = _mm_mul_ps(a.as_n, unquant_mult_sse);
+            a.as_n = float_sums;
             // Also note that the memory acceses on C are not consecutive, but this is a tradeoff that we have to make.
             // We can't have consecutive accesses of A, B, *and* C. But we access A and B a lot more so it makes
             // sense to do it this way.
@@ -187,9 +194,7 @@ void AVX_MatrixMult(const __m512i * A, const __m512i * B, float * C, float unqua
             *(C + (i+1)*num_B_rows + j) = a.as_f[1];
             *(C + (i+2)*num_B_rows + j) = a.as_f[2];
             *(C + (i+3)*num_B_rows + j) = a.as_f[3];
-            /* Sadly the scatter instruction requires avx512vl
-             * _mm_i32scatter_ps(C + i * num_B_rows + j, num_b_rows_scatter, float_sums, sizeof(float));
-             */
+#endif
         }
     }
     // Handle the non-multiples of 4 rows.
