@@ -11,6 +11,27 @@
 #include <tmmintrin.h>
 #include <xmmintrin.h>
 
+#include <iostream>
+#include <iomanip>
+
+void Print8(__m512i value) {
+  int8_t out[64];
+  _mm512_storeu_si512(&out, value);
+  for (int i = 0; i < 64; ++i) {
+    std::cout << std::setw(3) << (int16_t)out[i] << ' ';
+  }
+  std::cout << '\n';
+}
+
+void Print16(__m512i value) {
+  int16_t out[32];
+  _mm512_storeu_si512(&out, value);
+  for (int i = 0; i < 32; ++i) {
+    std::cout << std::setw(2) << out[i] << ' ';
+  }
+  std::cout << '\n';
+}
+
 namespace {
 // Load from memory, multiply, and convert to int32_t.
 inline __m512i QuantizerGrab(const float *input, const __m512 quant_mult_reg) {
@@ -39,7 +60,7 @@ void AVX_Quantize16(const float *input, int16_t *output, float quant_mult, std::
 void AVX_Quantize8(const float *input, int8_t *output, float quant_mult, std::size_t size) {
   assert(size % 16 == 0);
   assert(reinterpret_cast<uintptr_t>(input) % 64 == 0);
-  const __m512i neg127 = _mm512_set1_epi32(-127);
+//  const __m512i neg127 = _mm512_set1_epi32(-127);
   const __m512 quant_mult_reg = _mm512_set1_ps(quant_mult);
   const float *end = input + size;
   for (; input < end; input += 16, output += 16) {
@@ -48,14 +69,24 @@ void AVX_Quantize8(const float *input, int8_t *output, float quant_mult, std::si
      * The largest possbile product is -128 * -128 = 2^14. If two of those are
      * summed that's 2^15 which is too large for int16_t. By banning -128 we
      * can accumulate two in int16_t w/o saturation before going to int32_t.
+     * But this is ok because apparently the instruction will saturate.
      */
-    asint = _mm512_max_epi32(asint, neg127);
+//    asint = _mm512_max_epi32(asint, neg127);
     // There doesn't seem to be an unmasked version.
     _mm512_mask_cvtsepi32_storeu_epi8(output, 0xffff, asint);
   }
 }
 
 namespace {
+
+union FloatAccess {
+  float as_f[4];
+  __m128 as_n;
+};
+union IntAccess {
+  int32_t as_i[4];
+  __m128i as_n;
+};
 
 // Assuming sum1, sum2, sum3, and sum4 are arrays 32-bit signed integers,
 // reduce within each.
@@ -71,18 +102,23 @@ inline __m128i Reduce(__m512i sum1, __m512i sum2, __m512i sum3, __m512i sum4) {
   // Cut the register into halves and sum those.  1 2 3 4 1 2 3 4
   __m256i halves = _mm256_add_epi32(_mm512_castsi512_si256(pack1234), _mm512_extracti64x4_epi64(pack1234, 1));
   // Again: cut the register into halves and sum those. 1 2 3 4
-  __m128i ret = _mm_add_epi32(_mm256_castsi256_si128(halves), _mm256_extracti128_si256(halves, 1));
-  return ret;
+  return _mm_add_epi32(_mm256_castsi256_si128(halves), _mm256_extracti128_si256(halves, 1));
 }
 
-union FloatAccess {
-  float as_f[4];
-  __m128 as_n;
-};
-union IntAccess {
-  int32_t as_i[4];
-  __m128i as_n;
-};
+// Somewhat inefficient reduce for single __m256i containing int32_t
+inline int32_t Reduce(__m256i halves) {
+  IntAccess a;
+  a.as_n = _mm_add_epi32(_mm256_castsi256_si128(halves), _mm256_extracti128_si256(halves, 1));
+  // TODO is there a more efficient way?
+  return a.as_i[0] + a.as_i[1] + a.as_i[2] + a.as_i[3];
+}
+
+// Somewhat inefficient reduce for single __m512i containing int32_t
+inline int32_t Reduce(__m512i sum1) {
+  // Fold register over itself.
+  return Reduce(_mm256_add_epi32(_mm512_castsi512_si256(sum1), _mm512_extracti64x4_epi64(sum1, 1)));
+}
+
 } // namespace
 
 
@@ -209,12 +245,47 @@ void AVX_MatrixMult16(const __m512i * A, const __m512i * B, float * C, float unq
           __m512i a1 = *(A1_row + k);
           sum1 = _mm512_add_epi32(sum1, _mm512_madd_epi16(b, a1));
         }
-        // Fold register over itself.
-        __m256i halves = _mm256_add_epi32(_mm512_castsi512_si256(sum1), _mm512_extracti64x4_epi64(sum1, 1));
-        IntAccess a;
-        a.as_n = _mm_add_epi32(_mm256_castsi256_si128(halves), _mm256_extracti128_si256(halves, 1));
         // TODO is there a more efficient way?
-        *(C + (i)*num_B_rows + j) = unquant_mult * static_cast<float>(a.as_i[0] + a.as_i[1] + a.as_i[2] + a.as_i[3]);
+        *(C + (i)*num_B_rows + j) = unquant_mult * static_cast<float>(Reduce(sum1));
       }
     }
+}
+
+void AVX_MatrixMult8(const __m256i * A, const __m256i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
+  assert(width % 32 == 0);
+  assert(reinterpret_cast<uintptr_t>(A) % 64 == 0);
+  assert(reinterpret_cast<uintptr_t>(B) % 64 == 0);
+  const __m256i ones = _mm256_set1_epi16(1);
+  const int sse_width = width/32;
+  for (int i = 0; i < num_A_rows; ++i) {
+    const __m256i *A1_row = A + (i+0)*sse_width;
+    for (int j = 0; j < num_B_rows; j++) {
+      const __m256i *B_row = B + j*sse_width;
+      __m256i sum1 = _mm256_setzero_si256();
+      for (int k = 0; k < sse_width; k++) {
+        __m256i b = *(B_row + k);
+        __m256i b_positive = _mm256_sign_epi8(b, b);
+
+        __m256i a1 = *(A1_row + k);
+        // Apply sign bits to a1.
+        a1 = _mm256_sign_epi8(a1, b);
+
+        // _mm512_maddubs_epi16 is a thing if we can get the sign right, but that looks like even more instructions since _mm512_sign_epi8 is missing.
+        __m256i multiplied = _mm256_maddubs_epi16(b_positive, a1);
+        // Now we have 16-bit results that are the sum of two multiplies.
+        // Options:
+        // - Sum for a few iterations in 16-bit _mm512_adds_epi16
+        // - Expand to 32-bit with two _mm512_cvtepi16_epi32 and sum there.
+        // - _mm256_hadds_epi16 is a horizontal add and saturate but only does 256-wide.
+        // - https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67
+        // TODO: try adding to each other then to sum1 for latency reasons.
+
+        // Trick from https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67 under Apache license.
+        multiplied = _mm256_madd_epi16(multiplied, ones);
+        // Now we have 32-bit.
+        sum1 = _mm256_add_epi32(sum1, multiplied);
+      }
+      *(C + (i)*num_B_rows + j) = unquant_mult * static_cast<float>(Reduce(sum1));
+    }
+  }
 }

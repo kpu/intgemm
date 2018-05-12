@@ -33,8 +33,7 @@
 #include <iostream>
 
 // Compute A*B^T very naively.
-void SlowRef_Float(const float * A, const float * B, float * C, int num_A_rows, int num_B_rows, int width)
-{
+void SlowRefFloat(const float * A, const float * B, float * C, int num_A_rows, int num_B_rows, int width) {
     for (int i = 0; i < num_A_rows; i++) {
         const float * A_row = A + i*width;
         float * C_row = C + i*num_B_rows;
@@ -49,14 +48,13 @@ void SlowRef_Float(const float * A, const float * B, float * C, int num_A_rows, 
     }
 }
 
-void SlowRef_16(const int16_t * A, const int16_t * B, float * C, float quant_mult, int num_A_rows, int num_B_rows, int width)
-{
+void SlowRef16(const int16_t * A, const int16_t * B, float * C, float quant_mult, int num_A_rows, int num_B_rows, int width) {
     for (int i = 0; i < num_A_rows; i++) {
         const int16_t * A_row = A + i*width;
         float * C_row = C + i*num_B_rows;
         for (int j = 0; j < num_B_rows; j++) {
             const int16_t * B_row = B + j*width;
-            float sum = 0.0f;
+            int32_t sum = 0.0f;
             for (int k = 0; k < width; k++) {
                 sum += A_row[k]*B_row[k];
             }
@@ -65,8 +63,33 @@ void SlowRef_16(const int16_t * A, const int16_t * B, float * C, float quant_mul
     }
 }
 
+void SlowRef8(const int8_t * A, const int8_t * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
+    for (int i = 0; i < num_A_rows; i++) {
+        const int8_t *A_row = A + i * width;
+        float *C_row = C + i * num_B_rows;
+        for (int j = 0; j < num_B_rows; j++) {
+            const int8_t *B_row = B + j*width;
+            int32_t sum = 0;
+            for (int k = 0; k < width; k++) {
+                sum += static_cast<int32_t>(A_row[k])*static_cast<int32_t>(B_row[k]);
+            }
+            C_row[j] = sum * unquant_mult;
+        }
+    }
+}
+
+void Compare(const float *float_ref, const float *int_ref, const float *int_test, std::size_t size) {
+  for (std::size_t i = 0; i < size; ++i) {
+    float int_diff = fabs(int_ref[i] - int_test[i]);
+    float float_diff = fabs(float_ref[i] - int_test[i]);
+    if (int_diff > 0.0001 || float_diff > 1) {
+      std::cerr << "Bug at " << i << ' ' << float_ref[i] << ' ' << int_ref[i] << ' ' << int_test[i] << '\n';
+    }
+  }
+}
+
 void Time(int num_A_rows, int num_B_rows, int width) {
-    std::cerr << num_A_rows << '\t' << num_B_rows << '\t' << width << '\t';
+    std::cerr << num_A_rows << '\t' << num_B_rows << '\t' << width << '\n';
     float * A = static_cast<float*>(aligned_alloc(64, sizeof(float) * num_A_rows * width));
     float * B = static_cast<float*>(aligned_alloc(64, sizeof(float) * num_B_rows * width));
     
@@ -77,6 +100,9 @@ void Time(int num_A_rows, int num_B_rows, int width) {
     for (int i = 0; i < num_B_rows*width; i++) {
         B[i] = ((float)rand()/(float)RAND_MAX)*2.0f - 1.0f;
     }
+
+    float *float_C = new float[num_A_rows*num_B_rows];
+    SlowRefFloat(A, B, float_C, num_A_rows, num_B_rows, width);
     
     // Each __m512i fits 8 16-bit integers, so we assume the width is a multiple of 8.
     // We could pad with 0 in the general case.
@@ -85,40 +111,44 @@ void Time(int num_A_rows, int num_B_rows, int width) {
 
     // We quantize with 10 bits of precision. This works well "universally". 
     // See the top of this file for more info on why.
-    //double quant_mult = pow(2.0, 10.0);
-    double quant_mult = 1000.0;
-    
+    float quant_mult = 1000.0;
     // If we quantize to n bits and then multiply the values together, the result will be quantized to n^2 bits.
     // So we must divide by 1.0/(n^2) to get back the original value.
-    double unquant_mult = 1.0/(quant_mult*quant_mult);
+    float unquant_mult = 1.0/(quant_mult*quant_mult);
 
     // The weight matrix should be quantized before starting decoding, since it is known beforehand.
-    AVX_Quantize16(B, (int16_t*)quant_B, (float)quant_mult, num_B_rows * width);
+    AVX_Quantize16(B, (int16_t*)quant_B, quant_mult, num_B_rows * width);
     // The activation matrix must be quantized on-the-fly.
-    AVX_Quantize16(A, (int16_t*)quant_A, (float)quant_mult, num_A_rows * width);
+    AVX_Quantize16(A, (int16_t*)quant_A, quant_mult, num_A_rows * width);
     float * AVX_C = new float[num_A_rows*num_B_rows];
     memset(AVX_C, 0, sizeof(float) * num_A_rows*num_B_rows);
-    // Burn in
-    AVX_MatrixMult16(quant_A, quant_B, AVX_C, (float)unquant_mult, num_A_rows, num_B_rows, width);
+    // Burn in.
+    AVX_MatrixMult16(quant_A, quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     {
-      StopWatch w("AVX");
+      StopWatch w("16-bit");
       for (int i = 0; i < 10; ++i)
-        AVX_MatrixMult16(quant_A, quant_B, AVX_C, (float)unquant_mult, num_A_rows, num_B_rows, width);
+        AVX_MatrixMult16(quant_A, quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     }
 
-    float * ref_C = new float[num_A_rows*num_B_rows];
-    SlowRef_16((const int16_t*)quant_A, (const int16_t*)quant_B, ref_C, (float)unquant_mult, num_A_rows, num_B_rows, width);
+    float *ref_C = new float[num_A_rows*num_B_rows];
+    SlowRef16((const int16_t*)quant_A, (const int16_t*)quant_B, ref_C, unquant_mult, num_A_rows, num_B_rows, width);
+    Compare(float_C, ref_C, AVX_C, num_A_rows*num_B_rows);
 
-    float *float_C = new float[num_A_rows*num_B_rows];
-    SlowRef_Float(A, B, float_C, num_A_rows, num_B_rows, width);
+    // Moving on to 8-bit.
+    quant_mult = 64;
+    unquant_mult = 1.0/(quant_mult*quant_mult);
 
-    for (int i = 0; i < num_A_rows * num_B_rows; ++i) {
-      float diff16 = fabs(ref_C[i] - AVX_C[i]);
-      float difff = fabs(float_C[i] - AVX_C[i]);
-      if (diff16 > 0.0001 || difff > 1) {
-        std::cerr << "Bug at " << i << ' ' << ref_C[i] << ' ' << AVX_C[i] << ' ' << float_C[i] << '\n';
-      }
+    AVX_Quantize8(B, (int8_t*)quant_B, quant_mult, num_B_rows * width);
+    AVX_Quantize8(A, (int8_t*)quant_A, quant_mult, num_A_rows * width);
+
+    AVX_MatrixMult8((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
+    {
+      StopWatch w("8-bit");
+      for (int i = 0; i < 10; ++i)
+        AVX_MatrixMult8((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     }
+    SlowRef8((const int8_t*)quant_A, (const int8_t*)quant_B, ref_C, unquant_mult, num_A_rows, num_B_rows, width);
+    Compare(float_C, ref_C, AVX_C, num_A_rows*num_B_rows);
 
     free(A);
     free(B);

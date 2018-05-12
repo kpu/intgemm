@@ -49,7 +49,7 @@
 
 // input must be 64-byte aligned.
 void AVX_Quantize16(const float *input, int16_t *output, float quant_mult, std::size_t size);
-void AVX_Quantize8(const float *input, int32_t* output, float quant_mult, std::size_t size);
+void AVX_Quantize8(const float *input, int8_t* output, float quant_mult, std::size_t size);
 
 // We are multiplying A * B^T, as opposed to A * B. This is important because it means we can do consecutive memory access on A * B^T which allows to to take the most
 // advantage of L1 cache.
@@ -59,3 +59,4 @@ void AVX_Quantize8(const float *input, int32_t* output, float quant_mult, std::s
 // A and B must be 64-byte aligned.
 // C should be the usual 4-byte alignment.
 void AVX_MatrixMult16(const __m512i * A, const __m512i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width);
+void AVX_MatrixMult8(const __m256i * A, const __m256i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width);
