@@ -266,10 +266,10 @@ inline __m512i Concat(const __m256i first, const __m256i second) {
   return _mm512_inserti64x4(_mm512_castsi256_si512(first), second, 1);
 }
 
-inline void Accum(const __m512i ones, __m512i a, const __m512i b, const __m512i b_positive, __m512i &sum) {
+inline void Accum(const __m512i ones, __m512i a, const __m512i b, const __m512i b_positive, const __m256i b_second, __m512i &sum) {
   // Apply sign bits.
   __m256i a_first = _mm256_sign_epi8(FirstHalf(a), FirstHalf(b));
-  __m256i a_second = _mm256_sign_epi8(SecondHalf(a), SecondHalf(b));
+  __m256i a_second = _mm256_sign_epi8(SecondHalf(a), b_second);
   // The magic 8-bit multiply then horizontal sum into 16-bit.
   __m512i multiplied = _mm512_maddubs_epi16(b_positive, Concat(a_first, a_second));
   // Now we have 16-bit results that are the sum of two multiplies.
@@ -307,11 +307,12 @@ void AVX_MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unqu
       __m512i sum4 = _mm512_setzero_si512();
       for (int k = 0; k < sse_width; k++) {
         __m512i b = *(B_row + k);
+        __m256i b_second = SecondHalf(b);
         __m512i b_positive = _mm512_abs_epi8(b);
-        Accum(ones, *(A1_row + k), b, b_positive, sum1);
-        Accum(ones, *(A2_row + k), b, b_positive, sum2);
-        Accum(ones, *(A3_row + k), b, b_positive, sum3);
-        Accum(ones, *(A4_row + k), b, b_positive, sum4);
+        Accum(ones, *(A1_row + k), b, b_positive, b_second, sum1);
+        Accum(ones, *(A2_row + k), b, b_positive, b_second, sum2);
+        Accum(ones, *(A3_row + k), b, b_positive, b_second, sum3);
+        Accum(ones, *(A4_row + k), b, b_positive, b_second, sum4);
       }
       *(C + (i)*num_B_rows + j) = unquant_mult * static_cast<float>(Reduce(sum1));
       *(C + (i+1)*num_B_rows + j) = unquant_mult * static_cast<float>(Reduce(sum2));
