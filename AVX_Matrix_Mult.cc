@@ -297,14 +297,14 @@ inline void Accum(const __m512i ones, __m512i a, const __m512i b, const __m512i 
   // Options:
   // - Sum for a few iterations in 16-bit _mm512_adds_epi16
   // - Expand to 32-bit with two _mm512_cvtepi16_epi32 and sum there.
-  // - _mm512_hadds_epi16 is a horizontal add and saturate but only does 512-wide.
+  // - _mm256_hadds_epi16 is a horizontal add and saturate but only does 256-wide.
   // - https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67
   // TODO: try adding to each other then to sum1 for latency reasons.
 
   // Trick from https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67 under Apache license.
   // This does a horizontal add and expansion into 32-bit.
   multiplied = _mm512_madd_epi16(multiplied, ones);
-  sum =  _mm512_add_epi32(sum, multiplied);
+  sum = _mm512_add_epi32(sum, multiplied);
 }
 
 } // namespace
