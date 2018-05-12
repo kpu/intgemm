@@ -13,3 +13,6 @@ QuantizeTest: ${OBJ} QuantizeTest.o
 
 .c.o:
 	${CXX} ${CXXFLAGS} -c $<
+
+clean:
+	rm -f ${OBJ} QuantizeTest Test
