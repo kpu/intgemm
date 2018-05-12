@@ -251,41 +251,54 @@ void AVX_MatrixMult16(const __m512i * A, const __m512i * B, float * C, float unq
     }
 }
 
+inline void Accum(const __m256i ones, __m256i a, const __m256i b, const __m256i b_positive, __m256i &sum) {
+  // Apply sign bits.
+  a = _mm256_sign_epi8(a, b);
+  // The magic 8-bit multiply then horizontal sum into 16-bit.
+  __m256i multiplied = _mm256_maddubs_epi16(b_positive, a);
+  // Now we have 16-bit results that are the sum of two multiplies.
+  // Options:
+  // - Sum for a few iterations in 16-bit _mm512_adds_epi16
+  // - Expand to 32-bit with two _mm512_cvtepi16_epi32 and sum there.
+  // - _mm256_hadds_epi16 is a horizontal add and saturate but only does 256-wide.
+  // - https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67
+  // TODO: try adding to each other then to sum1 for latency reasons.
+
+  // Trick from https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67 under Apache license.
+  // This does a horizontal add and expansion into 32-bit.
+  multiplied = _mm256_madd_epi16(multiplied, ones);
+  sum =  _mm256_add_epi32(sum, multiplied);
+}
+
 void AVX_MatrixMult8(const __m256i * A, const __m256i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
   assert(width % 32 == 0);
   assert(reinterpret_cast<uintptr_t>(A) % 64 == 0);
   assert(reinterpret_cast<uintptr_t>(B) % 64 == 0);
   const __m256i ones = _mm256_set1_epi16(1);
   const int sse_width = width/32;
-  for (int i = 0; i < num_A_rows; ++i) {
+  for (int i = 0; i < num_A_rows; i += 4) {
     const __m256i *A1_row = A + (i+0)*sse_width;
+    const __m256i *A2_row = A + (i+1)*sse_width;
+    const __m256i *A3_row = A + (i+2)*sse_width;
+    const __m256i *A4_row = A + (i+3)*sse_width;
     for (int j = 0; j < num_B_rows; j++) {
       const __m256i *B_row = B + j*sse_width;
       __m256i sum1 = _mm256_setzero_si256();
+      __m256i sum2 = _mm256_setzero_si256();
+      __m256i sum3 = _mm256_setzero_si256();
+      __m256i sum4 = _mm256_setzero_si256();
       for (int k = 0; k < sse_width; k++) {
         __m256i b = *(B_row + k);
         __m256i b_positive = _mm256_sign_epi8(b, b);
-
-        __m256i a1 = *(A1_row + k);
-        // Apply sign bits to a1.
-        a1 = _mm256_sign_epi8(a1, b);
-
-        // _mm512_maddubs_epi16 is a thing if we can get the sign right, but that looks like even more instructions since _mm512_sign_epi8 is missing.
-        __m256i multiplied = _mm256_maddubs_epi16(b_positive, a1);
-        // Now we have 16-bit results that are the sum of two multiplies.
-        // Options:
-        // - Sum for a few iterations in 16-bit _mm512_adds_epi16
-        // - Expand to 32-bit with two _mm512_cvtepi16_epi32 and sum there.
-        // - _mm256_hadds_epi16 is a horizontal add and saturate but only does 256-wide.
-        // - https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67
-        // TODO: try adding to each other then to sum1 for latency reasons.
-
-        // Trick from https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67 under Apache license.
-        multiplied = _mm256_madd_epi16(multiplied, ones);
-        // Now we have 32-bit.
-        sum1 = _mm256_add_epi32(sum1, multiplied);
+        Accum(ones, *(A1_row + k), b, b_positive, sum1);
+        Accum(ones, *(A2_row + k), b, b_positive, sum2);
+        Accum(ones, *(A3_row + k), b, b_positive, sum3);
+        Accum(ones, *(A4_row + k), b, b_positive, sum4);
       }
       *(C + (i)*num_B_rows + j) = unquant_mult * static_cast<float>(Reduce(sum1));
+      *(C + (i+1)*num_B_rows + j) = unquant_mult * static_cast<float>(Reduce(sum2));
+      *(C + (i+2)*num_B_rows + j) = unquant_mult * static_cast<float>(Reduce(sum3));
+      *(C + (i+3)*num_B_rows + j) = unquant_mult * static_cast<float>(Reduce(sum4));
     }
   }
 }
