@@ -11,27 +11,6 @@
 #include <tmmintrin.h>
 #include <xmmintrin.h>
 
-#include <iostream>
-#include <iomanip>
-
-void Print8(__m512i value) {
-  int8_t out[64];
-  _mm512_storeu_si512(&out, value);
-  for (int i = 0; i < 64; ++i) {
-    std::cout << std::setw(3) << (int16_t)out[i] << ' ';
-  }
-  std::cout << '\n';
-}
-
-void Print16(__m512i value) {
-  int16_t out[32];
-  _mm512_storeu_si512(&out, value);
-  for (int i = 0; i < 32; ++i) {
-    std::cout << std::setw(2) << out[i] << ' ';
-  }
-  std::cout << '\n';
-}
-
 namespace {
 // Load from memory, multiply, and convert to int32_t.
 inline __m512i QuantizerGrab(const float *input, const __m512 quant_mult_reg) {
