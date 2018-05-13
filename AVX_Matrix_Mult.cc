@@ -274,6 +274,22 @@ void AVX_MatrixMult16(const __m512i * A, const __m512i * B, float * C, float unq
 
 namespace {
 
+/* Convert 16-bit to 32-bit and add, not caring what parts are added.
+ * Implementations:
+ * 1. https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67 under Apache license:
+ *   This does a multiply by 1 and horizontal add:
+ *    _mm512_madd_epi16(sum, _mm512_set1_epi16(1))
+ *   Current fastest.
+ * 2. Signed extension and fold halves:
+ *    sum = _mm512_add_epi32(
+ *      _mm512_cvtepi16_epi32(_mm512_castsi512_si256(sum)),
+ *      _mm512_cvtepi16_epi32(_mm512_extracti64x4_epi64(sum, 1)));
+ *
+ */
+inline void Convert32Sum(__m512i &sum) {
+  sum = _mm512_madd_epi16(sum, _mm512_set1_epi16(1));
+}
+
 /* Three ways considered to apply sign bits:
  * 1. Use 256-bit sign instruction:
  *  __m256i a_first = _mm256_sign_epi8(_mm512_castsi512_si256(a), _mm512_castsi512_si256(b));
@@ -297,23 +313,6 @@ namespace {
  *
  * Finally, subtraction won the benchmark
  */
-
-/* Convert 16-bit to 32-bit and add, not caring what parts are added.
- * Implementations:
- * 1. https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67 under Apache license:
- *   This does a multiply by 1 and horizontal add:
- *    _mm512_madd_epi16(sum, _mm512_set1_epi16(1))
- *   Current fastest.
- * 2. Signed extension and fold halves:
- *    sum = _mm512_add_epi32(
- *      _mm512_cvtepi16_epi32(_mm512_castsi512_si256(sum)),
- *      _mm512_cvtepi16_epi32(_mm512_extracti64x4_epi64(sum, 1)));
- *
- */
-inline void Convert32Sum(__m512i &sum) {
-  sum = _mm512_madd_epi16(sum, _mm512_set1_epi16(1));
-}
-
 inline void Accum(const __m512i zeros, __m512i a, const __m512i b, const __m512i b_positive, const __mmask64 neg_mask, __m512i &sum) {
   // Apply sign bits.
   a = _mm512_mask_sub_epi8(a, neg_mask, zeros, a);
