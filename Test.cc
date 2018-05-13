@@ -82,7 +82,7 @@ void Compare(const float *float_ref, const float *int_ref, const float *int_test
   for (std::size_t i = 0; i < size; ++i) {
     float int_diff = fabs(int_ref[i] - int_test[i]);
     float float_diff = fabs(float_ref[i] - int_test[i]);
-    if (int_diff > 0.0001 || float_diff > 1) {
+    if (int_diff > 1 || float_diff > 1) {
       std::cerr << "Bug at " << i << ' ' << float_ref[i] << ' ' << int_ref[i] << ' ' << int_test[i] << '\n';
     }
   }
@@ -162,7 +162,6 @@ void Time(int num_A_rows, int num_B_rows, int width) {
 // Program takes no input
 int main(int argc, char ** argv) {
     std::srand(45678);
-    Time(4, 64, 64);
     Time(512, 1024, 1024);
     Time(1024, 2048, 1024);
     Time(64, 64, 64);

@@ -330,22 +330,30 @@ void AVX_MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unqu
   assert(width % 32 == 0);
   assert(reinterpret_cast<uintptr_t>(A) % 64 == 0);
   assert(reinterpret_cast<uintptr_t>(B) % 64 == 0);
+  assert(num_A_rows % 8 == 0);
   ScatterPut put(unquant_mult, num_B_rows);
   const __m512i zeros = _mm512_setzero_si512();
-//  const __m512i ones = _mm512_set1_epi16(1);
 
   const int sse_width = width/64;
-  for (int i = 0; i < num_A_rows; i += 4) {
+  for (int i = 0; i < num_A_rows; i += 8) {
     const __m512i *A1_row = A + (i+0)*sse_width;
     const __m512i *A2_row = A + (i+1)*sse_width;
     const __m512i *A3_row = A + (i+2)*sse_width;
     const __m512i *A4_row = A + (i+3)*sse_width;
+    const __m512i *A5_row = A + (i+4)*sse_width;
+    const __m512i *A6_row = A + (i+5)*sse_width;
+    const __m512i *A7_row = A + (i+6)*sse_width;
+    const __m512i *A8_row = A + (i+7)*sse_width;
     for (int j = 0; j < num_B_rows; j++) {
       const __m512i *B_row = B + j*sse_width;
       __m512i sum1 = _mm512_setzero_si512();
       __m512i sum2 = _mm512_setzero_si512();
       __m512i sum3 = _mm512_setzero_si512();
       __m512i sum4 = _mm512_setzero_si512();
+      __m512i sum5 = _mm512_setzero_si512();
+      __m512i sum6 = _mm512_setzero_si512();
+      __m512i sum7 = _mm512_setzero_si512();
+      __m512i sum8 = _mm512_setzero_si512();
       for (int k = 0; k < sse_width; k++) {
         __m512i b = *(B_row + k);
         __m512i b_positive = _mm512_abs_epi8(b);
@@ -355,13 +363,22 @@ void AVX_MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unqu
         Accum(zeros, *(A2_row + k), b, b_positive, neg_mask, sum2);
         Accum(zeros, *(A3_row + k), b, b_positive, neg_mask, sum3);
         Accum(zeros, *(A4_row + k), b, b_positive, neg_mask, sum4);
+        Accum(zeros, *(A5_row + k), b, b_positive, neg_mask, sum5);
+        Accum(zeros, *(A6_row + k), b, b_positive, neg_mask, sum6);
+        Accum(zeros, *(A7_row + k), b, b_positive, neg_mask, sum7);
+        Accum(zeros, *(A8_row + k), b, b_positive, neg_mask, sum8);
       }
       Convert32Sum(sum1);
       Convert32Sum(sum2);
       Convert32Sum(sum3);
       Convert32Sum(sum4);
+      Convert32Sum(sum5);
+      Convert32Sum(sum6);
+      Convert32Sum(sum7);
+      Convert32Sum(sum8);
 
       put.Write(C + i *num_B_rows + j, Reduce(sum1, sum2, sum3, sum4));
+      put.Write(C + (i+4) *num_B_rows + j, Reduce(sum5, sum6, sum7, sum8));
     }
   }
 }
