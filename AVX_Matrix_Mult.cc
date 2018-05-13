@@ -274,31 +274,33 @@ void AVX_MatrixMult16(const __m512i * A, const __m512i * B, float * C, float unq
 
 namespace {
 
-inline __m256i FirstHalf(__m512i val) {
-  return _mm512_castsi512_si256(val);
-}
+/* Three ways considered to apply sign bits:
+ * 1. Use 256-bit sign instruction:
+ *  __m256i a_first = _mm256_sign_epi8(_mm512_castsi512_si256(a), _mm512_castsi512_si256(b));
+ *  __m256i a_second = _mm256_sign_epi8(_mm512_extracti64x4_epi64(a, 1), b_second);
+ *  a = _mm512_inserti64x4(_mm512_castsi256_si512(a_first), a_second, 1);
+ *  a = Concat(a_first, a_second);
+ *
+ * 2. Extract a mask and xor + 1
+ *   __mmask64 neg_mask  _mm512_test_epi8_mask(b, _mm512_set1_epi8(-128));
+ *  Use set1 to to build to_xor
+ *  a = _mm512_xor_si512(a, to_xor)
+ *  And add one:
+ *  const __m512i ones8 = _mm512_set1_epi8(1);
+ *  a = _mm512_mask_add_epi8(a, neg_mask, a, ones8);
+ *
+ * 3. Extract a mask and subtract from 0
+ * In the outer loop on b:
+ *  __mmask64 neg_mask  _mm512_test_epi8_mask(b, _mm512_set1_epi8(-128))
+ * For each a:
+ *  a = _mm512_mask_sub_epi8(a, neg_mask, _mm512_setzero_si512(), a);
+ *
+ * Finally, subtraction won the benchmark
+ */
 
-inline __m256i SecondHalf(__m512i val) {
-  return _mm512_extracti64x4_epi64(val, 1);
-}
-
-// Single instruction to concatenate 256s into 512.
-inline __m512i Concat(const __m256i first, const __m256i second) {
-  return _mm512_inserti64x4(_mm512_castsi256_si512(first), second, 1);
-}
-
-inline void Accum(const __m512i ones, __m512i a, const __m512i b, const __m512i b_positive, const __mmask64 neg_mask, __m512i &sum) {
+inline void Accum(const __m512i zeros, const __m512i ones, __m512i a, const __m512i b, const __m512i b_positive, const __mmask64 neg_mask, __m512i &sum) {
   // Apply sign bits.
-  a = _mm512_mask_sub_epi8(a, neg_mask, _mm512_setzero_si512(), a);
-  /* Attempt using xor
-  a = _mm512_xor_si512(a, to_xor);
-  const __m512i ones8 = _mm512_set1_epi8(1);
-  a = _mm512_mask_add_epi8(a, neg_mask, a, ones8);*/
-  /* Attempt using sign.
-     __m256i a_first = _mm256_sign_epi8(FirstHalf(a), FirstHalf(b));
-  __m256i a_second = _mm256_sign_epi8(SecondHalf(a), b_second);
-  a = Concat(a_first, a_second);
-   */
+  a = _mm512_mask_sub_epi8(a, neg_mask, zeros, a);
   // The magic 8-bit multiply then horizontal sum into 16-bit.
   __m512i multiplied = _mm512_maddubs_epi16(b_positive, a);
   // Now we have 16-bit results that are the sum of two multiplies.
@@ -322,9 +324,9 @@ void AVX_MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unqu
   assert(reinterpret_cast<uintptr_t>(A) % 64 == 0);
   assert(reinterpret_cast<uintptr_t>(B) % 64 == 0);
   ScatterPut put(unquant_mult, num_B_rows);
+  const __m512i zeros = _mm512_setzero_si512();
   const __m512i ones = _mm512_set1_epi16(1);
 
-//  __m512i zero = _mm512_setzero_si512();
   const int sse_width = width/64;
   for (int i = 0; i < num_A_rows; i += 4) {
     const __m512i *A1_row = A + (i+0)*sse_width;
@@ -341,10 +343,10 @@ void AVX_MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unqu
         __m512i b = *(B_row + k);
         __m512i b_positive = _mm512_abs_epi8(b);
         __mmask64 neg_mask = _mm512_test_epi8_mask(b, _mm512_set1_epi8(-128));
-        Accum(ones, *(A1_row + k), b, b_positive, neg_mask, /*zero,*/ sum1);
-        Accum(ones, *(A2_row + k), b, b_positive, neg_mask, /*zero,*/ sum2);
-        Accum(ones, *(A3_row + k), b, b_positive, neg_mask, /*zero,*/ sum3);
-        Accum(ones, *(A4_row + k), b, b_positive, neg_mask, /*zero,*/ sum4);
+        Accum(zeros, ones, *(A1_row + k), b, b_positive, neg_mask, sum1);
+        Accum(zeros, ones, *(A2_row + k), b, b_positive, neg_mask, sum2);
+        Accum(zeros, ones, *(A3_row + k), b, b_positive, neg_mask, sum3);
+        Accum(zeros, ones, *(A4_row + k), b, b_positive, neg_mask, sum4);
       }
       put.Write(C + i *num_B_rows + j, Reduce(sum1, sum2, sum3, sum4));
     }
