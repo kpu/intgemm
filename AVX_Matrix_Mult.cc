@@ -67,11 +67,53 @@ union IntAccess {
   __m128i as_n;
 };
 
+/* Convert 16-bit to 32-bit and add, not caring what parts are added.
+ * Implementations:
+ * 1. https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67 under Apache license:
+ *   This does a multiply by 1 and horizontal add:
+ *    _mm512_madd_epi16(sum, _mm512_set1_epi16(1))
+ *   Current fastest.
+ *
+ * 2. Signed extension and fold halves:
+ *    sum = _mm512_add_epi32(
+ *      _mm512_cvtepi16_epi32(_mm512_castsi512_si256(sum)),
+ *      _mm512_cvtepi16_epi32(_mm512_extracti64x4_epi64(sum, 1)));
+ *
+ * 3. Sign extend by abuse of bitshift, then add.
+ *   __m128i shift16 = _mm_set_epi32(0,0,0,16);
+ *   sum = _mm512_add_epi32(
+ *       _mm512_sra_epi32(_mm512_sll_epi32(sum, shift16), shift16),
+ *       _mm512_sra_epi32(sum, shift16));
+ */
+inline void Convert32Sum(__m512i &sum) {
+  sum = _mm512_madd_epi16(sum, _mm512_set1_epi16(1));
+}
+
+// Two sum version.
+struct ReducedPair {
+  int32_t result[2];
+};
+inline ReducedPair Reduce16to32(__m512i sum1, __m512i sum2) {
+  Convert32Sum(sum1);
+  Convert32Sum(sum2);
+  // 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2
+  __m512i pack12 = _mm512_add_epi32(_mm512_unpackhi_epi32(sum1, sum2), _mm512_unpacklo_epi32(sum1, sum2));
+  // 1 2 1 2 1 2 1 2
+  __m256i halves = _mm256_add_epi32(_mm512_castsi512_si256(pack12), _mm512_extracti64x4_epi64(pack12, 1));
+  // 1 2 1 2
+  IntAccess a;
+  a.as_n = _mm_add_epi32(_mm256_castsi256_si128(halves), _mm256_extracti128_si256(halves, 1));
+  ReducedPair ret;
+  ret.result[0] = a.as_i[0] + a.as_i[2];
+  ret.result[1] = a.as_i[1] + a.as_i[3];
+  return ret;
+}
+
 // Assuming sum1, sum2, sum3, and sum4 are arrays 32-bit signed integers,
 // reduce within each.
 // Returns [sum(sum1), sum(sum2), sum(sum3), sum(sum4)]
 // TODO: consider doing in 64-bit, allowing 4 more bits of quantization?
-inline __m128i Reduce(__m512i sum1, __m512i sum2, __m512i sum3, __m512i sum4) {
+inline __m128i Reduce32(__m512i sum1, __m512i sum2, __m512i sum3, __m512i sum4) {
   // 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2
   __m512i pack12 = _mm512_add_epi32(_mm512_unpackhi_epi32(sum1, sum2), _mm512_unpacklo_epi32(sum1, sum2));
   // 3 4 3 4 3 4 3 4 3 4 3 4 3 4 3 4
@@ -84,8 +126,17 @@ inline __m128i Reduce(__m512i sum1, __m512i sum2, __m512i sum3, __m512i sum4) {
   return _mm_add_epi32(_mm256_castsi256_si128(halves), _mm256_extracti128_si256(halves, 1));
 }
 
+// Four sum version
+inline __m128i Reduce16to32(__m512i sum1, __m512i sum2, __m512i sum3, __m512i sum4) {
+  Convert32Sum(sum1);
+  Convert32Sum(sum2);
+  Convert32Sum(sum3);
+  Convert32Sum(sum4);
+  return Reduce32(sum1, sum2, sum3, sum4);
+}
+
 // Somewhat inefficient reduce for single __m256i containing int32_t
-inline int32_t Reduce(__m256i halves) {
+inline int32_t Reduce32(__m256i halves) {
   IntAccess a;
   a.as_n = _mm_add_epi32(_mm256_castsi256_si128(halves), _mm256_extracti128_si256(halves, 1));
   // TODO is there a more efficient way?
@@ -93,25 +144,30 @@ inline int32_t Reduce(__m256i halves) {
 }
 
 // Somewhat inefficient reduce for single __m512i containing int32_t
-inline int32_t Reduce(__m512i sum1) {
+inline int32_t Reduce32(__m512i sum1) {
   // Fold register over itself.
-  return Reduce(_mm256_add_epi32(_mm512_castsi512_si256(sum1), _mm512_extracti64x4_epi64(sum1, 1)));
+  return Reduce32(_mm256_add_epi32(_mm512_castsi512_si256(sum1), _mm512_extracti64x4_epi64(sum1, 1)));
+}
+
+inline int32_t Reduce16to32(__m512i sum1) {
+  Convert32Sum(sum1);
+  // Fold register over itself.
+  return Reduce32(_mm256_add_epi32(_mm512_castsi512_si256(sum1), _mm512_extracti64x4_epi64(sum1, 1)));
 }
 
 class ScatterPut {
   public:
     explicit ScatterPut(float unquant_mult, int num_B_rows)
-      : unquant_mult_(_mm_set1_ps(unquant_mult)),
+      : unquant_mult_(unquant_mult),
+        unquant_mult_sse_(_mm_set1_ps(unquant_mult)),
 #ifdef __AVX512VL__
-       num_b_rows_scatter_(_mm_set_epi32(num_B_rows * 3 * sizeof(float), num_B_rows * 2 * sizeof(float), num_B_rows * 1 * sizeof(float), num_B_rows * 0 * sizeof(float)))
-#else
-       num_B_rows_(num_B_rows)
+       num_b_rows_scatter_(_mm_set_epi32(num_B_rows * 3 * sizeof(float), num_B_rows * 2 * sizeof(float), num_B_rows * 1 * sizeof(float), num_B_rows * 0 * sizeof(float))),
 #endif
-    {}
+       num_B_rows_(num_B_rows) {}
 
     inline void Write(float *base, __m128i reduced) {
       __m128 float_sums = _mm_cvtepi32_ps(reduced);
-      float_sums = _mm_mul_ps(float_sums, unquant_mult_);
+      float_sums = _mm_mul_ps(float_sums, unquant_mult_sse_);
 #ifdef __AVX512VL__
       // The scatter instruction requires avx512vl
       _mm_i32scatter_ps(base, num_b_rows_scatter_, float_sums, 1);
@@ -124,19 +180,28 @@ class ScatterPut {
       // sense to do it this way.
       // Scatter to outputs:
       base[0] = a.as_f[0];
-      base[num_B_rows] = a.as_f[1];
-      base[2*num_B_rows] = a.as_f[2];
-      base[3*num_B_rows] = a.as_f[3];
+      base[num_B_rows_] = a.as_f[1];
+      base[2*num_B_rows_] = a.as_f[2];
+      base[3*num_B_rows_] = a.as_f[3];
 #endif
     }
 
+    inline void Write(float *base, ReducedPair reduced) {
+      base[0] = unquant_mult_ * static_cast<float>(reduced.result[0]);
+      base[num_B_rows_] = unquant_mult_ * static_cast<float>(reduced.result[1]);
+    }
+
+    inline void Write(float *base, int32_t reduced) {
+      base[0] = unquant_mult_ * static_cast<float>(reduced);
+    }
+
   private:
-    const __m128 unquant_mult_;
+    const float unquant_mult_;
+    const __m128 unquant_mult_sse_;
 #ifdef __AVX512VL__
     const __m128i num_b_rows_scatter_;
-#else
-    const int num_B_rows_;
 #endif
+    const int num_B_rows_;
 };
 
 } // namespace
@@ -230,7 +295,7 @@ void AVX_MatrixMult16(const __m512i * A, const __m512i * B, float * C, float unq
                 sum3 = _mm512_add_epi32(sum3, _mm512_madd_epi16(b, a3));
                 sum4 = _mm512_add_epi32(sum4, _mm512_madd_epi16(b, a4));
             }
-            put.Write(C + i * num_B_rows + j, Reduce(sum1, sum2, sum3, sum4));
+            put.Write(C + i * num_B_rows + j, Reduce32(sum1, sum2, sum3, sum4));
         }
     }
     // Handle the non-multiples of 4 rows.
@@ -246,34 +311,12 @@ void AVX_MatrixMult16(const __m512i * A, const __m512i * B, float * C, float unq
           sum1 = _mm512_add_epi32(sum1, _mm512_madd_epi16(b, a1));
         }
         // TODO is there a more efficient way?
-        *(C + (i)*num_B_rows + j) = unquant_mult * static_cast<float>(Reduce(sum1));
+        *(C + (i)*num_B_rows + j) = unquant_mult * static_cast<float>(Reduce32(sum1));
       }
     }
 }
 
 namespace {
-
-/* Convert 16-bit to 32-bit and add, not caring what parts are added.
- * Implementations:
- * 1. https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67 under Apache license:
- *   This does a multiply by 1 and horizontal add:
- *    _mm512_madd_epi16(sum, _mm512_set1_epi16(1))
- *   Current fastest.
- *
- * 2. Signed extension and fold halves:
- *    sum = _mm512_add_epi32(
- *      _mm512_cvtepi16_epi32(_mm512_castsi512_si256(sum)),
- *      _mm512_cvtepi16_epi32(_mm512_extracti64x4_epi64(sum, 1)));
- *
- * 3. Sign extend by abuse of bitshift, then add.
- *   __m128i shift16 = _mm_set_epi32(0,0,0,16);
- *   sum = _mm512_add_epi32(
- *       _mm512_sra_epi32(_mm512_sll_epi32(sum, shift16), shift16),
- *       _mm512_sra_epi32(sum, shift16));
- */
-inline void Convert32Sum(__m512i &sum) {
-  sum = _mm512_madd_epi16(sum, _mm512_set1_epi16(1));
-}
 
 /* Three ways considered to apply sign bits:
  * 1. Use 256-bit sign instruction:
@@ -315,12 +358,14 @@ void AVX_MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unqu
   assert(width % 32 == 0);
   assert(reinterpret_cast<uintptr_t>(A) % 64 == 0);
   assert(reinterpret_cast<uintptr_t>(B) % 64 == 0);
-  assert(num_A_rows % 8 == 0);
   ScatterPut put(unquant_mult, num_B_rows);
   const __m512i zeros = _mm512_setzero_si512();
 
   const int sse_width = width/64;
-  for (int i = 0; i < num_A_rows; i += 8) {
+  int i = 0;
+  int mult8rows = num_A_rows & (~7);
+
+  for (; i < mult8rows; i += 8) {
     const __m512i *A1_row = A + (i+0)*sse_width;
     const __m512i *A2_row = A + (i+1)*sse_width;
     const __m512i *A3_row = A + (i+2)*sse_width;
@@ -353,17 +398,149 @@ void AVX_MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unqu
         Accum(zeros, *(A7_row + k), b, b_positive, neg_mask, sum7);
         Accum(zeros, *(A8_row + k), b, b_positive, neg_mask, sum8);
       }
-      Convert32Sum(sum1);
-      Convert32Sum(sum2);
-      Convert32Sum(sum3);
-      Convert32Sum(sum4);
-      Convert32Sum(sum5);
-      Convert32Sum(sum6);
-      Convert32Sum(sum7);
-      Convert32Sum(sum8);
-
-      put.Write(C + i *num_B_rows + j, Reduce(sum1, sum2, sum3, sum4));
-      put.Write(C + (i+4) *num_B_rows + j, Reduce(sum5, sum6, sum7, sum8));
+      put.Write(C + i *num_B_rows + j, Reduce16to32(sum1, sum2, sum3, sum4));
+      put.Write(C + (i+4) *num_B_rows + j, Reduce16to32(sum5, sum6, sum7, sum8));
     }
+  }
+
+  const __m512i *A1_row = A + (i+0)*sse_width;
+  const __m512i *A2_row = A + (i+1)*sse_width;
+  const __m512i *A3_row = A + (i+2)*sse_width;
+  const __m512i *A4_row = A + (i+3)*sse_width;
+  const __m512i *A5_row = A + (i+4)*sse_width;
+  const __m512i *A6_row = A + (i+5)*sse_width;
+  const __m512i *A7_row = A + (i+6)*sse_width;
+  switch (i & 7) {
+    case 7:
+      for (int j = 0; j < num_B_rows; j++) {
+        const __m512i *B_row = B + j*sse_width;
+        __m512i sum1 = _mm512_setzero_si512();
+        __m512i sum2 = _mm512_setzero_si512();
+        __m512i sum3 = _mm512_setzero_si512();
+        __m512i sum4 = _mm512_setzero_si512();
+        __m512i sum5 = _mm512_setzero_si512();
+        __m512i sum6 = _mm512_setzero_si512();
+        __m512i sum7 = _mm512_setzero_si512();
+        for (int k = 0; k < sse_width; k++) {
+          __m512i b = *(B_row + k);
+          __m512i b_positive = _mm512_abs_epi8(b);
+          __mmask64 neg_mask = _mm512_test_epi8_mask(b, _mm512_set1_epi8(-128));
+          Accum(zeros, *(A1_row + k), b, b_positive, neg_mask, sum1);
+          Accum(zeros, *(A2_row + k), b, b_positive, neg_mask, sum2);
+          Accum(zeros, *(A3_row + k), b, b_positive, neg_mask, sum3);
+          Accum(zeros, *(A4_row + k), b, b_positive, neg_mask, sum4);
+          Accum(zeros, *(A5_row + k), b, b_positive, neg_mask, sum5);
+          Accum(zeros, *(A6_row + k), b, b_positive, neg_mask, sum6);
+          Accum(zeros, *(A7_row + k), b, b_positive, neg_mask, sum7);
+        }
+        put.Write(C + i *num_B_rows + j, Reduce16to32(sum1, sum2, sum3, sum4));
+        put.Write(C + (i+4) *num_B_rows + j, Reduce16to32(sum5, sum6));
+        put.Write(C + (i+6) *num_B_rows + j, Reduce16to32(sum7));
+      }
+    case 6:
+      for (int j = 0; j < num_B_rows; j++) {
+        const __m512i *B_row = B + j*sse_width;
+        __m512i sum1 = _mm512_setzero_si512();
+        __m512i sum2 = _mm512_setzero_si512();
+        __m512i sum3 = _mm512_setzero_si512();
+        __m512i sum4 = _mm512_setzero_si512();
+        __m512i sum5 = _mm512_setzero_si512();
+        __m512i sum6 = _mm512_setzero_si512();
+        for (int k = 0; k < sse_width; k++) {
+          __m512i b = *(B_row + k);
+          __m512i b_positive = _mm512_abs_epi8(b);
+          __mmask64 neg_mask = _mm512_test_epi8_mask(b, _mm512_set1_epi8(-128));
+          Accum(zeros, *(A1_row + k), b, b_positive, neg_mask, sum1);
+          Accum(zeros, *(A2_row + k), b, b_positive, neg_mask, sum2);
+          Accum(zeros, *(A3_row + k), b, b_positive, neg_mask, sum3);
+          Accum(zeros, *(A4_row + k), b, b_positive, neg_mask, sum4);
+          Accum(zeros, *(A5_row + k), b, b_positive, neg_mask, sum5);
+          Accum(zeros, *(A6_row + k), b, b_positive, neg_mask, sum6);
+        }
+        put.Write(C + i *num_B_rows + j, Reduce16to32(sum1, sum2, sum3, sum4));
+        put.Write(C + (i+4) *num_B_rows + j, Reduce16to32(sum5, sum6));
+      }
+    case 5:
+      for (int j = 0; j < num_B_rows; j++) {
+        const __m512i *B_row = B + j*sse_width;
+        __m512i sum1 = _mm512_setzero_si512();
+        __m512i sum2 = _mm512_setzero_si512();
+        __m512i sum3 = _mm512_setzero_si512();
+        __m512i sum4 = _mm512_setzero_si512();
+        __m512i sum5 = _mm512_setzero_si512();
+        for (int k = 0; k < sse_width; k++) {
+          __m512i b = *(B_row + k);
+          __m512i b_positive = _mm512_abs_epi8(b);
+          __mmask64 neg_mask = _mm512_test_epi8_mask(b, _mm512_set1_epi8(-128));
+          Accum(zeros, *(A1_row + k), b, b_positive, neg_mask, sum1);
+          Accum(zeros, *(A2_row + k), b, b_positive, neg_mask, sum2);
+          Accum(zeros, *(A3_row + k), b, b_positive, neg_mask, sum3);
+          Accum(zeros, *(A4_row + k), b, b_positive, neg_mask, sum4);
+          Accum(zeros, *(A5_row + k), b, b_positive, neg_mask, sum5);
+        }
+        put.Write(C + i *num_B_rows + j, Reduce16to32(sum1, sum2, sum3, sum4));
+        put.Write(C + (i+4) *num_B_rows + j, Reduce16to32(sum5));
+      }
+    case 4:
+      for (int j = 0; j < num_B_rows; j++) {
+        const __m512i *B_row = B + j*sse_width;
+        __m512i sum1 = _mm512_setzero_si512();
+        __m512i sum2 = _mm512_setzero_si512();
+        __m512i sum3 = _mm512_setzero_si512();
+        __m512i sum4 = _mm512_setzero_si512();
+        for (int k = 0; k < sse_width; k++) {
+          __m512i b = *(B_row + k);
+          __m512i b_positive = _mm512_abs_epi8(b);
+          __mmask64 neg_mask = _mm512_test_epi8_mask(b, _mm512_set1_epi8(-128));
+          Accum(zeros, *(A1_row + k), b, b_positive, neg_mask, sum1);
+          Accum(zeros, *(A2_row + k), b, b_positive, neg_mask, sum2);
+          Accum(zeros, *(A3_row + k), b, b_positive, neg_mask, sum3);
+          Accum(zeros, *(A4_row + k), b, b_positive, neg_mask, sum4);
+        }
+        put.Write(C + i *num_B_rows + j, Reduce16to32(sum1, sum2, sum3, sum4));
+      }
+    case 3:
+      for (int j = 0; j < num_B_rows; j++) {
+        const __m512i *B_row = B + j*sse_width;
+        __m512i sum1 = _mm512_setzero_si512();
+        __m512i sum2 = _mm512_setzero_si512();
+        __m512i sum3 = _mm512_setzero_si512();
+        for (int k = 0; k < sse_width; k++) {
+          __m512i b = *(B_row + k);
+          __m512i b_positive = _mm512_abs_epi8(b);
+          __mmask64 neg_mask = _mm512_test_epi8_mask(b, _mm512_set1_epi8(-128));
+          Accum(zeros, *(A1_row + k), b, b_positive, neg_mask, sum1);
+          Accum(zeros, *(A2_row + k), b, b_positive, neg_mask, sum2);
+          Accum(zeros, *(A3_row + k), b, b_positive, neg_mask, sum3);
+        }
+        put.Write(C + i *num_B_rows + j, Reduce16to32(sum1, sum2));
+        put.Write(C + (i+2) *num_B_rows + j, Reduce16to32(sum3));
+      }
+    case 2:
+      for (int j = 0; j < num_B_rows; j++) {
+        const __m512i *B_row = B + j*sse_width;
+        __m512i sum1 = _mm512_setzero_si512();
+        __m512i sum2 = _mm512_setzero_si512();
+        for (int k = 0; k < sse_width; k++) {
+          __m512i b = *(B_row + k);
+          __m512i b_positive = _mm512_abs_epi8(b);
+          __mmask64 neg_mask = _mm512_test_epi8_mask(b, _mm512_set1_epi8(-128));
+          Accum(zeros, *(A1_row + k), b, b_positive, neg_mask, sum1);
+          Accum(zeros, *(A2_row + k), b, b_positive, neg_mask, sum2);
+        }
+        put.Write(C + i *num_B_rows + j, Reduce16to32(sum1, sum2));
+      }
+    case 1:
+      for (int j = 0; j < num_B_rows; j++) {
+        const __m512i *B_row = B + j*sse_width;
+        __m512i sum1 = _mm512_setzero_si512();
+        for (int k = 0; k < sse_width; k++) {
+          __m512i b = *(B_row + k);
+          __m512i b_positive = _mm512_abs_epi8(b);
+          __mmask64 neg_mask = _mm512_test_epi8_mask(b, _mm512_set1_epi8(-128));
+          Accum(zeros, *(A1_row + k), b, b_positive, neg_mask, sum1);
+        }
+        put.Write(C + i *num_B_rows + j, Reduce16to32(sum1));
+      }
   }
 }

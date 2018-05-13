@@ -162,10 +162,13 @@ void Time(int num_A_rows, int num_B_rows, int width) {
 // Program takes no input
 int main(int argc, char ** argv) {
     std::srand(45678);
-    Time(512, 1024, 1024);
+/*    Time(512, 1024, 1024);
     Time(1024, 2048, 1024);
     Time(64, 64, 64);
-    Time(64, 64, 512);
+    Time(64, 64, 512);*/
+    for (int i = 1; i < 9; ++i) {
+      Time(i, 64, 64);
+    }
     return 0;
 }
 
