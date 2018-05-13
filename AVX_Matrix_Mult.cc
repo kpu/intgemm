@@ -298,15 +298,20 @@ namespace {
  * Finally, subtraction won the benchmark
  */
 
-/* Convert 16-bit to 32-bit and add.
- * A competing implementation from https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67 under Apache license:
- *  This does a horizontal add and expansion into 32-bit.
- * sum = _mm512_madd_epi16(sum, _mm512_set1_epi16(1));
+/* Convert 16-bit to 32-bit and add, not caring what parts are added.
+ * Implementations:
+ * 1. https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67 under Apache license:
+ *   This does a multiply by 1 and horizontal add:
+ *    _mm512_madd_epi16(sum, _mm512_set1_epi16(1))
+ *   Current fastest.
+ * 2. Signed extension and fold halves:
+ *    sum = _mm512_add_epi32(
+ *      _mm512_cvtepi16_epi32(_mm512_castsi512_si256(sum)),
+ *      _mm512_cvtepi16_epi32(_mm512_extracti64x4_epi64(sum, 1)));
+ *
  */
 inline void Convert32Sum(__m512i &sum) {
-  sum = _mm512_add_epi32(
-    _mm512_cvtepi16_epi32(_mm512_castsi512_si256(sum)),
-    _mm512_cvtepi16_epi32(_mm512_extracti64x4_epi64(sum, 1)));
+  sum = _mm512_madd_epi16(sum, _mm512_set1_epi16(1));
 }
 
 inline void Accum(const __m512i zeros, __m512i a, const __m512i b, const __m512i b_positive, const __mmask64 neg_mask, __m512i &sum) {
@@ -315,13 +320,8 @@ inline void Accum(const __m512i zeros, __m512i a, const __m512i b, const __m512i
   // The magic 8-bit multiply then horizontal sum into 16-bit.
   __m512i multiplied = _mm512_maddubs_epi16(b_positive, a);
   // Now we have 16-bit results that are the sum of two multiplies.
-  // Options:
-  // - Sum for a few iterations in 16-bit _mm512_adds_epi16
-  // - Expand to 32-bit with two _mm512_cvtepi16_epi32 and sum there.
-  // - _mm256_hadds_epi16 is a horizontal add and saturate but only does 256-wide.
-  // - https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67
-  // TODO: try adding to each other then to sum1 for latency reasons.
-
+  // Choosing to approximate and do adds.
+  // Perhaps every so often we could accumulate by Convert32Sum
   sum = _mm512_adds_epi16(sum, multiplied);
 }
 
