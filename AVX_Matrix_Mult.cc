@@ -298,7 +298,18 @@ namespace {
  * Finally, subtraction won the benchmark
  */
 
-inline void Accum(const __m512i zeros, const __m512i ones, __m512i a, const __m512i b, const __m512i b_positive, const __mmask64 neg_mask, __m512i &sum) {
+/* Convert 16-bit to 32-bit and add.
+ * A competing implementation from https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67 under Apache license:
+ *  This does a horizontal add and expansion into 32-bit.
+ * sum = _mm512_madd_epi16(sum, _mm512_set1_epi16(1));
+ */
+inline void Convert32Sum(__m512i &sum) {
+  sum = _mm512_add_epi32(
+    _mm512_cvtepi16_epi32(_mm512_castsi512_si256(sum)),
+    _mm512_cvtepi16_epi32(_mm512_extracti64x4_epi64(sum, 1)));
+}
+
+inline void Accum(const __m512i zeros, __m512i a, const __m512i b, const __m512i b_positive, const __mmask64 neg_mask, __m512i &sum) {
   // Apply sign bits.
   a = _mm512_mask_sub_epi8(a, neg_mask, zeros, a);
   // The magic 8-bit multiply then horizontal sum into 16-bit.
@@ -311,10 +322,7 @@ inline void Accum(const __m512i zeros, const __m512i ones, __m512i a, const __m5
   // - https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67
   // TODO: try adding to each other then to sum1 for latency reasons.
 
-  // Trick from https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67 under Apache license.
-  // This does a horizontal add and expansion into 32-bit.
-  multiplied = _mm512_madd_epi16(multiplied, ones);
-  sum = _mm512_add_epi32(sum, multiplied);
+  sum = _mm512_adds_epi16(sum, multiplied);
 }
 
 } // namespace
@@ -325,7 +333,7 @@ void AVX_MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unqu
   assert(reinterpret_cast<uintptr_t>(B) % 64 == 0);
   ScatterPut put(unquant_mult, num_B_rows);
   const __m512i zeros = _mm512_setzero_si512();
-  const __m512i ones = _mm512_set1_epi16(1);
+//  const __m512i ones = _mm512_set1_epi16(1);
 
   const int sse_width = width/64;
   for (int i = 0; i < num_A_rows; i += 4) {
@@ -342,12 +350,18 @@ void AVX_MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unqu
       for (int k = 0; k < sse_width; k++) {
         __m512i b = *(B_row + k);
         __m512i b_positive = _mm512_abs_epi8(b);
+        /* Didn't seem to make a difference definining sign bits here vs at top */
         __mmask64 neg_mask = _mm512_test_epi8_mask(b, _mm512_set1_epi8(-128));
-        Accum(zeros, ones, *(A1_row + k), b, b_positive, neg_mask, sum1);
-        Accum(zeros, ones, *(A2_row + k), b, b_positive, neg_mask, sum2);
-        Accum(zeros, ones, *(A3_row + k), b, b_positive, neg_mask, sum3);
-        Accum(zeros, ones, *(A4_row + k), b, b_positive, neg_mask, sum4);
+        Accum(zeros, *(A1_row + k), b, b_positive, neg_mask, sum1);
+        Accum(zeros, *(A2_row + k), b, b_positive, neg_mask, sum2);
+        Accum(zeros, *(A3_row + k), b, b_positive, neg_mask, sum3);
+        Accum(zeros, *(A4_row + k), b, b_positive, neg_mask, sum4);
       }
+      Convert32Sum(sum1);
+      Convert32Sum(sum2);
+      Convert32Sum(sum3);
+      Convert32Sum(sum4);
+
       put.Write(C + i *num_B_rows + j, Reduce(sum1, sum2, sum3, sum4));
     }
   }
