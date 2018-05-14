@@ -82,8 +82,8 @@ void Compare(const float *float_ref, const float *int_ref, const float *int_test
   for (std::size_t i = 0; i < size; ++i) {
     float int_diff = fabs(int_ref[i] - int_test[i]);
     float float_diff = fabs(float_ref[i] - int_test[i]);
-    if (int_diff > 1 || float_diff > 1) {
-      std::cerr << "Bug at " << i << ' ' << float_ref[i] << ' ' << int_ref[i] << ' ' << int_test[i] << '\n';
+    if (int_diff > .1 || float_diff > 1) {
+      std::cerr << "Inaccurate at " << i << ' ' << float_ref[i] << ' ' << int_ref[i] << ' ' << int_test[i] << '\n';
     }
   }
 }
@@ -162,13 +162,14 @@ void Time(int num_A_rows, int num_B_rows, int width) {
 // Program takes no input
 int main(int argc, char ** argv) {
     std::srand(45678);
-/*    Time(512, 1024, 1024);
-    Time(1024, 2048, 1024);
-    Time(64, 64, 64);
-    Time(64, 64, 512);*/
-    for (int i = 1; i < 9; ++i) {
-      Time(i, 64, 64);
-    }
+    // Top matrix sizes from Marian
+    Time(8, 256, 256);
+    Time(8, 256, 2048);
+    Time(8, 2048, 256);
+    Time(320, 256, 256);
+    Time(472, 256, 256);
+    Time(248, 256, 256);
+    Time(200, 256, 256);
     return 0;
 }
 
