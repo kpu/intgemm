@@ -71,6 +71,7 @@ void Quantize8(const float *input, int8_t *output, float quant_mult, std::size_t
 
 #endif
 
+#ifdef __AVX2__
 namespace AVX2 {
 namespace {
 
@@ -128,7 +129,9 @@ void Quantize8(const float *input, int8_t *output, float quant_mult, std::size_t
 }
 
 } // namespace AVX2
+#endif // __AVX2__
 
+#ifdef __SSE2__
 namespace SSE {
 
 /* Uses following instructions:
@@ -217,6 +220,7 @@ void Quantize8(const float *input, int8_t *output, float quant_mult, std::size_t
 }*/
 
 } // namespace SSE
+#endif // __SSE2__
 
 namespace slow {
 

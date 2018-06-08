@@ -17,12 +17,14 @@ namespace AVX2 {
 void Quantize16(const float *input, int16_t *output, float quant_mult, std::size_t size);
 void Quantize8(const float *input, int8_t *output, float quant_mult, std::size_t size);
 } // namespace AVX2
-#endif
+#endif // __AVX2__
 
+#ifdef __SSE2__
 namespace SSE {
 void Quantize16(const float *input, int16_t *output, float quant_mult, std::size_t size);
 void Quantize8(const float *input, int8_t *output, float quant_mult, std::size_t size);
 } // namespace SSE
+#endif // __SSE2__
 
 namespace slow {
 void Quantize16(const float *input, int16_t *output, float quant_mult, std::size_t size);

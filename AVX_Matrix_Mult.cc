@@ -13,7 +13,7 @@
 
 namespace {
 // Load from memory, multiply, and convert to int32_t.
-inline __m512i QuantizerGrab(const float *input, const __m512 quant_mult_reg) {
+inline __m512i AVX512_QuantizerGrab(const float *input, const __m512 quant_mult_reg) {
   // Load 16 floats
   __m512 val = _mm512_load_ps(input);
   // Multiply each by the quantization factor.
@@ -21,10 +21,17 @@ inline __m512i QuantizerGrab(const float *input, const __m512 quant_mult_reg) {
   // Cast to 32-bit int
   return _mm512_cvtps_epi32(val);
 }
+
+// Same thing but AVX (there isn't a need for AVX2).
+inline __m256i AVX_QuantizerGrab(const float *input, const __m256 quant_mult_reg) {
+  return _mm256_cvtps_epi32(_mm256_mul_ps(_mm256_load_ps(input), quant_mult_reg));
+}
+// There isn't a need for QuantizerGrab in SSE because it has _mm_cvtps_pi8.
+
 } // namespace
 
-// Convert 
-void AVX_Quantize16(const float *input, int16_t *output, float quant_mult, std::size_t size) {
+// Convert to 16-bit signed integers. 
+void AVX512_Quantize16(const float *input, int16_t *output, float quant_mult, std::size_t size) {
     assert(size % 16 == 0);
     assert(reinterpret_cast<uintptr_t>(input) % 64 == 0);
     // Fill with the quantization multiplier.
@@ -36,7 +43,7 @@ void AVX_Quantize16(const float *input, int16_t *output, float quant_mult, std::
     }
 }
 
-void AVX_Quantize8(const float *input, int8_t *output, float quant_mult, std::size_t size) {
+void AVX512_Quantize8(const float *input, int8_t *output, float quant_mult, std::size_t size) {
   assert(size % 16 == 0);
   assert(reinterpret_cast<uintptr_t>(input) % 64 == 0);
   const __m512i neg127 = _mm512_set1_epi32(-127);
@@ -56,6 +63,8 @@ void AVX_Quantize8(const float *input, int8_t *output, float quant_mult, std::si
     _mm512_mask_cvtsepi32_storeu_epi8(output, 0xffff, asint);
   }
 }
+
+void SSE_Quantize8
 
 namespace {
 
