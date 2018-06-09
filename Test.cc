@@ -33,6 +33,8 @@
 
 #include <iostream>
 
+namespace intgemm {
+
 // Compute A*B^T very naively.
 void SlowRefFloat(const float * A, const float * B, float * C, int num_A_rows, int num_B_rows, int width) {
     for (int i = 0; i < num_A_rows; i++) {
@@ -118,17 +120,17 @@ void Time(int num_A_rows, int num_B_rows, int width) {
     float unquant_mult = 1.0/(quant_mult*quant_mult);
 
     // The weight matrix should be quantized before starting decoding, since it is known beforehand.
-    intgemm::AVX512::Quantize16(B, (int16_t*)quant_B, quant_mult, num_B_rows * width);
+    AVX512::Quantize16(B, (int16_t*)quant_B, quant_mult, num_B_rows * width);
     // The activation matrix must be quantized on-the-fly.
-    intgemm::AVX512::Quantize16(A, (int16_t*)quant_A, quant_mult, num_A_rows * width);
+    AVX512::Quantize16(A, (int16_t*)quant_A, quant_mult, num_A_rows * width);
     float * AVX_C = new float[num_A_rows*num_B_rows];
     memset(AVX_C, 0, sizeof(float) * num_A_rows*num_B_rows);
     // Burn in.
-    AVX_MatrixMult16(quant_A, quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
+    AVX512::MatrixMult16(quant_A, quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     {
       StopWatch w("16-bit");
       for (int i = 0; i < 10; ++i)
-        AVX_MatrixMult16(quant_A, quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
+        AVX512::MatrixMult16(quant_A, quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     }
 
     float *ref_C = new float[num_A_rows*num_B_rows];
@@ -142,11 +144,11 @@ void Time(int num_A_rows, int num_B_rows, int width) {
     intgemm::AVX512::Quantize8(B, (int8_t*)quant_B, quant_mult, num_B_rows * width);
     intgemm::AVX512::Quantize8(A, (int8_t*)quant_A, quant_mult, num_A_rows * width);
 
-    AVX_MatrixMult8((const __m512i *)quant_A, (const __m512i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
+    AVX512::MatrixMult8((const __m512i *)quant_A, (const __m512i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     {
       StopWatch w("8-bit");
       for (int i = 0; i < 10; ++i)
-        AVX_MatrixMult8((const __m512i *)quant_A, (const __m512i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
+        AVX512::MatrixMult8((const __m512i *)quant_A, (const __m512i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     }
     SlowRef8((const int8_t*)quant_A, (const int8_t*)quant_B, ref_C, unquant_mult, num_A_rows, num_B_rows, width);
     Compare(float_C, ref_C, AVX_C, num_A_rows*num_B_rows);
@@ -160,9 +162,12 @@ void Time(int num_A_rows, int num_B_rows, int width) {
     delete [] float_C;
 }
 
+} // namespace intgemm
+
 // Program takes no input
 int main(int argc, char ** argv) {
     std::srand(45678);
+    using namespace intgemm;
     // Top matrix sizes from Marian
     Time(8, 256, 256);
     Time(8, 256, 2048);

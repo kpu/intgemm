@@ -11,6 +11,11 @@
 #include <tmmintrin.h>
 #include <xmmintrin.h>
 
+namespace intgemm {
+
+#ifdef __AVX512F__
+namespace AVX512 {
+
 namespace {
 
 union FloatAccess {
@@ -174,7 +179,7 @@ class ScatterPut {
 // A is typically an activation minibatch matrix.
 // A and B must be 64-byte aligned.
 // C should be the usual 4-byte alignment.
-void AVX_MatrixMult16(const __m512i * A, const __m512i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
+void MatrixMult16(const __m512i * A, const __m512i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
     assert(width % 32 == 0);
     assert(reinterpret_cast<uintptr_t>(A) % 64 == 0);
     assert(reinterpret_cast<uintptr_t>(B) % 64 == 0);
@@ -290,7 +295,7 @@ inline void Accum(const __m512i zeros, __m512i a, const __m512i b, const __m512i
 
 } // namespace
 
-void AVX_MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
+void MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
   assert(width % 32 == 0);
   assert(reinterpret_cast<uintptr_t>(A) % 64 == 0);
   assert(reinterpret_cast<uintptr_t>(B) % 64 == 0);
@@ -480,3 +485,7 @@ void AVX_MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unqu
       }
   }
 }
+
+} // namespace AVX512
+#endif // __AVX512__
+} // namespace intgemm

@@ -1,4 +1,4 @@
-// This is an AVX512F implementation of int16_t multiply based on Jacob
+// This is an AVX512F implementation 16-bit and 8-bit multiply based on Jacob
 // Devlin's SSE code.  The original SSE code was:
 
 // Copyright (c) 2017 Microsoft Corporation
@@ -25,6 +25,10 @@
 #include <immintrin.h>
 #include <cstddef>
 
+namespace intgemm {
+#ifdef __AVX512F__
+namespace AVX512 {
+
 // We are multiplying A * B^T, as opposed to A * B. This is important because it means we can do consecutive memory access on A * B^T which allows to to take the most
 // advantage of L1 cache.
 // 
@@ -32,5 +36,9 @@
 // A is typically an activation minibatch matrix.
 // A and B must be 64-byte aligned.
 // C should be the usual 4-byte alignment.
-void AVX_MatrixMult16(const __m512i * A, const __m512i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width);
-void AVX_MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width);
+void MatrixMult16(const __m512i * A, const __m512i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width);
+void MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width);
+
+} // namespace AVX512
+#endif // __AVX512F__
+} // namespace intgemm
