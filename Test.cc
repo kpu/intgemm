@@ -89,7 +89,7 @@ void Compare(const float *float_ref, const float *int_ref, const float *int_test
 }
 
 void Time(int num_A_rows, int num_B_rows, int width) {
-    std::cerr << num_A_rows << '\t' << num_B_rows << '\t' << width << '\n';
+    std::cout << num_A_rows << '\t' << num_B_rows << '\t' << width << '\n';
     float * A = static_cast<float*>(aligned_alloc(64, sizeof(float) * num_A_rows * width));
     float * B = static_cast<float*>(aligned_alloc(64, sizeof(float) * num_B_rows * width));
     
