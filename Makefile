@@ -8,8 +8,8 @@ all: Test QuantizeTest
 Test: ${OBJ} Test.o
 	${CXX} ${CXXFLAGS} ${OBJ} Test.o -o Test
 
-QuantizeTest: ${OBJ} QuantizeTest.o
-	${CXX} ${CXXFLAGS} ${OBJ} QuantizeTest.o -o QuantizeTest
+QuantizeTest: Quantize.o QuantizeTest.o StopWatch.o
+	${CXX} ${CXXFLAGS} Quantize.o QuantizeTest.o StopWatch.o -o QuantizeTest
 
 .c.o: AVX_Matrix_Mult.h
 	${CXX} ${CXXFLAGS} -c $<

@@ -25,7 +25,7 @@ inline __m512i QuantizerGrab(const float *input, const __m512 quant_mult_reg) {
 } // namespace
 
 // Convert to 16-bit signed integers. 
-void AVX512_Quantize16(const float *input, int16_t *output, float quant_mult, std::size_t size) {
+void AVX_Quantize16(const float *input, int16_t *output, float quant_mult, std::size_t size) {
     assert(size % 16 == 0);
     assert(reinterpret_cast<uintptr_t>(input) % 64 == 0);
     // Fill with the quantization multiplier.
@@ -37,7 +37,7 @@ void AVX512_Quantize16(const float *input, int16_t *output, float quant_mult, st
     }
 }
 
-void AVX512_Quantize8(const float *input, int8_t *output, float quant_mult, std::size_t size) {
+void AVX_Quantize8(const float *input, int8_t *output, float quant_mult, std::size_t size) {
   assert(size % 16 == 0);
   assert(reinterpret_cast<uintptr_t>(input) % 64 == 0);
   const __m512i neg127 = _mm512_set1_epi32(-127);
