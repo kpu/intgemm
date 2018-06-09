@@ -1,6 +1,7 @@
 #include "Quantize.h"
 #include "StopWatch.h"
 
+#include <cstring>
 #include <math.h>
 
 #include <iostream>
@@ -18,8 +19,10 @@ template <class I> bool IsOff(float from, I ref, I test) {
   return true;
 }
 
-bool Test(const float *input, float quant_mult, std::size_t size) {
+bool Test(const float *input_unaligned, float quant_mult, std::size_t size) {
   bool success = true;
+  float *input = static_cast<float*>(aligned_alloc(64, sizeof(float) * size));
+  std::memcpy(input, input_unaligned, sizeof(float) * size);
   void *mem = aligned_alloc(64, sizeof(int16_t) * size * 2);
   int16_t *ref16 = static_cast<int16_t*>(mem);
   int16_t *test16 = ref16 + size;
@@ -43,6 +46,7 @@ bool Test(const float *input, float quant_mult, std::size_t size) {
     }
   }
 
+  free(input);
   free(mem);
   return success;
 }
@@ -55,7 +59,15 @@ void Benchmark(std::size_t size) {
   for (std::size_t i = 0; i < size; ++i) {
     input[i] = i;
   }
+#ifdef __AVX512F__
   // Burn in.
+  slow::Quantize16(input, out16, 3, size);
+  {
+    StopWatch w("AVX512 16-bit");
+    for (int i = 0; i < 10; ++i)
+      AVX512::Quantize16(input, out16, 3, size);
+  }
+#endif
   slow::Quantize16(input, out16, 3, size);
   {
     StopWatch w("AVX2 16-bit");
@@ -68,6 +80,14 @@ void Benchmark(std::size_t size) {
     for (int i = 0; i < 10; ++i)
       SSE::Quantize16(input, out16, 3, size);
   }
+#ifdef __AVX512F__
+  slow::Quantize8(input, out8, 3, size);
+  {
+    StopWatch w("AVX512 8-bit");
+    for (int i = 0; i < 10; ++i)
+      AVX512::Quantize8(input, out8, 3, size);
+  }
+#endif
   slow::Quantize8(input, out8, 3, size);
   {
     StopWatch w("AVX2 8-bit");
