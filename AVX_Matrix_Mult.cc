@@ -82,10 +82,9 @@ union IntAccess {
  *      _mm512_cvtepi16_epi32(_mm512_extracti64x4_epi64(sum, 1)));
  *
  * 3. Sign extend by abuse of bitshift, then add.
- *   __m128i shift16 = _mm_set_epi32(0,0,0,16);
- *   sum = _mm512_add_epi32(
- *       _mm512_sra_epi32(_mm512_sll_epi32(sum, shift16), shift16),
- *       _mm512_sra_epi32(sum, shift16));
+ * sum = _mm512_add_epi32(
+ *      _mm512_srai_epi32(_mm512_slli_epi32(sum, 16), 16),
+ *      _mm512_srai_epi32(sum, 16));
  */
 inline void Convert32Sum(__m512i &sum) {
   sum = _mm512_madd_epi16(sum, _mm512_set1_epi16(1));
