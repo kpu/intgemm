@@ -139,8 +139,8 @@ void Time(int num_A_rows, int num_B_rows, int width) {
     quant_mult = 64;
     unquant_mult = 1.0/(quant_mult*quant_mult);
 
-    AVX_Quantize8(B, (int8_t*)quant_B, quant_mult, num_B_rows * width);
-    AVX_Quantize8(A, (int8_t*)quant_A, quant_mult, num_A_rows * width);
+    intgemm::AVX512::Quantize8(B, (int8_t*)quant_B, quant_mult, num_B_rows * width);
+    intgemm::AVX512::Quantize8(A, (int8_t*)quant_A, quant_mult, num_A_rows * width);
 
     AVX_MatrixMult8((const __m512i *)quant_A, (const __m512i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     {
