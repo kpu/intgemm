@@ -12,53 +12,6 @@
 #include <xmmintrin.h>
 
 namespace {
-// Load from memory, multiply, and convert to int32_t.
-inline __m512i QuantizerGrab(const float *input, const __m512 quant_mult_reg) {
-  // Load 16 floats
-  __m512 val = _mm512_load_ps(input);
-  // Multiply each by the quantization factor.
-  val = _mm512_mul_ps(val, quant_mult_reg);
-  // Cast to 32-bit int
-  return _mm512_cvtps_epi32(val);
-}
-
-} // namespace
-
-// Convert to 16-bit signed integers. 
-void AVX_Quantize16(const float *input, int16_t *output, float quant_mult, std::size_t size) {
-    assert(size % 16 == 0);
-    assert(reinterpret_cast<uintptr_t>(input) % 64 == 0);
-    // Fill with the quantization multiplier.
-    const __m512 quant_mult_reg = _mm512_set1_ps(quant_mult);
-    const float *end = input + size;
-    for (; input != end; input += 16, output += 16) {
-      // There doesn't seem to be an unmasked version.
-      _mm512_mask_cvtsepi32_storeu_epi16(output, 0xffff, QuantizerGrab(input, quant_mult_reg));
-    }
-}
-
-void AVX_Quantize8(const float *input, int8_t *output, float quant_mult, std::size_t size) {
-  assert(size % 16 == 0);
-  assert(reinterpret_cast<uintptr_t>(input) % 64 == 0);
-  const __m512i neg127 = _mm512_set1_epi32(-127);
-  const __m512 quant_mult_reg = _mm512_set1_ps(quant_mult);
-  const float *end = input + size;
-  for (; input < end; input += 16, output += 16) {
-    __m512i asint = QuantizerGrab(input, quant_mult_reg);
-    /* Ban -128.  We can't negate it.
-     * Also:
-     * The largest possbile product is -128 * -128 = 2^14. If two of those are
-     * summed that's 2^15 which is too large for int16_t. By banning -128 we
-     * can accumulate two in int16_t w/o saturation before going to int32_t.
-     * But this is ok because apparently the instruction will saturate.
-     */
-    asint = _mm512_max_epi32(asint, neg127);
-    // There doesn't seem to be an unmasked version.
-    _mm512_mask_cvtsepi32_storeu_epi8(output, 0xffff, asint);
-  }
-}
-
-namespace {
 
 union FloatAccess {
   float as_f[4];
@@ -161,30 +114,14 @@ class ScatterPut {
     explicit ScatterPut(float unquant_mult, int num_B_rows)
       : unquant_mult_(unquant_mult),
         unquant_mult_sse_(_mm_set1_ps(unquant_mult)),
-#ifdef __AVX512VL__
        num_b_rows_scatter_(_mm_set_epi32(num_B_rows * 3 * sizeof(float), num_B_rows * 2 * sizeof(float), num_B_rows * 1 * sizeof(float), num_B_rows * 0 * sizeof(float))),
-#endif
        num_B_rows_(num_B_rows) {}
 
     inline void Write(float *base, __m128i reduced) {
       __m128 float_sums = _mm_cvtepi32_ps(reduced);
       float_sums = _mm_mul_ps(float_sums, unquant_mult_sse_);
-#ifdef __AVX512VL__
       // The scatter instruction requires avx512vl
       _mm_i32scatter_ps(base, num_b_rows_scatter_, float_sums, 1);
-#else
-      FloatAccess a;
-      // Get floats for each of the sums to write.
-      a.as_n = float_sums;
-      // Also note that the memory acceses on C are not consecutive, but this is a tradeoff that we have to make.
-      // We can't have consecutive accesses of A, B, *and* C. But we access A and B a lot more so it makes
-      // sense to do it this way.
-      // Scatter to outputs:
-      base[0] = a.as_f[0];
-      base[num_B_rows_] = a.as_f[1];
-      base[2*num_B_rows_] = a.as_f[2];
-      base[3*num_B_rows_] = a.as_f[3];
-#endif
     }
 
     inline void Write(float *base, ReducedPair reduced) {
@@ -199,9 +136,7 @@ class ScatterPut {
   private:
     const float unquant_mult_;
     const __m128 unquant_mult_sse_;
-#ifdef __AVX512VL__
     const __m128i num_b_rows_scatter_;
-#endif
     const int num_B_rows_;
 };
 

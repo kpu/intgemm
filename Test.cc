@@ -22,6 +22,7 @@
 
 #include "AVX_Matrix_Mult.h"
 #include "SSE_Matrix_Mult.h"
+#include "Quantize.h"
 #include "StopWatch.h"
 
 #include <cassert>
@@ -117,9 +118,9 @@ void Time(int num_A_rows, int num_B_rows, int width) {
     float unquant_mult = 1.0/(quant_mult*quant_mult);
 
     // The weight matrix should be quantized before starting decoding, since it is known beforehand.
-    AVX_Quantize16(B, (int16_t*)quant_B, quant_mult, num_B_rows * width);
+    intgemm::AVX512::Quantize16(B, (int16_t*)quant_B, quant_mult, num_B_rows * width);
     // The activation matrix must be quantized on-the-fly.
-    AVX_Quantize16(A, (int16_t*)quant_A, quant_mult, num_A_rows * width);
+    intgemm::AVX512::Quantize16(A, (int16_t*)quant_A, quant_mult, num_A_rows * width);
     float * AVX_C = new float[num_A_rows*num_B_rows];
     memset(AVX_C, 0, sizeof(float) * num_A_rows*num_B_rows);
     // Burn in.
