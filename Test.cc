@@ -150,18 +150,19 @@ void Time(int num_A_rows, int num_B_rows, int width, int repeat = 10) {
       intgemm::AVX512::Quantize8(A, (int8_t*)quant_A, quant_mult, num_A_rows * width);
     }
 
-    AVX512::MatrixMult8((const __m512i *)quant_A, (const __m512i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
-    {
-      StopWatch w("8-bit", repeat);
-      for (int i = 0; i < repeat; ++i)
-        AVX512::MatrixMult8((const __m512i *)quant_A, (const __m512i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
-    }
     AVX512::MatrixMult8((const __m512i *)quant_B, (const __m512i *)quant_A, AVX_C, unquant_mult, num_B_rows, num_A_rows, width);
     {
       StopWatch w("8-bitr", repeat);
       for (int i = 0; i < repeat; ++i)
         AVX512::MatrixMult8((const __m512i *)quant_B, (const __m512i *)quant_A, AVX_C, unquant_mult, num_B_rows, num_A_rows, width);
     }
+    AVX512::MatrixMult8((const __m512i *)quant_A, (const __m512i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
+    {
+      StopWatch w("8-bit", repeat);
+      for (int i = 0; i < repeat; ++i)
+        AVX512::MatrixMult8((const __m512i *)quant_A, (const __m512i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
+    }
+
 
     SlowRef8((const int8_t*)quant_A, (const int8_t*)quant_B, ref_C, unquant_mult, num_A_rows, num_B_rows, width);
     Compare(float_C, ref_C, AVX_C, num_A_rows*num_B_rows);
