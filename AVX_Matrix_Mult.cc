@@ -295,7 +295,54 @@ inline void Accum(const __m512i zeros, __m512i a, const __m512i b, const __m512i
 
 } // namespace
 
-void MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
+void MatrixMult8(const __m512i *A, const __m512i *B, float *C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
+  assert(width % 32 == 0);
+  assert(reinterpret_cast<uintptr_t>(A) % 64 == 0);
+  assert(reinterpret_cast<uintptr_t>(B) % 64 == 0);
+  assert(num_B_rows % 8 == 0);
+  __m128 unquant_reg = _mm_set1_ps(unquant_mult);
+  const __m512i zeros = _mm512_setzero_si512();
+  const int simd_width = width / 64;
+  const __m512i *const B_end = B + num_B_rows * simd_width;
+  int B0_rowidx = 0;
+  for (const __m512i *B0_row = B; B0_row != B_end; B0_row += 8 * simd_width, B0_rowidx += 8) {
+    const __m512i *B1_row = B0_row + simd_width * 1;
+    const __m512i *B2_row = B0_row + simd_width * 2;
+    const __m512i *B3_row = B0_row + simd_width * 3;
+    const __m512i *B4_row = B0_row + simd_width * 4;
+    const __m512i *B5_row = B0_row + simd_width * 5;
+    const __m512i *B6_row = B0_row + simd_width * 6;
+    const __m512i *B7_row = B0_row + simd_width * 7;
+    for (int A_rowidx = 0; A_rowidx < num_A_rows; ++A_rowidx) {
+      const __m512i *A_row = A + A_rowidx * simd_width;
+      __m512i sum0 = _mm512_setzero_si512();
+      __m512i sum1 = _mm512_setzero_si512();
+      __m512i sum2 = _mm512_setzero_si512();
+      __m512i sum3 = _mm512_setzero_si512();
+      __m512i sum4 = _mm512_setzero_si512();
+      __m512i sum5 = _mm512_setzero_si512();
+      __m512i sum6 = _mm512_setzero_si512();
+      __m512i sum7 = _mm512_setzero_si512();
+      for (int k = 0; k < simd_width; ++k) {
+        __m512i a = *(A_row + k);
+        __m512i a_positive = _mm512_abs_epi8(a);
+        __mmask64 neg_mask = _mm512_test_epi8_mask(a, _mm512_set1_epi8(-128));
+        Accum(zeros, *(B0_row + k), a, a_positive, neg_mask, sum0);
+        Accum(zeros, *(B1_row + k), a, a_positive, neg_mask, sum1);
+        Accum(zeros, *(B2_row + k), a, a_positive, neg_mask, sum2);
+        Accum(zeros, *(B3_row + k), a, a_positive, neg_mask, sum3);
+        Accum(zeros, *(B4_row + k), a, a_positive, neg_mask, sum4);
+        Accum(zeros, *(B5_row + k), a, a_positive, neg_mask, sum5);
+        Accum(zeros, *(B6_row + k), a, a_positive, neg_mask, sum6);
+        Accum(zeros, *(B7_row + k), a, a_positive, neg_mask, sum7);
+      }
+      *reinterpret_cast<__m128*>(C + A_rowidx * num_B_rows + B0_rowidx) = _mm_mul_ps(_mm_cvtepi32_ps(Reduce16to32(sum0, sum1, sum2, sum3)), unquant_reg);
+      *reinterpret_cast<__m128*>(C + A_rowidx * num_B_rows + B0_rowidx + 4) = _mm_mul_ps(_mm_cvtepi32_ps(Reduce16to32(sum4, sum5, sum6, sum7)), unquant_reg);
+    }
+  }
+}
+
+/*void MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
   assert(width % 32 == 0);
   assert(reinterpret_cast<uintptr_t>(A) % 64 == 0);
   assert(reinterpret_cast<uintptr_t>(B) % 64 == 0);
@@ -328,7 +375,7 @@ void MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unquant_
       for (int k = 0; k < sse_width; k++) {
         __m512i b = *(B_row + k);
         __m512i b_positive = _mm512_abs_epi8(b);
-        /* Didn't seem to make a difference definining sign bits here vs at top */
+        // Didn't seem to make a difference definining sign bits here vs at top
         __mmask64 neg_mask = _mm512_test_epi8_mask(b, _mm512_set1_epi8(-128));
         Accum(zeros, *(A1_row + k), b, b_positive, neg_mask, sum1);
         Accum(zeros, *(A2_row + k), b, b_positive, neg_mask, sum2);
@@ -484,7 +531,7 @@ void MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unquant_
         put.Write(C + i *num_B_rows + j, Reduce16to32(sum1));
       }
   }
-}
+}*/
 
 } // namespace AVX512
 #endif // __AVX512__
