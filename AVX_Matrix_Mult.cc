@@ -295,7 +295,7 @@ inline void Accum(const __m512i zeros, __m512i a, const __m512i b, const __m512i
 
 } // namespace
 
-void MatrixMult8(const __m512i *A, const __m512i *B, float *C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
+/*void MatrixMult8(const __m512i *A, const __m512i *B, float *C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
   assert(width % 32 == 0);
   assert(reinterpret_cast<uintptr_t>(A) % 64 == 0);
   assert(reinterpret_cast<uintptr_t>(B) % 64 == 0);
@@ -340,9 +340,81 @@ void MatrixMult8(const __m512i *A, const __m512i *B, float *C, float unquant_mul
       *reinterpret_cast<__m128*>(C + A_rowidx * num_B_rows + B0_rowidx + 4) = _mm_mul_ps(_mm_cvtepi32_ps(Reduce16to32(sum4, sum5, sum6, sum7)), unquant_reg);
     }
   }
+}*/
+
+void MatrixMult8Contrast(const __m512i *A, const __m512i *B, float *C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
+  assert(width % 32 == 0);
+  assert(reinterpret_cast<uintptr_t>(A) % 64 == 0);
+  assert(reinterpret_cast<uintptr_t>(B) % 64 == 0);
+  assert(num_B_rows % 8 == 0);
+  __m128 unquant_reg = _mm_set1_ps(unquant_mult);
+  const __m512i zeros = _mm512_setzero_si512();
+  const int simd_width = width / 64;
+  const __m512i *const B_end = B + num_B_rows * simd_width;
+  int B0_rowidx = 0;
+  for (const __m512i *B0_row = B; B0_row != B_end; B0_row += 8 * simd_width, B0_rowidx += 8) {
+    const __m512i *B1_row = B0_row + simd_width * 1;
+    const __m512i *B2_row = B0_row + simd_width * 2;
+    const __m512i *B3_row = B0_row + simd_width * 3;
+    const __m512i *B4_row = B0_row + simd_width * 4;
+    const __m512i *B5_row = B0_row + simd_width * 5;
+    const __m512i *B6_row = B0_row + simd_width * 6;
+    const __m512i *B7_row = B0_row + simd_width * 7;
+    for (int A_rowidx = 0; A_rowidx < num_A_rows; ++A_rowidx) {
+      const __m512i *A_row = A + A_rowidx * simd_width;
+      __m512i sum0 = _mm512_setzero_si512();
+      __m512i sum1 = _mm512_setzero_si512();
+      __m512i sum2 = _mm512_setzero_si512();
+      __m512i sum3 = _mm512_setzero_si512();
+      __m512i sum4 = _mm512_setzero_si512();
+      __m512i sum5 = _mm512_setzero_si512();
+      __m512i sum6 = _mm512_setzero_si512();
+      __m512i sum7 = _mm512_setzero_si512();
+      for (int k = 0; k < simd_width; ++k) {
+        __m512i a = *(A_row + k);
+        __mmask64 neg_mask = _mm512_test_epi8_mask(a, _mm512_set1_epi8(-128));
+        __m512i a_positive = _mm512_abs_epi8(a);
+        __m512i b0 = *(B0_row + k);
+        __m512i b1 = *(B1_row + k);
+        __m512i b2 = *(B2_row + k);
+        __m512i b3 = *(B3_row + k);
+        __m512i b4 = *(B4_row + k);
+        __m512i b5 = *(B5_row + k);
+        __m512i b6 = *(B6_row + k);
+        __m512i b7 = *(B7_row + k);
+        b0 = _mm512_mask_sub_epi8(b0, neg_mask, zeros, b0);
+        b1 = _mm512_mask_sub_epi8(b1, neg_mask, zeros, b1);
+        b2 = _mm512_mask_sub_epi8(b2, neg_mask, zeros, b2);
+        b3 = _mm512_mask_sub_epi8(b3, neg_mask, zeros, b3);
+        b4 = _mm512_mask_sub_epi8(b4, neg_mask, zeros, b4);
+        b5 = _mm512_mask_sub_epi8(b5, neg_mask, zeros, b5);
+        b6 = _mm512_mask_sub_epi8(b6, neg_mask, zeros, b6);
+        b7 = _mm512_mask_sub_epi8(b7, neg_mask, zeros, b7);
+        __m512i mult0 = _mm512_maddubs_epi16(a_positive, b0);
+        __m512i mult1 = _mm512_maddubs_epi16(a_positive, b1);
+        __m512i mult2 = _mm512_maddubs_epi16(a_positive, b2);
+        __m512i mult3 = _mm512_maddubs_epi16(a_positive, b3);
+        __m512i mult4 = _mm512_maddubs_epi16(a_positive, b4);
+        __m512i mult5 = _mm512_maddubs_epi16(a_positive, b5);
+        __m512i mult6 = _mm512_maddubs_epi16(a_positive, b6);
+        __m512i mult7 = _mm512_maddubs_epi16(a_positive, b7);
+        sum0 = _mm512_adds_epi16(mult0, sum0);
+        sum1 = _mm512_adds_epi16(mult1, sum1);
+        sum2 = _mm512_adds_epi16(mult2, sum2);
+        sum3 = _mm512_adds_epi16(mult3, sum3);
+        sum4 = _mm512_adds_epi16(mult4, sum4);
+        sum5 = _mm512_adds_epi16(mult5, sum5);
+        sum6 = _mm512_adds_epi16(mult6, sum6);
+        sum7 = _mm512_adds_epi16(mult7, sum7);
+      }
+      *reinterpret_cast<__m128*>(C + A_rowidx * num_B_rows + B0_rowidx) = _mm_mul_ps(_mm_cvtepi32_ps(Reduce16to32(sum0, sum1, sum2, sum3)), unquant_reg);
+      *reinterpret_cast<__m128*>(C + A_rowidx * num_B_rows + B0_rowidx + 4) = _mm_mul_ps(_mm_cvtepi32_ps(Reduce16to32(sum4, sum5, sum6, sum7)), unquant_reg);
+    }
+  }
 }
 
-/*void MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
+
+void MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
   assert(width % 32 == 0);
   assert(reinterpret_cast<uintptr_t>(A) % 64 == 0);
   assert(reinterpret_cast<uintptr_t>(B) % 64 == 0);
@@ -531,7 +603,7 @@ void MatrixMult8(const __m512i *A, const __m512i *B, float *C, float unquant_mul
         put.Write(C + i *num_B_rows + j, Reduce16to32(sum1));
       }
   }
-}*/
+}
 
 } // namespace AVX512
 #endif // __AVX512__

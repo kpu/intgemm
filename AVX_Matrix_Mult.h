@@ -38,6 +38,7 @@ namespace AVX512 {
 // C should be the usual 4-byte alignment.
 void MatrixMult16(const __m512i * A, const __m512i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width);
 void MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width);
+void MatrixMult8Contrast(const __m512i * A, const __m512i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width);
 
 } // namespace AVX512
 #endif // __AVX512F__
