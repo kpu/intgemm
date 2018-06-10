@@ -82,13 +82,17 @@ void SlowRef8(const int8_t * A, const int8_t * B, float * C, float unquant_mult,
 }
 
 void Compare(const float *float_ref, const float *int_ref, const float *int_test, std::size_t size) {
+  float int_sum = 0.0, float_sum = 0.0;
   for (std::size_t i = 0; i < size; ++i) {
-    float int_diff = fabs(int_ref[i] - int_test[i]);
-    float float_diff = fabs(float_ref[i] - int_test[i]);
-    if (int_diff > .1 || float_diff > 1) {
+    float int_diff = int_ref[i] - int_test[i];
+    float float_diff = float_ref[i] - int_test[i];
+/*    if (fabs(int_diff) > .1 || fabs(float_diff) > 1) {
       std::cerr << "Inaccurate at " << i << ' ' << float_ref[i] << ' ' << int_ref[i] << ' ' << int_test[i] << '\n';
-    }
+    }*/
+    int_sum += int_diff * int_diff;
+    float_sum += float_diff * float_diff;
   }
+  std::cerr << "Float MSE = " << sqrt(float_sum / size) << "\tInt MSE = " << sqrt(int_sum / size) << std::endl;
 }
 
 void Time(int num_A_rows, int num_B_rows, int width, int repeat = 10) {
