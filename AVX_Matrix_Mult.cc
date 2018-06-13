@@ -18,10 +18,6 @@ namespace AVX512 {
 
 namespace {
 
-union FloatAccess {
-  float as_f[4];
-  __m128 as_n;
-};
 union IntAccess {
   int32_t as_i[4];
   __m128i as_n;
@@ -48,30 +44,11 @@ inline void Convert32Sum(__m512i &sum) {
   sum = _mm512_madd_epi16(sum, _mm512_set1_epi16(1));
 }
 
-// Two sum version.
-struct ReducedPair {
-  int32_t result[2];
-};
-inline ReducedPair Reduce16to32(__m512i sum1, __m512i sum2) {
-  Convert32Sum(sum1);
-  Convert32Sum(sum2);
-  // 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2
-  __m512i pack12 = _mm512_add_epi32(_mm512_unpackhi_epi32(sum1, sum2), _mm512_unpacklo_epi32(sum1, sum2));
-  // 1 2 1 2 1 2 1 2
-  __m256i halves = _mm256_add_epi32(_mm512_castsi512_si256(pack12), _mm512_extracti64x4_epi64(pack12, 1));
-  // 1 2 1 2
-  IntAccess a;
-  a.as_n = _mm_add_epi32(_mm256_castsi256_si128(halves), _mm256_extracti128_si256(halves, 1));
-  ReducedPair ret;
-  ret.result[0] = a.as_i[0] + a.as_i[2];
-  ret.result[1] = a.as_i[1] + a.as_i[3];
-  return ret;
-}
-
 // Assuming sum1, sum2, sum3, and sum4 are arrays 32-bit signed integers,
 // reduce within each.
 // Returns [sum(sum1), sum(sum2), sum(sum3), sum(sum4)]
 // TODO: consider doing in 64-bit, allowing 4 more bits of quantization?
+// TODO: 8-way version?
 inline __m128i Reduce32(__m512i sum1, __m512i sum2, __m512i sum3, __m512i sum4) {
   // 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2
   __m512i pack12 = _mm512_add_epi32(_mm512_unpackhi_epi32(sum1, sum2), _mm512_unpacklo_epi32(sum1, sum2));
@@ -108,12 +85,6 @@ inline int32_t Reduce32(__m512i sum1) {
   return Reduce32(_mm256_add_epi32(_mm512_castsi512_si256(sum1), _mm512_extracti64x4_epi64(sum1, 1)));
 }
 
-inline int32_t Reduce16to32(__m512i sum1) {
-  Convert32Sum(sum1);
-  // Fold register over itself.
-  return Reduce32(_mm256_add_epi32(_mm512_castsi512_si256(sum1), _mm512_extracti64x4_epi64(sum1, 1)));
-}
-
 class ScatterPut {
   public:
     explicit ScatterPut(float unquant_mult, int num_B_rows)
@@ -129,10 +100,10 @@ class ScatterPut {
       _mm_i32scatter_ps(base, num_b_rows_scatter_, float_sums, 1);
     }
 
-    inline void Write(float *base, ReducedPair reduced) {
+/*    inline void Write(float *base, ReducedPair reduced) {
       base[0] = unquant_mult_ * static_cast<float>(reduced.result[0]);
       base[num_B_rows_] = unquant_mult_ * static_cast<float>(reduced.result[1]);
-    }
+    }*/
 
     inline void Write(float *base, int32_t reduced) {
       base[0] = unquant_mult_ * static_cast<float>(reduced);
@@ -257,31 +228,139 @@ void MatrixMult16(const __m512i * A, const __m512i * B, float * C, float unquant
     }
 }
 
+
+/* Computes C = AB^T where:
+ * A is num_A_rows x width in row major storage.
+ * B is width x num_B_rows (so B^T has num_B_rows)
+ * Results are converted to float, multiplied by unquant_mult, and stored in C.
+ */
+void MatrixMult8(const __m512i *A, const __m512i *B, float *C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
+  assert(width % 32 == 0);
+  assert(reinterpret_cast<uintptr_t>(A) % 64 == 0);
+  assert(reinterpret_cast<uintptr_t>(B) % 64 == 0);
+  assert(num_B_rows % 8 == 0);
+  __m128 unquant_reg = _mm_set1_ps(unquant_mult);
+  const __m512i zeros = _mm512_setzero_si512();
+  // This fills with bytes 10000000 which are used to detect negative numbers.
+  const __m512i neg128 = _mm512_set1_epi8(-128);
+  const int simd_width = width / 64;
+  int B0_rowidx = 0;
+  // Go over 8 rows of B at a time.  TODO: rearrange B so that these accesses are adjacent (it's faster).
+  for (const __m512i *B0_row = B; B0_rowidx != num_B_rows; B0_row += 8 * simd_width, B0_rowidx += 8) {
+    const __m512i *B1_row = B0_row + simd_width * 1;
+    const __m512i *B2_row = B0_row + simd_width * 2;
+    const __m512i *B3_row = B0_row + simd_width * 3;
+    const __m512i *B4_row = B0_row + simd_width * 4;
+    const __m512i *B5_row = B0_row + simd_width * 5;
+    const __m512i *B6_row = B0_row + simd_width * 6;
+    const __m512i *B7_row = B0_row + simd_width * 7;
+    // Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.
+    for (int A_rowidx = 0; A_rowidx < num_A_rows; ++A_rowidx) {
+      const __m512i *A_row = A + A_rowidx * simd_width;
+      // These will be packed 16-bit integers containing sums for each row of B multiplied by the row of A.
+      __m512i sum0 = _mm512_setzero_si512();
+      __m512i sum1 = _mm512_setzero_si512();
+      __m512i sum2 = _mm512_setzero_si512();
+      __m512i sum3 = _mm512_setzero_si512();
+      __m512i sum4 = _mm512_setzero_si512();
+      __m512i sum5 = _mm512_setzero_si512();
+      __m512i sum6 = _mm512_setzero_si512();
+      __m512i sum7 = _mm512_setzero_si512();
+      // Iterate over shared (inner) dimension.
+      for (int k = 0; k < simd_width; ++k) {
+        // These do the loads from B which is important to do early to hide as
+        // much memory latency as possible.
+        // It's possible to rearrange B so that these will all be consecutive
+        // and benchmarks show that is faster.  TODO.
+        __m512i b0 = *(B0_row + k);
+        __m512i b1 = *(B1_row + k);
+        __m512i b2 = *(B2_row + k);
+        __m512i b3 = *(B3_row + k);
+        __m512i b4 = *(B4_row + k);
+        __m512i b5 = *(B5_row + k);
+        __m512i b6 = *(B6_row + k);
+        __m512i b7 = *(B7_row + k);
+        // Read in 64 8-bit signed integers from A.
+        __m512i a = *(A_row + k);
+        /* Annoyingly the only 8-bit multiply is signed * unsigned (maddubs).
+         * So we take the sign bits off of a and apply them each b in a * b.
+         *
+         * Three ways considered to apply sign bits:
+         * 1. Use 256-bit sign instruction:
+         *  __m256i a_first = _mm256_sign_epi8(_mm512_castsi512_si256(a), _mm512_castsi512_si256(b));
+         *  __m256i a_second = _mm256_sign_epi8(_mm512_extracti64x4_epi64(a, 1), b_second);
+         *  b = _mm512_inserti64x4(_mm512_castsi256_si512(b_first), a_second, 1);
+         *  b = Concat(b_first, b_second);
+         *
+         * 2. Extract a mask and xor + 1
+         *   __mmask64 neg_mask  _mm512_test_epi8_mask(a, _mm512_set1_epi8(-128));
+         *  Use set1 to to build to_xor
+         *  b = _mm512_xor_si512(b, to_xor);
+         *  And add one:
+         *  const __m512i ones8 = _mm512_set1_epi8(1);
+         *  b = _mm512_mask_add_epi8(b, neg_mask, b, ones8);
+         *
+         * 3. Extract a mask and subtract from 0
+         *  __mmask64 neg_mask = _mm512_test_epi8_mask(a, _mm512_set1_epi8(-128))
+         * For each b:
+         *  b = _mm512_mask_sub_epi8(b, neg_mask, _mm512_setzero_si512(), b);
+         *
+         * Finally, subtraction won the benchmark
+         */
+        __mmask64 neg_mask = _mm512_test_epi8_mask(a, neg128);
+        // Take the absolute value of a, making it an unsigned integer.
+        // Note that getting the mask first (above) then doing abs saves us a
+        // register since a no longer needs to be stored (whereas the other
+        // order would consume a register).
+        // The quantizer bans -128, so this actually removes sign bits.
+        __m512i a_positive = _mm512_abs_epi8(a);
+        // Negate 8-bit values in b if the corresponding a was negative.
+        // Negation is implemented by subtraction from zero.
+        b0 = _mm512_mask_sub_epi8(b0, neg_mask, zeros, b0);
+        b1 = _mm512_mask_sub_epi8(b1, neg_mask, zeros, b1);
+        b2 = _mm512_mask_sub_epi8(b2, neg_mask, zeros, b2);
+        b3 = _mm512_mask_sub_epi8(b3, neg_mask, zeros, b3);
+        b4 = _mm512_mask_sub_epi8(b4, neg_mask, zeros, b4);
+        b5 = _mm512_mask_sub_epi8(b5, neg_mask, zeros, b5);
+        b6 = _mm512_mask_sub_epi8(b6, neg_mask, zeros, b6);
+        b7 = _mm512_mask_sub_epi8(b7, neg_mask, zeros, b7);
+        // Multiply 8-bit unsigned * signed, horizontally add to packed 16-bit integers.
+        __m512i mult0 = _mm512_maddubs_epi16(a_positive, b0);
+        __m512i mult1 = _mm512_maddubs_epi16(a_positive, b1);
+        __m512i mult2 = _mm512_maddubs_epi16(a_positive, b2);
+        __m512i mult3 = _mm512_maddubs_epi16(a_positive, b3);
+        __m512i mult4 = _mm512_maddubs_epi16(a_positive, b4);
+        __m512i mult5 = _mm512_maddubs_epi16(a_positive, b5);
+        __m512i mult6 = _mm512_maddubs_epi16(a_positive, b6);
+        __m512i mult7 = _mm512_maddubs_epi16(a_positive, b7);
+        // Sum packed 16-bit integers with saturation.
+        // With larger matrices there is a danger of saturating so TODO upcast to 32-bit every so often.
+        sum0 = _mm512_adds_epi16(mult0, sum0);
+        sum1 = _mm512_adds_epi16(mult1, sum1);
+        sum2 = _mm512_adds_epi16(mult2, sum2);
+        sum3 = _mm512_adds_epi16(mult3, sum3);
+        sum4 = _mm512_adds_epi16(mult4, sum4);
+        sum5 = _mm512_adds_epi16(mult5, sum5);
+        sum6 = _mm512_adds_epi16(mult6, sum6);
+        sum7 = _mm512_adds_epi16(mult7, sum7);
+      }
+      // Write to C.
+      // TODO: unify into one write since it's consecutive.
+      *reinterpret_cast<__m128*>(C + A_rowidx * num_B_rows + B0_rowidx) = _mm_mul_ps(_mm_cvtepi32_ps(Reduce16to32(sum0, sum1, sum2, sum3)), unquant_reg);
+      *reinterpret_cast<__m128*>(C + A_rowidx * num_B_rows + B0_rowidx + 4) = _mm_mul_ps(_mm_cvtepi32_ps(Reduce16to32(sum4, sum5, sum6, sum7)), unquant_reg);
+    }
+  }
+}
+
+/* Another implementation, but unroll over rows of A.
+ * This seems to be faster for large matrices with small widths like 4096x128
+ * times 128x4096.
+ * It's slightly slower for small matrices.
+ * And more annoying because A's rows might not be a multiple of a nice number.
+ */
+/*
 namespace {
 
-/* Three ways considered to apply sign bits:
- * 1. Use 256-bit sign instruction:
- *  __m256i a_first = _mm256_sign_epi8(_mm512_castsi512_si256(a), _mm512_castsi512_si256(b));
- *  __m256i a_second = _mm256_sign_epi8(_mm512_extracti64x4_epi64(a, 1), b_second);
- *  a = _mm512_inserti64x4(_mm512_castsi256_si512(a_first), a_second, 1);
- *  a = Concat(a_first, a_second);
- *
- * 2. Extract a mask and xor + 1
- *   __mmask64 neg_mask  _mm512_test_epi8_mask(b, _mm512_set1_epi8(-128));
- *  Use set1 to to build to_xor
- *  a = _mm512_xor_si512(a, to_xor)
- *  And add one:
- *  const __m512i ones8 = _mm512_set1_epi8(1);
- *  a = _mm512_mask_add_epi8(a, neg_mask, a, ones8);
- *
- * 3. Extract a mask and subtract from 0
- * In the outer loop on b:
- *  __mmask64 neg_mask  _mm512_test_epi8_mask(b, _mm512_set1_epi8(-128))
- * For each a:
- *  a = _mm512_mask_sub_epi8(a, neg_mask, _mm512_setzero_si512(), a);
- *
- * Finally, subtraction won the benchmark
- */
 inline void Accum(const __m512i zeros, __m512i a, const __m512i b, const __m512i b_positive, const __mmask64 neg_mask, __m512i &sum) {
   // Apply sign bits.
   a = _mm512_mask_sub_epi8(a, neg_mask, zeros, a);
@@ -293,126 +372,33 @@ inline void Accum(const __m512i zeros, __m512i a, const __m512i b, const __m512i
   sum = _mm512_adds_epi16(sum, multiplied);
 }
 
-} // namespace
-
-/*void MatrixMult8(const __m512i *A, const __m512i *B, float *C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
-  assert(width % 32 == 0);
-  assert(reinterpret_cast<uintptr_t>(A) % 64 == 0);
-  assert(reinterpret_cast<uintptr_t>(B) % 64 == 0);
-  assert(num_B_rows % 8 == 0);
-  __m128 unquant_reg = _mm_set1_ps(unquant_mult);
-  const __m512i zeros = _mm512_setzero_si512();
-  const int simd_width = width / 64;
-  const __m512i *const B_end = B + num_B_rows * simd_width;
-  int B0_rowidx = 0;
-  for (const __m512i *B0_row = B; B0_row != B_end; B0_row += 8 * simd_width, B0_rowidx += 8) {
-    const __m512i *B1_row = B0_row + simd_width * 1;
-    const __m512i *B2_row = B0_row + simd_width * 2;
-    const __m512i *B3_row = B0_row + simd_width * 3;
-    const __m512i *B4_row = B0_row + simd_width * 4;
-    const __m512i *B5_row = B0_row + simd_width * 5;
-    const __m512i *B6_row = B0_row + simd_width * 6;
-    const __m512i *B7_row = B0_row + simd_width * 7;
-    for (int A_rowidx = 0; A_rowidx < num_A_rows; ++A_rowidx) {
-      const __m512i *A_row = A + A_rowidx * simd_width;
-      __m512i sum0 = _mm512_setzero_si512();
-      __m512i sum1 = _mm512_setzero_si512();
-      __m512i sum2 = _mm512_setzero_si512();
-      __m512i sum3 = _mm512_setzero_si512();
-      __m512i sum4 = _mm512_setzero_si512();
-      __m512i sum5 = _mm512_setzero_si512();
-      __m512i sum6 = _mm512_setzero_si512();
-      __m512i sum7 = _mm512_setzero_si512();
-      for (int k = 0; k < simd_width; ++k) {
-        __m512i a = *(A_row + k);
-        __m512i a_positive = _mm512_abs_epi8(a);
-        __mmask64 neg_mask = _mm512_test_epi8_mask(a, _mm512_set1_epi8(-128));
-        Accum(zeros, *(B0_row + k), a, a_positive, neg_mask, sum0);
-        Accum(zeros, *(B1_row + k), a, a_positive, neg_mask, sum1);
-        Accum(zeros, *(B2_row + k), a, a_positive, neg_mask, sum2);
-        Accum(zeros, *(B3_row + k), a, a_positive, neg_mask, sum3);
-        Accum(zeros, *(B4_row + k), a, a_positive, neg_mask, sum4);
-        Accum(zeros, *(B5_row + k), a, a_positive, neg_mask, sum5);
-        Accum(zeros, *(B6_row + k), a, a_positive, neg_mask, sum6);
-        Accum(zeros, *(B7_row + k), a, a_positive, neg_mask, sum7);
-      }
-      *reinterpret_cast<__m128*>(C + A_rowidx * num_B_rows + B0_rowidx) = _mm_mul_ps(_mm_cvtepi32_ps(Reduce16to32(sum0, sum1, sum2, sum3)), unquant_reg);
-      *reinterpret_cast<__m128*>(C + A_rowidx * num_B_rows + B0_rowidx + 4) = _mm_mul_ps(_mm_cvtepi32_ps(Reduce16to32(sum4, sum5, sum6, sum7)), unquant_reg);
-    }
-  }
-}*/
-
-void MatrixMult8Contrast(const __m512i *A, const __m512i *B, float *C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
-  assert(width % 32 == 0);
-  assert(reinterpret_cast<uintptr_t>(A) % 64 == 0);
-  assert(reinterpret_cast<uintptr_t>(B) % 64 == 0);
-  assert(num_B_rows % 8 == 0);
-  __m128 unquant_reg = _mm_set1_ps(unquant_mult);
-  const __m512i zeros = _mm512_setzero_si512();
-  const int simd_width = width / 64;
-  const __m512i *const B_end = B + num_B_rows * simd_width;
-  int B0_rowidx = 0;
-  for (const __m512i *B0_row = B; B0_row != B_end; B0_row += 8 * simd_width, B0_rowidx += 8) {
-    const __m512i *B1_row = B0_row + simd_width * 1;
-    const __m512i *B2_row = B0_row + simd_width * 2;
-    const __m512i *B3_row = B0_row + simd_width * 3;
-    const __m512i *B4_row = B0_row + simd_width * 4;
-    const __m512i *B5_row = B0_row + simd_width * 5;
-    const __m512i *B6_row = B0_row + simd_width * 6;
-    const __m512i *B7_row = B0_row + simd_width * 7;
-    for (int A_rowidx = 0; A_rowidx < num_A_rows; ++A_rowidx) {
-      const __m512i *A_row = A + A_rowidx * simd_width;
-      __m512i sum0 = _mm512_setzero_si512();
-      __m512i sum1 = _mm512_setzero_si512();
-      __m512i sum2 = _mm512_setzero_si512();
-      __m512i sum3 = _mm512_setzero_si512();
-      __m512i sum4 = _mm512_setzero_si512();
-      __m512i sum5 = _mm512_setzero_si512();
-      __m512i sum6 = _mm512_setzero_si512();
-      __m512i sum7 = _mm512_setzero_si512();
-      for (int k = 0; k < simd_width; ++k) {
-        __m512i a = *(A_row + k);
-        __mmask64 neg_mask = _mm512_test_epi8_mask(a, _mm512_set1_epi8(-128));
-        __m512i a_positive = _mm512_abs_epi8(a);
-        __m512i b0 = *(B0_row + k);
-        __m512i b1 = *(B1_row + k);
-        __m512i b2 = *(B2_row + k);
-        __m512i b3 = *(B3_row + k);
-        __m512i b4 = *(B4_row + k);
-        __m512i b5 = *(B5_row + k);
-        __m512i b6 = *(B6_row + k);
-        __m512i b7 = *(B7_row + k);
-        b0 = _mm512_mask_sub_epi8(b0, neg_mask, zeros, b0);
-        b1 = _mm512_mask_sub_epi8(b1, neg_mask, zeros, b1);
-        b2 = _mm512_mask_sub_epi8(b2, neg_mask, zeros, b2);
-        b3 = _mm512_mask_sub_epi8(b3, neg_mask, zeros, b3);
-        b4 = _mm512_mask_sub_epi8(b4, neg_mask, zeros, b4);
-        b5 = _mm512_mask_sub_epi8(b5, neg_mask, zeros, b5);
-        b6 = _mm512_mask_sub_epi8(b6, neg_mask, zeros, b6);
-        b7 = _mm512_mask_sub_epi8(b7, neg_mask, zeros, b7);
-        __m512i mult0 = _mm512_maddubs_epi16(a_positive, b0);
-        __m512i mult1 = _mm512_maddubs_epi16(a_positive, b1);
-        __m512i mult2 = _mm512_maddubs_epi16(a_positive, b2);
-        __m512i mult3 = _mm512_maddubs_epi16(a_positive, b3);
-        __m512i mult4 = _mm512_maddubs_epi16(a_positive, b4);
-        __m512i mult5 = _mm512_maddubs_epi16(a_positive, b5);
-        __m512i mult6 = _mm512_maddubs_epi16(a_positive, b6);
-        __m512i mult7 = _mm512_maddubs_epi16(a_positive, b7);
-        sum0 = _mm512_adds_epi16(mult0, sum0);
-        sum1 = _mm512_adds_epi16(mult1, sum1);
-        sum2 = _mm512_adds_epi16(mult2, sum2);
-        sum3 = _mm512_adds_epi16(mult3, sum3);
-        sum4 = _mm512_adds_epi16(mult4, sum4);
-        sum5 = _mm512_adds_epi16(mult5, sum5);
-        sum6 = _mm512_adds_epi16(mult6, sum6);
-        sum7 = _mm512_adds_epi16(mult7, sum7);
-      }
-      *reinterpret_cast<__m128*>(C + A_rowidx * num_B_rows + B0_rowidx) = _mm_mul_ps(_mm_cvtepi32_ps(Reduce16to32(sum0, sum1, sum2, sum3)), unquant_reg);
-      *reinterpret_cast<__m128*>(C + A_rowidx * num_B_rows + B0_rowidx + 4) = _mm_mul_ps(_mm_cvtepi32_ps(Reduce16to32(sum4, sum5, sum6, sum7)), unquant_reg);
-    }
-  }
+// Two sum version.
+struct ReducedPair {
+  int32_t result[2];
+};
+inline ReducedPair Reduce16to32(__m512i sum1, __m512i sum2) {
+  Convert32Sum(sum1);
+  Convert32Sum(sum2);
+  // 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2
+  __m512i pack12 = _mm512_add_epi32(_mm512_unpackhi_epi32(sum1, sum2), _mm512_unpacklo_epi32(sum1, sum2));
+  // 1 2 1 2 1 2 1 2
+  __m256i halves = _mm256_add_epi32(_mm512_castsi512_si256(pack12), _mm512_extracti64x4_epi64(pack12, 1));
+  // 1 2 1 2
+  IntAccess a;
+  a.as_n = _mm_add_epi32(_mm256_castsi256_si128(halves), _mm256_extracti128_si256(halves, 1));
+  ReducedPair ret;
+  ret.result[0] = a.as_i[0] + a.as_i[2];
+  ret.result[1] = a.as_i[1] + a.as_i[3];
+  return ret;
 }
 
+inline int32_t Reduce16to32(__m512i sum1) {
+  Convert32Sum(sum1);
+  // Fold register over itself.
+  return Reduce32(_mm256_add_epi32(_mm512_castsi512_si256(sum1), _mm512_extracti64x4_epi64(sum1, 1)));
+}
+
+} // namespace
 
 void MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
   assert(width % 32 == 0);
@@ -603,7 +589,7 @@ void MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unquant_
         put.Write(C + i *num_B_rows + j, Reduce16to32(sum1));
       }
   }
-}
+}*/
 
 } // namespace AVX512
 #endif // __AVX512__

@@ -81,12 +81,12 @@ void Time(int num_A_rows, int num_B_rows, int width, int repeat = 10) {
       for (int i = 0; i < repeat; ++i)
         AVX512::MatrixMult8((const __m512i *)quant_A, (const __m512i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     }
-    AVX512::MatrixMult8Contrast((const __m512i *)quant_A, (const __m512i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
+/*    AVX512::MatrixMult8Contrast((const __m512i *)quant_A, (const __m512i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     {
       StopWatch w("Contrast", repeat);
       for (int i = 0; i < repeat; ++i)
         AVX512::MatrixMult8Contrast((const __m512i *)quant_A, (const __m512i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
-    }
+    }*/
     free(A);
     free(B);
     free(quant_A);
