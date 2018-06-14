@@ -20,7 +20,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "AVX_Matrix_Mult.h"
+#include "avx512_gemm.h"
+#include "avx2_gemm.h"
 #include "SSE_Matrix_Mult.h"
 #include "Quantize.h"
 #include "StopWatch.h"
@@ -113,8 +114,8 @@ void Time(int num_A_rows, int num_B_rows, int width, int repeat = 10) {
     
     // Each __m512i fits 8 16-bit integers, so we assume the width is a multiple of 8.
     // We could pad with 0 in the general case.
-    __m512i * quant_A = static_cast<__m512i *>(aligned_alloc(64, num_A_rows*width * 2));
-    __m512i * quant_B = static_cast<__m512i *>(aligned_alloc(64, num_B_rows*width * 2));
+    __m256i * quant_A = static_cast<__m256i *>(aligned_alloc(64, num_A_rows*width * 2));
+    __m256i * quant_B = static_cast<__m256i *>(aligned_alloc(64, num_B_rows*width * 2));
 
     // We quantize with 10 bits of precision. This works well "universally". 
     // See the top of this file for more info on why.
@@ -124,17 +125,16 @@ void Time(int num_A_rows, int num_B_rows, int width, int repeat = 10) {
     float unquant_mult = 1.0/(quant_mult*quant_mult);
 
     // The weight matrix should be quantized before starting decoding, since it is known beforehand.
-    AVX512::Quantize16(B, (int16_t*)quant_B, quant_mult, num_B_rows * width);
+    AVX2::Quantize16(B, (int16_t*)quant_B, quant_mult, num_B_rows * width);
     // The activation matrix must be quantized on-the-fly.
-    AVX512::Quantize16(A, (int16_t*)quant_A, quant_mult, num_A_rows * width);
-    float * AVX_C = new float[num_A_rows*num_B_rows];
-    memset(AVX_C, 0, sizeof(float) * num_A_rows*num_B_rows);
+    AVX2::Quantize16(A, (int16_t*)quant_A, quant_mult, num_A_rows * width);
+    float * AVX_C = static_cast<float*>(aligned_alloc(32, num_A_rows * num_B_rows * sizeof(float)));
     // Burn in.
-    AVX512::MatrixMult16(quant_A, quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
+    AVX2::MatrixMult16(quant_A, quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     {
       StopWatch w("16-bit");
       for (int i = 0; i < repeat; ++i)
-        AVX512::MatrixMult16(quant_A, quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
+        AVX2::MatrixMult16(quant_A, quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     }
 
     float *ref_C = new float[num_A_rows*num_B_rows];
@@ -147,24 +147,24 @@ void Time(int num_A_rows, int num_B_rows, int width, int repeat = 10) {
 
     {
       StopWatch w("Quantize8 B");
-      intgemm::AVX512::Quantize8(B, (int8_t*)quant_B, quant_mult, num_B_rows * width);
+      intgemm::AVX2::Quantize8(B, (int8_t*)quant_B, quant_mult, num_B_rows * width);
     }
     {
       StopWatch w("Quantize8 A");
-      intgemm::AVX512::Quantize8(A, (int8_t*)quant_A, quant_mult, num_A_rows * width);
+      intgemm::AVX2::Quantize8(A, (int8_t*)quant_A, quant_mult, num_A_rows * width);
     }
 
-    AVX512::MatrixMult8((const __m512i *)quant_B, (const __m512i *)quant_A, AVX_C, unquant_mult, num_B_rows, num_A_rows, width);
+    AVX2::MatrixMult8((const __m256i *)quant_B, (const __m256i *)quant_A, AVX_C, unquant_mult, num_B_rows, num_A_rows, width);
     {
       StopWatch w("8-bitr", repeat);
       for (int i = 0; i < repeat; ++i)
-        AVX512::MatrixMult8((const __m512i *)quant_B, (const __m512i *)quant_A, AVX_C, unquant_mult, num_B_rows, num_A_rows, width);
+        AVX2::MatrixMult8((const __m256i *)quant_B, (const __m256i *)quant_A, AVX_C, unquant_mult, num_B_rows, num_A_rows, width);
     }
-    AVX512::MatrixMult8((const __m512i *)quant_A, (const __m512i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
+    AVX2::MatrixMult8((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     {
       StopWatch w("8-bit", repeat);
       for (int i = 0; i < repeat; ++i)
-        AVX512::MatrixMult8((const __m512i *)quant_A, (const __m512i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
+        AVX2::MatrixMult8((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     }
 
 
@@ -175,7 +175,7 @@ void Time(int num_A_rows, int num_B_rows, int width, int repeat = 10) {
     free(B);
     free(quant_A);
     free(quant_B);
-    delete [] AVX_C;
+    free(AVX_C);
     delete [] ref_C;
     delete [] float_C;
 }

@@ -1,4 +1,4 @@
-#include "AVX_Matrix_Mult.h"
+#include "avx512_gemm.h"
 
 #include <cassert>
 #include <emmintrin.h>
@@ -18,10 +18,47 @@ namespace AVX512 {
 
 namespace {
 
-union IntAccess {
-  int32_t as_i[4];
-  __m128i as_n;
-};
+// Load from memory, multiply, and convert to int32_t.
+inline __m512i QuantizerGrab(const float *input, const __m512 quant_mult_reg) {
+  // Load 16 floats
+  __m512 val = _mm512_load_ps(input);
+  // Multiply each by the quantization factor.
+  val = _mm512_mul_ps(val, quant_mult_reg);
+  // Cast to 32-bit int
+  return _mm512_cvtps_epi32(val);
+}
+
+} // namespace
+
+// Convert to 16-bit signed integers. 
+void Quantize16(const float *input, int16_t *output, float quant_mult, std::size_t size) {
+    assert(size % 16 == 0);
+    assert(reinterpret_cast<uintptr_t>(input) % 64 == 0);
+    // Fill with the quantization multiplier.
+    const __m512 quant_mult_reg = _mm512_set1_ps(quant_mult);
+    const float *end = input + size;
+    for (; input != end; input += 16, output += 16) {
+      // There doesn't seem to be an unmasked version.
+      _mm512_mask_cvtsepi32_storeu_epi16(output, 0xffff, QuantizerGrab(input, quant_mult_reg));
+    }
+}
+
+// Convert to 8-bit signed integers.
+void Quantize8(const float *input, int8_t *output, float quant_mult, std::size_t size) {
+  assert(size % 16 == 0);
+  assert(reinterpret_cast<uintptr_t>(input) % 64 == 0);
+  const __m512i neg127 = _mm512_set1_epi32(-127);
+  const __m512 quant_mult_reg = _mm512_set1_ps(quant_mult);
+  const float *end = input + size;
+  for (; input < end; input += 16, output += 16) {
+    __m512i asint = QuantizerGrab(input, quant_mult_reg);
+    asint = _mm512_max_epi32(asint, neg127);
+    // There doesn't seem to be an unmasked version.
+    _mm512_mask_cvtsepi32_storeu_epi8(output, 0xffff, asint);
+  }
+}
+
+namespace {
 
 /* Convert 16-bit to 32-bit and add, not caring what parts are added.
  * Implementations:
@@ -71,6 +108,11 @@ inline __m128i Reduce16to32(__m512i sum1, __m512i sum2, __m512i sum3, __m512i su
   return Reduce32(sum1, sum2, sum3, sum4);
 }
 
+union IntAccess {
+  int32_t as_i[4];
+  __m128i as_n;
+};
+
 // Somewhat inefficient reduce for single __m256i containing int32_t
 inline int32_t Reduce32(__m256i halves) {
   IntAccess a;
@@ -117,7 +159,6 @@ class ScatterPut {
 };
 
 } // namespace
-
 
 // This is an AVX512F implementation of int16_t multiply based on Jacob
 // Devlin's SSE code.  The original SSE code was:

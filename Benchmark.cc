@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "AVX_Matrix_Mult.h"
+#include "avx512_gemm.h"
 #include "SSE_Matrix_Mult.h"
 #include "Quantize.h"
 #include "StopWatch.h"

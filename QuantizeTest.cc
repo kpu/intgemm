@@ -1,4 +1,5 @@
 #include "Quantize.h"
+#include "avx512_gemm.h"
 #include "StopWatch.h"
 
 #include <cstring>
