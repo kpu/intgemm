@@ -1,6 +1,7 @@
 #pragma once
 #include <time.h>
 #include <string>
+#include <cstdint>
 
 class StopWatch {
   public:
@@ -10,6 +11,7 @@ class StopWatch {
 
   private:
     struct timespec started_;
+    uint64_t tsc_;
     std::string label_;
     float divide_;
 };
