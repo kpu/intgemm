@@ -234,7 +234,6 @@ void MatrixMult8(const __m256i *A, const __m256i *B, float *C, float unquant_mul
   assert(reinterpret_cast<uintptr_t>(C) % 32 == 0);
   assert(num_B_rows % 8 == 0);
   __m256 unquant_reg = _mm256_set1_ps(unquant_mult);
-  // This fills with bytes 10000000 which are used to detect negative numbers.
   const int simd_width = width / 32;
   int B0_rowidx = 0;
   // Go over 8 rows of B at a time.  TODO: rearrange B so that these accesses are adjacent (it's faster).
@@ -315,7 +314,6 @@ void MatrixMult8Contrast(const __m256i *A, const __m256i *B, float *C, float unq
   assert(reinterpret_cast<uintptr_t>(C) % 32 == 0);
   assert(num_B_rows % 8 == 0);
   __m256 unquant_reg = _mm256_set1_ps(unquant_mult);
-  // This fills with bytes 10000000 which are used to detect negative numbers.
   const int simd_width = width / 32;
   int B0_rowidx = 0;
   // Go over 8 rows of B at a time.  TODO: rearrange B so that these accesses are adjacent (it's faster).
