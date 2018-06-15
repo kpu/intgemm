@@ -128,7 +128,7 @@ void Time(int num_A_rows, int num_B_rows, int width, int repeat = 10) {
     AVX2::Quantize16(B, (int16_t*)quant_B, quant_mult, num_B_rows * width);
     // The activation matrix must be quantized on-the-fly.
     AVX2::Quantize16(A, (int16_t*)quant_A, quant_mult, num_A_rows * width);
-    float * AVX_C = static_cast<float*>(aligned_alloc(32, num_A_rows * num_B_rows * sizeof(float)));
+    float *AVX_C = static_cast<float*>(aligned_alloc(64, num_A_rows * num_B_rows * sizeof(float)));
     // Burn in.
     AVX2::MatrixMult16(quant_A, quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     {

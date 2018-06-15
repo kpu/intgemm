@@ -14,7 +14,7 @@
 
 namespace intgemm {
 
-void Time(int num_A_rows, int num_B_rows, int width, int repeat = 10) {
+void Time(int num_A_rows, int num_B_rows, int width, int repeat = 20) {
     std::cout << num_A_rows << '\t' << num_B_rows << '\t' << width << '\n';
     float * A = static_cast<float*>(aligned_alloc(64, sizeof(float) * num_A_rows * width));
     float * B = static_cast<float*>(aligned_alloc(64, sizeof(float) * num_B_rows * width));
@@ -29,7 +29,7 @@ void Time(int num_A_rows, int num_B_rows, int width, int repeat = 10) {
 
     __m256i * quant_A = static_cast<__m256i *>(aligned_alloc(64, num_A_rows*width * 2));
     __m256i * quant_B = static_cast<__m256i *>(aligned_alloc(64, num_B_rows*width * 2));
-    float * AVX_C = static_cast<float*>(aligned_alloc(32, num_A_rows * num_B_rows * sizeof(float)));
+    float *AVX_C = static_cast<float*>(aligned_alloc(64, num_A_rows * num_B_rows * sizeof(float)));
 
     // We quantize with 10 bits of precision. This works well "universally". 
     // See the top of this file for more info on why.
@@ -37,6 +37,17 @@ void Time(int num_A_rows, int num_B_rows, int width, int repeat = 10) {
     // If we quantize to n bits and then multiply the values together, the result will be quantized to n^2 bits.
     // So we must divide by 1.0/(n^2) to get back the original value.
     float unquant_mult = 1.0/(quant_mult*quant_mult);
+
+    intgemm::AVX2::Quantize16(B, (int16_t*)quant_B, quant_mult, num_B_rows * width);
+    intgemm::AVX2::Quantize16(A, (int16_t*)quant_A, quant_mult, num_A_rows * width);
+
+    AVX2::MatrixMult16((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
+    {
+      StopWatch w("16-bit", repeat);
+      for (int i = 0; i < repeat; ++i)
+        AVX2::MatrixMult16((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
+    }
+
 
     // Moving on to 8-bit.
     quant_mult = 64;
@@ -53,16 +64,23 @@ void Time(int num_A_rows, int num_B_rows, int width, int repeat = 10) {
 
     AVX2::MatrixMult8((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     {
-      StopWatch w("Baseline", repeat);
+      StopWatch w("8-bit", repeat);
       for (int i = 0; i < repeat; ++i)
         AVX2::MatrixMult8((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     }
-/*    AVX2::MatrixMult8Contrast((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
+    AVX2::MatrixMult8Contrast((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     {
-      StopWatch w("Contrast", repeat);
+      StopWatch w("8-bitc", repeat);
       for (int i = 0; i < repeat; ++i)
         AVX2::MatrixMult8Contrast((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
+    }
+    /*AVX2::MatrixMult8((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
+    {
+      StopWatch w("Baseline", repeat);
+      for (int i = 0; i < repeat; ++i)
+        AVX2::MatrixMult8((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     }*/
+
     free(A);
     free(B);
     free(quant_A);
