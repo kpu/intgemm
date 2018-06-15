@@ -77,28 +77,45 @@ inline void Convert32Sum(__m256i &sum) {
   sum = _mm256_madd_epi16(sum, _mm256_set1_epi16(1) /* Empirically gcc is smart enough to pull this out */);
 }
 
-// Assuming sum1, sum2, sum3, and sum4 are arrays 32-bit signed integers,
-// reduce within each.
-// Returns [sum(sum1), sum(sum2), sum(sum3), sum(sum4)]
-// TODO: consider doing in 64-bit, allowing 4 more bits of quantization?
-// TODO: 8-way version?
-inline __m128i Reduce32(__m256i sum1, __m256i sum2, __m256i sum3, __m256i sum4) {
+/* Take 4 registers with 32-bit values to be horizontally added.  Reduce them
+ * to one register with 32-bit values in the pattern 1 2 3 4 1 2 3 4, leaving
+ * the final addition (which crosses 128-bit lanes) to the caller. */
+inline __m256i Pack1234(__m256i sum1, __m256i sum2, __m256i sum3, __m256i sum4) {
   // 1 2 1 2 1 2 1 2
   __m256i pack12 = _mm256_add_epi32(_mm256_unpackhi_epi32(sum1, sum2), _mm256_unpacklo_epi32(sum1, sum2));
   // 3 4 3 4 3 4 3 4
   __m256i pack34 = _mm256_add_epi32(_mm256_unpackhi_epi32(sum3, sum4), _mm256_unpacklo_epi32(sum3, sum4));
   // 1 2 3 4 1 2 3 4
-  __m256i pack1234 = _mm256_add_epi32(_mm256_unpackhi_epi64(pack12, pack34), _mm256_unpacklo_epi64(pack12, pack34));
-  // Cut the register into halves and sum those.  1 2 3 4
-  return _mm_add_epi32(_mm256_castsi256_si128(pack1234), _mm256_extracti128_si256(pack1234, 1));
+  return _mm256_add_epi32(_mm256_unpackhi_epi64(pack12, pack34), _mm256_unpacklo_epi64(pack12, pack34));
 }
 
-inline __m128i Reduce16to32(__m256i sum1, __m256i sum2, __m256i sum3, __m256i sum4) {
+// Assuming sum1, sum2, sum3, sum4, sum5, sum6, and sum7 are arrays 32-bit
+// signed integers, reduce within each.
+// Returns [sum(sum1), sum(sum2), sum(sum3), sum(sum4), sum(sum5), sum(sum6), sum(sum7), sum(sum8)]
+// TODO: consider doing in 64-bit, allowing more bits of quantization?
+inline __m256i Reduce32(__m256i sum1, __m256i sum2, __m256i sum3, __m256i sum4, __m256i sum5, __m256i sum6, __m256i sum7, __m256i sum8) {
+  __m256i pack1234 = Pack1234(sum1, sum2, sum3, sum4);
+  __m256i pack5678 = Pack1234(sum5, sum6, sum7, sum8);
+  // Introducing "f" for first half and "s" for second half, we have this order:
+  // pack1234 = 1f 2f 3f 4f 1s 2s 3s 4s
+  // pack5678 = 5f 6f 7f 8f 5s 6s 7s 8s
+  // This instruction generates 1s 2s 3s 4s 5f 6f 7f 8f
+  __m256i rev = _mm256_permute2f128_si256(pack1234, pack5678, 0x21);
+  // This instruction generates 1f 2f 3f 4f 5s 6s 7s 8s
+  __m256i blended = _mm256_blend_epi32(pack1234, pack5678, 0xf0);
+  return _mm256_add_epi32(rev, blended);
+}
+
+inline __m256i Reduce16to32(__m256i sum1, __m256i sum2, __m256i sum3, __m256i sum4, __m256i sum5, __m256i sum6, __m256i sum7, __m256i sum8) {
   Convert32Sum(sum1);
   Convert32Sum(sum2);
   Convert32Sum(sum3);
   Convert32Sum(sum4);
-  return Reduce32(sum1, sum2, sum3, sum4);
+  Convert32Sum(sum5);
+  Convert32Sum(sum6);
+  Convert32Sum(sum7);
+  Convert32Sum(sum8);
+  return Reduce32(sum1, sum2, sum3, sum4, sum5, sum6, sum7, sum8);
 }
 
 } // namespace
@@ -197,12 +214,11 @@ void MatrixMult16(const __m256i * A, const __m256i * B, float * C, float unquant
         sum6 = _mm256_add_epi32(mult6, sum6);
         sum7 = _mm256_add_epi32(mult7, sum7);
       }
-      // Write to C.  TODO: optimize shuffling by pushing into Reduce function.
-      __m256i combined = _mm256_insertf128_si256(_mm256_castsi128_si256(Reduce32(sum0, sum1, sum2, sum3)), Reduce32(sum4, sum5, sum6, sum7), 1);
+      // Write to C.
+      __m256i combined = Reduce32(sum0, sum1, sum2, sum3, sum4, sum5, sum6, sum7);
       *reinterpret_cast<__m256*>(C + A_rowidx * num_B_rows + B0_rowidx) = _mm256_mul_ps(_mm256_cvtepi32_ps(combined), unquant_reg);
     }
   }
-
 }
 
 
@@ -254,7 +270,6 @@ void MatrixMult8(const __m256i *A, const __m256i *B, float *C, float unquant_mul
          * So we take the sign bits off of a and apply them each b in a * b.
          * There is a 256-bit sign instruction so we'll try that.
          */
-        __m256i a_positive = _mm256_abs_epi8(a);
         // Negate 8-bit values in b if the corresponding a was negative.
         // Negation is implemented by subtraction from zero.
         __m256i b0 = _mm256_sign_epi8(*(B0_row + k), a);
@@ -265,6 +280,7 @@ void MatrixMult8(const __m256i *A, const __m256i *B, float *C, float unquant_mul
         __m256i b5 = _mm256_sign_epi8(*(B5_row + k), a);
         __m256i b6 = _mm256_sign_epi8(*(B6_row + k), a);
         __m256i b7 = _mm256_sign_epi8(*(B7_row + k), a);
+        __m256i a_positive = _mm256_abs_epi8(a);
         // Multiply 8-bit unsigned * signed, horizontally add to packed 16-bit integers.
         __m256i mult0 = _mm256_maddubs_epi16(a_positive, b0);
         __m256i mult1 = _mm256_maddubs_epi16(a_positive, b1);
@@ -285,12 +301,87 @@ void MatrixMult8(const __m256i *A, const __m256i *B, float *C, float unquant_mul
         sum6 = _mm256_adds_epi16(mult6, sum6);
         sum7 = _mm256_adds_epi16(mult7, sum7);
       }
-      // Write to C.  TODO: optimize shuffling by pushing into Reduce function.
-      __m256i combined = _mm256_insertf128_si256(_mm256_castsi128_si256(Reduce16to32(sum0, sum1, sum2, sum3)), Reduce16to32(sum4, sum5, sum6, sum7), 1);
+      // Write to C.
+      __m256i combined = Reduce16to32(sum0, sum1, sum2, sum3, sum4, sum5, sum6, sum7);
       *reinterpret_cast<__m256*>(C + A_rowidx * num_B_rows + B0_rowidx) = _mm256_mul_ps(_mm256_cvtepi32_ps(combined), unquant_reg);
     }
   }
 }
+
+void MatrixMult8Contrast(const __m256i *A, const __m256i *B, float *C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
+  assert(width % 32 == 0);
+  assert(reinterpret_cast<uintptr_t>(A) % 32 == 0);
+  assert(reinterpret_cast<uintptr_t>(B) % 32 == 0);
+  assert(reinterpret_cast<uintptr_t>(C) % 32 == 0);
+  assert(num_B_rows % 8 == 0);
+  __m256 unquant_reg = _mm256_set1_ps(unquant_mult);
+  // This fills with bytes 10000000 which are used to detect negative numbers.
+  const int simd_width = width / 32;
+  int B0_rowidx = 0;
+  // Go over 8 rows of B at a time.  TODO: rearrange B so that these accesses are adjacent (it's faster).
+  for (const __m256i *B0_row = B; B0_rowidx != num_B_rows; B0_row += 8 * simd_width, B0_rowidx += 8) {
+    // Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.
+    for (int A_rowidx = 0; A_rowidx < num_A_rows; ++A_rowidx) {
+      const __m256i *A_row = A + A_rowidx * simd_width;
+      // These will be packed 16-bit integers containing sums for each row of B multiplied by the row of A.
+      __m256i sum0 = _mm256_setzero_si256();
+      __m256i sum1 = _mm256_setzero_si256();
+      __m256i sum2 = _mm256_setzero_si256();
+      __m256i sum3 = _mm256_setzero_si256();
+      __m256i sum4 = _mm256_setzero_si256();
+      __m256i sum5 = _mm256_setzero_si256();
+      __m256i sum6 = _mm256_setzero_si256();
+      __m256i sum7 = _mm256_setzero_si256();
+      // Iterate over shared (inner) dimension.
+      for (int k = 0; k < simd_width; ++k) {
+        // Read in 64 8-bit signed integers from A.
+        __m256i a = *(A_row + k);
+        /* These do the loads from B which is important to do early to hide as
+         * much memory latency as possible.
+         * It's possible to rearrange B so that these will all be consecutive
+         * and benchmarks show that is faster.  TODO.
+         * Annoyingly the only 8-bit multiply is signed * unsigned (maddubs).
+         * So we take the sign bits off of a and apply them each b in a * b.
+         * There is a 256-bit sign instruction so we'll try that.
+         */
+        // Negate 8-bit values in b if the corresponding a was negative.
+        // Negation is implemented by subtraction from zero.
+        __m256i b0 = _mm256_sign_epi8(*(B0_row + k * 8), a);
+        __m256i b1 = _mm256_sign_epi8(*(B0_row + k * 8 + 1), a);
+        __m256i b2 = _mm256_sign_epi8(*(B0_row + k * 8 + 2), a);
+        __m256i b3 = _mm256_sign_epi8(*(B0_row + k * 8 + 3), a);
+        __m256i b4 = _mm256_sign_epi8(*(B0_row + k * 8 + 4), a);
+        __m256i b5 = _mm256_sign_epi8(*(B0_row + k * 8 + 5), a);
+        __m256i b6 = _mm256_sign_epi8(*(B0_row + k * 8 + 6), a);
+        __m256i b7 = _mm256_sign_epi8(*(B0_row + k * 8 + 7), a);
+        __m256i a_positive = _mm256_abs_epi8(a);
+        // Multiply 8-bit unsigned * signed, horizontally add to packed 16-bit integers.
+        __m256i mult0 = _mm256_maddubs_epi16(a_positive, b0);
+        __m256i mult1 = _mm256_maddubs_epi16(a_positive, b1);
+        __m256i mult2 = _mm256_maddubs_epi16(a_positive, b2);
+        __m256i mult3 = _mm256_maddubs_epi16(a_positive, b3);
+        __m256i mult4 = _mm256_maddubs_epi16(a_positive, b4);
+        __m256i mult5 = _mm256_maddubs_epi16(a_positive, b5);
+        __m256i mult6 = _mm256_maddubs_epi16(a_positive, b6);
+        __m256i mult7 = _mm256_maddubs_epi16(a_positive, b7);
+        // Sum packed 16-bit integers with saturation.
+        // With larger matrices there is a danger of saturating so TODO upcast to 32-bit every so often.
+        sum0 = _mm256_adds_epi16(mult0, sum0);
+        sum1 = _mm256_adds_epi16(mult1, sum1);
+        sum2 = _mm256_adds_epi16(mult2, sum2);
+        sum3 = _mm256_adds_epi16(mult3, sum3);
+        sum4 = _mm256_adds_epi16(mult4, sum4);
+        sum5 = _mm256_adds_epi16(mult5, sum5);
+        sum6 = _mm256_adds_epi16(mult6, sum6);
+        sum7 = _mm256_adds_epi16(mult7, sum7);
+      }
+      // Write to C.
+      __m256i combined = Reduce16to32(sum0, sum1, sum2, sum3, sum4, sum5, sum6, sum7);
+      *reinterpret_cast<__m256*>(C + A_rowidx * num_B_rows + B0_rowidx) = _mm256_mul_ps(_mm256_cvtepi32_ps(combined), unquant_reg);
+    }
+  }
+}
+
 
 } // namespace AVX2
 #endif // __AVX2__
