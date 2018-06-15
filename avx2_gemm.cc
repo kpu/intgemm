@@ -205,14 +205,14 @@ void MatrixMult16(const __m256i * A, const __m256i * B, float * C, float unquant
         __m256i mult6 = _mm256_madd_epi16(a, b6);
         __m256i mult7 = _mm256_madd_epi16(a, b7);
         // Sum packed 32-bit integers with danger of overflow.  TODO: accumulate in 64-bit every so often.
-        sum0 = _mm256_add_epi32(mult0, sum0);
-        sum1 = _mm256_add_epi32(mult1, sum1);
-        sum2 = _mm256_add_epi32(mult2, sum2);
-        sum3 = _mm256_add_epi32(mult3, sum3);
-        sum4 = _mm256_add_epi32(mult4, sum4);
-        sum5 = _mm256_add_epi32(mult5, sum5);
-        sum6 = _mm256_add_epi32(mult6, sum6);
-        sum7 = _mm256_add_epi32(mult7, sum7);
+        sum0 = _mm256_add_epi32(sum0, mult0);
+        sum1 = _mm256_add_epi32(sum1, mult1);
+        sum2 = _mm256_add_epi32(sum2, mult2);
+        sum3 = _mm256_add_epi32(sum3, mult3);
+        sum4 = _mm256_add_epi32(sum4, mult4);
+        sum5 = _mm256_add_epi32(sum5, mult5);
+        sum6 = _mm256_add_epi32(sum6, mult6);
+        sum7 = _mm256_add_epi32(sum7, mult7);
       }
       // Write to C.
       __m256i combined = Reduce32(sum0, sum1, sum2, sum3, sum4, sum5, sum6, sum7);
