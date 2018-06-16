@@ -64,22 +64,22 @@ void Time(int num_A_rows, int num_B_rows, int width, int repeat = 20) {
 
     AVX2::MatrixMult8((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     {
-      StopWatch w("8-bit", repeat);
+      StopWatch w("8-bit Base", repeat);
       for (int i = 0; i < repeat; ++i)
         AVX2::MatrixMult8((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     }
     AVX2::MatrixMult8Contrast((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     {
-      StopWatch w("8-bitc", repeat);
+      StopWatch w("8-bit Contig", repeat);
       for (int i = 0; i < repeat; ++i)
         AVX2::MatrixMult8Contrast((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     }
-    /*AVX2::MatrixMult8((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
+    AVX2::MatrixMult8ASM((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
     {
-      StopWatch w("Baseline", repeat);
+      StopWatch w("8-bit Cont+ASM", repeat);
       for (int i = 0; i < repeat; ++i)
-        AVX2::MatrixMult8((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
-    }*/
+        AVX2::MatrixMult8ASM((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
+    }
 
     free(A);
     free(B);
