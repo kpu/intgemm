@@ -49,6 +49,59 @@ template <class T> T* AlignedArray(std::size_t size) {
   return static_cast<T*>(aligned_alloc(64, size * sizeof(T)));
 }
 
+// Rearrange a tile of simd x unroll entries.
+template <class V> void SlowRearrangeTile(const V *from, V *to, int simd, int unroll, int cols) {
+  for (int i = 0; i < unroll; ++i) {
+    for (int j = 0; j < simd; ++j) {
+      *to++ = from[cols * j + i];
+    }
+  }
+}
+
+template <class V> void SlowRearrange(const V *from, V *to, int simd, int unroll, int rows, int cols) {
+  for (int c = 0; c < cols; c += unroll) {
+    for (int r = 0; r < rows; r += simd) {
+      SlowRearrangeTile(from + cols * r + c, to, simd, unroll, cols);
+      to += unroll * simd;
+    }
+  }
+}
+
+template <class V> void SlowTranspose(const V *from, V *to, int rows, int cols) {
+  for (int r = 0; r < rows; ++r) {
+    for (int c = 0; c < cols; ++c) {
+      to[rows * c + r] = from[cols * r + c];
+    }
+  }
+}
+
+template <class Routine> void TestPrepare(int rows = 32, int cols = 16) {
+  // Create array.
+  free_ptr<float> input(AlignedArray<float>(rows * cols));
+  for (int i = 0; i < rows * cols; ++i) {
+    input.get()[i] = /* (i > 127) ? (i - 256) : i; */
+      (float)rand() / (float)RAND_MAX * 256.0 - 127.0;
+  }
+
+  typedef typename Routine::Integer Integer;
+  // Call Prepare
+  free_ptr<Integer> test(AlignedArray<Integer>(rows * cols));
+  Routine::PrepareB(input.get(), test.get(), 1, rows, cols);
+
+  // Compute reference output.
+  free_ptr<Integer> quantized(AlignedArray<Integer>(rows * cols));
+  Routine::Quantize(input.get(), quantized.get(), 1, rows * cols);
+  free_ptr<Integer> reference(AlignedArray<Integer>(rows * cols));
+  SlowRearrange<Integer>(quantized.get(), reference.get(), Routine::kBTileRow, Routine::kBTileCol, rows, cols);
+
+  for (int i = 0; i < rows * cols; ++i) {
+    if (reference.get()[i] != test.get()[i]) {
+      std::cerr << "Offset " << i << ' ' << (int16_t)reference.get()[i] << " != " << (int16_t)test.get()[i] << '\n';
+    }
+  }
+}
+
+
 // Compute A*B slowly in floats.
 void SlowRefFloat(const float *A, const float *B, float *C, int A_rows, int width, int B_cols) {
   for (int r = 0; r < A_rows; ++r) {
@@ -75,31 +128,6 @@ template <class Integer> void SlowRefInt(const Integer *A, const Integer *B, flo
   }
 }
 
-// Rearrange a tile of simd x unroll entries.
-template <class V> void SlowRearrangeTile(const V *from, V *to, int simd, int unroll, int cols) {
-  for (int i = 0; i < unroll; ++i) {
-    for (int j = 0; j < simd; ++j) {
-      *to++ = from[cols * j + i];
-    }
-  }
-}
-
-template <class V> void SlowRearrange(const V *from, V *to, int simd, int unroll, int rows, int cols) {
-  for (int c = 0; c < cols; c += unroll) {
-    for (int r = 0; r < rows; r += simd) {
-      SlowRearrangeTile(from + cols * r + c, to, simd, unroll, cols);
-      to += unroll * simd;
-    }
-  }
-}
-
-template <class V> void SlowTranspose(const V *from, V *to, int rows, int cols) {
-  for (int r = 0; r < rows; ++r) {
-    for (int c = 0; c < cols; ++c) {
-      to[rows * c + r] = from[cols * r + c];
-    }
-  }
-}
 
 void Compare(const float *float_ref, const float *int_ref, const float *int_test, std::size_t size) {
   float int_sum = 0.0, float_sum = 0.0;
@@ -151,31 +179,6 @@ template <class Routine> void TestMultiply(int A_rows, int width, int B_cols) {
   Compare(float_C.get(), slowint_C.get(), test_C.get(), A_rows * B_cols);
 }
 
-template <class Routine> void TestPrepare(int rows = 32, int cols = 16) {
-  // Create array.
-  free_ptr<float> input(AlignedArray<float>(rows * cols));
-  for (int i = 0; i < rows * cols; ++i) {
-    input.get()[i] = /* (i > 127) ? (i - 256) : i; */
-      (float)rand() / (float)RAND_MAX * 256.0 - 127.0;
-  }
-
-  typedef typename Routine::Integer Integer;
-  // Call Prepare
-  free_ptr<Integer> test(AlignedArray<Integer>(rows * cols));
-  Routine::PrepareB(input.get(), test.get(), 1, rows, cols);
-
-  // Compute reference output.
-  free_ptr<Integer> quantized(AlignedArray<Integer>(rows * cols));
-  Routine::Quantize(input.get(), quantized.get(), 1, rows * cols);
-  free_ptr<Integer> reference(AlignedArray<Integer>(rows * cols));
-  SlowRearrange<Integer>(quantized.get(), reference.get(), Routine::kBTileRow, Routine::kBTileCol, rows, cols);
-
-  for (int i = 0; i < rows * cols; ++i) {
-    if (reference.get()[i] != test.get()[i]) {
-      std::cerr << "Offset " << i << ' ' << (int16_t)reference.get()[i] << " != " << (int16_t)test.get()[i] << '\n';
-    }
-  }
-}
 
 void TestBoth(int A_rows, int width, int B_cols) {
   TestMultiply<AVX2_16bit>(A_rows, width, B_cols);
