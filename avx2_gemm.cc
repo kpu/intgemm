@@ -1,4 +1,5 @@
 #include "avx2_gemm.h"
+#include "interleave.h"
 
 #include <cassert>
 #include <emmintrin.h>
@@ -121,43 +122,22 @@ namespace {
 // Output:
 // first  [f0 s0 f1 s1 f2 s2 f3 s3 f4 s4 f5 s5 f6 s6 f7 s7] [f16 s16 f17 s17 f18 s18 f19 s19 f20 s20 f21 s21 f22 s22 f23 s23]
 // second [f8 s8 f9 s9 f10 s10 f11 s11 f12 s12 f13 s13 f14 s14 f15 s15] [f24 s24 f25 s25 f26 s26 f27 s27 f28 s28 f29 s29 f30 s30 f31 s31]
-inline void Interleave8(__m256i &first, __m256i &second) {
-  __m256i temp = _mm256_unpacklo_epi8(first, second);
-  second = _mm256_unpackhi_epi8(first, second);
-  first = temp;
-}
-// Same but move 16-bit integers.
-inline void Interleave16(__m256i &first, __m256i &second) {
-  __m256i temp = _mm256_unpacklo_epi16(first, second);
-  second = _mm256_unpackhi_epi16(first, second);
-  first = temp;
-}
-// Same but move 32-bit integers.
-inline void Interleave32(__m256i &first, __m256i &second) {
-  __m256i temp = _mm256_unpacklo_epi32(first, second);
-  second = _mm256_unpackhi_epi32(first, second);
-  first = temp;
-}
-// Same but move 64-bit integers.
-inline void Interleave64(__m256i &first, __m256i &second) {
-  __m256i temp = _mm256_unpacklo_epi64(first, second);
-  second = _mm256_unpackhi_epi64(first, second);
-  first = temp;
-}
-
-inline void ReshapeToFours16(const float *input, __m256 quant_mult_reg, int cols,  __m256i &out0, __m256i &out1) {
-  out0 = QuantizeTile16(input,            input + 8 * cols, quant_mult_reg);
-  out1 = QuantizeTile16(input + 1 * cols, input + 9 * cols, quant_mult_reg);
-  Interleave16(out0, out1);
-  // out0:
-  // [0,0,1,1,2,2,3,3] [0,0,1,1,2,2,3,3]
-  // out1:
-  // [4,4,5,5,6,6,7,7] [4,4,5,5,6,6,7,7]
-}
+INTGEMM_INTERLEAVE(__m256i, 256)
 
 inline void ReshapeToEights16(const float *input, __m256 quant_mult_reg, int cols, __m256i &out0, __m256i &out1, __m256i &out2, __m256i &out3) {
-  ReshapeToFours16(input, quant_mult_reg, cols, out0, out2);
-  ReshapeToFours16(input + 2 * cols, quant_mult_reg, cols, out1, out3);
+  out0 = QuantizeTile16(input,            input + 8 * cols, quant_mult_reg);
+  out2 = QuantizeTile16(input + 1 * cols, input + 9 * cols, quant_mult_reg);
+  Interleave16(out0, out2);
+  // out0:
+  // [0,0,1,1,2,2,3,3] [0,0,1,1,2,2,3,3]
+  // out2:
+  // [4,4,5,5,6,6,7,7] [4,4,5,5,6,6,7,7]
+
+  // Do it again, just one more time now.
+  out1 = QuantizeTile16(input + 2 * cols, input + 10 * cols, quant_mult_reg);
+  out3 = QuantizeTile16(input + 3 * cols, input + 11 * cols, quant_mult_reg);
+  Interleave16(out1, out3);
+
   Interleave32(out0, out1);
   Interleave32(out2, out3);
   // out0: 64-bit [0,1] from rows 0-3 [0,1] from rows 8-11
