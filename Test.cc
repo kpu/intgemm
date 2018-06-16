@@ -31,55 +31,74 @@
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
+#include <memory>
 
 #include <iostream>
 
 namespace intgemm {
 
-// Compute A*B^T very naively.
-void SlowRefFloat(const float * A, const float * B, float * C, int num_A_rows, int num_B_rows, int width) {
-    for (int i = 0; i < num_A_rows; i++) {
-        const float * A_row = A + i*width;
-        float * C_row = C + i*num_B_rows;
-        for (int j = 0; j < num_B_rows; j++) {
-            const float * B_row = B + j*width;
-            float sum = 0.0f;
-            for (int k = 0; k < width; k++) {
-                sum += A_row[k]*B_row[k];
-            }
-            C_row[j] = sum;
-        }
-    }
+struct DeleteWithFree {
+  template <class T> void operator() (T *t) const {
+    std::free(const_cast<std::remove_const_t<T>* >(t));
+  }
+};
+template <class T> using free_ptr = std::unique_ptr<T, DeleteWithFree>;
+
+// Return memory suitably aligned for SIMD.
+template <class T> T* AlignedArray(std::size_t size) {
+  return static_cast<T*>(aligned_alloc(64, size * sizeof(T)));
 }
 
-void SlowRef16(const int16_t * A, const int16_t * B, float * C, float quant_mult, int num_A_rows, int num_B_rows, int width) {
-    for (int i = 0; i < num_A_rows; i++) {
-        const int16_t * A_row = A + i*width;
-        float * C_row = C + i*num_B_rows;
-        for (int j = 0; j < num_B_rows; j++) {
-            const int16_t * B_row = B + j*width;
-            int32_t sum = 0.0f;
-            for (int k = 0; k < width; k++) {
-                sum += A_row[k]*B_row[k];
-            }
-            C_row[j] = sum * quant_mult;
-        }
+// Compute A*B slowly in floats.
+void SlowRefFloat(const float *A, const float *B, float *C, int A_rows, int width, int B_cols) {
+  for (int r = 0; r < A_rows; ++r) {
+    for (int c = 0; c < B_cols; ++c) {
+      float sum = 0.0f;
+      for (int k = 0; k < width; ++k) {
+        sum += A[r * width + k] * B[k * B_cols + c];
+      }
+      C[r * B_cols + c] = sum;
     }
+  }
 }
 
-void SlowRef8(const int8_t * A, const int8_t * B, float * C, float unquant_mult, int num_A_rows, int num_B_rows, int width) {
-    for (int i = 0; i < num_A_rows; i++) {
-        const int8_t *A_row = A + i * width;
-        float *C_row = C + i * num_B_rows;
-        for (int j = 0; j < num_B_rows; j++) {
-            const int8_t *B_row = B + j*width;
-            int32_t sum = 0;
-            for (int k = 0; k < width; k++) {
-                sum += static_cast<int32_t>(A_row[k])*static_cast<int32_t>(B_row[k]);
-            }
-            C_row[j] = sum * unquant_mult;
-        }
+// Compute A*B slowly from integers.
+template <class Integer> void SlowRefInt(const Integer *A, const Integer *B, float *C, float unquant_mult, int A_rows, int width, int B_cols) {
+  for (int r = 0; r < A_rows; ++r) {
+    for (int c = 0; c < B_cols; ++c) {
+      int32_t sum = 0;
+      for (int k = 0; k < width; ++k) {
+        sum += static_cast<int16_t>(A[r * width + k]) * static_cast<int16_t>(B[k * B_cols + c]);
+      }
+      C[r * B_cols + c] = sum * unquant_mult;
     }
+  }
+}
+
+// Rearrange a tile of simd x unroll entries.
+template <class V> void SlowRearrangeTile(const V *from, V *to, int simd, int unroll, int cols) {
+  for (int i = 0; i < unroll; ++i) {
+    for (int j = 0; j < simd; ++j) {
+      *to++ = from[cols * j + i];
+    }
+  }
+}
+
+template <class V> void SlowRearrange(const V *from, V *to, int simd, int unroll, int rows, int cols) {
+  for (int c = 0; c < cols; c += unroll) {
+    for (int r = 0; r < rows; r += simd) {
+      SlowRearrangeTile(from + cols * r + c, to, simd, unroll, cols);
+      to += unroll * simd;
+    }
+  }
+}
+
+template <class V> void SlowTranspose(const V *from, V *to, int rows, int cols) {
+  for (int r = 0; r < rows; ++r) {
+    for (int c = 0; c < cols; ++c) {
+      to[rows * c + r] = from[cols * r + c];
+    }
+  }
 }
 
 void Compare(const float *float_ref, const float *int_ref, const float *int_test, std::size_t size) {
@@ -96,88 +115,71 @@ void Compare(const float *float_ref, const float *int_ref, const float *int_test
   std::cerr << "Float MSE = " << sqrt(float_sum / size) << "\tInt MSE = " << sqrt(int_sum / size) << std::endl;
 }
 
-void Time(int num_A_rows, int num_B_rows, int width, int repeat = 10) {
-    std::cout << num_A_rows << '\t' << num_B_rows << '\t' << width << '\n';
-    float * A = static_cast<float*>(aligned_alloc(64, sizeof(float) * num_A_rows * width));
-    float * B = static_cast<float*>(aligned_alloc(64, sizeof(float) * num_B_rows * width));
-    
-    for (int i = 0; i < num_A_rows*width; i++) {
-        A[i] = ((float)rand()/(float)RAND_MAX)*2.0f - 1.0f;
+template <class Routine> void TestMultiply(int A_rows, int width, int B_cols) {
+  typedef typename Routine::Integer Integer;
+  std::cout << (sizeof(Integer) * 8) << "-bit\t" << A_rows << '\t' << width << '\t' << B_cols << '\n';
+
+  // Initialize A and B.
+  free_ptr<float> A(AlignedArray<float>(A_rows * width));
+  free_ptr<float> B(AlignedArray<float>(width * B_cols));
+  for (int i = 0; i < A_rows * width; i++) {
+    A.get()[i] = ((float)rand()/(float)RAND_MAX)*2.0f - 1.0f;
+  }
+  for (int i = 0; i < width * B_cols; ++i) {
+    B.get()[i] = ((float)rand()/(float)RAND_MAX)*2.0f - 1.0f;
+  }
+  
+  float quant_mult = (sizeof(Integer) == 2) ? 1024 : 64;
+  float unquant_mult = 1.0/(quant_mult*quant_mult);
+
+  free_ptr<Integer> A_prep(AlignedArray<Integer>(A_rows * width)), B_prep(AlignedArray<Integer>(width * B_cols));
+  Routine::PrepareA(A.get(), A_prep.get(), quant_mult, A_rows, width);
+  Routine::PrepareB(B.get(), B_prep.get(), quant_mult, width, B_cols);
+
+  free_ptr<float> test_C(AlignedArray<float>(A_rows * B_cols));
+  Routine::Multiply(A_prep.get(), B_prep.get(), test_C.get(), unquant_mult, A_rows, width, B_cols);
+
+  free_ptr<Integer> B_quant(AlignedArray<Integer>(width * B_cols));
+  Routine::Quantize(B.get(), B_quant.get(), quant_mult, width * B_cols);
+  free_ptr<float> slowint_C(AlignedArray<float>(A_rows * B_cols));
+  // Assuming A is just quantization here.
+  SlowRefInt(A_prep.get(), B_quant.get(), slowint_C.get(), unquant_mult, A_rows, width, B_cols);
+
+  free_ptr<float> float_C(AlignedArray<float>(A_rows * B_cols));
+  SlowRefFloat(A.get(), B.get(), float_C.get(), A_rows, width, B_cols);
+
+  Compare(float_C.get(), slowint_C.get(), test_C.get(), A_rows * B_cols);
+}
+
+template <class Routine> void TestPrepare(int rows = 32, int cols = 16) {
+  // Create array.
+  free_ptr<float> input(AlignedArray<float>(rows * cols));
+  for (int i = 0; i < rows * cols; ++i) {
+    input.get()[i] = /* (i > 127) ? (i - 256) : i; */
+      (float)rand() / (float)RAND_MAX * 256.0 - 127.0;
+  }
+
+  typedef typename Routine::Integer Integer;
+  // Call Prepare
+  free_ptr<Integer> test(AlignedArray<Integer>(rows * cols));
+  Routine::PrepareB(input.get(), test.get(), 1, rows, cols);
+
+  // Compute reference output.
+  free_ptr<Integer> quantized(AlignedArray<Integer>(rows * cols));
+  Routine::Quantize(input.get(), quantized.get(), 1, rows * cols);
+  free_ptr<Integer> reference(AlignedArray<Integer>(rows * cols));
+  SlowRearrange<Integer>(quantized.get(), reference.get(), Routine::kBTileRow, Routine::kBTileCol, rows, cols);
+
+  for (int i = 0; i < rows * cols; ++i) {
+    if (reference.get()[i] != test.get()[i]) {
+      std::cerr << "Offset " << i << ' ' << (int16_t)reference.get()[i] << " != " << (int16_t)test.get()[i] << '\n';
     }
-    
-    for (int i = 0; i < num_B_rows*width; i++) {
-        B[i] = ((float)rand()/(float)RAND_MAX)*2.0f - 1.0f;
-    }
+  }
+}
 
-    float *float_C = new float[num_A_rows*num_B_rows];
-    SlowRefFloat(A, B, float_C, num_A_rows, num_B_rows, width);
-    
-    // Each __m512i fits 8 16-bit integers, so we assume the width is a multiple of 8.
-    // We could pad with 0 in the general case.
-    __m256i * quant_A = static_cast<__m256i *>(aligned_alloc(64, num_A_rows*width * 2));
-    __m256i * quant_B = static_cast<__m256i *>(aligned_alloc(64, num_B_rows*width * 2));
-
-    // We quantize with 10 bits of precision. This works well "universally". 
-    // See the top of this file for more info on why.
-    float quant_mult = 1000.0;
-    // If we quantize to n bits and then multiply the values together, the result will be quantized to n^2 bits.
-    // So we must divide by 1.0/(n^2) to get back the original value.
-    float unquant_mult = 1.0/(quant_mult*quant_mult);
-
-    // The weight matrix should be quantized before starting decoding, since it is known beforehand.
-    AVX2::Quantize16(B, (int16_t*)quant_B, quant_mult, num_B_rows * width);
-    // The activation matrix must be quantized on-the-fly.
-    AVX2::Quantize16(A, (int16_t*)quant_A, quant_mult, num_A_rows * width);
-    float *AVX_C = static_cast<float*>(aligned_alloc(64, num_A_rows * num_B_rows * sizeof(float)));
-    // Burn in.
-    AVX2::MatrixMult16(quant_A, quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
-    {
-      StopWatch w("16-bit");
-      for (int i = 0; i < repeat; ++i)
-        AVX2::MatrixMult16(quant_A, quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
-    }
-
-    float *ref_C = new float[num_A_rows*num_B_rows];
-    SlowRef16((const int16_t*)quant_A, (const int16_t*)quant_B, ref_C, unquant_mult, num_A_rows, num_B_rows, width);
-    Compare(float_C, ref_C, AVX_C, num_A_rows*num_B_rows);
-
-    // Moving on to 8-bit.
-    quant_mult = 64;
-    unquant_mult = 1.0/(quant_mult*quant_mult);
-
-    {
-      StopWatch w("Quantize8 B");
-      intgemm::AVX2::Quantize8(B, (int8_t*)quant_B, quant_mult, num_B_rows * width);
-    }
-    {
-      StopWatch w("Quantize8 A");
-      intgemm::AVX2::Quantize8(A, (int8_t*)quant_A, quant_mult, num_A_rows * width);
-    }
-
-    AVX2::MatrixMult8((const __m256i *)quant_B, (const __m256i *)quant_A, AVX_C, unquant_mult, num_B_rows, num_A_rows, width);
-    {
-      StopWatch w("8-bitr", repeat);
-      for (int i = 0; i < repeat; ++i)
-        AVX2::MatrixMult8((const __m256i *)quant_B, (const __m256i *)quant_A, AVX_C, unquant_mult, num_B_rows, num_A_rows, width);
-    }
-    AVX2::MatrixMult8((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
-    {
-      StopWatch w("8-bit", repeat);
-      for (int i = 0; i < repeat; ++i)
-        AVX2::MatrixMult8((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
-    }
-
-
-    SlowRef8((const int8_t*)quant_A, (const int8_t*)quant_B, ref_C, unquant_mult, num_A_rows, num_B_rows, width);
-    Compare(float_C, ref_C, AVX_C, num_A_rows*num_B_rows);
-
-    free(A);
-    free(B);
-    free(quant_A);
-    free(quant_B);
-    free(AVX_C);
-    delete [] ref_C;
-    delete [] float_C;
+void TestBoth(int A_rows, int width, int B_cols) {
+  TestMultiply<AVX2_16bit>(A_rows, width, B_cols);
+  TestMultiply<AVX2_8bit>(A_rows, width, B_cols);
 }
 
 } // namespace intgemm
@@ -186,19 +188,16 @@ void Time(int num_A_rows, int num_B_rows, int width, int repeat = 10) {
 int main(int argc, char ** argv) {
     std::srand(45678);
     using namespace intgemm;
+    TestPrepare<AVX2_8bit>(64, 32);
+    TestPrepare<AVX2_16bit>(64, 32);
     // Top matrix sizes from Marian
-    Time(8, 256, 256);
-    Time(8, 256, 2048);
-    Time(8, 2048, 256);
-    Time(320, 256, 256);
-    Time(472, 256, 256);
-    Time(248, 256, 256);
-    Time(200, 256, 256);
-    // Additional stuff
-    Time(256, 256, 256);
-    Time(512, 512, 512);
-    Time(1024, 1024, 1024);
-    Time(4096, 4096, 4096, 1);
+    TestBoth(8, 256, 256);
+    TestBoth(8, 2048, 256);
+    TestBoth(8, 2048, 256);
+    TestBoth(320, 256, 256);
+    TestBoth(472, 256, 256);
+    TestBoth(248, 256, 256);
+    TestBoth(200, 256, 256);
     return 0;
 }
 
