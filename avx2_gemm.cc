@@ -3,13 +3,9 @@
 #include <cassert>
 #include <emmintrin.h>
 #include <immintrin.h>
-#include <math.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <tmmintrin.h>
 #include <xmmintrin.h>
+#include <cstdint>
 
 namespace intgemm {
 #ifdef __AVX2__
