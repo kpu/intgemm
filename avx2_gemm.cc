@@ -16,7 +16,7 @@ namespace intgemm {
 namespace {
 // Read a vector of floats, multiply them, and cast to 32-bit integer.
 inline __m256i QuantizerGrab(const float *input, const __m256 quant_mult_reg) {
-  return _mm256_cvtps_epi32(_mm256_mul_ps(_mm256_load_ps(input), quant_mult_reg));
+  return _mm256_cvtps_epi32(_mm256_mul_ps(*reinterpret_cast<const __m256*>(input), quant_mult_reg));
 }
 
 inline __m256i QuantizeTile16(const float *input0, const float *input1, __m256 quant_mult_reg) {
@@ -45,28 +45,47 @@ namespace {
  * them to 8-bit by multiplying with quant_mult_reg then rounding. Concatenate
  * the result into one register and return it.
  */
-inline __m256i QuantizeTile8(const float *input0, const float *input1, const float *input2, const float *input3, __m256 quant_mult_reg) {
-  // Looking at the assembly, gcc has pulled this outside the loop in Quantize8.
-  const __m256i neg127 = _mm256_set1_epi8(-127);
-  const __m256i shuffle_param = _mm256_set_epi32(7, 3, 6, 2, 5, 1, 4, 0);
-  // Grab 4 registers at a time in 32-bit format.
-  __m256i g0 = QuantizerGrab(input0, quant_mult_reg);
-  __m256i g1 = QuantizerGrab(input1, quant_mult_reg);
-  __m256i g2 = QuantizerGrab(input2, quant_mult_reg);
-  __m256i g3 = QuantizerGrab(input3, quant_mult_reg);
-  // Pack 32-bit to 16-bit.
-  __m256i packed0 = _mm256_packs_epi32(g0, g1);
-  __m256i packed1 = _mm256_packs_epi32(g2, g3);
-  // Pack 16-bit to 8-bit.
-  __m256i packed = _mm256_packs_epi16(packed0, packed1);
-  // Ban -128.
-  packed = _mm256_max_epi8(packed, neg127);
-  // Currently in 0 1 2 3 8 9 10 11 16 17 18 19 24 25 26 27 4 5 6 7 12 13 14 15 20 21 22 23 28 29 30 31
-  // Or as 32-bit integers 0 2 4 6 1 3 5 7
-  // Technically this could be removed so long as the rows are bigger than 16
-  // and the values are only used for GEMM.
-  return _mm256_permutevar8x32_epi32(packed, shuffle_param);
-}
+class QuantizeTile8 {
+  public:
+    typedef __m256i I;
+    typedef __m256 F;
+
+    static inline __m256i Consecutive(const float *input, __m256 quant_mult_reg) {
+      return Tile(input, input + 8, input + 16, input + 24, quant_mult_reg);
+    }
+
+    static inline __m256i ForReshape(const float *input, int cols, __m256 quant_mult_reg) {
+      return Tile(input, input + 2 * cols, input + 16 * cols, input + 18 * cols, quant_mult_reg);
+    }
+
+    static F Broadcast(float quant_mult) {
+      return _mm256_set1_ps(quant_mult);
+    }
+
+  private:
+    static inline __m256i Tile(const float *input0, const float *input1, const float *input2, const float *input3, __m256 quant_mult_reg) {
+      // Looking at the assembly, gcc has pulled this outside the loop in Quantize8.
+      const __m256i neg127 = _mm256_set1_epi8(-127);
+      const __m256i shuffle_param = _mm256_set_epi32(7, 3, 6, 2, 5, 1, 4, 0);
+      // Grab 4 registers at a time in 32-bit format.
+      __m256i g0 = QuantizerGrab(input0, quant_mult_reg);
+      __m256i g1 = QuantizerGrab(input1, quant_mult_reg);
+      __m256i g2 = QuantizerGrab(input2, quant_mult_reg);
+      __m256i g3 = QuantizerGrab(input3, quant_mult_reg);
+      // Pack 32-bit to 16-bit.
+      __m256i packed0 = _mm256_packs_epi32(g0, g1);
+      __m256i packed1 = _mm256_packs_epi32(g2, g3);
+      // Pack 16-bit to 8-bit.
+      __m256i packed = _mm256_packs_epi16(packed0, packed1);
+      // Ban -128.
+      packed = _mm256_max_epi8(packed, neg127);
+      // Currently in 0 1 2 3 8 9 10 11 16 17 18 19 24 25 26 27 4 5 6 7 12 13 14 15 20 21 22 23 28 29 30 31
+      // Or as 32-bit integers 0 2 4 6 1 3 5 7
+      // Technically this could be removed so long as the rows are bigger than 16
+      // and the values are only used for GEMM.
+      return _mm256_permutevar8x32_epi32(packed, shuffle_param);
+    }
+};
 } // namespace
 
 // Just quantize everything in order.
@@ -76,7 +95,7 @@ void AVX2_8bit::Quantize(const float *input, int8_t *output, float quant_mult, i
   const __m256 quant_mult_reg = _mm256_set1_ps(quant_mult);
   const float *end = input + size;
   for (; input != end; input += 32, output += 32) {
-    *reinterpret_cast<__m256i*>(output) = QuantizeTile8(input, input + 8, input + 16, input + 24, quant_mult_reg);
+    *reinterpret_cast<__m256i*>(output) = QuantizeTile8::Consecutive(input, quant_mult_reg);
   }
 }
 
@@ -159,59 +178,8 @@ void AVX2_16bit::PrepareB(const float *input, int16_t *output_shadow, float quan
   }
 }
 
-namespace {
-
-inline void ReshapeToFours8(const float *input, __m256 quant_mult_reg, int cols, __m256i &out0, __m256i &out1) {
-  // This generates bytes [0,1,2,3,4,6,7] [0,1,2,3,4,6,7] [0,1,2,3,4,6,7] [0,1,2,3,4,6,7] where each is from a different row.
-  // We keep higher rows in the second half of the register to avoid a shuffle later.
-  out0 = QuantizeTile8(input,            input + 2 * cols, input + 16 * cols, input + 18 * cols, quant_mult_reg);
-  out1 = QuantizeTile8(input + 1 * cols, input + 3 * cols, input + 17 * cols, input + 19 * cols, quant_mult_reg);
-  // This does [0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7] [0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7] where consecutive values are from consecutive rows
-  Interleave8(out0, out1);
-  Interleave16(out0, out1);
-  // out0:
-  // [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3] [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3]
-  // Rows 0, 1, 2, and 3 in first 128; rows 16, 17, 18, and 19 in last 128
-  // out1:
-  // [4,4,4,4,5,5,5,5,6,6,6,6,7,7,7,7] [4,4,4,4,5,5,5,5,6,6,6,6,7,7,7,7]
-  // Or as 32-bit blocks: [4,5,6,7] [4,5,6,7]
-}
-
-inline void ReshapeToEights8(const float *input, __m256 quant_mult_reg, int cols, __m256i &out0, __m256i &out1, __m256i &out2, __m256i &out3) {
-  // Get 32-bit blocks:
-  ReshapeToFours8(input, quant_mult_reg, cols, out0, out2);
-  // out0: [0,1,2,3] from rows 0-3 [0,1,2,3] from rows 16-19
-  // out2: [5,6,7,8] from rows 0-3 [5,6,7,8] from rows 16-19
-  ReshapeToFours8(input + 4 * cols, quant_mult_reg, cols, out1, out3);
-  // out1: [0,1,2,3] from rows 4-7 [0,1,2,3] from rows 20-23
-  // out3: [5,6,7,8] from rows 4-7 [5,6,7,8] from rows 20-23
-  Interleave32(out0, out1);
-  Interleave32(out2, out3);
-  // out0: 64-bit [0,1] from rows 0-7 [0,1] from rows 16-23
-  // out1: 64-bit [2,3] from rows 0-7 [2,3] from rows 16-23
-  // out2: 64-bit [5,6] from rows 0-7 [5,6] from rows 16-23
-  // out3: 64-bit [7,8] from rows 0-7 [7,8] from rows 16-23
-}
-
-} // namespace
-
-void AVX2_8bit::PrepareB(const float *input, int8_t *output_shadow, float quant_mult, int rows, int cols) {
-  assert(rows % 32 == 0);
-  assert(cols % 8 == 0);
-  assert(reinterpret_cast<uintptr_t>(input) % 32 == 0);
-  assert(reinterpret_cast<uintptr_t>(output_shadow) % 32 == 0);
-  __m256i *output = reinterpret_cast<__m256i*>(output_shadow);
-  const __m256 quant_mult_reg = _mm256_set1_ps(quant_mult);
-  for (int c = 0; c < cols; c += 8) {
-    for (int r = 0; r < rows; r += 32, output += 8) {
-      ReshapeToEights8(input + r * cols + c,       quant_mult_reg, cols, output[0], output[2], output[4], output[6]);
-      ReshapeToEights8(input + (r + 8) * cols + c, quant_mult_reg, cols, output[1], output[3], output[5], output[7]);
-      Interleave64(output[0], output[1]);
-      Interleave64(output[2], output[3]);
-      Interleave64(output[4], output[5]);
-      Interleave64(output[6], output[7]);
-    }
-  }
+void AVX2_8bit::PrepareB(const float *input, int8_t *output, float quant_mult, int rows, int cols) {
+  PrepareBFor8<QuantizeTile8>(input, output, quant_mult, rows, cols);
 }
 
 namespace {

@@ -20,10 +20,8 @@ namespace {
 
 // Load from memory, multiply, and convert to int32_t.
 inline __m512i QuantizerGrab(const float *input, const __m512 quant_mult_reg) {
-  // Load 16 floats
-  __m512 val = _mm512_load_ps(input);
   // Multiply each by the quantization factor.
-  val = _mm512_mul_ps(val, quant_mult_reg);
+  __m512 val = _mm512_mul_ps(*reinterpret_cast<const __m512*>(input), quant_mult_reg);
   // Cast to 32-bit int
   return _mm512_cvtps_epi32(val);
 }
