@@ -1,7 +1,6 @@
 #include "avx512_gemm.h"
 #include "avx2_gemm.h"
 #include "SSE_Matrix_Mult.h"
-#include "Quantize.h"
 #include "StopWatch.h"
 
 #include <cassert>

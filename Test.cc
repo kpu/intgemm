@@ -22,8 +22,9 @@
 
 #include "avx512_gemm.h"
 #include "avx2_gemm.h"
-#include "SSE_Matrix_Mult.h"
-#include "Quantize.h"
+#include "sse2_gemm.h"
+#include "aligned.h"
+#include "interleave.h"
 #include "StopWatch.h"
 
 #include <cassert>
@@ -36,18 +37,6 @@
 #include <iostream>
 
 namespace intgemm {
-
-struct DeleteWithFree {
-  template <class T> void operator() (T *t) const {
-    std::free(const_cast<std::remove_const_t<T>* >(t));
-  }
-};
-template <class T> using free_ptr = std::unique_ptr<T, DeleteWithFree>;
-
-// Return memory suitably aligned for SIMD.
-template <class T> T* AlignedArray(std::size_t size) {
-  return static_cast<T*>(aligned_alloc(64, size * sizeof(T)));
-}
 
 // Rearrange a tile of simd x unroll entries.
 template <class V> void SlowRearrangeTile(const V *from, V *to, int simd, int unroll, int cols) {
@@ -71,6 +60,25 @@ template <class V> void SlowTranspose(const V *from, V *to, int rows, int cols) 
   for (int r = 0; r < rows; ++r) {
     for (int c = 0; c < cols; ++c) {
       to[rows * c + r] = from[cols * r + c];
+    }
+  }
+}
+
+void TestTranspose() {
+  free_ptr<int16_t> input(AlignedArray<int16_t>(8 * 8));
+  for (int16_t i = 0; i < 64; ++i) {
+    input.get()[i] = i;
+  }
+  free_ptr<int16_t> ref(AlignedArray<int16_t>(8 * 8));
+  SlowTranspose(input.get(), ref.get(), 8, 8);
+
+  // Overwrite input.
+  __m128i *t = reinterpret_cast<__m128i*>(input.get());
+  Transpose16InLane(t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7]);
+
+  for (int16_t i = 0; i < 64; ++i) {
+    if (ref.get()[i] != input.get()[i]) {
+      std::cerr << "Transpose failure at " << i << ": " << ref.get()[i] << " != " << input.get()[i] << '\n';
     }
   }
 }
@@ -191,8 +199,10 @@ void TestBoth(int A_rows, int width, int B_cols) {
 int main(int argc, char ** argv) {
     std::srand(45678);
     using namespace intgemm;
+    TestTranspose();
     TestPrepare<AVX2_8bit>(64, 32);
     TestPrepare<AVX2_16bit>(64, 32);
+    TestPrepare<SSE2_16bit>(8, 8);
     // Top matrix sizes from Marian
     TestBoth(8, 256, 256);
     TestBoth(8, 2048, 256);

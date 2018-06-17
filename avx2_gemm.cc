@@ -116,14 +116,6 @@ void AVX2_8bit::Quantize(const float *input, int8_t *output, float quant_mult, i
 // ... ...
 namespace {
 
-// Input: 8-bit integers
-// first  f0 f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 f15 f16 f17 f18 f19 f20 f21 f22 f23 f24 f25 f26 f27 f28 f29 f30 f31
-// second s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 s26 s27 s28 s29 s30 s31
-// Output:
-// first  [f0 s0 f1 s1 f2 s2 f3 s3 f4 s4 f5 s5 f6 s6 f7 s7] [f16 s16 f17 s17 f18 s18 f19 s19 f20 s20 f21 s21 f22 s22 f23 s23]
-// second [f8 s8 f9 s9 f10 s10 f11 s11 f12 s12 f13 s13 f14 s14 f15 s15] [f24 s24 f25 s25 f26 s26 f27 s27 f28 s28 f29 s29 f30 s30 f31 s31]
-INTGEMM_INTERLEAVE(__m256i, 256)
-
 inline void ReshapeToEights16(const float *input, __m256 quant_mult_reg, int cols, __m256i &out0, __m256i &out1, __m256i &out2, __m256i &out3) {
   out0 = QuantizeTile16(input,            input + 8 * cols, quant_mult_reg);
   out2 = QuantizeTile16(input + 1 * cols, input + 9 * cols, quant_mult_reg);

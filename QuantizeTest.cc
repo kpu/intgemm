@@ -1,6 +1,7 @@
-#include "Quantize.h"
 #include "avx512_gemm.h"
-#include "StopWatch.h"
+#include "avx2_gemm.h"
+#include "sse2_gemm.h"
+#include "aligned.h"
 
 #include <cstring>
 #include <math.h>
@@ -9,6 +10,24 @@
 
 namespace intgemm {
 namespace {
+
+void QuantizeRef(const float *input, int16_t *output, float quant_mult, std::size_t size) {
+  for (std::size_t i = 0; i < size; ++i) {
+    float value = roundf(input[i] * quant_mult);
+    value = std::max(-32768.0f, value);
+    value = std::min(32767.0f, value);
+    output[i] = value;
+  }
+}
+
+void QuantizeRef(const float *input, int8_t *output, float quant_mult, std::size_t size) {
+  for (std::size_t i = 0; i < size; ++i) {
+    float value = roundf(input[i] * quant_mult);
+    value = std::max(-127.0f, value);
+    value = std::min(127.0f, value);
+    output[i] = value;
+  }
+}
 
 template <class I> bool IsOff(float from, I ref, I test) {
   if (ref == test) return false;
@@ -20,101 +39,46 @@ template <class I> bool IsOff(float from, I ref, I test) {
   return true;
 }
 
-bool Test(const float *input_unaligned, float quant_mult, std::size_t size) {
+template <class Backend> bool Test(const float *input_unaligned, float quant_mult, std::size_t size) {
+  typedef typename Backend::Integer Integer;
   bool success = true;
-  float *input = static_cast<float*>(aligned_alloc(64, sizeof(float) * size));
-  std::memcpy(input, input_unaligned, sizeof(float) * size);
-  void *mem = aligned_alloc(64, sizeof(int16_t) * size * 2);
-  int16_t *ref16 = static_cast<int16_t*>(mem);
-  int16_t *test16 = ref16 + size;
-  slow::Quantize16(input, ref16, quant_mult, size);
-  AVX2::Quantize16(input, test16, quant_mult, size);
+  free_ptr<float> input(AlignedArray<float>(size));
+  std::memcpy(input.get(), input_unaligned, sizeof(float) * size);
+
+  free_ptr<Integer> ref(AlignedArray<Integer>(size));
+  free_ptr<Integer> test(AlignedArray<Integer>(size));
+  QuantizeRef(input.get(), ref.get(), quant_mult, size);
+  Backend::Quantize(input.get(), test.get(), quant_mult, size);
   for (std::size_t i = 0; i < size; ++i) {
-    if (IsOff(input[i] * quant_mult, ref16[i], test16[i])) {
-      std::cerr << "16-bit error at " << i << " from " << input[i] << '*' << quant_mult << '=' << (input[i]*quant_mult) << " ref = " <<  ref16[i] << " test = " << test16[i] << '\n';
+    if (IsOff(input.get()[i] * quant_mult, ref.get()[i], test.get()[i])) {
+      std::cerr << "Error at " << i << " from " << input.get()[i] << '*' << quant_mult << '=' << (input.get()[i]*quant_mult) << " ref = " <<  ref.get()[i] << " test = " << test.get()[i] << '\n';
       success = false;
     }
   }
-
-  int8_t *ref8 = static_cast<int8_t*>(mem);
-  int8_t *test8 = ref8 + size;
-  slow::Quantize8(input, ref8, quant_mult, size);
-  AVX2::Quantize8(input, test8, quant_mult, size);
-  for (std::size_t i = 0; i < size; ++i) {
-    if (IsOff(input[i] * quant_mult, ref8[i], test8[i])) {
-      std::cerr << "8-bit error at " << i << " from " << input[i] << '*' << quant_mult << "=" << (input[i]*quant_mult) << " ref = " << (int16_t)ref8[i] << " test = " << (int16_t)test8[i] << '\n';
-      success = false;
-    }
-  }
-
-  free(input);
-  free(mem);
   return success;
 }
 
-void Benchmark(std::size_t size) {
-  float *input = (float*)aligned_alloc(64, sizeof(float) * size);
-  void *output = aligned_alloc(64, sizeof(int16_t) * size);
-  int8_t *out8 = (int8_t*)output;
-  int16_t *out16 = (int16_t*)output;
-  for (std::size_t i = 0; i < size; ++i) {
-    input[i] = i;
-  }
-#ifdef __AVX512F__
-  // Burn in.
-  slow::Quantize16(input, out16, 3, size);
-  {
-    StopWatch w("AVX512 16-bit");
-    for (int i = 0; i < 10; ++i)
-      AVX512::Quantize16(input, out16, 3, size);
-  }
-#endif
-  slow::Quantize16(input, out16, 3, size);
-  {
-    StopWatch w("AVX2 16-bit");
-    for (int i = 0; i < 10; ++i)
-      AVX2::Quantize16(input, out16, 3, size);
-  }
-  slow::Quantize16(input, out16, 3, size);
-  {
-    StopWatch w("SSE 16-bit");
-    for (int i = 0; i < 10; ++i)
-      SSE::Quantize16(input, out16, 3, size);
-  }
-#ifdef __AVX512F__
-  slow::Quantize8(input, out8, 3, size);
-  {
-    StopWatch w("AVX512 8-bit");
-    for (int i = 0; i < 10; ++i)
-      AVX512::Quantize8(input, out8, 3, size);
-  }
-#endif
-  slow::Quantize8(input, out8, 3, size);
-  {
-    StopWatch w("AVX2 8-bit");
-    for (int i = 0; i < 10; ++i)
-      AVX2::Quantize8(input, out8, 3, size);
-  }
-  slow::Quantize8(input, out8, 3, size);
-  {
-    StopWatch w("SSE 8-bit");
-    for (int i = 0; i < 10; ++i)
-      SSE::Quantize8(input, out8, 3, size);
-  }
+template <class Backend> bool TestMany() {
+  bool success = true;
+  float input[32] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
+  success &= Test<Backend>(input, 1.0, 32);
+  success &= Test<Backend>(input, 32.0, 32);
+  float corners[32] = {-32769, -32768, -32767, -129, -128, -127, -1, 0, 1, 126, 127, 128, 129, 32766, 32768, 32769, -1.9, -1.5, -1.1, -1, -0.9, -0.5, -0.1, 0.0, 0.1, 0.5, 0.9, 1.0, 1.1, 1.5, 1.9, 16056.8};
+  success &= Test<Backend>(corners, 1.0, sizeof(corners) / sizeof(float));
+  success &= Test<Backend>(corners, -1.0, sizeof(corners) / sizeof(float));
+  success &= Test<Backend>(corners, -0.49, sizeof(corners) / sizeof(float));
+  return success;
 }
 
 } // namespace
 } // namespace intgemm
 
 int main() {
-  float input[32] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
+  using namespace intgemm;
   bool success = true;
-  success &= intgemm::Test(input, 1.0, 32);
-  success &= intgemm::Test(input, 32.0, 32);
-  float corners[32] = {-32769, -32768, -32767, -129, -128, -127, -1, 0, 1, 126, 127, 128, 129, 32766, 32768, 32769, -1.9, -1.5, -1.1, -1, -0.9, -0.5, -0.1, 0.0, 0.1, 0.5, 0.9, 1.0, 1.1, 1.5, 1.9, 16056.8};
-  success &= intgemm::Test(corners, 1.0, sizeof(corners) / sizeof(float));
-  success &= intgemm::Test(corners, -1.0, sizeof(corners) / sizeof(float));
-  success &= intgemm::Test(corners, -0.49, sizeof(corners) / sizeof(float));
-  intgemm::Benchmark(1048576);
+  success &= TestMany<AVX2_8bit>();
+  success &= TestMany<AVX2_16bit>();
+  success &= TestMany<SSE2_8bit>();
+  success &= TestMany<SSE2_16bit>();
   return success ? 0 : 1;
 }
