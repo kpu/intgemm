@@ -1,5 +1,6 @@
 #include "avx2_gemm.h"
 #include "interleave.h"
+#include "reduce.h"
 
 #include <cassert>
 #include <emmintrin.h>
@@ -184,30 +185,14 @@ void AVX2_8bit::PrepareB(const float *input, int8_t *output, float quant_mult, i
 }
 
 namespace {
-/* Again just a shorter version of AVX512.  TODO: test shift and friends.  Or _mm256_hadds_epi16 */
-inline void Convert32Sum(__m256i &sum) {
-  sum = _mm256_madd_epi16(sum, _mm256_set1_epi16(1) /* Empirically gcc is smart enough to pull this out */);
-}
-
-/* Take 4 registers with 32-bit values to be horizontally added.  Reduce them
- * to one register with 32-bit values in the pattern 1 2 3 4 1 2 3 4, leaving
- * the final addition (which crosses 128-bit lanes) to the caller. */
-inline __m256i Pack1234(__m256i sum1, __m256i sum2, __m256i sum3, __m256i sum4) {
-  // 1 2 1 2 1 2 1 2
-  __m256i pack12 = _mm256_add_epi32(_mm256_unpackhi_epi32(sum1, sum2), _mm256_unpacklo_epi32(sum1, sum2));
-  // 3 4 3 4 3 4 3 4
-  __m256i pack34 = _mm256_add_epi32(_mm256_unpackhi_epi32(sum3, sum4), _mm256_unpacklo_epi32(sum3, sum4));
-  // 1 2 3 4 1 2 3 4
-  return _mm256_add_epi32(_mm256_unpackhi_epi64(pack12, pack34), _mm256_unpacklo_epi64(pack12, pack34));
-}
 
 // Assuming sum1, sum2, sum3, sum4, sum5, sum6, and sum7 are arrays 32-bit
 // signed integers, reduce within each.
 // Returns [sum(sum1), sum(sum2), sum(sum3), sum(sum4), sum(sum5), sum(sum6), sum(sum7), sum(sum8)]
 // TODO: consider doing in 64-bit, allowing more bits of quantization?
 inline __m256i Reduce32(__m256i sum1, __m256i sum2, __m256i sum3, __m256i sum4, __m256i sum5, __m256i sum6, __m256i sum7, __m256i sum8) {
-  __m256i pack1234 = Pack1234(sum1, sum2, sum3, sum4);
-  __m256i pack5678 = Pack1234(sum5, sum6, sum7, sum8);
+  __m256i pack1234 = Pack0123(sum1, sum2, sum3, sum4);
+  __m256i pack5678 = Pack0123(sum5, sum6, sum7, sum8);
   // Introducing "f" for first half and "s" for second half, we have this order:
   // pack1234 = 1f 2f 3f 4f 1s 2s 3s 4s
   // pack5678 = 5f 6f 7f 8f 5s 6s 7s 8s

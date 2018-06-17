@@ -6,6 +6,7 @@
 #include <xmmintrin.h>
 
 #include <cassert>
+#include <cstdint>
 
 namespace intgemm {
 
@@ -196,6 +197,9 @@ template <class Quantizer> inline void PrepareBFor8(const float *input, int8_t *
 
   for (int c = 0; c < cols; c += kColStride) {
     for (int r = 0; r < rows; r += sizeof(Register), output += 8) {
+      // Quantize and perform a transpose with height sizeof(Register) and width 8.
+      // This isn't quite Transpose8InLane because it's half the number of columns,
+      // so each register starts with two rows instead of being one row.
       // The quantizers know to skip a row.
       output[0] = q.ForReshape(input + cols * (r    ) + c, cols);
       output[1] = q.ForReshape(input + cols * (r + 1) + c, cols);

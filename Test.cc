@@ -35,6 +35,7 @@
 #include <memory>
 
 #include <iostream>
+#include <iomanip>
 
 namespace intgemm {
 
@@ -42,7 +43,7 @@ namespace intgemm {
 template <class V> void SlowRearrangeTile(const V *from, V *to, int simd, int unroll, int cols) {
   for (int i = 0; i < unroll; ++i) {
     for (int j = 0; j < simd; ++j) {
-      *to++ = from[cols * j + i];
+      to[simd * i + j] = from[cols * j + i];
     }
   }
 }
@@ -105,7 +106,7 @@ void TestTranspose8() {
 template <class T> void PrintMatrix(const T *mem, int rows, int cols) {
   for (int r = 0; r < rows; ++r) {
     for (int c = 0; c < cols; ++c) {
-      std::cout << (int64_t) mem[r * cols + c] << ' ';
+      std::cout << std::setw(4) << (int64_t) mem[r * cols + c] << ' ';
     }
     std::cout << '\n';
   }
@@ -115,8 +116,8 @@ template <class Routine> void TestPrepare(int rows = 32, int cols = 16) {
   // Create array.
   free_ptr<float> input(AlignedArray<float>(rows * cols));
   for (int i = 0; i < rows * cols; ++i) {
-    input.get()[i] = (i > 127) ? (i - 256) : i;
- /*     (float)rand() / (float)RAND_MAX * 256.0 - 127.0 */;
+    input.get()[i] = //(i > 127) ? (i - 256) : i;
+      (float)rand() / (float)RAND_MAX * 256.0 - 127.0;
   }
 
   typedef typename Routine::Integer Integer;
@@ -131,18 +132,15 @@ template <class Routine> void TestPrepare(int rows = 32, int cols = 16) {
   SlowRearrange<Integer>(quantized.get(), reference.get(), Routine::kBTileRow, Routine::kBTileCol, rows, cols);
 
   if (memcmp(reference.get(), test.get(), rows * cols * sizeof(Integer))) {
-    std::cerr << "TestPrepare " << Routine::Name() << " Mismatch ";
-
+    std::cerr << "TestPrepare " << Routine::Name() << " Mismatch:\n";
     std::cout << "Quantized Input" << '\n';
     PrintMatrix(quantized.get(), rows, cols);
     std::cerr << "Reference" << '\n';
     PrintMatrix(reference.get(), rows, cols);
     std::cerr << "Routine" << '\n';
     PrintMatrix(test.get(), rows, cols);
-
   }
 }
-
 
 // Compute A*B slowly in floats.
 void SlowRefFloat(const float *A, const float *B, float *C, int A_rows, int width, int B_cols) {
@@ -239,6 +237,8 @@ int main(int argc, char ** argv) {
     TestPrepare<AVX2_16bit>(64, 32);
     TestPrepare<SSE2_16bit>(8, 8);
     TestPrepare<SSE2_8bit>(16, 8);
+    TestPrepare<SSE2_8bit>(32, 16);
+    TestPrepare<SSE2_8bit>(32, 32);
     // Top matrix sizes from Marian
     TestBoth(8, 256, 256);
     TestBoth(8, 2048, 256);
