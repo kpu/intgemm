@@ -1,6 +1,6 @@
 CXX := g++
 CXXFLAGS := -Wall -Werror -fPIC -O3 -march=native
-SRC := avx512_gemm.cc avx2_gemm.cc sse2_gemm.cc SSE_Matrix_Mult.cc Quantize.cc StopWatch.cc 
+SRC := avx512_gemm.cc avx2_gemm.cc sse2_gemm.cc SSE_Matrix_Mult.cc StopWatch.cc 
 OBJ := ${SRC:.cc=.o}
 
 all: Test QuantizeTest Benchmark
@@ -17,7 +17,7 @@ Benchmark: ${OBJ} Benchmark.o
 QuantizeTest: QuantizeTest.o StopWatch.o avx512_gemm.o avx2_gemm.o sse2_gemm.o
 	${CXX} ${CXXFLAGS} QuantizeTest.o avx512_gemm.o avx2_gemm.o sse2_gemm.o -o QuantizeTest
 
-.c.o:
+.c.o: interleave.h
 	${CXX} ${CXXFLAGS} -c $<
 
 clean:

@@ -51,6 +51,12 @@ INTGEMM_INTERLEAVE(__m256i, 256)
 INTGEMM_INTERLEAVE(__m512i, 512)
 #endif
 
+template <class Register> inline void Swap(Register &a, Register &b) {
+  Register tmp = a;
+  a = b;
+  b = tmp;
+}
+
 /* Transpose registers containing 8 packed 16-bit integers.
  * Each 128-bit lane is handled independently.
  */
@@ -96,14 +102,8 @@ template <class Register> inline void Transpose16InLane(Register &r0, Register &
   // r5: columns 5 5 5 5 5 5 5 5 from rows 0 through 7
   
   // Empirically gcc is able to remove these movs and just rename the outputs of Interleave64.
-  // Swap r1 and r4
-  Register tmp = r4;
-  r4 = r1;
-  r1 = tmp;
-  // Swap r3 and r6.
-  tmp = r3;
-  r3 = r6;
-  r6 = tmp;
+  Swap(r1, r4);
+  Swap(r3, r6);
 }
 
 /* Tranpose registers containing 16 packed 8-bit integers.
@@ -115,7 +115,9 @@ template <class Register> inline void Transpose8InLane(
   // Get 8-bit values to 16-bit values so they can travel together.
   Interleave8(r0, r1);
   // r0: columns 0 0 1 1 2 2 3 3 4 4 5 5 6 6 7 7 from rows 0 and 1.
+  // r1: columns 8 8 9 9 10 10 11 11 12 12 13 13 14 14 15 15 from rows 0 and 1.
   Interleave8(r2, r3);
+  // r2: columns 0 0 1 1 2 2 3 3 4 4 5 5 6 6 7 7 from rows 2 and 3.
   Interleave8(r4, r5);
   Interleave8(r6, r7);
   Interleave8(r8, r9);
@@ -124,6 +126,24 @@ template <class Register> inline void Transpose8InLane(
   Interleave8(r14, r15);
   Transpose16InLane(r0, r2, r4, r6, r8, r10, r12, r14);
   Transpose16InLane(r1, r3, r5, r7, r9, r11, r13, r15);
+  Register tmp = r2;
+  r2 = r4;
+  r4 = r8;
+  r8 = r1;
+  r1 = tmp;
+  tmp = r3;
+  r3 = r6;
+  r6 = r12;
+  r12 = r9;
+  r9 = tmp;
+  tmp = r5;
+  r5 = r10;
+  r10 = tmp;
+  tmp = r7;
+  r7 = r14;
+  r14 = r13;
+  r13 = r11;
+  r11 = tmp;
 }
 
 } // namespace intgemm

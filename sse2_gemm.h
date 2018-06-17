@@ -21,6 +21,8 @@ struct SSE2_16bit {
   static void PrepareB(const float *input, int16_t *output, float quant_mult, int rows, int cols);
 
   static void Multiply(const int16_t *A, const int16_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols);
+
+  static const char *Name() { return "SSE2 16-bit"; }
 };
 
 struct SSE2_8bit {
@@ -40,6 +42,8 @@ struct SSE2_8bit {
   static void PrepareB(const float *input, int8_t *output, float quant_mult, int rows, int cols);
 
   static void Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols);
+  
+  static const char *Name() { return "SSE2 8-bit"; }
 };
 
 #endif // __SSE2__

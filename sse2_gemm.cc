@@ -95,9 +95,19 @@ void SSE2_16bit::PrepareB(const float *input, int16_t *output_shadow, float quan
       output[5] = QuantizeTile16(input + cols * (r + 5) + c, quant_mult_reg);
       output[6] = QuantizeTile16(input + cols * (r + 6) + c, quant_mult_reg);
       output[7] = QuantizeTile16(input + cols * (r + 7) + c, quant_mult_reg);
-      Transpose16InLane(output[9], output[1], output[2], output[3], output[4], output[5], output[6], output[7]);
+      Transpose16InLane(output[0], output[1], output[2], output[3], output[4], output[5], output[6], output[7]);
     }
   }
+}
+
+void SSE2_8bit::PrepareB(const float *input, int8_t *output_shadow, float quant_mult, int rows, int cols) {
+  assert(rows % kBTileRow == 0);
+  assert(cols % kBTileCol == 0);
+  assert(reinterpret_cast<uintptr_t>(input) % 16 == 0);
+  __m128i *output = reinterpret_cast<__m128i*>(output_shadow);
+  assert(reinterpret_cast<uintptr_t>(output) % 16 == 0);
+//  const __m128 quant_mult_reg = _mm_set1_ps(quant_mult);
+
 }
 
 #endif // __SSE2__

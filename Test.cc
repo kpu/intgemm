@@ -64,7 +64,7 @@ template <class V> void SlowTranspose(const V *from, V *to, int rows, int cols) 
   }
 }
 
-void TestTranspose() {
+void TestTranspose16() {
   free_ptr<int16_t> input(AlignedArray<int16_t>(8 * 8));
   for (int16_t i = 0; i < 64; ++i) {
     input.get()[i] = i;
@@ -78,7 +78,26 @@ void TestTranspose() {
 
   for (int16_t i = 0; i < 64; ++i) {
     if (ref.get()[i] != input.get()[i]) {
-      std::cerr << "Transpose failure at " << i << ": " << ref.get()[i] << " != " << input.get()[i] << '\n';
+      std::cerr << "16-bit transpose failure at " << i << ": " << ref.get()[i] << " != " << input.get()[i] << '\n';
+    }
+  }
+}
+
+void TestTranspose8() {
+  free_ptr<int8_t> input(AlignedArray<int8_t>(16 * 16));
+  for (int i = 0; i < 16 * 16; ++i) {
+    input.get()[i] = i;
+  }
+  free_ptr<int8_t> ref(AlignedArray<int8_t>(16 * 16));
+  SlowTranspose(input.get(), ref.get(), 16, 16);
+
+  // Overwrite input.
+  __m128i *t = reinterpret_cast<__m128i*>(input.get());
+  Transpose8InLane(t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7], t[8], t[9], t[10], t[11], t[12], t[13], t[14], t[15]);
+
+  for (int i = 0; i < 16 * 16; ++i) {
+    if (ref.get()[i] != input.get()[i]) {
+      std::cerr << "8-bit transpose failure at " << i << ": " << (int16_t)ref.get()[i] << " != " << (int16_t)input.get()[i] << '\n';
     }
   }
 }
@@ -104,7 +123,7 @@ template <class Routine> void TestPrepare(int rows = 32, int cols = 16) {
 
   for (int i = 0; i < rows * cols; ++i) {
     if (reference.get()[i] != test.get()[i]) {
-      std::cerr << "Offset " << i << ' ' << (int16_t)reference.get()[i] << " != " << (int16_t)test.get()[i] << '\n';
+      std::cerr << "TestPrepare " << Routine::Name() << " error at offset " << i << ' ' << (int16_t)reference.get()[i] << " != " << (int16_t)test.get()[i] << '\n';
     }
   }
 }
@@ -199,7 +218,8 @@ void TestBoth(int A_rows, int width, int B_cols) {
 int main(int argc, char ** argv) {
     std::srand(45678);
     using namespace intgemm;
-    TestTranspose();
+    TestTranspose16();
+    TestTranspose8();
     TestPrepare<AVX2_8bit>(64, 32);
     TestPrepare<AVX2_16bit>(64, 32);
     TestPrepare<SSE2_16bit>(8, 8);
