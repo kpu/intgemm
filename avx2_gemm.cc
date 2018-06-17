@@ -56,12 +56,14 @@ class QuantizeTile8 {
     }
 
     inline __m256i ForReshape(const float *input, int cols) {
+      // Put higher rows in the second half of the register.  These will jumble
+      // around in the same way then conveniently land in the right place.
       return Tile(input, input + 2 * cols, input + 16 * cols, input + 18 * cols);
     }
 
   private:
     inline __m256i Tile(const float *input0, const float *input1, const float *input2, const float *input3) {
-      // Looking at the assembly, gcc has pulled this outside the loop in Quantize8.
+      // Looking at the assembly, gcc has pulled this outside the loops calling this.
       const __m256i neg127 = _mm256_set1_epi8(-127);
       const __m256i shuffle_param = _mm256_set_epi32(7, 3, 6, 2, 5, 1, 4, 0);
       // Grab 4 registers at a time in 32-bit format.
