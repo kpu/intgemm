@@ -116,62 +116,6 @@ void SSE2_16bit::PrepareB(const float *input, int16_t *output_shadow, float quan
   }
 }
 
-namespace {
-
-template <class Quantizer> inline void ReshapeToEights8(const float *input, typename Quantizer::F quant_mult_reg, int cols, typename Quantizer::I &out0, typename Quantizer::I &out1, typename Quantizer::I &out2, typename Quantizer:: I &out3) {
-  // Rows 0 and 2
-  out0 = Quantizer::ForReshape(input, cols, quant_mult_reg);
-  // Rows 1 and 3
-  out2 = Quantizer::ForReshape(input + cols, cols, quant_mult_reg);
-  // Rows 4 and 6
-  out1 = Quantizer::ForReshape(input + 4 * cols, cols, quant_mult_reg);
-  // Rows 5 and 7
-  out3 = Quantizer::ForReshape(input + 5 * cols, cols, quant_mult_reg);
-  Interleave8(out0, out2);
-  Interleave16(out0, out2);
-  // out0:
-  // [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3]
-  // Rows 0, 1, 2, and 3
-  // out2:
-  // [4,4,4,4,5,5,5,5,6,6,6,6,7,7,7,7]
-  // Or as 32-bit blocks: [4,5,6,7]
-  Interleave8(out1, out3);
-  Interleave16(out1, out3);
-  // out1: [0,1,2,3] from rows 4-7 [0,1,2,3] from rows 20-23
-  // out3: [5,6,7,8] from rows 4-7 [5,6,7,8] from rows 20-23
-  Interleave32(out0, out1);
-  Interleave32(out2, out3);
-  // out0: 64-bit [0,1] from rows 0-7 [0,1] from rows 16-23
-  // out1: 64-bit [2,3] from rows 0-7 [2,3] from rows 16-23
-  // out2: 64-bit [5,6] from rows 0-7 [5,6] from rows 16-23
-  // out3: 64-bit [7,8] from rows 0-7 [7,8] from rows 16-23
-}
-
-template <class Quantizer> inline void GenericPrepareB8(const float *input, int8_t *output_shadow, float quant_mult, int rows, int cols) {
-  typedef typename Quantizer::I Register;
-  // Currently all multipliers have a stride of 8 columns.
-  const int kColStride = 8;
-  assert(cols % kColStride == 0);
-  assert(rows % sizeof(Register) == 0);
-  assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0);
-  Register *output = reinterpret_cast<Register*>(output_shadow);
-  assert(reinterpret_cast<uintptr_t>(output) % sizeof(Register) == 0);
-
-  typename Quantizer::F quant_mult_reg = Quantizer::Broadcast(quant_mult);
-  for (int c = 0; c < cols; c += kColStride) {
-    for (int r = 0; r < rows; r += sizeof(Register), output += 8) {
-      ReshapeToEights8<Quantizer>(input + r * cols + c,       quant_mult_reg, cols, output[0], output[2], output[4], output[6]);
-      ReshapeToEights8<Quantizer>(input + (r + 8) * cols + c, quant_mult_reg, cols, output[1], output[3], output[5], output[7]);
-      Interleave64(output[0], output[1]);
-      Interleave64(output[2], output[3]);
-      Interleave64(output[4], output[5]);
-      Interleave64(output[6], output[7]);
-    }
-  }
-}
-
-} // namespace
-
 void SSE2_8bit::PrepareB(const float *input, int8_t *output, float quant_mult, int rows, int cols) {
   PrepareBFor8(input, output, QuantizeTile8(quant_mult), rows, cols);
 }
