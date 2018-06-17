@@ -150,40 +150,6 @@ template <class Register> inline void Transpose8InLane(
   r11 = tmp;
 }
 
-// This is a helper function for ReshapeBFor8
-// It calls the quantizer to retrieve rows 0-7 of input from a row-major
-// matrix, then does what it can to transpose.
-template <class Quantizer> inline void ReshapeToEights8(const float *input, Quantizer quant, int cols, typename Quantizer::I &out0, typename Quantizer::I &out1, typename Quantizer::I &out2, typename Quantizer:: I &out3) {
-  // Rows 0 and 2
-  out0 = quant.ForReshape(input, cols);
-  // Rows 1 and 3
-  out2 = quant.ForReshape(input + cols, cols);
-  // Rows 4 and 6
-  out1 = quant.ForReshape(input + 4 * cols, cols);
-  // Rows 5 and 7
-  out3 = quant.ForReshape(input + 5 * cols, cols);
-  Interleave8(out0, out2);
-  Interleave16(out0, out2);
-  // out0:
-  // [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3] [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3]
-  // Rows 0, 1, 2, and 3 in first 128; rows 16, 17, 18, and 19 in last 128
-  // out2:
-  // [4,4,4,4,5,5,5,5,6,6,6,6,7,7,7,7] [4,4,4,4,5,5,5,5,6,6,6,6,7,7,7,7]
-  // Or as 32-bit blocks: [4,5,6,7]
-  Interleave8(out1, out3);
-  Interleave16(out1, out3);
-  // out1: [0,1,2,3] from rows 4-7 [0,1,2,3] from rows 20-23
-  // out3: [5,6,7,8] from rows 4-7 [5,6,7,8] from rows 20-23
-  // out1: [0,1,2,3] from rows 4-7 [0,1,2,3] from rows 20-23
-  // out3: [5,6,7,8] from rows 4-7 [5,6,7,8] from rows 20-23
-  Interleave32(out0, out1);
-  Interleave32(out2, out3);
-  // out0: 64-bit [0,1] from rows 0-7 [0,1] from rows 16-23
-  // out1: 64-bit [2,3] from rows 0-7 [2,3] from rows 16-23
-  // out2: 64-bit [5,6] from rows 0-7 [5,6] from rows 16-23
-  // out3: 64-bit [7,8] from rows 0-7 [7,8] from rows 16-23
-}
-
 // PREPARE B: quantize and rearrange.  B is presumed to be constantparameters
 // so we can take our time rearranging it in order to save during the multiply.
 //
@@ -218,7 +184,7 @@ template <class Quantizer> inline void ReshapeToEights8(const float *input, Quan
 // 256 272
 // 257 273
 // ... ...
-template <class Quantizer> inline void PrepareBFor8(const float *input, int8_t *output_shadow, Quantizer quant, int rows, int cols) {
+template <class Quantizer> inline void PrepareBFor8(const float *input, int8_t *output_shadow, Quantizer q, int rows, int cols) {
   typedef typename Quantizer::I Register;
   // Currently all multipliers have a stride of 8 columns.
   const int kColStride = 8;
@@ -230,16 +196,20 @@ template <class Quantizer> inline void PrepareBFor8(const float *input, int8_t *
 
   for (int c = 0; c < cols; c += kColStride) {
     for (int r = 0; r < rows; r += sizeof(Register), output += 8) {
-      ReshapeToEights8<Quantizer>(input + r * cols + c,       quant, cols, output[0], output[2], output[4], output[6]);
-      // Read everything 8 rows later in B.
-      ReshapeToEights8<Quantizer>(input + (r + 8) * cols + c, quant, cols, output[1], output[3], output[5], output[7]);
-      // Interleave the results from 8 rows later to finally get:
-      // B's column c in output[0]
-      // B's column c + 1 in output[1] etc
-      Interleave64(output[0], output[1]);
-      Interleave64(output[2], output[3]);
-      Interleave64(output[4], output[5]);
-      Interleave64(output[6], output[7]);
+      // The quantizers know to skip a row.
+      output[0] = q.ForReshape(input + cols * (r    ) + c, cols);
+      output[1] = q.ForReshape(input + cols * (r + 1) + c, cols);
+      output[2] = q.ForReshape(input + cols * (r + 4) + c, cols);
+      output[3] = q.ForReshape(input + cols * (r + 5) + c, cols);
+      output[4] = q.ForReshape(input + cols * (r + 8) + c, cols);
+      output[5] = q.ForReshape(input + cols * (r + 9) + c, cols);
+      output[6] = q.ForReshape(input + cols * (r + 12) + c, cols);
+      output[7] = q.ForReshape(input + cols * (r + 13) + c, cols);
+      Interleave8(output[0], output[1]);
+      Interleave8(output[2], output[3]);
+      Interleave8(output[4], output[5]);
+      Interleave8(output[6], output[7]);
+      Transpose16InLane(output[0], output[1], output[2], output[3], output[4], output[5], output[6], output[7]);
     }
   }
 }
