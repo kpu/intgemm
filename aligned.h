@@ -19,4 +19,17 @@ template <class T> T* AlignedArray(std::size_t size) {
   return static_cast<T*>(aligned_alloc(64, size * sizeof(T)));
 }
 
+template <class T> class AlignedVector {
+  public:
+    explicit AlignedVector(std::size_t size) : mem_(AlignedArray<T>(size)) {}
+
+    T &operator[](std::size_t offset) { return mem_.get()[offset]; }
+    const T &operator[](std::size_t offset) const { return mem_.get()[offset]; }
+
+    T *get() { return mem_.get(); }
+    const T *get() const { return mem_.get(); }
+  private:
+    free_ptr<T> mem_;
+};
+
 } // namespace intgemm

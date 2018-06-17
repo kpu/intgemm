@@ -1,6 +1,7 @@
+#include "aligned.h"
 #include "avx512_gemm.h"
 #include "avx2_gemm.h"
-#include "SSE_Matrix_Mult.h"
+#include "sse2_gemm.h"
 #include "StopWatch.h"
 
 #include <cassert>
@@ -13,78 +14,54 @@
 
 namespace intgemm {
 
-void Time(int num_A_rows, int num_B_rows, int width, int repeat = 20) {
-    std::cout << num_A_rows << '\t' << num_B_rows << '\t' << width << '\n';
-    float * A = static_cast<float*>(aligned_alloc(64, sizeof(float) * num_A_rows * width));
-    float * B = static_cast<float*>(aligned_alloc(64, sizeof(float) * num_B_rows * width));
-    
-    for (int i = 0; i < num_A_rows*width; i++) {
+struct RandomMatrices {
+  RandomMatrices(int A_rows_in, int width_in, int B_cols_in) :
+    A_rows(A_rows_in), width(width_in), B_cols(B_cols_in),
+    A(A_rows * width), B(width * B_cols) {
+    for (int i = 0; i < A_rows * width; i++) {
         A[i] = ((float)rand()/(float)RAND_MAX)*2.0f - 1.0f;
     }
     
-    for (int i = 0; i < num_B_rows*width; i++) {
+    for (int i = 0; i < B_cols * width; i++) {
         B[i] = ((float)rand()/(float)RAND_MAX)*2.0f - 1.0f;
     }
+  }
 
-    __m256i * quant_A = static_cast<__m256i *>(aligned_alloc(64, num_A_rows*width * 2));
-    __m256i * quant_B = static_cast<__m256i *>(aligned_alloc(64, num_B_rows*width * 2));
-    float *AVX_C = static_cast<float*>(aligned_alloc(64, num_A_rows * num_B_rows * sizeof(float)));
+  const int A_rows, width, B_cols;
+  AlignedVector<float> A, B;
+};
 
-    // We quantize with 10 bits of precision. This works well "universally". 
-    // See the top of this file for more info on why.
-    float quant_mult = 1000.0;
-    // If we quantize to n bits and then multiply the values together, the result will be quantized to n^2 bits.
-    // So we must divide by 1.0/(n^2) to get back the original value.
-    float unquant_mult = 1.0/(quant_mult*quant_mult);
-
-    intgemm::AVX2::Quantize16(B, (int16_t*)quant_B, quant_mult, num_B_rows * width);
-    intgemm::AVX2::Quantize16(A, (int16_t*)quant_A, quant_mult, num_A_rows * width);
-
-    AVX2::MatrixMult16((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
-    {
-      StopWatch w("16-bit", repeat);
-      for (int i = 0; i < repeat; ++i)
-        AVX2::MatrixMult16((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
+template <class Backend> void Run(RandomMatrices &m, int repeat = 20) {
+  typedef typename Backend::Integer Integer;
+  float quant_mult = 127.0 / 2;
+  float unquant_mult = 1.0 / (quant_mult * quant_mult);
+  std::cout << Backend::Name() << std::endl;
+  AlignedVector<Integer> A_prepared(m.A_rows * m.width);
+  {
+    StopWatch w("PrepareA");
+    Backend::PrepareA(m.A.get(), A_prepared.get(), quant_mult, m.A_rows, m.width);
+  }
+  AlignedVector<Integer> B_prepared(m.width * m.B_cols);
+  {
+    StopWatch w("PrepareB");
+    Backend::PrepareB(m.B.get(), B_prepared.get(), quant_mult, m.width, m.B_cols);
+  }
+  AlignedVector<float> output(m.A_rows * m.B_cols);
+  // Burn in
+  Backend::Multiply(A_prepared.get(), B_prepared.get(), output.get(), unquant_mult, m.A_rows, m.width, m.B_cols);
+  {
+    StopWatch w("Multiply", repeat);
+    for (int i = 0; i < repeat; ++i) {
+      Backend::Multiply(A_prepared.get(), B_prepared.get(), output.get(), unquant_mult, m.A_rows, m.width, m.B_cols);
     }
+  }
+}
 
-
-    // Moving on to 8-bit.
-    quant_mult = 64;
-    unquant_mult = 1.0/(quant_mult*quant_mult);
-
-    {
-//      StopWatch w("Quantize8 B");
-      intgemm::AVX2::Quantize8(B, (int8_t*)quant_B, quant_mult, num_B_rows * width);
-    }
-    {
-//      StopWatch w("Quantize8 A");
-      intgemm::AVX2::Quantize8(A, (int8_t*)quant_A, quant_mult, num_A_rows * width);
-    }
-
-    AVX2::MatrixMult8((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
-    {
-      StopWatch w("8-bit Base", repeat);
-      for (int i = 0; i < repeat; ++i)
-        AVX2::MatrixMult8((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
-    }
-    AVX2::MatrixMult8Contrast((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
-    {
-      StopWatch w("8-bit Contig", repeat);
-      for (int i = 0; i < repeat; ++i)
-        AVX2::MatrixMult8Contrast((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
-    }
-    AVX2::MatrixMult8ASM((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
-    {
-      StopWatch w("8-bit Cont+ASM", repeat);
-      for (int i = 0; i < repeat; ++i)
-        AVX2::MatrixMult8ASM((const __m256i *)quant_A, (const __m256i *)quant_B, AVX_C, unquant_mult, num_A_rows, num_B_rows, width);
-    }
-
-    free(A);
-    free(B);
-    free(quant_A);
-    free(quant_B);
-    free(AVX_C);
+void Time(int A_rows, int width, int B_cols, int repeat = 20) {
+  std::cout << A_rows << '\t' << width << '\t' << B_cols << std::endl;
+  RandomMatrices m(A_rows, width, B_cols);
+  Run<AVX2_8bit>(m, repeat);
+  Run<AVX2_16bit>(m, repeat);
 }
 
 } // namespace intgemm
@@ -95,8 +72,8 @@ int main(int argc, char ** argv) {
     using namespace intgemm;
     // Top matrix sizes from Marian
     Time(8, 256, 256);
-    Time(8, 256, 2048);
     Time(8, 2048, 256);
+    Time(8, 256, 2048);
     Time(320, 256, 256);
     Time(472, 256, 256);
     Time(248, 256, 256);
