@@ -48,30 +48,27 @@ namespace {
 class QuantizeTile8 {
   public:
     typedef __m256i I;
-    typedef __m256 F;
 
-    static inline __m256i Consecutive(const float *input, __m256 quant_mult_reg) {
-      return Tile(input, input + 8, input + 16, input + 24, quant_mult_reg);
+    explicit QuantizeTile8(float quant_mult) : mult_(_mm256_set1_ps(quant_mult)) {}
+
+    inline __m256i Consecutive(const float *input) {
+      return Tile(input, input + 8, input + 16, input + 24);
     }
 
-    static inline __m256i ForReshape(const float *input, int cols, __m256 quant_mult_reg) {
-      return Tile(input, input + 2 * cols, input + 16 * cols, input + 18 * cols, quant_mult_reg);
-    }
-
-    static F Broadcast(float quant_mult) {
-      return _mm256_set1_ps(quant_mult);
+    inline __m256i ForReshape(const float *input, int cols) {
+      return Tile(input, input + 2 * cols, input + 16 * cols, input + 18 * cols);
     }
 
   private:
-    static inline __m256i Tile(const float *input0, const float *input1, const float *input2, const float *input3, __m256 quant_mult_reg) {
+    inline __m256i Tile(const float *input0, const float *input1, const float *input2, const float *input3) {
       // Looking at the assembly, gcc has pulled this outside the loop in Quantize8.
       const __m256i neg127 = _mm256_set1_epi8(-127);
       const __m256i shuffle_param = _mm256_set_epi32(7, 3, 6, 2, 5, 1, 4, 0);
       // Grab 4 registers at a time in 32-bit format.
-      __m256i g0 = QuantizerGrab(input0, quant_mult_reg);
-      __m256i g1 = QuantizerGrab(input1, quant_mult_reg);
-      __m256i g2 = QuantizerGrab(input2, quant_mult_reg);
-      __m256i g3 = QuantizerGrab(input3, quant_mult_reg);
+      __m256i g0 = QuantizerGrab(input0, mult_);
+      __m256i g1 = QuantizerGrab(input1, mult_);
+      __m256i g2 = QuantizerGrab(input2, mult_);
+      __m256i g3 = QuantizerGrab(input3, mult_);
       // Pack 32-bit to 16-bit.
       __m256i packed0 = _mm256_packs_epi32(g0, g1);
       __m256i packed1 = _mm256_packs_epi32(g2, g3);
@@ -85,6 +82,8 @@ class QuantizeTile8 {
       // and the values are only used for GEMM.
       return _mm256_permutevar8x32_epi32(packed, shuffle_param);
     }
+    
+    __m256 mult_;
 };
 } // namespace
 
@@ -92,10 +91,10 @@ class QuantizeTile8 {
 void AVX2_8bit::Quantize(const float *input, int8_t *output, float quant_mult, int size) {
   assert(size % 32 == 0);
   assert(reinterpret_cast<uintptr_t>(input) % 32 == 0);
-  const __m256 quant_mult_reg = _mm256_set1_ps(quant_mult);
+  QuantizeTile8 q(quant_mult);
   const float *end = input + size;
   for (; input != end; input += 32, output += 32) {
-    *reinterpret_cast<__m256i*>(output) = QuantizeTile8::Consecutive(input, quant_mult_reg);
+    *reinterpret_cast<__m256i*>(output) = q.Consecutive(input);
   }
 }
 
@@ -179,7 +178,7 @@ void AVX2_16bit::PrepareB(const float *input, int16_t *output_shadow, float quan
 }
 
 void AVX2_8bit::PrepareB(const float *input, int8_t *output, float quant_mult, int rows, int cols) {
-  PrepareBFor8<QuantizeTile8>(input, output, quant_mult, rows, cols);
+  PrepareBFor8(input, output, QuantizeTile8(quant_mult), rows, cols);
 }
 
 namespace {

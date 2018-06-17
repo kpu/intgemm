@@ -153,15 +153,15 @@ template <class Register> inline void Transpose8InLane(
 // This is a helper function for ReshapeBFor8
 // It calls the quantizer to retrieve rows 0-7 of input from a row-major
 // matrix, then does what it can to transpose.
-template <class Quantizer> inline void ReshapeToEights8(const float *input, typename Quantizer::F quant_mult_reg, int cols, typename Quantizer::I &out0, typename Quantizer::I &out1, typename Quantizer::I &out2, typename Quantizer:: I &out3) {
+template <class Quantizer> inline void ReshapeToEights8(const float *input, Quantizer quant, int cols, typename Quantizer::I &out0, typename Quantizer::I &out1, typename Quantizer::I &out2, typename Quantizer:: I &out3) {
   // Rows 0 and 2
-  out0 = Quantizer::ForReshape(input, cols, quant_mult_reg);
+  out0 = quant.ForReshape(input, cols);
   // Rows 1 and 3
-  out2 = Quantizer::ForReshape(input + cols, cols, quant_mult_reg);
+  out2 = quant.ForReshape(input + cols, cols);
   // Rows 4 and 6
-  out1 = Quantizer::ForReshape(input + 4 * cols, cols, quant_mult_reg);
+  out1 = quant.ForReshape(input + 4 * cols, cols);
   // Rows 5 and 7
-  out3 = Quantizer::ForReshape(input + 5 * cols, cols, quant_mult_reg);
+  out3 = quant.ForReshape(input + 5 * cols, cols);
   Interleave8(out0, out2);
   Interleave16(out0, out2);
   // out0:
@@ -218,7 +218,7 @@ template <class Quantizer> inline void ReshapeToEights8(const float *input, type
 // 256 272
 // 257 273
 // ... ...
-template <class Quantizer> inline void PrepareBFor8(const float *input, int8_t *output_shadow, float quant_mult, int rows, int cols) {
+template <class Quantizer> inline void PrepareBFor8(const float *input, int8_t *output_shadow, Quantizer quant, int rows, int cols) {
   typedef typename Quantizer::I Register;
   // Currently all multipliers have a stride of 8 columns.
   const int kColStride = 8;
@@ -228,12 +228,11 @@ template <class Quantizer> inline void PrepareBFor8(const float *input, int8_t *
   Register *output = reinterpret_cast<Register*>(output_shadow);
   assert(reinterpret_cast<uintptr_t>(output) % sizeof(Register) == 0);
 
-  typename Quantizer::F quant_mult_reg = Quantizer::Broadcast(quant_mult);
   for (int c = 0; c < cols; c += kColStride) {
     for (int r = 0; r < rows; r += sizeof(Register), output += 8) {
-      ReshapeToEights8<Quantizer>(input + r * cols + c,       quant_mult_reg, cols, output[0], output[2], output[4], output[6]);
+      ReshapeToEights8<Quantizer>(input + r * cols + c,       quant, cols, output[0], output[2], output[4], output[6]);
       // Read everything 8 rows later in B.
-      ReshapeToEights8<Quantizer>(input + (r + 8) * cols + c, quant_mult_reg, cols, output[1], output[3], output[5], output[7]);
+      ReshapeToEights8<Quantizer>(input + (r + 8) * cols + c, quant, cols, output[1], output[3], output[5], output[7]);
       // Interleave the results from 8 rows later to finally get:
       // B's column c in output[0]
       // B's column c + 1 in output[1] etc
