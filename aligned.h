@@ -4,7 +4,9 @@
 // free_ptr<Integer> quantized(AlignedArray<Integer>(rows * cols));
 // This is only used by tests.
 
+#include <cstdlib>
 #include <memory>
+#include <type_traits>
 
 namespace intgemm {
 
