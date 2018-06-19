@@ -2,13 +2,12 @@
 #include <cstdint>
 
 namespace intgemm {
-#ifdef __SSE2__
 
 struct SSE2_16bit {
   typedef int16_t Integer;
 
   // Currently A is prepared by quantization but this could theoretically change.
-  static void PrepareA(const float *input, int16_t *output, float quant_mult, int rows, int cols) {
+  static inline void PrepareA(const float *input, int16_t *output, float quant_mult, int rows, int cols) {
     Quantize(input, output, quant_mult, rows * cols);
   }
 
@@ -29,7 +28,7 @@ struct SSE2_8bit {
   typedef int8_t Integer;
 
   // Currently A is prepared by quantization but this could theoretically change.
-  static void PrepareA(const float *input, int8_t *output, float quant_mult, int rows, int cols) {
+  static inline void PrepareA(const float *input, int8_t *output, float quant_mult, int rows, int cols) {
     Quantize(input, output, quant_mult, rows * cols);
   }
 
@@ -46,5 +45,4 @@ struct SSE2_8bit {
   static const char *Name() { return "SSE2 8-bit"; }
 };
 
-#endif // __SSE2__
 } // namespace intgemm
