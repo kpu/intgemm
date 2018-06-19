@@ -1,13 +1,12 @@
 #include "sse2_gemm.h"
 
 #include "interleave.h"
+#include "multiply.h"
 
-#include <cassert>
-#include <emmintrin.h>
-#include <immintrin.h>
-#include <tmmintrin.h>
-#include <xmmintrin.h>
 #include <cstdint>
+#include <cassert>
+#include <xmmintrin.h>
+#include <emmintrin.h>
 
 namespace intgemm {
 
@@ -32,16 +31,11 @@ class QuantizeTile8 {
 
     explicit QuantizeTile8(float mult) : mult_reg_(_mm_set1_ps(mult)) {}
 
-    inline __m128i Consecutive(const float *input) {
-      return Tile(input, input + 8);
-    }
-
     inline __m128i ForReshape(const float *input, int cols) {
       // Skip a row.
       return Tile(input, input + 2 * cols);
     }
 
-  private:
     // Quantize 16xfloat into 16xint8_t
     inline __m128i Tile(const float *input0, const float *input1) {
       const __m128i neg128 = _mm_set1_epi8(-128);
@@ -65,6 +59,7 @@ class QuantizeTile8 {
       // No permute needed.  packs is in order for SSE.
     }
 
+  private:
     const __m128 mult_reg_;
 };
 
@@ -94,7 +89,7 @@ void SSE2_8bit::Quantize(const float *input, int8_t *output, float quant_mult, i
   QuantizeTile8 q(quant_mult);
   const float *end = input + size;
   for (; input != end; input += 16, output += 16) {
-    *reinterpret_cast<__m128i*>(output) = q.Consecutive(input);
+    *reinterpret_cast<__m128i*>(output) = q.Tile(input, input + 8);
   }
 }
 
@@ -118,6 +113,14 @@ void SSE2_16bit::PrepareB(const float *input, int16_t *output_shadow, float quan
 
 void SSE2_8bit::PrepareB(const float *input, int8_t *output, float quant_mult, int rows, int cols) {
   PrepareBFor8(input, output, QuantizeTile8(quant_mult), rows, cols);
+}
+
+void SSE2_16bit::Multiply(const int16_t *A, const int16_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols) {
+  Multiply16<__m128i, __m128>(A, B, C, unquant_mult, A_rows, width, B_cols);
+}
+
+void SSE2_8bit::Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols) {
+  Multiply8_SSE2OrAVX2<__m128i, __m128>(A, B, C, unquant_mult, A_rows, width, B_cols);
 }
 
 #endif // __SSE2__

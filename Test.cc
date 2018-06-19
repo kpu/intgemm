@@ -185,7 +185,7 @@ void Compare(const float *float_ref, const float *int_ref, const float *int_test
 
 template <class Routine> void TestMultiply(int A_rows, int width, int B_cols) {
   typedef typename Routine::Integer Integer;
-  std::cout << (sizeof(Integer) * 8) << "-bit\t" << A_rows << '\t' << width << '\t' << B_cols << '\n';
+  std::cout << Routine::Name() << "\t" << A_rows << '\t' << width << '\t' << B_cols << '\n';
 
   // Initialize A and B.
   free_ptr<float> A(AlignedArray<float>(A_rows * width));
@@ -223,6 +223,8 @@ template <class Routine> void TestMultiply(int A_rows, int width, int B_cols) {
 void TestBoth(int A_rows, int width, int B_cols) {
   TestMultiply<AVX2_16bit>(A_rows, width, B_cols);
   TestMultiply<AVX2_8bit>(A_rows, width, B_cols);
+  TestMultiply<SSE2_16bit>(A_rows, width, B_cols);
+  TestMultiply<SSE2_8bit>(A_rows, width, B_cols);
 }
 
 } // namespace intgemm
@@ -239,6 +241,7 @@ int main(int argc, char ** argv) {
     TestPrepare<SSE2_8bit>(16, 8);
     TestPrepare<SSE2_8bit>(32, 16);
     TestPrepare<SSE2_8bit>(32, 32);
+    TestBoth(2, 32, 16);
     // Top matrix sizes from Marian
     TestBoth(8, 256, 256);
     TestBoth(8, 2048, 256);
