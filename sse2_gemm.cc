@@ -18,16 +18,9 @@ inline __m128i QuantizerGrab(const float *input, const __m128 quant_mult_reg) {
   return _mm_cvtps_epi32(_mm_mul_ps(*reinterpret_cast<const __m128*>(input), quant_mult_reg));
 }
 
-// Quantize 8xfloat into 8xint16_t
-inline __m128i QuantizeTile16(const float *input, __m128 quant_mult_reg) {
-  __m128i g0 = QuantizerGrab(input, quant_mult_reg);
-  __m128i g1 = QuantizerGrab(input + 4, quant_mult_reg);
-  return _mm_packs_epi32(g0, g1);
-}
-
 class QuantizeTile8 {
   public:
-    typedef __m128i I;
+    typedef __m128i Integer;
 
     explicit QuantizeTile8(float mult) : mult_reg_(_mm_set1_ps(mult)) {}
 
@@ -36,6 +29,11 @@ class QuantizeTile8 {
       return Tile(input, input + 2 * cols);
     }
 
+    inline __m128i Consecutive(const float *input) {
+      return Tile(input, input + 8);
+    }
+
+  private:
     // Quantize 16xfloat into 16xint8_t
     inline __m128i Tile(const float *input0, const float *input1) {
       const __m128i neg128 = _mm_set1_epi8(-128);
@@ -63,6 +61,27 @@ class QuantizeTile8 {
     const __m128 mult_reg_;
 };
 
+class QuantizeTile16 {
+  public:
+    typedef __m128i Integer;
+
+    explicit QuantizeTile16(float mult) : mult_reg_(_mm_set1_ps(mult)) {}
+
+		// Quantize 8xfloat into 8xint16_t
+		inline __m128i Consecutive(const float *input) {
+			__m128i g0 = QuantizerGrab(input, mult_reg_);
+			__m128i g1 = QuantizerGrab(input + 4, mult_reg_);
+			return _mm_packs_epi32(g0, g1);
+		}
+
+    inline __m128i ForReshape(const float *input, int) {
+      return Consecutive(input);
+    }
+
+  private:
+		const __m128 mult_reg_;
+};
+
 } // namespace
 
 
@@ -75,10 +94,10 @@ void SSE2_16bit::Quantize(const float *input, int16_t *output, float quant_mult,
   assert(size % 8 == 0);
   assert(reinterpret_cast<uintptr_t>(input) % 16 == 0);
   assert(reinterpret_cast<uintptr_t>(output) % 16 == 0);
-  const __m128 quant_mult_reg = _mm_set1_ps(quant_mult);
+  QuantizeTile16 q(quant_mult);
   const float *end = input + size;
   for (; input != end; input += 8, output += 8) {
-    *reinterpret_cast<__m128i*>(output) = QuantizeTile16(input, quant_mult_reg);
+    *reinterpret_cast<__m128i*>(output) = q.Consecutive(input);
   }
 }
 
@@ -89,26 +108,12 @@ void SSE2_8bit::Quantize(const float *input, int8_t *output, float quant_mult, i
   QuantizeTile8 q(quant_mult);
   const float *end = input + size;
   for (; input != end; input += 16, output += 16) {
-    *reinterpret_cast<__m128i*>(output) = q.Tile(input, input + 8);
+    *reinterpret_cast<__m128i*>(output) = q.Consecutive(input);
   }
 }
 
-void SSE2_16bit::PrepareB(const float *input, int16_t *output_shadow, float quant_mult, int rows, int cols) {
-  assert(rows % kBTileRow == 0);
-  assert(cols % kBTileCol == 0);
-  assert(reinterpret_cast<uintptr_t>(input) % 16 == 0);
-  __m128i *output = reinterpret_cast<__m128i*>(output_shadow);
-  assert(reinterpret_cast<uintptr_t>(output) % 16 == 0);
-  const __m128 quant_mult_reg = _mm_set1_ps(quant_mult);
-  for (int c = 0; c < cols; c += 8) {
-    for (int r = 0; r < rows; r += 8, output += 8) {
-      // gcc unrolls this loop and uses registers for output[k]
-      for (int k = 0; k < 8; ++k) {
-        output[k] = QuantizeTile16(input + cols * (r + k) + c, quant_mult_reg);
-      }
-      Transpose16InLane(output[0], output[1], output[2], output[3], output[4], output[5], output[6], output[7]);
-    }
-  }
+void SSE2_16bit::PrepareB(const float *input, int16_t *output, float quant_mult, int rows, int cols) {
+  PrepareBFor16(input, output, QuantizeTile16(quant_mult), rows, cols);
 }
 
 void SSE2_8bit::PrepareB(const float *input, int8_t *output, float quant_mult, int rows, int cols) {

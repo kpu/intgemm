@@ -186,7 +186,7 @@ template <class Register> inline void Transpose8InLane(
 // 257 273
 // ... ...
 template <class Quantizer> inline void PrepareBFor8(const float *input, int8_t *output_shadow, Quantizer q, int rows, int cols) {
-  typedef typename Quantizer::I Register;
+  typedef typename Quantizer::Integer Register;
   // Currently all multipliers have a stride of 8 columns.
   const int kColStride = 8;
   assert(cols % kColStride == 0);
@@ -213,6 +213,25 @@ template <class Quantizer> inline void PrepareBFor8(const float *input, int8_t *
       Interleave8(output[2], output[3]);
       Interleave8(output[4], output[5]);
       Interleave8(output[6], output[7]);
+      Transpose16InLane(output[0], output[1], output[2], output[3], output[4], output[5], output[6], output[7]);
+    }
+  }
+}
+
+template <class Quantizer> inline void PrepareBFor16(const float *input, int16_t *output_shadow, Quantizer q, int rows, int cols) {
+  typedef typename Quantizer::Integer Register;
+  assert(cols % 8 == 0);
+  assert(rows % (sizeof(Register) / sizeof(int16_t)) == 0);
+  assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0);
+  Register *output = reinterpret_cast<Register*>(output_shadow);
+  assert(reinterpret_cast<uintptr_t>(output) % sizeof(Register) == 0);
+
+  for (int c = 0; c < cols; c += 8) {
+    for (int r = 0; r < rows; r += (sizeof(Register) / sizeof(int16_t)), output += 8) {
+      // gcc unrolls this loop and uses registers for output[k]
+      for (int k = 0; k < 8; ++k) {
+        output[k] = q.ForReshape(input + cols * (r + k) + c, cols);
+      }
       Transpose16InLane(output[0], output[1], output[2], output[3], output[4], output[5], output[6], output[7]);
     }
   }
