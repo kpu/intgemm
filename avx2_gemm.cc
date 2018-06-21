@@ -7,7 +7,7 @@
 #include <immintrin.h>
 #include <tmmintrin.h>
 #include <xmmintrin.h>
-#include <cstdint>
+#include <stdint.h>
 
 namespace intgemm {
 #ifdef __AVX2__

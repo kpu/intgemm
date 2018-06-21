@@ -3,7 +3,7 @@
 #include "interleave.h"
 #include "multiply.h"
 
-#include <cstdint>
+#include <stdint.h>
 #include <cassert>
 #include <xmmintrin.h>
 #include <emmintrin.h>
