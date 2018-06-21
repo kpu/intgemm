@@ -6,7 +6,7 @@
 #include <xmmintrin.h>
 
 #include <cassert>
-#include <cstdint>
+#include <stdint.h>
 
 namespace intgemm {
 
@@ -50,7 +50,7 @@ INTGEMM_INTERLEAVE(__m128i, )
 #ifdef __AVX2__
 INTGEMM_INTERLEAVE(__m256i, 256)
 #endif
-#ifdef __AVX512__
+#ifdef __AVX512F__
 INTGEMM_INTERLEAVE(__m512i, 512)
 #endif
 

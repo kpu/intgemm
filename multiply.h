@@ -32,6 +32,7 @@ inline __m128i madd_epi16(__m128i first, __m128i second) {
   return _mm_madd_epi16(first, second);
 }
 
+// Complete any reduction, multiply by scaling, and write to memory.
 inline void WriteC(float *to, __m128i pack0123, __m128i pack4567, __m128 unquant_reg) {
   // Convert to float, multiply by unquant, and write.
   *reinterpret_cast<__m128*>(to) = _mm_mul_ps(_mm_cvtepi32_ps(pack0123), unquant_reg);
@@ -56,6 +57,7 @@ inline __m256i madd_epi16(__m256i first, __m256i second) {
 }
 
 inline void WriteC(float *to, __m256i pack0123, __m256i pack4567, __m256 unquant_reg) {
+  // This instruction generates 1s 2s 3s 4s 5f 6f 7f 8f
   __m256i rev = _mm256_permute2f128_si256(pack0123, pack4567, 0x21);
   // This instruction generates 1f 2f 3f 4f 5s 6s 7s 8s
   __m256i blended = _mm256_blend_epi32(pack0123, pack4567, 0xf0);
@@ -64,11 +66,11 @@ inline void WriteC(float *to, __m256i pack0123, __m256i pack4567, __m256 unquant
   *reinterpret_cast<__m256*>(to) = _mm256_mul_ps(_mm256_cvtepi32_ps(total), unquant_reg);
 }
 #endif
-#ifdef __AVX512__
+#ifdef __AVX512F__
 inline __m512i add_epi32(__m512i first, __m512i second) {
   return _mm512_add_epi32(first, second);
 }
-template <> inline __m256i set1_epi16<__m512i>(int16_t to) {
+template <> inline __m512i set1_epi16<__m512i>(int16_t to) {
   return _mm512_set1_epi16(to);
 }
 template <> inline __m512 set1_ps<__m512>(float to) {
@@ -79,6 +81,10 @@ template <> inline __m512i setzero_si<__m512i>() {
 }
 inline __m512i madd_epi16(__m512i first, __m512i second) {
   return _mm512_madd_epi16(first, second);
+}
+
+inline void WriteC(float *to, __m512i pack0123, __m512i pack4567, __m512 unquant_reg) {
+
 }
 
 // TODO: WriteC for AVX512.

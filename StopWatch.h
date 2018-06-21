@@ -1,7 +1,7 @@
 #pragma once
 #include <time.h>
 #include <string>
-#include <cstdint>
+#include <stdint.h>
 
 class StopWatch {
   public:
