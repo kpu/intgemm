@@ -69,21 +69,41 @@ namespace {
 // floats to 8-bit values, that's 32 bytes of floats.  But AVX512 is 64 bytes
 // wide so it reads off the edge of the tile.  We could expand the tile size
 // but then the memory written to won't be contiguous anyway so we'd be doing a
-// scatter anyway.  Easier to just read the 8 columns we wanted as 256 and
+// scatter anyway.  Easier to just read the 8 columns we wanted as 256 bits
 // concatenate.
 inline __m512 Concat(const __m256 first, const __m256 second) {
   // AVX512DQ but that goes with AVX512BW anyway.
   return _mm512_insertf32x8(_mm512_castps256_ps512(first), second, 1);
 }
 
-// Like QuantizerGrab, but allows 32-byte halves to be controlled independently.
+// Like QuantizerGrab, but allows 32-byte halves (i.e. 8 columns) to be controlled independently.
 inline __m512i QuantizerGrabHalves(const float *input0, const float *input1, const __m512 quant_mult_reg) {
   __m512 appended = Concat(*reinterpret_cast<const __m256*>(input0), *reinterpret_cast<const __m256*>(input1));
   appended = _mm512_mul_ps(appended, quant_mult_reg);
   return _mm512_cvtps_epi32(appended);
 }
 
-// This is only used for reshaping due to the AVX512 instruction _mm512_mask_cvtsepi32_storeu_epi8.
+// These are only used for reshaping due to the AVX512 instructions
+// _mm512_mask_cvtsepi32_storeu_epi16 and _mm512_mask_cvtsepi32_storeu_epi8
+// being used for the quantizer.
+class QuantizeTile16 {
+  public:
+    typedef __m512i Integer;
+
+    explicit QuantizeTile16(float mult) : mult_reg_(_mm512_set1_ps(mult)) {}
+
+    inline __m512i ForReshape(const float *input, int cols) {
+      __m512i g0 = QuantizerGrabHalves(input, input + 16 * cols, mult_reg_);
+      __m512i g1 = QuantizerGrabHalves(input + 8 * cols, input + 24 * cols, mult_reg_);
+      __m512i packed = _mm512_packs_epi32(g0, g1);
+      // Permute within 256-bit lanes, so same as AVX2
+      return _mm512_permutex_epi64(packed, 0xd8 /* 0, 2, 1, 3 */);
+    }
+
+  private:
+    const __m512 mult_reg_;
+};
+
 class QuantizeTile8 {
   public:
     typedef __m512i Integer;
@@ -112,38 +132,19 @@ class QuantizeTile8 {
 			return _mm512_permutexvar_epi32(shuffle_param, packed);
 		}
 
+  private:
     const __m512 mult_reg_;
 };
 
 } // namespace
 
+void AVX512_16bit::PrepareB(const float *input, int16_t *output, float quant_mult, int rows, int cols) {
+  PrepareBFor16(input, output, QuantizeTile16(quant_mult), rows, cols);
+}
+
 void AVX512_8bit::PrepareB(const float *input, int8_t *output, float quant_mult, int rows, int cols) {
   PrepareBFor8(input, output, QuantizeTile8(quant_mult), rows, cols);
 }
-
-//void AVX512_8bit::PrepareB(const float *input, int8_t *output_shadow, float quant_mult, int rows, int cols) {
-////  __m512i *output = reinterpret_cast<__m512i*>(output_shadow);
-//  assert(rows % sizeof(__m512i) == 0);
-//  assert(cols % 8 == 0);
-//  assert(reinterpret_cast<uintptr_t>(input) % sizeof(__m512i) == 0);
-////  assert(reinterpret_cast<uintptr_t>(output) % sizeof(__m512i) == 0);
-//
-//  QuantizeTile8 q(quant_mult);
-//    for (int r = 0; r < rows; r += 64 /*, output += 8*/) {
-//      for (int c = 0; c < cols; c += 8) {
-//
-//      __m512i *output = reinterpret_cast<__m512i*>(output_shadow) + r / 8 + (c * rows) / 64;
-//      // The read is 
-//      for (int k = 0; k < 8; ++k) {
-//        output[k] = q.ForReshape(input + cols * (r + k * 2) + c, cols);
-//      }
-//      for (int k = 0; k < 8; k += 2) {
-//        Interleave8(output[k], output[k + 1]);
-//      }
-//      Transpose16InLane(output[0], output[1], output[2], output[3], output[4], output[5], output[6], output[7]);
-//    }
-//  }
-//}
 
 // reduce within each.
 // Returns [sum(sum1), sum(sum2), sum(sum3), sum(sum4)]

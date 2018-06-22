@@ -237,6 +237,8 @@ int main(int argc, char ** argv) {
     TestTranspose8();
     TestPrepare<AVX512_8bit>(64, 8);
     TestPrepare<AVX512_8bit>(256, 32);
+    TestPrepare<AVX512_16bit>(32, 8);
+    TestPrepare<AVX512_16bit>(256, 32);
     TestPrepare<AVX2_8bit>(64, 32);
     TestPrepare<AVX2_16bit>(64, 32);
     TestPrepare<SSE2_16bit>(8, 8);
