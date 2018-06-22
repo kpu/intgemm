@@ -1,9 +1,11 @@
 #include "avx512_gemm.h"
+#include "interleave.h"
+#include "multiply.h"
 
 #include <cassert>
+#include <cstddef>
 #include <emmintrin.h>
 #include <immintrin.h>
-#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,8 +16,6 @@
 namespace intgemm {
 
 #ifdef __AVX512F__
-namespace AVX512 {
-
 namespace {
 
 // Load from memory, multiply, and convert to int32_t.
@@ -28,8 +28,15 @@ inline __m512i QuantizerGrab(const float *input, const __m512 quant_mult_reg) {
 
 } // namespace
 
-// Convert to 16-bit signed integers. 
-void Quantize16(const float *input, int16_t *output, float quant_mult, std::size_t size) {
+
+// AVX512 has combined collapse and store instructions:
+// _mm512_mask_cvtsepi32_storeu_epi16
+// _mm512_mask_cvtsepi32_storeu_epi8
+// So conversion in memory uses these, but I also implement a wider version for
+// rearranging B.
+// 
+// Convert to 16-bit signed integers.
+void AVX512_16bit::Quantize(const float *input, int16_t *output, float quant_mult, int size) {
     assert(size % 16 == 0);
     assert(reinterpret_cast<uintptr_t>(input) % 64 == 0);
     // Fill with the quantization multiplier.
@@ -42,7 +49,7 @@ void Quantize16(const float *input, int16_t *output, float quant_mult, std::size
 }
 
 // Convert to 8-bit signed integers.
-void Quantize8(const float *input, int8_t *output, float quant_mult, std::size_t size) {
+void AVX512_8bit::Quantize(const float *input, int8_t *output, float quant_mult, int size) {
   assert(size % 16 == 0);
   assert(reinterpret_cast<uintptr_t>(input) % 64 == 0);
   const __m512i neg127 = _mm512_set1_epi32(-127);
@@ -58,28 +65,86 @@ void Quantize8(const float *input, int8_t *output, float quant_mult, std::size_t
 
 namespace {
 
-/* Convert 16-bit to 32-bit and add, not caring what parts are added.
- * Implementations:
- * 1. https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67 under Apache license:
- *   This does a multiply by 1 and horizontal add:
- *    _mm512_madd_epi16(sum, _mm512_set1_epi16(1))
- *   Current fastest.
- *
- * 2. Signed extension and fold halves:
- *    sum = _mm512_add_epi32(
- *      _mm512_cvtepi16_epi32(_mm512_castsi512_si256(sum)),
- *      _mm512_cvtepi16_epi32(_mm512_extracti64x4_epi64(sum, 1)));
- *
- * 3. Sign extend by abuse of bitshift, then add.
- * sum = _mm512_add_epi32(
- *      _mm512_srai_epi32(_mm512_slli_epi32(sum, 16), 16),
- *      _mm512_srai_epi32(sum, 16));
- */
-inline void Convert32Sum(__m512i &sum) {
-  sum = _mm512_madd_epi16(sum, _mm512_set1_epi16(1));
+// For PrepareB we want to read 8 columns at a time.  When converting 32-bit
+// floats to 8-bit values, that's 32 bytes of floats.  But AVX512 is 64 bytes
+// wide so it reads off the edge of the tile.  We could expand the tile size
+// but then the memory written to won't be contiguous anyway so we'd be doing a
+// scatter anyway.  Easier to just read the 8 columns we wanted as 256 and
+// concatenate.
+inline __m512 Concat(const __m256 first, const __m256 second) {
+  // AVX512DQ but that goes with AVX512BW anyway.
+  return _mm512_insertf32x8(_mm512_castps256_ps512(first), second, 1);
 }
 
-// Assuming sum1, sum2, sum3, and sum4 are arrays 32-bit signed integers,
+// Like QuantizerGrab, but allows 32-byte halves to be controlled independently.
+inline __m512i QuantizerGrabHalves(const float *input0, const float *input1, const __m512 quant_mult_reg) {
+  __m512 appended = Concat(*reinterpret_cast<const __m256*>(input0), *reinterpret_cast<const __m256*>(input1));
+  appended = _mm512_mul_ps(appended, quant_mult_reg);
+  return _mm512_cvtps_epi32(appended);
+}
+
+// This is only used for reshaping due to the AVX512 instruction _mm512_mask_cvtsepi32_storeu_epi8.
+class QuantizeTile8 {
+  public:
+    typedef __m512i Integer;
+
+    explicit QuantizeTile8(float mult) : mult_reg_(_mm512_set1_ps(mult)) {}
+
+    inline __m512i ForReshape(const float *input, int cols) {
+      // TODO: try alternative: _mm512_cvtsepi32_epi8 ?
+			const __m512i neg127 = _mm512_set1_epi8(-127);
+			// In reverse order: grabbing the first 32-bit values from each 128-bit register, then the second 32-bit values, etc.
+			const __m512i shuffle_param = _mm512_set_epi32(15, 11, 7, 3, 14, 10, 6, 2, 13, 9, 5, 1, 12, 8, 4, 0);
+
+			// 32-bit format.
+			__m512i g0 = QuantizerGrabHalves(input, input + 2 * cols, mult_reg_);
+			__m512i g1 = QuantizerGrabHalves(input + 16 * cols, input + 18 * cols, mult_reg_);
+			__m512i g2 = QuantizerGrabHalves(input + 32 * cols, input + 34 * cols, mult_reg_);
+			__m512i g3 = QuantizerGrabHalves(input + 48 * cols, input + 50 * cols, mult_reg_);
+			// Pack 32-bit to 16-bit.
+			__m512i packed0 = _mm512_packs_epi32(g0, g1);
+			__m512i packed1 = _mm512_packs_epi32(g2, g3);
+			// Pack 16-bit to 8-bit.
+			__m512i packed = _mm512_packs_epi16(packed0, packed1);
+			// Ban -128.
+			packed = _mm512_max_epi8(packed, neg127);
+			// 0 1 2 3 16 17 18 19 32 33 34 35 48 49 50 51 4 5 6 7 20 21 22 23 36 37 38 39 52 53 54 55 8 9 10 11 24 25 26 27 40 41 42 43 56 57 58 59 12 13 14 15 28 29 30 31 44 45 46 47 60 61 62 63
+			return _mm512_permutexvar_epi32(shuffle_param, packed);
+		}
+
+    const __m512 mult_reg_;
+};
+
+} // namespace
+
+void AVX512_8bit::PrepareB(const float *input, int8_t *output, float quant_mult, int rows, int cols) {
+  PrepareBFor8(input, output, QuantizeTile8(quant_mult), rows, cols);
+}
+
+//void AVX512_8bit::PrepareB(const float *input, int8_t *output_shadow, float quant_mult, int rows, int cols) {
+////  __m512i *output = reinterpret_cast<__m512i*>(output_shadow);
+//  assert(rows % sizeof(__m512i) == 0);
+//  assert(cols % 8 == 0);
+//  assert(reinterpret_cast<uintptr_t>(input) % sizeof(__m512i) == 0);
+////  assert(reinterpret_cast<uintptr_t>(output) % sizeof(__m512i) == 0);
+//
+//  QuantizeTile8 q(quant_mult);
+//    for (int r = 0; r < rows; r += 64 /*, output += 8*/) {
+//      for (int c = 0; c < cols; c += 8) {
+//
+//      __m512i *output = reinterpret_cast<__m512i*>(output_shadow) + r / 8 + (c * rows) / 64;
+//      // The read is 
+//      for (int k = 0; k < 8; ++k) {
+//        output[k] = q.ForReshape(input + cols * (r + k * 2) + c, cols);
+//      }
+//      for (int k = 0; k < 8; k += 2) {
+//        Interleave8(output[k], output[k + 1]);
+//      }
+//      Transpose16InLane(output[0], output[1], output[2], output[3], output[4], output[5], output[6], output[7]);
+//    }
+//  }
+//}
+
 // reduce within each.
 // Returns [sum(sum1), sum(sum2), sum(sum3), sum(sum4)]
 // TODO: consider doing in 64-bit, allowing 4 more bits of quantization?
@@ -155,8 +220,6 @@ class ScatterPut {
     const __m128i num_b_rows_scatter_;
     const int num_B_rows_;
 };
-
-} // namespace
 
 // This is an AVX512F implementation of int16_t multiply based on Jacob
 // Devlin's SSE code.  The original SSE code was:
@@ -630,6 +693,5 @@ void MatrixMult8(const __m512i * A, const __m512i * B, float * C, float unquant_
   }
 }*/
 
-} // namespace AVX512
 #endif // __AVX512__
 } // namespace intgemm

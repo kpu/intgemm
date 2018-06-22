@@ -1,5 +1,5 @@
 CXX := g++
-CXXFLAGS := -Wall -Werror -fPIC -O3 -march=native
+CXXFLAGS := -Wall -Werror -fPIC -O3 -march=native -std=c++11
 SRC := avx512_gemm.cc avx2_gemm.cc sse2_gemm.cc SSE_Matrix_Mult.cc StopWatch.cc 
 OBJ := ${SRC:.cc=.o}
 

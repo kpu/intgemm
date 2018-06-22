@@ -1,21 +1,48 @@
 #pragma once
-#include <immintrin.h>
-#include <cstddef>
+#include <stdint.h>
 
 namespace intgemm {
-#ifdef __AVX512F__
-namespace AVX512 {
 
-void Quantize16(const float *input, int16_t *output, float quant_mult, std::size_t size);
-void Quantize8(const float *input, int8_t *output, float quant_mult, std::size_t size);
+struct AVX512_16bit {
+  typedef int16_t Integer;
 
-// Multiply C = unquant_mult * A * B^T.  A is normally activations and B is normally a parameter matrix.
-// Values of A and B should come from the corresponding quantizer.
-// A and B must be 64-byte aligned.
-// C should be the usual 4-byte alignment.
-void MatrixMult16(const __m512i *A, const __m512i *B, float *C, float unquant_mult, int num_A_rows, int num_B_rows, int width);
-void MatrixMult8(const __m512i *A, const __m512i *B, float *C, float unquant_mult, int num_A_rows, int num_B_rows, int width);
+  // Currently A is prepared by quantization but this could theoretically change.
+  static inline void PrepareA(const float *input, int16_t *output, float quant_mult, int rows, int cols) {
+    Quantize(input, output, quant_mult, rows * cols);
+  }
 
-} // namespace AVX512
-#endif // __AVX512F__
+  static void Quantize(const float *input, int16_t *output, float quant_mult, int size);
+
+  // Tile size for B; B must be a multiple of this block size.
+  static const int kBTileRow = 32;
+  static const int kBTileCol = 8;
+
+  static void PrepareB(const float *input, int16_t *output, float quant_mult, int rows, int cols);
+
+  static void Multiply(const int16_t *A, const int16_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols);
+
+  static inline const char *Name() { return "AVX512 16-bit"; }
+};
+
+struct AVX512_8bit {
+  typedef int8_t Integer;
+
+  // Currently A is prepared by quantization but this could theoretically change.
+  static inline void PrepareA(const float *input, int8_t *output, float quant_mult, int rows, int cols) {
+    Quantize(input, output, quant_mult, rows * cols);
+  }
+
+  static void Quantize(const float *input, int8_t *output, float quant_mult, int size);
+
+  // Tile size for B; B must be a multiple of this block size.
+  static const int kBTileRow = 64;
+  static const int kBTileCol = 8;
+
+  static void PrepareB(const float *input, int8_t *output, float quant_mult, int rows, int cols);
+
+  static void Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols);
+
+  static inline const char *Name() { return "AVX512 8-bit"; }
+};
+
 } // namespace intgemm
