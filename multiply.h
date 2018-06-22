@@ -111,27 +111,6 @@ template <class Register> inline Register Pack0123(Register sum0, Register sum1,
   return add_epi32(pack01, pack23);
 }
 
-/* Convert 16-bit to 32-bit and add, not caring what parts are added.
- * Implementations:
- * 1. https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67 under Apache license:
- *   This does a multiply by 1 and horizontal add:
- *    _mm512_madd_epi16(sum, _mm512_set1_epi16(1))
- *   Current fastest.
- *
- * 2. Signed extension and fold halves:
- *    sum = _mm512_add_epi32(
- *      _mm512_cvtepi16_epi32(_mm512_castsi512_si256(sum)),
- *      _mm512_cvtepi16_epi32(_mm512_extracti64x4_epi64(sum, 1)));
- *
- * 3. Sign extend by abuse of bitshift, then add.
- * sum = _mm512_add_epi32(
- *      _mm512_srai_epi32(_mm512_slli_epi32(sum, 16), 16),
- *      _mm512_srai_epi32(sum, 16));
- */
-template <class Register> inline void Convert32Sum(Register &sum) {
-  sum = madd_epi16(sum, set1_epi16<Register>(1));
-}
-
 // 16-bit multiplier for SSE2, AVX2, and AVX512.
 // C = A * B * unquant_mult
 //
@@ -438,6 +417,23 @@ template <class Integer, class Float> void Multiply8_SSE2OrAVX2(const int8_t *A,
               [size] "i" (sizeof(Integer))
            );
       }
+      /* Convert 16-bit to 32-bit and add, not caring what parts are added.
+       * Implementations:
+       * 1. https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67 under Apache license:
+       *   This does a multiply by 1 and horizontal add:
+       *    _mm512_madd_epi16(sum, _mm512_set1_epi16(1))
+       *   Current fastest.
+       *
+       * 2. Signed extension and fold halves:
+       *    sum = _mm512_add_epi32(
+       *      _mm512_cvtepi16_epi32(_mm512_castsi512_si256(sum)),
+       *      _mm512_cvtepi16_epi32(_mm512_extracti64x4_epi64(sum, 1)));
+       *
+       * 3. Sign extend by abuse of bitshift, then add.
+       * sum = _mm512_add_epi32(
+       *      _mm512_srai_epi32(_mm512_slli_epi32(sum, 16), 16),
+       *      _mm512_srai_epi32(sum, 16));
+       */
       Integer ones = set1_epi16<Integer>(1);
       sum0 = madd_epi16(sum0, ones);
       sum1 = madd_epi16(sum1, ones);

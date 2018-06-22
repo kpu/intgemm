@@ -219,12 +219,12 @@ template <class Routine> void TestMultiply(int A_rows, int width, int B_cols) {
   Compare(float_C.get(), slowint_C.get(), test_C.get(), A_rows * B_cols);
 }
 
-
 void TestBoth(int A_rows, int width, int B_cols) {
   TestMultiply<AVX512_16bit>(A_rows, width, B_cols);
   TestMultiply<AVX2_16bit>(A_rows, width, B_cols);
-  TestMultiply<AVX2_8bit>(A_rows, width, B_cols);
   TestMultiply<SSE2_16bit>(A_rows, width, B_cols);
+  TestMultiply<AVX512_8bit>(A_rows, width, B_cols);
+  TestMultiply<AVX2_8bit>(A_rows, width, B_cols);
   TestMultiply<SSE2_8bit>(A_rows, width, B_cols);
 }
 
@@ -246,7 +246,6 @@ int main(int argc, char ** argv) {
     TestPrepare<SSE2_8bit>(16, 8);
     TestPrepare<SSE2_8bit>(32, 16);
     TestPrepare<SSE2_8bit>(32, 32);
-    TestBoth(2, 32, 16);
     // Top matrix sizes from Marian
     TestBoth(8, 256, 256);
     TestBoth(8, 2048, 256);
