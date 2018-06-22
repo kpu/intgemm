@@ -83,11 +83,17 @@ inline __m512i madd_epi16(__m512i first, __m512i second) {
   return _mm512_madd_epi16(first, second);
 }
 
-inline void WriteC(float *to, __m512i pack0123, __m512i pack4567, __m512 unquant_reg) {
-
+inline void WriteC(float *to, __m512i pack0123, __m512i pack4567, __m256 unquant_reg) {
+  // Form [0th 128-bit register of pack0123, 0st 128-bit register of pack4567, 2nd 128-bit register of pack0123, 2nd 128-bit register of pack4567]
+  __m512i mix0 = _mm512_mask_permutex_epi64(pack0123, 0xcc, pack4567, (0 << 4) | (1 << 6));
+  // Form [1st 128-bit register of pack0123, 1st 128-bit register of pack4567, 3rd 128-bit register of pack0123, 3rd 128-bit register of pack4567]
+  __m512i mix1 = _mm512_mask_permutex_epi64(pack4567, 0x33, pack0123, 2 | (3 << 2));
+  __m512i added = _mm512_add_epi32(mix0, mix1);
+  // Now we have 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7.
+  // Fold register over itself.
+  __m256i folded = _mm256_add_epi32(_mm512_castsi512_si256(added), _mm512_extracti64x4_epi64(added, 1));
+  *reinterpret_cast<__m256*>(to) = _mm256_mul_ps(_mm256_cvtepi32_ps(folded), unquant_reg);
 }
-
-// TODO: WriteC for AVX512.
 #endif
 
 /* Take 4 registers with 32-bit values to be horizontally added.  Reduce them

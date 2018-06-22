@@ -221,6 +221,7 @@ template <class Routine> void TestMultiply(int A_rows, int width, int B_cols) {
 
 
 void TestBoth(int A_rows, int width, int B_cols) {
+  TestMultiply<AVX512_16bit>(A_rows, width, B_cols);
   TestMultiply<AVX2_16bit>(A_rows, width, B_cols);
   TestMultiply<AVX2_8bit>(A_rows, width, B_cols);
   TestMultiply<SSE2_16bit>(A_rows, width, B_cols);
