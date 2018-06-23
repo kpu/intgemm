@@ -220,12 +220,12 @@ template <class Routine> void TestMultiply(int A_rows, int width, int B_cols) {
 }
 
 void TestBoth(int A_rows, int width, int B_cols) {
-  if (Generic_16bit::Quantize == AVX512_16bit::Quantize) {
+  if (Int16::Quantize == AVX512_16bit::Quantize) {
     TestMultiply<AVX512_16bit>(A_rows, width, B_cols);
   }
   TestMultiply<AVX2_16bit>(A_rows, width, B_cols);
   TestMultiply<SSE2_16bit>(A_rows, width, B_cols);
-  if (Generic_16bit::Quantize == AVX512_16bit::Quantize) {
+  if (Int16::Quantize == AVX512_16bit::Quantize) {
     TestMultiply<AVX512_8bit>(A_rows, width, B_cols);
   }
   TestMultiply<AVX2_8bit>(A_rows, width, B_cols);

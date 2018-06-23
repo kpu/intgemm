@@ -58,7 +58,7 @@ class UnsupportedCPU : public std::exception {
 };
 
 /* 16-bit matrix multiplication. */
-struct Generic_16bit {
+struct Int16 {
   typedef int16_t Integer;
 
   // A's size must be a multiple of 1x32.
@@ -90,7 +90,7 @@ struct Generic_16bit {
 };
 
 /* 8-bit matrix multiplication */
-struct Generic_8bit {
+struct Int8 {
   typedef int8_t Integer;
 
   // A's size must be a multiple of 1x64.

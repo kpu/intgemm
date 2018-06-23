@@ -28,13 +28,13 @@ Both A and B should be prepared before multiplication.
  * B is width x B_cols.
  */
 /* Prepare A for multiplication.  This might be offline or on the fly. */
-intgemm::Generic_16bit::PrepareA(A, A_prepared, quant_mult, A_rows, width);
+intgemm::Int16::PrepareA(A, A_prepared, quant_mult, A_rows, width);
 /* Prepare B for multiplication.  This is typically done offline. */
-intgemm::Generic_16bit::PrepareB(B, B_prepared, quant_mult, width, B_cols);
+intgemm::Int16::PrepareB(B, B_prepared, quant_mult, width, B_cols);
 /* Multiply and produce results in C */
-intgemm::Generic_16bit::Multiply(A_prepared, B_prepared, C, 1.0 / (quant_mult * quant_mult), A_rows, width, B_cols);
+intgemm::Int16::Multiply(A_prepared, B_prepared, C, 1.0 / (quant_mult * quant_mult), A_rows, width, B_cols);
 ```
-For 8-bit, use `Generic_8bit` instead of `Generic_16bit`.
+For 8-bit, use `Int8` instead of `Int16`.
 
 When repesented as floats, all of A, B, and C are in row-major format.
 

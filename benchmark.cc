@@ -66,13 +66,11 @@ void Time(int A_rows, int width, int B_cols, int repeat = 20) {
 #ifdef __AVX512BW__
   Run<AVX512_8bit>(m, repeat);
 #endif
-  Run<Generic_8bit>(m, repeat);
   Run<SSE2_16bit>(m, repeat);
   Run<AVX2_16bit>(m, repeat);
 #ifdef __AVX512BW__
   Run<AVX512_16bit>(m, repeat);
 #endif
-  Run<Generic_16bit>(m, repeat);
 }
 
 } // namespace intgemm
