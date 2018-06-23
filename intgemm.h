@@ -86,7 +86,7 @@ struct Int16 {
   // Multiply C = A * B, presuming A and B have been prepared.
   static void (*Multiply)(const int16_t *A, const int16_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols);
 
-  static const char *Name() { return "Dispatch 16-bit"; }
+  static const char *const kName;
 };
 
 /* 8-bit matrix multiplication */
@@ -117,7 +117,7 @@ struct Int8 {
   // Multiply C = A * B, presuming A and B have been prepared.
   static void (*Multiply)(const int8_t *A, const int8_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols);
   
-  static const char *Name() { return "Dispatch 8-bit"; }
+  static const char *const kName;
 };
 
 } // namespace intgemm

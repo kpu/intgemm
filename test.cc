@@ -111,7 +111,7 @@ template <class Routine> void TestPrepare(int rows = 32, int cols = 16) {
   SlowRearrange<Integer>(quantized.get(), reference.get(), Routine::kBTileRow, Routine::kBTileCol, rows, cols);
 
   if (memcmp(reference.get(), test.get(), rows * cols * sizeof(Integer))) {
-    std::cerr << "TestPrepare " << Routine::Name() << " Mismatch:\n";
+    std::cerr << "TestPrepare " << Routine::kName << " Mismatch:\n";
     std::cout << "Quantized Input" << '\n';
     PrintMatrix(quantized.get(), rows, cols);
     std::cerr << "Reference" << '\n';
@@ -185,7 +185,7 @@ void Compare(const float *float_ref, const float *int_ref, const float *int_test
 
 template <class Routine> void TestMultiply(int A_rows, int width, int B_cols) {
   typedef typename Routine::Integer Integer;
-  std::cout << Routine::Name() << "\t" << A_rows << '\t' << width << '\t' << B_cols << '\n';
+  std::cout << Routine::kName << "\t" << A_rows << '\t' << width << '\t' << B_cols << '\n';
 
   // Initialize A and B.
   AlignedVector<float> A(A_rows * width);

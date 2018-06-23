@@ -34,7 +34,7 @@ struct AVX512_16bit {
 
   static void Multiply(const int16_t *A, const int16_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols);
 
-  static inline const char *Name() { return "AVX512 16-bit"; }
+  static const char *const kName;
 };
 
 struct AVX512_8bit {
@@ -57,7 +57,7 @@ struct AVX512_8bit {
 
   static void Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols);
 
-  static inline const char *Name() { return "AVX512 8-bit"; }
+  static const char *const kName;
 };
 
 } // namespace intgemm

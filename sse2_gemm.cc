@@ -128,6 +128,9 @@ void SSSE3_8bit::Multiply(const int8_t *A, const int8_t *B, float *C, float unqu
   Multiply8_SSE2OrAVX2<__m128i, __m128>(A, B, C, unquant_mult, A_rows, width, B_cols);
 }
 
+const char *const SSE2_16bit::kName = "16-bit SSE2";
+const char *const SSSE3_8bit::kName = "8-bit SSSE3";
+
 #endif // __SSE2__
 
 } // namespace intgemm

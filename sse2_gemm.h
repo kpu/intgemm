@@ -22,7 +22,7 @@ struct SSE2_16bit {
 
   static void Multiply(const int16_t *A, const int16_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols);
 
-  static const char *Name() { return "SSE2 16-bit"; }
+  static const char *const kName;
 };
 
 // pmaddubsw (the 8-bit multiply) is SSSE3, so pedantically that's the version we need.
@@ -44,7 +44,7 @@ struct SSSE3_8bit {
 
   static void Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols);
   
-  static const char *Name() { return "SSSE3 8-bit"; }
+  static const char *const kName;
 };
 
 } // namespace intgemm

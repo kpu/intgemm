@@ -36,7 +36,7 @@ template <class Backend> void Run(RandomMatrices &m, int repeat = 20) {
   typedef typename Backend::Integer Integer;
   float quant_mult = 127.0 / 2;
   float unquant_mult = 1.0 / (quant_mult * quant_mult);
-//  std::cout << Backend::Name() << std::endl;
+//  std::cout << Backend::kName << std::endl;
   AlignedVector<Integer> A_prepared(m.A_rows * m.width);
   {
 //    StopWatch w("PrepareA");
@@ -51,7 +51,7 @@ template <class Backend> void Run(RandomMatrices &m, int repeat = 20) {
   // Burn in
   Backend::Multiply(A_prepared.get(), B_prepared.get(), output.get(), unquant_mult, m.A_rows, m.width, m.B_cols);
   {
-    StopWatch w(Backend::Name(), repeat);
+    StopWatch w(Backend::kName, repeat);
     for (int i = 0; i < repeat; ++i) {
       Backend::Multiply(A_prepared.get(), B_prepared.get(), output.get(), unquant_mult, m.A_rows, m.width, m.B_cols);
     }

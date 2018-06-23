@@ -137,5 +137,8 @@ void AVX2_8bit::Multiply(const int8_t *A, const int8_t *B, float *C, float unqua
   Multiply8_SSE2OrAVX2<__m256i, __m256>(A, B, C, unquant_mult, A_rows, width, B_cols);
 }
 
+const char *const AVX2_16bit::kName = "16-bit AVX2";
+const char *const AVX2_8bit::kName = "8-bit AVX2";
+
 #endif // __AVX2__
 } // namespace intgemm
