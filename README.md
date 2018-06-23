@@ -24,7 +24,8 @@ Both A and B should be prepared before multiplication.
 #include "intgemm.h"
 
 /* Not shown: allocate 64-byte aligned memory with e.g. aligned_alloc.
- * Fill A and B.
+ * A is A_rows x width.
+ * B is width x B_cols.
  */
 /* Prepare A for multiplication.  This might be offline or on the fly. */
 intgemm::Generic_16bit::PrepareA(A, A_prepared, quant_mult, A_rows, width);
