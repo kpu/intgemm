@@ -45,11 +45,11 @@ template <class V> void SlowTranspose(const V *from, V *to, int rows, int cols) 
 }
 
 void TestTranspose16() {
-  free_ptr<int16_t> input(AlignedArray<int16_t>(8 * 8));
+  AlignedVector<int16_t> input(8 * 8);
   for (int16_t i = 0; i < 64; ++i) {
     input.get()[i] = i;
   }
-  free_ptr<int16_t> ref(AlignedArray<int16_t>(8 * 8));
+  AlignedVector<int16_t> ref(8 * 8);
   SlowTranspose(input.get(), ref.get(), 8, 8);
 
   // Overwrite input.
@@ -64,11 +64,11 @@ void TestTranspose16() {
 }
 
 void TestTranspose8() {
-  free_ptr<int8_t> input(AlignedArray<int8_t>(16 * 16));
+  AlignedVector<int8_t> input(16 * 16);
   for (int i = 0; i < 16 * 16; ++i) {
     input.get()[i] = i;
   }
-  free_ptr<int8_t> ref(AlignedArray<int8_t>(16 * 16));
+  AlignedVector<int8_t> ref(16 * 16);
   SlowTranspose(input.get(), ref.get(), 16, 16);
 
   // Overwrite input.
@@ -93,7 +93,7 @@ template <class T> void PrintMatrix(const T *mem, int rows, int cols) {
 
 template <class Routine> void TestPrepare(int rows = 32, int cols = 16) {
   // Create array.
-  free_ptr<float> input(AlignedArray<float>(rows * cols));
+  AlignedVector<float> input(rows * cols);
   for (int i = 0; i < rows * cols; ++i) {
     input.get()[i] = //(i > 127) ? (i - 256) : i;
       (float)rand() / (float)RAND_MAX * 256.0 - 127.0;
@@ -101,13 +101,13 @@ template <class Routine> void TestPrepare(int rows = 32, int cols = 16) {
 
   typedef typename Routine::Integer Integer;
   // Call Prepare
-  free_ptr<Integer> test(AlignedArray<Integer>(rows * cols));
+  AlignedVector<Integer> test(rows * cols);
   Routine::PrepareB(input.get(), test.get(), 1, rows, cols);
 
   // Compute reference output.
-  free_ptr<Integer> quantized(AlignedArray<Integer>(rows * cols));
+  AlignedVector<Integer> quantized(rows * cols);
   Routine::Quantize(input.get(), quantized.get(), 1, rows * cols);
-  free_ptr<Integer> reference(AlignedArray<Integer>(rows * cols));
+  AlignedVector<Integer> reference(rows * cols);
   SlowRearrange<Integer>(quantized.get(), reference.get(), Routine::kBTileRow, Routine::kBTileCol, rows, cols);
 
   if (memcmp(reference.get(), test.get(), rows * cols * sizeof(Integer))) {
@@ -188,8 +188,8 @@ template <class Routine> void TestMultiply(int A_rows, int width, int B_cols) {
   std::cout << Routine::Name() << "\t" << A_rows << '\t' << width << '\t' << B_cols << '\n';
 
   // Initialize A and B.
-  free_ptr<float> A(AlignedArray<float>(A_rows * width));
-  free_ptr<float> B(AlignedArray<float>(width * B_cols));
+  AlignedVector<float> A(A_rows * width);
+  AlignedVector<float> B(width * B_cols);
   for (int i = 0; i < A_rows * width; i++) {
     A.get()[i] = ((float)rand()/(float)RAND_MAX)*2.0f - 1.0f;
   }
@@ -200,20 +200,20 @@ template <class Routine> void TestMultiply(int A_rows, int width, int B_cols) {
   float quant_mult = (sizeof(Integer) == 2) ? 1024 : 64;
   float unquant_mult = 1.0/(quant_mult*quant_mult);
 
-  free_ptr<Integer> A_prep(AlignedArray<Integer>(A_rows * width)), B_prep(AlignedArray<Integer>(width * B_cols));
+  AlignedVector<Integer> A_prep(A_rows * width), B_prep(width * B_cols);
   Routine::PrepareA(A.get(), A_prep.get(), quant_mult, A_rows, width);
   Routine::PrepareB(B.get(), B_prep.get(), quant_mult, width, B_cols);
 
-  free_ptr<float> test_C(AlignedArray<float>(A_rows * B_cols));
+  AlignedVector<float> test_C(A_rows * B_cols);
   Routine::Multiply(A_prep.get(), B_prep.get(), test_C.get(), unquant_mult, A_rows, width, B_cols);
 
-  free_ptr<Integer> B_quant(AlignedArray<Integer>(width * B_cols));
+  AlignedVector<Integer> B_quant(width * B_cols);
   Routine::Quantize(B.get(), B_quant.get(), quant_mult, width * B_cols);
-  free_ptr<float> slowint_C(AlignedArray<float>(A_rows * B_cols));
+  AlignedVector<float> slowint_C(A_rows * B_cols);
   // Assuming A is just quantization here.
   SlowRefInt(A_prep.get(), B_quant.get(), slowint_C.get(), unquant_mult, A_rows, width, B_cols);
 
-  free_ptr<float> float_C(AlignedArray<float>(A_rows * B_cols));
+  AlignedVector<float> float_C(A_rows * B_cols);
   SlowRefFloat(A.get(), B.get(), float_C.get(), A_rows, width, B_cols);
 
   Compare(float_C.get(), slowint_C.get(), test_C.get(), A_rows * B_cols);

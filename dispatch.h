@@ -50,7 +50,7 @@ class UnsupportedCPU : public std::exception {
   public:
     UnsupportedCPU();
 
-    ~UnsupportedCPU();
+    ~UnsupportedCPU() throw();
 
     const char *what() const throw();
 };

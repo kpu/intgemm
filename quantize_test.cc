@@ -42,11 +42,11 @@ template <class I> bool IsOff(float from, I ref, I test) {
 template <class Backend> bool Test(const float *input_unaligned, float quant_mult, std::size_t size) {
   typedef typename Backend::Integer Integer;
   bool success = true;
-  free_ptr<float> input(AlignedArray<float>(size));
+  AlignedVector<float> input(size);
   std::memcpy(input.get(), input_unaligned, sizeof(float) * size);
 
-  free_ptr<Integer> ref(AlignedArray<Integer>(size));
-  free_ptr<Integer> test(AlignedArray<Integer>(size));
+  AlignedVector<Integer> ref(size);
+  AlignedVector<Integer> test(size);
   QuantizeRef(input.get(), ref.get(), quant_mult, size);
   Backend::Quantize(input.get(), test.get(), quant_mult, size);
   for (std::size_t i = 0; i < size; ++i) {

@@ -8,7 +8,7 @@ namespace intgemm {
 
 UnsupportedCPU::UnsupportedCPU() {}
 
-UnsupportedCPU::~UnsupportedCPU() {}
+UnsupportedCPU::~UnsupportedCPU() throw() {}
 
 const char *UnsupportedCPU::what() const throw() {
   return "Integer matrix multiplication has not been efficiently implemented for your CPU.";

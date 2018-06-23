@@ -1,38 +1,27 @@
 #pragma once
 
-// Define allocation like:
-// free_ptr<Integer> quantized(AlignedArray<Integer>(rows * cols));
+// Aligned vector of things.
 // This is only used by tests.
 
 #include <cstdlib>
-#include <memory>
 
 namespace intgemm {
 
-struct DeleteWithFree {
-  template <class T> void operator() (T *t) const {
-// This requires newer C++
-//    std::free(const_cast<std::remove_const_t<T>* >(t));
-    std::free(t);
-  }
-};
-template <class T> using free_ptr = std::unique_ptr<T, DeleteWithFree>;
-// Return memory suitably aligned for SIMD.
-template <class T> T* AlignedArray(std::size_t size) {
-  return static_cast<T*>(aligned_alloc(64, size * sizeof(T)));
-}
-
 template <class T> class AlignedVector {
   public:
-    explicit AlignedVector(std::size_t size) : mem_(AlignedArray<T>(size)) {}
+    explicit AlignedVector(std::size_t size)
+      : mem_(static_cast<T*>(aligned_alloc(64, size * sizeof(T)))) {}
 
-    T &operator[](std::size_t offset) { return mem_.get()[offset]; }
-    const T &operator[](std::size_t offset) const { return mem_.get()[offset]; }
+    ~AlignedVector() { std::free(mem_); }
 
-    T *get() { return mem_.get(); }
-    const T *get() const { return mem_.get(); }
+    T &operator[](std::size_t offset) { return mem_[offset]; }
+    const T &operator[](std::size_t offset) const { return mem_[offset]; }
+
+    T *get() { return mem_; }
+    const T *get() const { return mem_; }
+
   private:
-    free_ptr<T> mem_;
+    T *mem_;
 };
 
 } // namespace intgemm
