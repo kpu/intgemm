@@ -1,6 +1,7 @@
 #include "StopWatch.h"
 
 #include <iostream>
+#include <iomanip>
 #include <err.h>
 #include <x86intrin.h>
 
@@ -24,5 +25,5 @@ StopWatch::~StopWatch() {
   if (-1 == clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &stopped))
     err(1, "Failed to read CLOCK_PROCESS_CPUTIME_ID");
 
-  std::cout << label_ << '\t' << (Subtract(stopped, started_) / divide_) << '\t' << (tsc_now - tsc_) << std::endl;
+  std::cout << label_ << '\t' << std::setw(10) << (Subtract(stopped, started_) / divide_) << '\t' << std::setw(11) << (tsc_now - tsc_) << std::endl;
 }
