@@ -1,9 +1,7 @@
 #pragma once
-
-// Aligned vector of things.
-// This is only used by tests.
-
 #include <cstdlib>
+
+// 64-byte aligned simple vector.
 
 namespace intgemm {
 
