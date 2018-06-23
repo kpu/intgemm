@@ -1,6 +1,7 @@
 #include "aligned.h"
 #include "avx512_gemm.h"
 #include "avx2_gemm.h"
+#include "ssse3_gemm.h"
 #include "sse2_gemm.h"
 #include "intgemm.h"
 #include "stop_watch.h"
