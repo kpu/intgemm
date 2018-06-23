@@ -60,7 +60,7 @@ template <class Backend> void Run(RandomMatrices &m, int repeat = 20) {
 void Time(int A_rows, int width, int B_cols, int repeat = 20) {
   std::cout << A_rows << '\t' << width << '\t' << B_cols << std::endl;
   RandomMatrices m(A_rows, width, B_cols);
-  Run<SSE2_8bit>(m, repeat);
+  Run<SSSE3_8bit>(m, repeat);
   Run<AVX2_8bit>(m, repeat);
   Run<AVX512_8bit>(m, repeat);
   Run<SSE2_16bit>(m, repeat);

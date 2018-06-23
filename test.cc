@@ -225,7 +225,7 @@ void TestBoth(int A_rows, int width, int B_cols) {
   TestMultiply<SSE2_16bit>(A_rows, width, B_cols);
   TestMultiply<AVX512_8bit>(A_rows, width, B_cols);
   TestMultiply<AVX2_8bit>(A_rows, width, B_cols);
-  TestMultiply<SSE2_8bit>(A_rows, width, B_cols);
+  TestMultiply<SSSE3_8bit>(A_rows, width, B_cols);
 }
 
 } // namespace intgemm
@@ -243,9 +243,9 @@ int main(int argc, char ** argv) {
     TestPrepare<AVX2_8bit>(64, 32);
     TestPrepare<AVX2_16bit>(64, 32);
     TestPrepare<SSE2_16bit>(8, 8);
-    TestPrepare<SSE2_8bit>(16, 8);
-    TestPrepare<SSE2_8bit>(32, 16);
-    TestPrepare<SSE2_8bit>(32, 32);
+    TestPrepare<SSSE3_8bit>(16, 8);
+    TestPrepare<SSSE3_8bit>(32, 16);
+    TestPrepare<SSSE3_8bit>(32, 32);
     // Top matrix sizes from Marian
     TestBoth(8, 256, 256);
     TestBoth(8, 2048, 256);

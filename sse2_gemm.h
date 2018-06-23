@@ -3,6 +3,7 @@
 
 namespace intgemm {
 
+// This should be pure SSE2
 struct SSE2_16bit {
   typedef int16_t Integer;
 
@@ -24,7 +25,8 @@ struct SSE2_16bit {
   static const char *Name() { return "SSE2 16-bit"; }
 };
 
-struct SSE2_8bit {
+// pmaddubsw (the 8-bit multiply) is SSSE3, so pedantically that's the version we need.
+struct SSSE3_8bit {
   typedef int8_t Integer;
 
   // Currently A is prepared by quantization but this could theoretically change.
@@ -42,7 +44,7 @@ struct SSE2_8bit {
 
   static void Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols);
   
-  static const char *Name() { return "SSE2 8-bit"; }
+  static const char *Name() { return "SSSE3 8-bit"; }
 };
 
 } // namespace intgemm

@@ -78,7 +78,7 @@ int main() {
   bool success = true;
   success &= TestMany<AVX2_8bit>();
   success &= TestMany<AVX2_16bit>();
-  success &= TestMany<SSE2_8bit>();
+  success &= TestMany<SSSE3_8bit>();
   success &= TestMany<SSE2_16bit>();
   return success ? 0 : 1;
 }

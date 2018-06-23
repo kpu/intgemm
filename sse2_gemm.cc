@@ -101,7 +101,7 @@ void SSE2_16bit::Quantize(const float *input, int16_t *output, float quant_mult,
   }
 }
 
-void SSE2_8bit::Quantize(const float *input, int8_t *output, float quant_mult, int size) {
+void SSSE3_8bit::Quantize(const float *input, int8_t *output, float quant_mult, int size) {
   assert(size % 16 == 0);
   assert(reinterpret_cast<uintptr_t>(input) % 16 == 0);
   assert(reinterpret_cast<uintptr_t>(output) % 16 == 0);
@@ -116,7 +116,7 @@ void SSE2_16bit::PrepareB(const float *input, int16_t *output, float quant_mult,
   PrepareBFor16(input, output, QuantizeTile16(quant_mult), rows, cols);
 }
 
-void SSE2_8bit::PrepareB(const float *input, int8_t *output, float quant_mult, int rows, int cols) {
+void SSSE3_8bit::PrepareB(const float *input, int8_t *output, float quant_mult, int rows, int cols) {
   PrepareBFor8(input, output, QuantizeTile8(quant_mult), rows, cols);
 }
 
@@ -124,7 +124,7 @@ void SSE2_16bit::Multiply(const int16_t *A, const int16_t *B, float *C, float un
   Multiply16<__m128i, __m128>(A, B, C, unquant_mult, A_rows, width, B_cols);
 }
 
-void SSE2_8bit::Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols) {
+void SSSE3_8bit::Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols) {
   Multiply8_SSE2OrAVX2<__m128i, __m128>(A, B, C, unquant_mult, A_rows, width, B_cols);
 }
 
