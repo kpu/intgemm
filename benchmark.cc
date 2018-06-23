@@ -62,16 +62,18 @@ template <class Backend> void Run(RandomMatrices &m, int repeat = 20) {
 void Time(int A_rows, int width, int B_cols, int repeat = 20) {
   std::cout << A_rows << '\t' << width << '\t' << B_cols << std::endl;
   RandomMatrices m(A_rows, width, B_cols);
-  Run<SSSE3_8bit>(m, repeat);
-  Run<AVX2_8bit>(m, repeat);
-#ifdef __AVX512BW__
-  Run<AVX512_8bit>(m, repeat);
-#endif
-  Run<SSE2_16bit>(m, repeat);
-  Run<AVX2_16bit>(m, repeat);
-#ifdef __AVX512BW__
-  Run<AVX512_16bit>(m, repeat);
-#endif
+  if (kCPU >= CPU_SSSE3)
+    Run<SSSE3_8bit>(m, repeat);
+  if (kCPU >= CPU_AVX2)
+    Run<AVX2_8bit>(m, repeat);
+  if (kCPU >= CPU_AVX512BW)
+    Run<AVX512_8bit>(m, repeat);
+  if (kCPU >= CPU_SSE2)
+    Run<SSE2_16bit>(m, repeat);
+  if (kCPU >= CPU_AVX2)
+    Run<AVX2_16bit>(m, repeat);
+  if (kCPU >= CPU_AVX512BW)
+    Run<AVX512_16bit>(m, repeat);
 }
 
 } // namespace intgemm

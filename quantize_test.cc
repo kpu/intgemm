@@ -3,6 +3,7 @@
 #include "ssse3_gemm.h"
 #include "sse2_gemm.h"
 #include "aligned.h"
+#include "intgemm.h"
 
 #include <cstring>
 #include <math.h>
@@ -77,9 +78,19 @@ template <class Backend> bool TestMany() {
 int main() {
   using namespace intgemm;
   bool success = true;
-  success &= TestMany<AVX2_8bit>();
-  success &= TestMany<AVX2_16bit>();
-  success &= TestMany<SSSE3_8bit>();
-  success &= TestMany<SSE2_16bit>();
+  if (kCPU >= CPU_AVX512BW) {
+    success &= TestMany<AVX512_8bit>();
+    success &= TestMany<AVX512_16bit>();
+  }
+  if (kCPU >= CPU_AVX2) {
+    success &= TestMany<AVX2_8bit>();
+    success &= TestMany<AVX2_16bit>();
+  }
+  if (kCPU >= CPU_SSSE3) {
+    success &= TestMany<SSSE3_8bit>();
+  }
+  if (kCPU >= CPU_SSE2) {
+    success &= TestMany<SSE2_16bit>();
+  }
   return success ? 0 : 1;
 }

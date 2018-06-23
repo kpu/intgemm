@@ -221,16 +221,24 @@ template <class Routine> void TestMultiply(int A_rows, int width, int B_cols) {
 }
 
 void TestBoth(int A_rows, int width, int B_cols) {
-  if (Int16::Quantize == AVX512_16bit::Quantize) {
+  if (kCPU >= CPU_AVX512BW) {
     TestMultiply<AVX512_16bit>(A_rows, width, B_cols);
   }
-  TestMultiply<AVX2_16bit>(A_rows, width, B_cols);
-  TestMultiply<SSE2_16bit>(A_rows, width, B_cols);
-  if (Int16::Quantize == AVX512_16bit::Quantize) {
+  if (kCPU >= CPU_AVX2) {
+    TestMultiply<AVX2_16bit>(A_rows, width, B_cols);
+  }
+  if (kCPU >= CPU_SSE2) {
+    TestMultiply<SSE2_16bit>(A_rows, width, B_cols);
+  }
+  if (kCPU >= CPU_AVX512BW) {
     TestMultiply<AVX512_8bit>(A_rows, width, B_cols);
   }
-  TestMultiply<AVX2_8bit>(A_rows, width, B_cols);
-  TestMultiply<SSSE3_8bit>(A_rows, width, B_cols);
+  if (kCPU >= CPU_AVX2) {
+    TestMultiply<AVX2_8bit>(A_rows, width, B_cols);
+  }
+  if (kCPU >= CPU_SSSE3) {
+    TestMultiply<SSSE3_8bit>(A_rows, width, B_cols);
+  }
 }
 
 } // namespace intgemm
@@ -239,18 +247,32 @@ void TestBoth(int A_rows, int width, int B_cols) {
 int main(int argc, char ** argv) {
     std::srand(45678);
     using namespace intgemm;
-    TestTranspose16();
-    TestTranspose8();
-    TestPrepare<AVX512_8bit>(64, 8);
-    TestPrepare<AVX512_8bit>(256, 32);
-    TestPrepare<AVX512_16bit>(32, 8);
-    TestPrepare<AVX512_16bit>(256, 32);
-    TestPrepare<AVX2_8bit>(64, 32);
-    TestPrepare<AVX2_16bit>(64, 32);
-    TestPrepare<SSE2_16bit>(8, 8);
-    TestPrepare<SSSE3_8bit>(16, 8);
-    TestPrepare<SSSE3_8bit>(32, 16);
-    TestPrepare<SSSE3_8bit>(32, 32);
+    if (kCPU >= CPU_SSE2) {
+      TestTranspose16();
+    }
+    if (kCPU >= CPU_SSSE3) {
+      TestTranspose8();
+    }
+    if (intgemm::kCPU >= CPU_AVX512BW) {
+      TestPrepare<AVX512_8bit>(64, 8);
+      TestPrepare<AVX512_8bit>(256, 32);
+      TestPrepare<AVX512_16bit>(32, 8);
+      TestPrepare<AVX512_16bit>(256, 32);
+    }
+
+    if (intgemm::kCPU >= CPU_AVX2) {
+      TestPrepare<AVX2_8bit>(64, 32);
+      TestPrepare<AVX2_16bit>(64, 32);
+    }
+    if (intgemm::kCPU >= CPU_SSSE3) {
+      TestPrepare<SSSE3_8bit>(16, 8);
+      TestPrepare<SSSE3_8bit>(32, 16);
+      TestPrepare<SSSE3_8bit>(32, 32);
+    }
+    if (intgemm::kCPU >= CPU_SSE2) {
+      TestPrepare<SSE2_16bit>(8, 8);
+      TestPrepare<SSE2_16bit>(32, 32);
+    }
     // Top matrix sizes from Marian
     TestBoth(8, 256, 256);
     TestBoth(8, 2048, 256);
