@@ -2,6 +2,7 @@
 #include "avx512_gemm.h"
 #include "avx2_gemm.h"
 #include "sse2_gemm.h"
+#include "dispatch.h"
 #include "stop_watch.h"
 
 #include <cassert>
@@ -62,12 +63,16 @@ void Time(int A_rows, int width, int B_cols, int repeat = 20) {
   RandomMatrices m(A_rows, width, B_cols);
   Run<SSSE3_8bit>(m, repeat);
   Run<AVX2_8bit>(m, repeat);
+#ifdef __AVX512BW__
   Run<AVX512_8bit>(m, repeat);
+#endif
+  Run<Dispatch_8bit>(m, repeat);
   Run<SSE2_16bit>(m, repeat);
   Run<AVX2_16bit>(m, repeat);
 #ifdef __AVX512BW__
   Run<AVX512_16bit>(m, repeat);
 #endif
+  Run<Dispatch_16bit>(m, repeat);
 }
 
 } // namespace intgemm

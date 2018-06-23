@@ -1,6 +1,13 @@
 #pragma once
 #include <stdint.h>
 
+/* AVX512 implementation.
+ * This uses AVX512BW, AVX512DQ, and might use AVX512VL
+ * That means it supports mainstream CPUs with AVX512, starting with Skylake
+ * Xeons.
+ * It does not support any Knights / Xeon Phi processors.
+ */
+
 namespace intgemm {
 
 struct AVX512_16bit {

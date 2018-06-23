@@ -1,6 +1,6 @@
 CXX := g++
 CXXFLAGS := -Wall -Werror -fPIC -O3 -march=native -std=c++11 -DNDEBUG
-SRC := avx512_gemm.cc avx2_gemm.cc sse2_gemm.cc stop_watch.cc 
+SRC := avx512_gemm.cc avx2_gemm.cc sse2_gemm.cc stop_watch.cc dispatch.cc
 OBJ := ${SRC:.cc=.o}
 
 all: test quantize_test benchmark
