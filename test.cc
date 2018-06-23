@@ -1,28 +1,7 @@
-// Based on https://arxiv.org/abs/1705.01991
-
-// Copyright (c) 2017 Microsoft Corporation
-
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-
 #include "avx512_gemm.h"
 #include "avx2_gemm.h"
 #include "sse2_gemm.h"
+#include "dispatch.h"
 #include "aligned.h"
 #include "interleave.h"
 #include "stop_watch.h"
@@ -142,6 +121,27 @@ template <class Routine> void TestPrepare(int rows = 32, int cols = 16) {
   }
 }
 
+// Based on https://arxiv.org/abs/1705.01991
+
+// Copyright (c) 2017 Microsoft Corporation
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 // Compute A*B slowly in floats.
 void SlowRefFloat(const float *A, const float *B, float *C, int A_rows, int width, int B_cols) {
   for (int r = 0; r < A_rows; ++r) {
@@ -220,10 +220,14 @@ template <class Routine> void TestMultiply(int A_rows, int width, int B_cols) {
 }
 
 void TestBoth(int A_rows, int width, int B_cols) {
-  TestMultiply<AVX512_16bit>(A_rows, width, B_cols);
+  if (Dispatch_16bit::Quantize == AVX512_16bit::Quantize) {
+    TestMultiply<AVX512_16bit>(A_rows, width, B_cols);
+  }
   TestMultiply<AVX2_16bit>(A_rows, width, B_cols);
   TestMultiply<SSE2_16bit>(A_rows, width, B_cols);
-  TestMultiply<AVX512_8bit>(A_rows, width, B_cols);
+  if (Dispatch_16bit::Quantize == AVX512_16bit::Quantize) {
+    TestMultiply<AVX512_8bit>(A_rows, width, B_cols);
+  }
   TestMultiply<AVX2_8bit>(A_rows, width, B_cols);
   TestMultiply<SSSE3_8bit>(A_rows, width, B_cols);
 }
