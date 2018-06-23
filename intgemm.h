@@ -15,6 +15,8 @@
  * Use PrepareB to prepare B for multiplication.  This is slower, with the
  * intention that it will be prepared once and remembered.
  *
+ * C is row major.
+ *
  * Once both A and B are prepared, call Multiply.
  *
  * All memory (A, B, and C in float or prepared form) must be 64-byte aligned.
@@ -56,7 +58,7 @@ class UnsupportedCPU : public std::exception {
 };
 
 /* 16-bit matrix multiplication. */
-struct Dispatch_16bit {
+struct Generic_16bit {
   typedef int16_t Integer;
 
   // A's size must be a multiple of 1x32.
@@ -88,7 +90,7 @@ struct Dispatch_16bit {
 };
 
 /* 8-bit matrix multiplication */
-struct Dispatch_8bit {
+struct Generic_8bit {
   typedef int8_t Integer;
 
   // A's size must be a multiple of 1x64.
