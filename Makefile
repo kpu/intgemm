@@ -6,7 +6,7 @@ OBJ := ${SRC:.cc=.o}
 all: test quantize_test benchmark
 
 avx512_gemm.o: avx512_gemm.h avx512_gemm.cc
-	${CXX} ${CXXFLAGS} -c -mavx512bw -mavx512vl avx512_gemm.cc -o avx512_gemm.o
+	${CXX} ${CXXFLAGS} -c -mavx512bw -mavx512vl -mavx512dq avx512_gemm.cc -o avx512_gemm.o
 
 sse2_gemm.o: multiply.h interleave.h sse2_gemm.cc sse2_gemm.h
 	${CXX} ${CXXFLAGS} -c sse2_gemm.cc -o sse2_gemm.o
