@@ -25,5 +25,5 @@ StopWatch::~StopWatch() {
   if (-1 == clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &stopped))
     err(1, "Failed to read CLOCK_PROCESS_CPUTIME_ID");
 
-  std::cout << label_ << '\t' << std::setw(10) << (Subtract(stopped, started_) / divide_) << '\t' << std::setw(11) << (tsc_now - tsc_) << std::endl;
+  std::cout << label_ << '\t' << std::setw(9) << std::setprecision(5) << (Subtract(stopped, started_) / divide_) << '\t' << std::setw(11) << (tsc_now - tsc_) << std::endl;
 }

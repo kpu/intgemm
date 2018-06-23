@@ -35,22 +35,22 @@ template <class Backend> void Run(RandomMatrices &m, int repeat = 20) {
   typedef typename Backend::Integer Integer;
   float quant_mult = 127.0 / 2;
   float unquant_mult = 1.0 / (quant_mult * quant_mult);
-  std::cout << Backend::Name() << std::endl;
+//  std::cout << Backend::Name() << std::endl;
   AlignedVector<Integer> A_prepared(m.A_rows * m.width);
   {
-    StopWatch w("PrepareA");
+//    StopWatch w("PrepareA");
     Backend::PrepareA(m.A.get(), A_prepared.get(), quant_mult, m.A_rows, m.width);
   }
   AlignedVector<Integer> B_prepared(m.width * m.B_cols);
   {
-    StopWatch w("PrepareB");
+//    StopWatch w("PrepareB");
     Backend::PrepareB(m.B.get(), B_prepared.get(), quant_mult, m.width, m.B_cols);
   }
   AlignedVector<float> output(m.A_rows * m.B_cols);
   // Burn in
   Backend::Multiply(A_prepared.get(), B_prepared.get(), output.get(), unquant_mult, m.A_rows, m.width, m.B_cols);
   {
-    StopWatch w("Multiply", repeat);
+    StopWatch w(Backend::Name(), repeat);
     for (int i = 0; i < repeat; ++i) {
       Backend::Multiply(A_prepared.get(), B_prepared.get(), output.get(), unquant_mult, m.A_rows, m.width, m.B_cols);
     }
@@ -60,8 +60,14 @@ template <class Backend> void Run(RandomMatrices &m, int repeat = 20) {
 void Time(int A_rows, int width, int B_cols, int repeat = 20) {
   std::cout << A_rows << '\t' << width << '\t' << B_cols << std::endl;
   RandomMatrices m(A_rows, width, B_cols);
+  Run<SSE2_8bit>(m, repeat);
   Run<AVX2_8bit>(m, repeat);
+  Run<AVX512_8bit>(m, repeat);
+  Run<SSE2_16bit>(m, repeat);
   Run<AVX2_16bit>(m, repeat);
+#ifdef __AVX512BW__
+  Run<AVX512_16bit>(m, repeat);
+#endif
 }
 
 } // namespace intgemm
