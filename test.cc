@@ -25,7 +25,7 @@
 #include "sse2_gemm.h"
 #include "aligned.h"
 #include "interleave.h"
-#include "StopWatch.h"
+#include "stop_watch.h"
 
 #include <cassert>
 #include <cmath>

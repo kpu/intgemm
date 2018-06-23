@@ -1,3 +1,5 @@
 *.o
 *.swp
-Test
+test
+quantize_test
+benchmark

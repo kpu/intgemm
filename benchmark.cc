@@ -2,7 +2,7 @@
 #include "avx512_gemm.h"
 #include "avx2_gemm.h"
 #include "sse2_gemm.h"
-#include "StopWatch.h"
+#include "stop_watch.h"
 
 #include <cassert>
 #include <cmath>
