@@ -21,8 +21,9 @@ template <class T> class AlignedVector {
   private:
     T *mem_;
 
-    AlignedVector(AlignedVector &) = delete;
-    AlignedVector &operator=(AlignedVector &) = delete;
+    // Deleted.
+    AlignedVector(AlignedVector &);
+    AlignedVector &operator=(AlignedVector &);
 };
 
 } // namespace intgemm
