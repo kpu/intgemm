@@ -161,16 +161,18 @@ template <class Integer, class Float> inline void Multiply16(const int16_t *A, c
     for (int A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) {
       const Integer *A_row = reinterpret_cast<const Integer*>(A + A_rowidx * width);
       // These will be packed 32-bit integers containing sums for each row of B multiplied by the row of A.
-      Integer sum0 = setzero_si<Integer>();
-      Integer sum1 = setzero_si<Integer>();
-      Integer sum2 = setzero_si<Integer>();
-      Integer sum3 = setzero_si<Integer>();
-      Integer sum4 = setzero_si<Integer>();
-      Integer sum5 = setzero_si<Integer>();
-      Integer sum6 = setzero_si<Integer>();
-      Integer sum7 = setzero_si<Integer>();
       // Iterate over shared (inner) dimension.
-      for (int k = 0; k < simd_width; ++k) {
+      int k = 0;
+      Integer a = *(A_row + k);
+      Integer sum0 = madd_epi16(a, *(B0_col + k * 8));
+      Integer sum1 = madd_epi16(a, *(B0_col + k * 8 + 1));
+      Integer sum2 = madd_epi16(a, *(B0_col + k * 8 + 2));
+      Integer sum3 = madd_epi16(a, *(B0_col + k * 8 + 3));
+      Integer sum4 = madd_epi16(a, *(B0_col + k * 8 + 4));
+      Integer sum5 = madd_epi16(a, *(B0_col + k * 8 + 5));
+      Integer sum6 = madd_epi16(a, *(B0_col + k * 8 + 6));
+      Integer sum7 = madd_epi16(a, *(B0_col + k * 8 + 7));
+      for (int k = 1; k < simd_width; ++k) {
         Integer a = *(A_row + k);
         // Multiply 16-bit, horizontally add to packed 32-bit integers.
         Integer mult0 = madd_epi16(a, *(B0_col + k * 8));
