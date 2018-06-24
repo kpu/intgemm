@@ -71,7 +71,7 @@ struct BackendStats {
   std::vector<std::vector<uint64_t> > avx512_16bit;
 };
 
-void Summarize(std::vector<uint64_t> &stats) {
+void Summarize(const std::vector<uint64_t> &stats) {
   double avg = 0.0;
   for (std::vector<uint64_t>::const_iterator i = stats.begin(); i != stats.end(); ++i) {
     avg += *i;
@@ -86,10 +86,10 @@ void Summarize(std::vector<uint64_t> &stats) {
   std::cout << std::setw(8) << *std::min_element(stats.begin(), stats.end()) << '\t' << std::setw(8) << (uint64_t)avg << '\t' << std::setw(8) << (uint64_t)s;
 }
 
-template <class Backend> void Print(std::vector<uint64_t> &stats) {
+template <class Backend> void Print(const std::vector<std::vector<uint64_t> > &stats, int index) {
   if (stats.empty()) return;
   std::cout << Backend::kName << '\t';
-  Summarize(stats);
+  Summarize(stats[index]);
   std::cout << '\n';
 }
 
@@ -140,13 +140,13 @@ int main(int argc, char ** argv) {
 
   for (std::size_t i = 0; i < sizeof(matrices) / sizeof(RandomMatrices); ++i) {
     std::cout << matrices[i].A_rows << '\t' << matrices[i].width << '\t' << matrices[i].B_cols << '\n';
-    Print<SSSE3_8bit>(stats.ssse3_8bit[i]);
-    Print<AVX2_8bit>(stats.avx2_8bit[i]);
-    Print<AVX512_8bit>(stats.avx512_8bit[i]);
+    Print<SSSE3_8bit>(stats.ssse3_8bit, i);
+    Print<AVX2_8bit>(stats.avx2_8bit, i);
+    Print<AVX512_8bit>(stats.avx512_8bit, i);
 
-    Print<SSE2_16bit>(stats.sse2_16bit[i]);
-    Print<AVX2_16bit>(stats.avx2_16bit[i]);
-    Print<AVX512_16bit>(stats.avx512_16bit[i]);
+    Print<SSE2_16bit>(stats.sse2_16bit, i);
+    Print<AVX2_16bit>(stats.avx2_16bit, i);
+    Print<AVX512_16bit>(stats.avx512_16bit, i);
   }
   return 0;
 }
