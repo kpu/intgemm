@@ -1,5 +1,6 @@
 #include "intgemm.h"
 
+#include "cpu_type.h"
 #include "sse2_gemm.h"
 #include "ssse3_gemm.h"
 #include "avx2_gemm.h"

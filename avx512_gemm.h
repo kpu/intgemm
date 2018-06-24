@@ -1,6 +1,8 @@
 #pragma once
 #include <stdint.h>
 
+#include "cpu_type.h"
+
 /* AVX512 implementation.
  * This uses AVX512BW, AVX512DQ, and might use AVX512VL
  * That means it supports mainstream CPUs with AVX512, starting with Skylake
@@ -35,6 +37,8 @@ struct AVX512_16bit {
   static void Multiply(const int16_t *A, const int16_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols);
 
   static const char *const kName;
+
+  static const CPUType kUses = CPU_AVX512BW;
 };
 
 struct AVX512_8bit {
@@ -58,6 +62,8 @@ struct AVX512_8bit {
   static void Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols);
 
   static const char *const kName;
+
+  static const CPUType kUses = CPU_AVX512BW;
 };
 
 } // namespace intgemm

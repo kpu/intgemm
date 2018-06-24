@@ -1,4 +1,5 @@
 #pragma once
+#include "cpu_type.h"
 #include <stdint.h>
 
 // 16-bit is in sse2_gemm.h
@@ -25,6 +26,8 @@ struct SSSE3_8bit {
   static void Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols);
   
   static const char *const kName;
+
+  static const CPUType kUses = CPU_SSSE3;
 };
 
 } // namespace intgemm

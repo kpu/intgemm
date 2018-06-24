@@ -1,4 +1,5 @@
 #pragma once
+#include "cpu_type.h"
 #include <stdint.h>
 
 namespace intgemm {
@@ -22,6 +23,8 @@ struct AVX2_16bit {
   static void Multiply(const int16_t *A, const int16_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols);
 
   static const char *const kName;
+
+  static const CPUType kUses = CPU_AVX2;
 };
 
 struct AVX2_8bit {
@@ -43,6 +46,8 @@ struct AVX2_8bit {
   static void Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols);
   
   static const char *const kName;
+
+  static const CPUType kUses = CPU_AVX2;
 };
 
 } // namespace intgemm
