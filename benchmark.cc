@@ -119,11 +119,12 @@ int main(int argc, char ** argv) {
     {4096, 4096, 256},*/
     {4096, 4096, 128}
   };
-  RandomMatrices *matrices_end = matrices + sizeof(matrices) / sizeof(RandomMatrices);
+  RandomMatrices *matrices_end = (RandomMatrices*)matrices + sizeof(matrices) / sizeof(RandomMatrices);
   // Only do full sampling for <1024 rows.
-  RandomMatrices *full_sample = matrices_end;
-  for (; full_sample >= matrices && full_sample->A_rows >= 1024; --full_sample) {}
+  RandomMatrices *full_sample;
+  for (full_sample = matrices_end - 1; full_sample >= matrices && full_sample->A_rows >= 1024; --full_sample) {}
   ++full_sample;
+
   BackendStats stats;
   const int kSamples = 10;
   // Run samples far apart to reduce temporary noise.
@@ -138,8 +139,12 @@ int main(int argc, char ** argv) {
     RunAll<AVX512_16bit>(matrices, end, stats.avx512_16bit);
   }
 
+  if (stats.sse2_16bit.empty()) {
+    std::cerr << "No CPU support." << std::endl;
+    return 1;
+  }
   for (std::size_t i = 0; i < sizeof(matrices) / sizeof(RandomMatrices); ++i) {
-    std::cout << matrices[i].A_rows << '\t' << matrices[i].width << '\t' << matrices[i].B_cols << '\n';
+    std::cout << "Multiply\t" << matrices[i].A_rows << '\t' << matrices[i].width << '\t' << matrices[i].B_cols << '\t' << "Samples=" << stats.sse2_16bit[i].size() << '\n';
     Print<SSSE3_8bit>(stats.ssse3_8bit, i);
     Print<AVX2_8bit>(stats.avx2_8bit, i);
     Print<AVX512_8bit>(stats.avx512_8bit, i);
