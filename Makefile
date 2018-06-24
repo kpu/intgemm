@@ -1,5 +1,5 @@
 CXX := g++
-CXXFLAGS := -Wall -Werror -fPIC -O3 -march=native
+CXXFLAGS := -Wall -Werror -fPIC -O3 -march=native -DNDEBUG
 SRC := avx512_gemm.cc avx2_gemm.cc sse2_gemm.cc ssse3_gemm.cc stop_watch.cc intgemm.cc
 OBJ := ${SRC:.cc=.o}
 
