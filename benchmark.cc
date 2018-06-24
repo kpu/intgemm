@@ -6,6 +6,7 @@
 #include "intgemm.h"
 #include "stop_watch.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -13,6 +14,7 @@
 #include <cstdlib>
 
 #include <iostream>
+#include <iomanip>
 
 namespace intgemm {
 
@@ -33,75 +35,120 @@ struct RandomMatrices {
   AlignedVector<float> A, B;
 };
 
-template <class Backend> void Run(RandomMatrices &m, int repeat = 20) {
+template <class Backend> void Run(const RandomMatrices &m, std::vector<uint64_t> &stats) {
   typedef typename Backend::Integer Integer;
   float quant_mult = 127.0 / 2;
   float unquant_mult = 1.0 / (quant_mult * quant_mult);
-//  std::cout << Backend::kName << std::endl;
   AlignedVector<Integer> A_prepared(m.A_rows * m.width);
-  {
-//    StopWatch w("PrepareA");
-    Backend::PrepareA(m.A.get(), A_prepared.get(), quant_mult, m.A_rows, m.width);
-  }
+  Backend::PrepareA(m.A.get(), A_prepared.get(), quant_mult, m.A_rows, m.width);
   AlignedVector<Integer> B_prepared(m.width * m.B_cols);
-  {
-//    StopWatch w("PrepareB");
-    Backend::PrepareB(m.B.get(), B_prepared.get(), quant_mult, m.width, m.B_cols);
-  }
+  Backend::PrepareB(m.B.get(), B_prepared.get(), quant_mult, m.width, m.B_cols);
   AlignedVector<float> output(m.A_rows * m.B_cols);
   // Burn in
   Backend::Multiply(A_prepared.get(), B_prepared.get(), output.get(), unquant_mult, m.A_rows, m.width, m.B_cols);
   {
-    StopWatch w(Backend::kName, repeat);
-    for (int i = 0; i < repeat; ++i) {
-      Backend::Multiply(A_prepared.get(), B_prepared.get(), output.get(), unquant_mult, m.A_rows, m.width, m.B_cols);
-    }
+    StopWatch w(stats);
+    Backend::Multiply(A_prepared.get(), B_prepared.get(), output.get(), unquant_mult, m.A_rows, m.width, m.B_cols);
   }
 }
 
-void Time(int A_rows, int width, int B_cols, int repeat = 20) {
-  std::cout << A_rows << '\t' << width << '\t' << B_cols << std::endl;
-  RandomMatrices m(A_rows, width, B_cols);
-  if (kCPU >= CPU_SSSE3)
-    Run<SSSE3_8bit>(m, repeat);
-  if (kCPU >= CPU_AVX2)
-    Run<AVX2_8bit>(m, repeat);
-  if (kCPU >= CPU_AVX512BW)
-    Run<AVX512_8bit>(m, repeat);
-  if (kCPU >= CPU_SSE2)
-    Run<SSE2_16bit>(m, repeat);
-  if (kCPU >= CPU_AVX2)
-    Run<AVX2_16bit>(m, repeat);
-  if (kCPU >= CPU_AVX512BW)
-    Run<AVX512_16bit>(m, repeat);
+template <class Backend> void RunAll(RandomMatrices *matrices, RandomMatrices *matrices_end, std::vector<std::vector<uint64_t> > &stats) {
+  if (Backend::kUses > kCPU) return;
+  std::size_t size = matrices_end - matrices;
+  if (stats.size() < size)
+    stats.resize(size);
+  for (std::size_t i = 0; i < size; ++i) {
+    Run<Backend>(matrices[i], stats[i]);
+  }
+}
+
+struct BackendStats {
+  std::vector<std::vector<uint64_t> > ssse3_8bit;
+  std::vector<std::vector<uint64_t> > avx2_8bit;
+  std::vector<std::vector<uint64_t> > avx512_8bit;
+  std::vector<std::vector<uint64_t> > sse2_16bit;
+  std::vector<std::vector<uint64_t> > avx2_16bit;
+  std::vector<std::vector<uint64_t> > avx512_16bit;
+};
+
+void Summarize(std::vector<uint64_t> &stats) {
+  double avg = 0.0;
+  for (std::vector<uint64_t>::const_iterator i = stats.begin(); i != stats.end(); ++i) {
+    avg += *i;
+  }
+  avg /= stats.size();
+  double s = 0.0;
+  for (std::vector<uint64_t>::const_iterator i = stats.begin(); i != stats.end(); ++i) {
+    double off = (double)*i - avg;
+    s += off * off;
+  }
+  s = sqrt(s / (stats.size() - 1));
+  std::cout << std::setw(8) << *std::min_element(stats.begin(), stats.end()) << '\t' << std::setw(8) << (uint64_t)avg << '\t' << std::setw(8) << (uint64_t)s;
+}
+
+template <class Backend> void Print(std::vector<uint64_t> &stats) {
+  if (stats.empty()) return;
+  std::cout << Backend::kName << '\t';
+  Summarize(stats);
+  std::cout << '\n';
 }
 
 } // namespace intgemm
 
 // Program takes no input
 int main(int argc, char ** argv) {
-    std::srand(45678);
-    using namespace intgemm;
-    Time(1, 64, 8);
-    // Top matrix sizes from Marian
-    Time(8, 256, 256);
-    Time(8, 2048, 256);
-    Time(8, 256, 2048);
-    Time(320, 256, 256);
-    Time(472, 256, 256);
-    Time(248, 256, 256);
-    Time(200, 256, 256);
+  std::srand(45678);
+  using namespace intgemm;
+  RandomMatrices matrices[] = {
+    {1, 64, 8},
+    {8, 256, 256},
+    {8, 2048, 256},
+    {8, 256, 2048},
+    {320, 256, 256},
+    {472, 256, 256},
+    {248, 256, 256},
+    {200, 256, 256},
     // Additional stuff
-    Time(256, 256, 256);
-    Time(512, 512, 512);
-    Time(1024, 1024, 1024);
-    Time(4096, 4096, 4096, 3);
-    Time(4096, 4096, 2048, 3);
-    Time(4096, 4096, 1024, 3);
-    Time(4096, 4096, 512, 3);
-    Time(4096, 4096, 256, 3);
-    Time(4096, 4096, 128, 3);
-    return 0;
+    {256, 256, 256},
+    {512, 512, 512},
+    {1024, 1024, 1024},
+/*    {4096, 4096, 4096},
+    {4096, 4096, 2048},
+    {4096, 4096, 1024},
+    {4096, 4096, 512},
+    {4096, 4096, 256},*/
+    {4096, 4096, 128}
+  };
+  RandomMatrices *matrices_end = matrices + sizeof(matrices) / sizeof(RandomMatrices);
+  // Only do full sampling for <1024 rows.
+  RandomMatrices *full_sample = matrices_end;
+  for (; full_sample >= matrices && full_sample->A_rows >= 1024; --full_sample) {}
+  ++full_sample;
+  BackendStats stats;
+  const int kSamples = 10;
+  // Run samples far apart to reduce temporary noise.
+  for (int samples = 0; samples < kSamples; ++samples) {
+    std::cerr << "Sample " << samples << " / " << kSamples << std::endl;
+    RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
+    RunAll<SSSE3_8bit>(matrices, end, stats.ssse3_8bit);
+    RunAll<SSE2_16bit>(matrices, end, stats.sse2_16bit);
+    RunAll<AVX2_8bit>(matrices, end, stats.avx2_8bit);
+    RunAll<AVX2_16bit>(matrices, end, stats.avx2_16bit);
+    RunAll<AVX512_8bit>(matrices, end, stats.avx512_8bit);
+    RunAll<AVX512_16bit>(matrices, end, stats.avx512_16bit);
+  }
+
+  for (std::size_t i = 0; i < sizeof(matrices) / sizeof(RandomMatrices); ++i) {
+    std::cout << matrices[i].A_rows << '\t' << matrices[i].width << '\t' << matrices[i].B_cols << '\n';
+    Print<SSSE3_8bit>(stats.ssse3_8bit[i]);
+    Print<AVX2_8bit>(stats.avx2_8bit[i]);
+    Print<AVX512_8bit>(stats.avx512_8bit[i]);
+
+    Print<SSE2_16bit>(stats.sse2_16bit[i]);
+    Print<AVX2_16bit>(stats.avx2_16bit[i]);
+    Print<AVX512_16bit>(stats.avx512_16bit[i]);
+  }
+  return 0;
 }
 
 

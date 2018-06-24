@@ -1,17 +1,20 @@
 #pragma once
-#include <time.h>
-#include <string>
 #include <stdint.h>
+#include <vector>
+#include <x86intrin.h>
 
 class StopWatch {
   public:
-    explicit StopWatch(const std::string &label, float divide = 1);
+    StopWatch(std::vector<uint64_t> &stats)
+      : stats_(stats), start_(__rdtsc()) {}
 
-    ~StopWatch();
+    ~StopWatch() {
+      uint64_t stop = __rdtsc();
+      stats_.push_back(stop - start_);
+    }
 
   private:
-    struct timespec started_;
-    uint64_t tsc_;
-    std::string label_;
-    float divide_;
+    std::vector<uint64_t> &stats_;
+    uint64_t start_;
 };
+

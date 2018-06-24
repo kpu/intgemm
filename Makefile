@@ -1,6 +1,6 @@
 CXX := g++
 CXXFLAGS := -Wall -Werror -fPIC -O3 -march=native -DNDEBUG
-SRC := avx512_gemm.cc avx2_gemm.cc sse2_gemm.cc ssse3_gemm.cc stop_watch.cc intgemm.cc
+SRC := avx512_gemm.cc avx2_gemm.cc sse2_gemm.cc ssse3_gemm.cc intgemm.cc
 OBJ := ${SRC:.cc=.o}
 
 all: test quantize_test benchmark example
@@ -20,8 +20,8 @@ sse2_gemm.o: multiply.h interleave.h sse2_gemm.cc sse2_gemm.h
 test: ${OBJ} test.o aligned.h
 	${CXX} ${CXXFLAGS} ${OBJ} test.o -o test
 
-benchmark: ${OBJ} benchmark.o aligned.h
-	${CXX} ${CXXFLAGS} ${OBJ} benchmark.o -o benchmark
+benchmark: ${OBJ} benchmark.cc
+	${CXX} ${CXXFLAGS} ${OBJ} -std=c++11 benchmark.cc -o benchmark
 
 quantize_test: ${OBJ} quantize_test.o aligned.h
 	${CXX} ${CXXFLAGS} ${OBJ} quantize_test.o -o quantize_test
