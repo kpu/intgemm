@@ -82,6 +82,7 @@ void Time(int A_rows, int width, int B_cols, int repeat = 20) {
 int main(int argc, char ** argv) {
     std::srand(45678);
     using namespace intgemm;
+    Time(1, 64, 8);
     // Top matrix sizes from Marian
     Time(8, 256, 256);
     Time(8, 2048, 256);
