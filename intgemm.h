@@ -120,7 +120,4 @@ struct Int8 {
   static const char *const kName;
 };
 
-// Running CPU type.
-extern const CPUType kCPU;
-
 } // namespace intgemm
