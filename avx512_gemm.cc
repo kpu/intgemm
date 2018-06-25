@@ -171,25 +171,34 @@ void AVX512_8bit::Multiply(const int8_t *A, const int8_t *B, float *C, float unq
   for (int B0_colidx = 0; B0_colidx != B_cols; B0_col += 8 * simd_width, B0_colidx += 8) {
     // Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.
     for (int A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) {
-      // These will be packed 16-bit integers containing sums for each column of B multiplied by the row of A.
-      Integer sum0 = setzero_si<Integer>();
-      Integer sum1 = setzero_si<Integer>();
-      Integer sum2 = setzero_si<Integer>();
-      Integer sum3 = setzero_si<Integer>();
-      Integer sum4 = setzero_si<Integer>();
-      Integer sum5 = setzero_si<Integer>();
-      Integer sum6 = setzero_si<Integer>();
-      Integer sum7 = setzero_si<Integer>();
       // Iterate over shared (inner) dimension.
       const Integer *A_live = reinterpret_cast<const Integer *>(A + A_rowidx * width);
       const Integer *A_end = A_live + simd_width;
       const Integer *B_live = B0_col;
+
+      // Do the first iteration to initialize the sums.
+      __m512i a = *A_live;
+      __mmask64 neg_mask = _mm512_test_epi8_mask(a, _mm512_set1_epi8(-128));
+      __m512i a_positive = _mm512_abs_epi8(a);
+      // These will be packed 16-bit integers containing sums for each column of B multiplied by the row of A.
+      Integer sum0 = maddubs_epi16(a_positive, _mm512_mask_sub_epi8(B_live[0], neg_mask, zeros, B_live[0]));
+      Integer sum1 = maddubs_epi16(a_positive, _mm512_mask_sub_epi8(B_live[1], neg_mask, zeros, B_live[1]));
+      Integer sum2 = maddubs_epi16(a_positive, _mm512_mask_sub_epi8(B_live[2], neg_mask, zeros, B_live[2]));
+      Integer sum3 = maddubs_epi16(a_positive, _mm512_mask_sub_epi8(B_live[3], neg_mask, zeros, B_live[3]));
+      Integer sum4 = maddubs_epi16(a_positive, _mm512_mask_sub_epi8(B_live[4], neg_mask, zeros, B_live[4]));
+      Integer sum5 = maddubs_epi16(a_positive, _mm512_mask_sub_epi8(B_live[5], neg_mask, zeros, B_live[5]));
+      Integer sum6 = maddubs_epi16(a_positive, _mm512_mask_sub_epi8(B_live[6], neg_mask, zeros, B_live[6]));
+      Integer sum7 = maddubs_epi16(a_positive, _mm512_mask_sub_epi8(B_live[7], neg_mask, zeros, B_live[7]));
+
+      ++A_live;
+      B_live += 8;
+
       // Use A as the loop variable so the add can be done where gcc likes it
       // for branch prediction.
       for (; A_live != A_end; ++A_live, B_live += 8) {
         // Unique code here: can we do an inline function?
         // Retrieve a.  We will use this as the unsigned part.
-        __m512i a = *A_live;
+        a = *A_live;
         // Retrieve the conveniently consecutive values of B.
         __m512i b0 = *B_live;
         __m512i b1 = *(B_live + 1);
@@ -202,8 +211,8 @@ void AVX512_8bit::Multiply(const int8_t *A, const int8_t *B, float *C, float unq
 
         // Get a mask where a is negative.
         // Didn't seem to make a difference definining sign bits here vs at top
-        __mmask64 neg_mask = _mm512_test_epi8_mask(a, _mm512_set1_epi8(-128));
-        __m512i a_positive = _mm512_abs_epi8(a);
+        neg_mask = _mm512_test_epi8_mask(a, _mm512_set1_epi8(-128));
+        a_positive = _mm512_abs_epi8(a);
 
         // Negate by subtracting from zero with a mask.
         b0 = _mm512_mask_sub_epi8(b0, neg_mask, zeros, b0);
