@@ -71,25 +71,33 @@ struct BackendStats {
   std::vector<std::vector<uint64_t> > avx512_16bit;
 };
 
+const float kOutlierThreshold = 0.75;
 void Summarize(std::vector<uint64_t> &stats) {
+  // Throw out outliers.
+  std::vector<uint64_t>::iterator keep = stats.begin() + stats.size() * kOutlierThreshold;
+  std::nth_element(stats.begin(), keep, stats.end());
   double avg = 0.0;
-  for (std::vector<uint64_t>::const_iterator i = stats.begin(); i != stats.end(); ++i) {
+  for (std::vector<uint64_t>::const_iterator i = stats.begin(); i != keep; ++i) {
     avg += *i;
   }
-  avg /= stats.size();
+  avg /= (keep - stats.begin());
   double s = 0.0;
-  for (std::vector<uint64_t>::const_iterator i = stats.begin(); i != stats.end(); ++i) {
+  for (std::vector<uint64_t>::const_iterator i = stats.begin(); i != keep; ++i) {
     double off = (double)*i - avg;
     s += off * off;
   }
-  s = sqrt(s / (stats.size() - 1));
-  std::cout << std::setw(8) << *std::min_element(stats.begin(), stats.end()) << '\t' << std::setw(8) << (uint64_t)avg << '\t' << std::setw(8) << (uint64_t)s;
+  s = sqrt(s / (keep - stats.begin() - 1));
+  std::cout << std::setw(8) << *std::min_element(stats.begin(), stats.end()) << '\t' << std::setw(8) << avg << '\t' << std::setw(8) << s;
+/*  std::cout << '\n';
+  for (std::vector<uint64_t>::const_iterator i = stats.begin(); i != stats.end(); ++i) {
+    std::cout << *i << ' ';
+  }*/
 }
 
-template <class Backend> void Print(std::vector<uint64_t> &stats) {
+template <class Backend> void Print(std::vector<std::vector<uint64_t> > &stats, int index) {
   if (stats.empty()) return;
   std::cout << Backend::kName << '\t';
-  Summarize(stats);
+  Summarize(stats[index]);
   std::cout << '\n';
 }
 
@@ -97,6 +105,7 @@ template <class Backend> void Print(std::vector<uint64_t> &stats) {
 
 // Program takes no input
 int main(int argc, char ** argv) {
+  std::cerr << "Remember to run this on a specific core:\ntaskset --cpu-list 0 " << argv[0] << std::endl;
   std::srand(45678);
   using namespace intgemm;
   RandomMatrices matrices[] = {
@@ -119,13 +128,14 @@ int main(int argc, char ** argv) {
     {4096, 4096, 256},*/
     {4096, 4096, 128}
   };
-  RandomMatrices *matrices_end = matrices + sizeof(matrices) / sizeof(RandomMatrices);
+  RandomMatrices *matrices_end = (RandomMatrices*)matrices + sizeof(matrices) / sizeof(RandomMatrices);
   // Only do full sampling for <1024 rows.
-  RandomMatrices *full_sample = matrices_end;
-  for (; full_sample >= matrices && full_sample->A_rows >= 1024; --full_sample) {}
+  RandomMatrices *full_sample;
+  for (full_sample = matrices_end - 1; full_sample >= matrices && full_sample->A_rows >= 1024; --full_sample) {}
   ++full_sample;
+
   BackendStats stats;
-  const int kSamples = 10;
+  const int kSamples = 100;
   // Run samples far apart to reduce temporary noise.
   for (int samples = 0; samples < kSamples; ++samples) {
     std::cerr << "Sample " << samples << " / " << kSamples << std::endl;
@@ -138,15 +148,19 @@ int main(int argc, char ** argv) {
     RunAll<AVX512_16bit>(matrices, end, stats.avx512_16bit);
   }
 
+  if (stats.sse2_16bit.empty()) {
+    std::cerr << "No CPU support." << std::endl;
+    return 1;
+  }
   for (std::size_t i = 0; i < sizeof(matrices) / sizeof(RandomMatrices); ++i) {
-    std::cout << matrices[i].A_rows << '\t' << matrices[i].width << '\t' << matrices[i].B_cols << '\n';
-    Print<SSSE3_8bit>(stats.ssse3_8bit[i]);
-    Print<AVX2_8bit>(stats.avx2_8bit[i]);
-    Print<AVX512_8bit>(stats.avx512_8bit[i]);
+    std::cout << "Multiply\t" << matrices[i].A_rows << '\t' << matrices[i].width << '\t' << matrices[i].B_cols << '\t' << "Samples=" << (kOutlierThreshold * stats.sse2_16bit[i].size()) << '\n';
+    Print<SSSE3_8bit>(stats.ssse3_8bit, i);
+    Print<AVX2_8bit>(stats.avx2_8bit, i);
+    Print<AVX512_8bit>(stats.avx512_8bit, i);
 
-    Print<SSE2_16bit>(stats.sse2_16bit[i]);
-    Print<AVX2_16bit>(stats.avx2_16bit[i]);
-    Print<AVX512_16bit>(stats.avx512_16bit[i]);
+    Print<SSE2_16bit>(stats.sse2_16bit, i);
+    Print<AVX2_16bit>(stats.avx2_16bit, i);
+    Print<AVX512_16bit>(stats.avx512_16bit, i);
   }
   return 0;
 }

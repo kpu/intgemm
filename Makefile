@@ -20,7 +20,7 @@ sse2_gemm.o: multiply.h interleave.h sse2_gemm.cc sse2_gemm.h
 test: ${OBJ} test.o aligned.h
 	${CXX} ${CXXFLAGS} ${OBJ} test.o -o test
 
-benchmark: ${OBJ} benchmark.cc
+benchmark: ${OBJ} benchmark.cc stop_watch.h
 	${CXX} ${CXXFLAGS} ${OBJ} -std=c++11 benchmark.cc -o benchmark
 
 quantize_test: ${OBJ} quantize_test.o aligned.h
