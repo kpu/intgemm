@@ -68,7 +68,7 @@ inline __m256i maddubs_epi16(__m256i first, __m256i second) {
   return _mm256_maddubs_epi16(first, second);
 }
 inline __m256i sign_epi8(__m256i first, __m256i second) {
-  return _mm256_sign_epi16(first, second);
+  return _mm256_sign_epi8(first, second);
 }
 inline __m256i abs_epi8(__m256i arg) {
   return _mm256_abs_epi8(arg);
