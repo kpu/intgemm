@@ -31,6 +31,15 @@ template <> inline __m128i setzero_si<__m128i>() {
 inline __m128i madd_epi16(__m128i first, __m128i second) {
   return _mm_madd_epi16(first, second);
 }
+inline __m128i maddubs_epi16(__m128i first, __m128i second) {
+  return _mm_maddubs_epi16(first, second);
+}
+inline __m128i sign_epi8(__m128i first, __m128i second) {
+  return _mm_sign_epi8(first, second);
+}
+inline __m128i abs_epi8(__m128i arg) {
+  return _mm_abs_epi8(arg);
+}
 
 // Complete any reduction, multiply by scaling, and write to memory.
 inline void WriteC(float *to, __m128i pack0123, __m128i pack4567, __m128 unquant_reg) {
@@ -54,6 +63,15 @@ template <> inline __m256i setzero_si<__m256i>() {
 }
 inline __m256i madd_epi16(__m256i first, __m256i second) {
   return _mm256_madd_epi16(first, second);
+}
+inline __m256i maddubs_epi16(__m256i first, __m256i second) {
+  return _mm256_maddubs_epi16(first, second);
+}
+inline __m256i sign_epi8(__m256i first, __m256i second) {
+  return _mm256_sign_epi16(first, second);
+}
+inline __m256i abs_epi8(__m256i arg) {
+  return _mm256_abs_epi8(arg);
 }
 
 inline void WriteC(float *to, __m256i pack0123, __m256i pack4567, __m256 unquant_reg) {
@@ -81,6 +99,12 @@ template <> inline __m512i setzero_si<__m512i>() {
 }
 inline __m512i madd_epi16(__m512i first, __m512i second) {
   return _mm512_madd_epi16(first, second);
+}
+inline __m512i maddubs_epi16(__m512i first, __m512i second) {
+  return _mm512_maddubs_epi16(first, second);
+}
+inline __m512i abs_epi8(__m512i arg) {
+  return _mm512_abs_epi8(arg);
 }
 
 inline void WriteC(float *to, __m512i pack0123, __m512i pack4567, __m256 unquant_reg) {
@@ -289,19 +313,25 @@ template <class Integer, class Float> inline void Multiply8_SSE2OrAVX2(const int
   for (int B0_colidx = 0; B0_colidx != B_cols; B0_col += 8 * simd_width, B0_colidx += 8) {
     // Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.
     for (int A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) {
-      // These will be packed 16-bit integers containing sums for each column of B multiplied by the row of A.
-      Integer sum0 = setzero_si<Integer>();
-      Integer sum1 = setzero_si<Integer>();
-      Integer sum2 = setzero_si<Integer>();
-      Integer sum3 = setzero_si<Integer>();
-      Integer sum4 = setzero_si<Integer>();
-      Integer sum5 = setzero_si<Integer>();
-      Integer sum6 = setzero_si<Integer>();
-      Integer sum7 = setzero_si<Integer>();
       // Iterate over shared (inner) dimension.
       const Integer *A_live = reinterpret_cast<const Integer *>(A + A_rowidx * width);
       const Integer *A_end = A_live + simd_width;
       const Integer *B_live = B0_col;
+
+      // Rather than initializing as zeros and adding, just initialize the first.
+      Integer a = *(A_live++);
+      Integer a_positive = abs_epi8(a);
+      // These will be packed 16-bit integers containing sums for each column of B multiplied by the row of A.
+      Integer sum0 = maddubs_epi16(a_positive, sign_epi8(B_live[0], a));
+      Integer sum1 = maddubs_epi16(a_positive, sign_epi8(B_live[1], a));
+      Integer sum2 = maddubs_epi16(a_positive, sign_epi8(B_live[2], a));
+      Integer sum3 = maddubs_epi16(a_positive, sign_epi8(B_live[3], a));
+      Integer sum4 = maddubs_epi16(a_positive, sign_epi8(B_live[4], a));
+      Integer sum5 = maddubs_epi16(a_positive, sign_epi8(B_live[5], a));
+      Integer sum6 = maddubs_epi16(a_positive, sign_epi8(B_live[6], a));
+      Integer sum7 = maddubs_epi16(a_positive, sign_epi8(B_live[7], a));
+      B_live += 8;
+
       // Use A as the loop variable so the add can be done where gcc likes it
       // for branch prediction.
       for (; A_live != A_end; ++A_live, B_live += 8) {
@@ -336,7 +366,6 @@ template <class Integer, class Float> inline void Multiply8_SSE2OrAVX2(const int
         // at B_live.
         // Problem is we're passing the address as a register.
         typedef struct { Integer x[8]; } B_range;
-        const B_range &B_live_full = *reinterpret_cast<const B_range*>(B_live);
         asm(
             // Copy the first 6 columns of b to registers.  We assume B has
             // been rearranged so that these 8 columns are consecutive.
@@ -414,7 +443,7 @@ template <class Integer, class Float> inline void Multiply8_SSE2OrAVX2(const int
               // memory address:
               // https://gcc.gnu.org/ml/gcc-help/2011-04/msg00518.html
               //
-              [B] "r" (&B_live_full),
+              [B] "r" (reinterpret_cast<const B_range*>(B_live)),
               [a] "x" (*A_live),
               [size] "i" (sizeof(Integer))
            );
