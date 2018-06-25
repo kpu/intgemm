@@ -270,7 +270,7 @@ template <class Integer, class Float> inline void Multiply16(const int16_t *A, c
 */
 
 
-/* 8-bit matrix multiply used by SSE2 and AVX2. 
+/* 8-bit matrix multiply used by AVX and AVX2.
  * These have two peculiar properties:
  * 1. The sign instructions don't exist in AVX512.
  * 2. 16 registers means gcc's register allocation failed so I wrote it in my
