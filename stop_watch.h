@@ -7,7 +7,7 @@
 namespace intgemm {
 
 uint64_t rdtsc_begin(uint32_t &processor) {
-  std::uint32_t lo, hi;
+  uint32_t lo, hi;
   __asm__ __volatile__ (
       "cpuid\n\t"
       "rdtscp\n\t"
@@ -17,11 +17,11 @@ uint64_t rdtsc_begin(uint32_t &processor) {
       : "=r" (lo), "=r" (hi), "=r" (processor)
       : /* no input */
       : "rax", "rbx", "rcx", "rdx");
-  return static_cast<std::uint64_t>(hi) << 32 | lo;
+  return static_cast<uint64_t>(hi) << 32 | lo;
 }
 
-std::uint64_t rdtsc_end(uint32_t &processor) {
-  std::uint32_t lo, hi;
+uint64_t rdtsc_end(uint32_t &processor) {
+  uint32_t lo, hi;
   __asm__ __volatile__ (
       "rdtscp\n\t"
       "mov %%eax, %0\n\t"
@@ -31,7 +31,7 @@ std::uint64_t rdtsc_end(uint32_t &processor) {
       : "=r" (lo), "=r" (hi), "=r" (processor)
       : /* no input */
       : "rax", "rbx", "rcx", "rdx");
-  return static_cast<std::uint64_t>(hi) << 32 | lo;
+  return static_cast<uint64_t>(hi) << 32 | lo;
 }
 
 class StopWatch {
