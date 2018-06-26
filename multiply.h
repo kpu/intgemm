@@ -19,6 +19,9 @@ template <class Register> inline Register setzero_si();
 inline __m128i add_epi32(__m128i first, __m128i second) {
   return _mm_add_epi32(first, second);
 }
+inline __m128i adds_epi16(__m128i first, __m128i second) {
+  return _mm_adds_epi16(first, second);
+}
 template <> inline __m128i set1_epi16<__m128i>(int16_t to) {
   return _mm_set1_epi16(to);
 }
@@ -52,6 +55,9 @@ inline void WriteC(float *to, __m128i pack0123, __m128i pack4567, __m128 unquant
 inline __m256i add_epi32(__m256i first, __m256i second) {
   return _mm256_add_epi32(first, second);
 }
+inline __m256i adds_epi16(__m256i first, __m256i second) {
+  return _mm256_adds_epi16(first, second);
+}
 template <> inline __m256i set1_epi16<__m256i>(int16_t to) {
   return _mm256_set1_epi16(to);
 }
@@ -84,7 +90,7 @@ inline void WriteC(float *to, __m256i pack0123, __m256i pack4567, __m256 unquant
   *reinterpret_cast<__m256*>(to) = _mm256_mul_ps(_mm256_cvtepi32_ps(total), unquant_reg);
 }
 #endif
-#ifdef __AVX512F__
+#ifdef __AVX512BW__
 inline __m512i add_epi32(__m512i first, __m512i second) {
   return _mm512_add_epi32(first, second);
 }
@@ -422,6 +428,24 @@ struct Multiply8_AVXAVX2 {
           [a] "x" (a),
           [size] "i" (sizeof(Integer))
       );
+  }
+};
+
+// For SSSE3 without AVX
+struct Multiply8_C {
+  template <class Integer> inline static void Inner(
+      Integer a, const Integer *b,
+      Integer &sum0, Integer &sum1, Integer &sum2, Integer &sum3,
+      Integer &sum4, Integer &sum5, Integer &sum6, Integer &sum7) {
+    Integer a_positive = abs_epi8(a);
+    sum0 = adds_epi16(sum0, maddubs_epi16(a_positive, sign_epi8(b[0], a)));
+    sum1 = adds_epi16(sum1, maddubs_epi16(a_positive, sign_epi8(b[1], a)));
+    sum2 = adds_epi16(sum2, maddubs_epi16(a_positive, sign_epi8(b[2], a)));
+    sum3 = adds_epi16(sum3, maddubs_epi16(a_positive, sign_epi8(b[3], a)));
+    sum4 = adds_epi16(sum4, maddubs_epi16(a_positive, sign_epi8(b[4], a)));
+    sum5 = adds_epi16(sum5, maddubs_epi16(a_positive, sign_epi8(b[5], a)));
+    sum6 = adds_epi16(sum6, maddubs_epi16(a_positive, sign_epi8(b[6], a)));
+    sum7 = adds_epi16(sum7, maddubs_epi16(a_positive, sign_epi8(b[7], a)));
   }
 };
 
