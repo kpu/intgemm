@@ -134,7 +134,7 @@ void AVX2_16bit::Multiply(const int16_t *A, const int16_t *B, float *C, float un
 }
 
 void AVX2_8bit::Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols) {
-  Multiply8_SSE2OrAVX2<__m256i, __m256>(A, B, C, unquant_mult, A_rows, width, B_cols);
+  Multiply8_SSE2OrAVX2<Multiply8_AVXAVX2, __m256i, __m256>(A, B, C, unquant_mult, A_rows, width, B_cols);
 }
 
 const char *const AVX2_16bit::kName = "16-bit AVX2";

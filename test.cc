@@ -182,7 +182,7 @@ void Compare(const float *float_ref, const float *int_ref, const float *int_test
     int_sum += int_diff * int_diff;
     float_sum += float_diff * float_diff;
   }
-  std::cerr << "Float MSE = " << sqrt(float_sum / size) << "\tInt MSE = " << sqrt(int_sum / size) << std::endl;
+  std::cout << "Float MSE = " << sqrt(float_sum / size) << "\tInt MSE = " << sqrt(int_sum / size) << std::endl;
 }
 
 template <class Routine> void TestMultiply(int A_rows, int width, int B_cols) {

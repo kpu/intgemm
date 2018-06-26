@@ -11,7 +11,7 @@ avx512_gemm.o: multiply.h interleave.h avx512_gemm.h avx512_gemm.cc
 avx2_gemm.o: multiply.h interleave.h avx2_gemm.h avx2_gemm.cc
 	${CXX} ${CXXFLAGS} -c -mavx2 avx2_gemm.cc -o avx2_gemm.o
 
-ssse3_gemm.o: multiply.h interleave.h sse2_gemm.cc sse2_gemm.h
+ssse3_gemm.o: multiply.h interleave.h ssse3_gemm.cc ssse3_gemm.h
 	${CXX} ${CXXFLAGS} -c -msse2 -mssse3 ssse3_gemm.cc -o ssse3_gemm.o
 
 sse2_gemm.o: multiply.h interleave.h sse2_gemm.cc sse2_gemm.h
