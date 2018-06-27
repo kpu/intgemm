@@ -79,7 +79,7 @@ void SSSE3_8bit::PrepareB(const float *input, int8_t *output, float quant_mult, 
 }
 
 void SSSE3_8bit::Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols) {
-  Multiply8_SSE2OrAVX2<Multiply8_AVXAVX2, __m128i, __m128>(A, B, C, unquant_mult, A_rows, width, B_cols);
+  Multiply8_SSE2OrAVX2<Multiply8_C, __m128i, __m128>(A, B, C, unquant_mult, A_rows, width, B_cols);
 }
 
 const char *const SSSE3_8bit::kName = "8-bit SSSE3";
