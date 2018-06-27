@@ -78,6 +78,10 @@ void SSSE3_8bit::PrepareB(const float *input, int8_t *output, float quant_mult, 
   PrepareBFor8(input, output, QuantizeTile8(quant_mult), rows, cols);
 }
 
+void SSSE3_8bit::SelectColumnsB(const int8_t *input, int8_t *output, int rows, const int *cols_begin, const int *cols_end) {
+  SelectColumnsOfB((const __m128i*)input, (__m128i*)output, rows, cols_begin, cols_end);
+}
+
 void SSSE3_8bit::Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols) {
   Multiply8_SSE2OrAVX2<Multiply8_C, __m128i, __m128>(A, B, C, unquant_mult, A_rows, width, B_cols);
 }

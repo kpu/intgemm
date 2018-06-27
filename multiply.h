@@ -14,7 +14,6 @@ namespace intgemm {
  */
 template <class Register> inline Register set1_epi16(int16_t to);
 template <class Register> inline Register set1_ps(float to);
-template <class Register> inline Register setzero_si();
 #ifdef __SSE2__
 inline __m128i add_epi32(__m128i first, __m128i second) {
   return _mm_add_epi32(first, second);
@@ -27,9 +26,6 @@ template <> inline __m128i set1_epi16<__m128i>(int16_t to) {
 }
 template <> inline __m128 set1_ps<__m128>(float to) {
   return _mm_set1_ps(to);
-}
-template <> inline __m128i setzero_si<__m128i>() {
-  return _mm_setzero_si128();
 }
 inline __m128i madd_epi16(__m128i first, __m128i second) {
   return _mm_madd_epi16(first, second);
@@ -64,9 +60,6 @@ template <> inline __m256i set1_epi16<__m256i>(int16_t to) {
 template <> inline __m256 set1_ps<__m256>(float to) {
   return _mm256_set1_ps(to);
 }
-template <> inline __m256i setzero_si<__m256i>() {
-  return _mm256_setzero_si256();
-}
 inline __m256i madd_epi16(__m256i first, __m256i second) {
   return _mm256_madd_epi16(first, second);
 }
@@ -99,9 +92,6 @@ template <> inline __m512i set1_epi16<__m512i>(int16_t to) {
 }
 template <> inline __m512 set1_ps<__m512>(float to) {
   return _mm512_set1_ps(to);
-}
-template <> inline __m512i setzero_si<__m512i>() {
-  return _mm512_setzero_si512();
 }
 inline __m512i madd_epi16(__m512i first, __m512i second) {
   return _mm512_madd_epi16(first, second);

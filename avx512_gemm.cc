@@ -142,8 +142,16 @@ void AVX512_16bit::PrepareB(const float *input, int16_t *output, float quant_mul
   PrepareBFor16(input, output, QuantizeTile16(quant_mult), rows, cols);
 }
 
+void AVX512_16bit::SelectColumnsB(const int16_t *input, int16_t *output, int rows, const int *cols_begin, const int *cols_end) {
+  SelectColumnsOfB((const __m512i*)input, (__m512i*)output, rows * 2, cols_begin, cols_end);
+}
+
 void AVX512_8bit::PrepareB(const float *input, int8_t *output, float quant_mult, int rows, int cols) {
   PrepareBFor8(input, output, QuantizeTile8(quant_mult), rows, cols);
+}
+
+void AVX512_8bit::SelectColumnsB(const int8_t *input, int8_t *output, int rows, const int *cols_begin, const int *cols_end) {
+  SelectColumnsOfB((const __m512i*)input, (__m512i*)output, rows, cols_begin, cols_end);
 }
 
 void AVX512_16bit::Multiply(const int16_t *A, const int16_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols) {
