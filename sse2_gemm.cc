@@ -25,12 +25,12 @@ class QuantizeTile16 {
 
     explicit QuantizeTile16(float mult) : mult_reg_(_mm_set1_ps(mult)) {}
 
-               // Quantize 8xfloat into 8xint16_t
-               inline __m128i Consecutive(const float *input) {
-                       __m128i g0 = QuantizerGrab(input, mult_reg_);
-                       __m128i g1 = QuantizerGrab(input + 4, mult_reg_);
-                       return _mm_packs_epi32(g0, g1);
-               }
+    // Quantize 8xfloat into 8xint16_t
+    inline __m128i Consecutive(const float *input) {
+      __m128i g0 = QuantizerGrab(input, mult_reg_);
+      __m128i g1 = QuantizerGrab(input + 4, mult_reg_);
+      return _mm_packs_epi32(g0, g1);
+    }
 
     inline __m128i ForReshape(const float *input, int) {
       return Consecutive(input);
