@@ -15,7 +15,6 @@
 
 namespace intgemm {
 
-#ifdef __AVX512BW__ // And VL and DQ but they're all on the same CPUs.
 namespace {
 
 // Load from memory, multiply, and convert to int32_t.
@@ -273,5 +272,4 @@ void AVX512_8bit::Multiply(const int8_t *A, const int8_t *B, float *C, float unq
 const char *const AVX512_16bit::kName = "16-bit AVX512";
 const char *const AVX512_8bit::kName = "8-bit AVX512";
 
-#endif // __AVX512BW__
 } // namespace intgemm

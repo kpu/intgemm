@@ -10,8 +10,6 @@
 
 namespace intgemm {
 
-#ifdef __SSSE3__
-
 namespace {
 // Same implementation as AVX512, just width.  Grabs 4 32-bit values.
 inline __m128i QuantizerGrab(const float *input, const __m128 quant_mult_reg) {
@@ -87,7 +85,5 @@ void SSSE3_8bit::Multiply(const int8_t *A, const int8_t *B, float *C, float unqu
 }
 
 const char *const SSSE3_8bit::kName = "8-bit SSSE3";
-
-#endif // __SSSE3__
 
 } // namespace intgemm

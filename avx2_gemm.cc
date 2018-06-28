@@ -10,7 +10,6 @@
 #include <stdint.h>
 
 namespace intgemm {
-#ifdef __AVX2__
 
 // PREPARE A: just quantization in the same memory order.
 
@@ -148,5 +147,4 @@ void AVX2_8bit::Multiply(const int8_t *A, const int8_t *B, float *C, float unqua
 const char *const AVX2_16bit::kName = "16-bit AVX2";
 const char *const AVX2_8bit::kName = "8-bit AVX2";
 
-#endif // __AVX2__
 } // namespace intgemm

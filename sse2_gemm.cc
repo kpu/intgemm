@@ -11,8 +11,6 @@
 
 namespace intgemm {
 
-#ifdef __SSE2__
-
 namespace {
 // Same implementation as AVX512, just width.  Grabs 4 32-bit values.
 inline __m128i QuantizerGrab(const float *input, const __m128 quant_mult_reg) {
@@ -70,7 +68,5 @@ void SSE2_16bit::Multiply(const int16_t *A, const int16_t *B, float *C, float un
 }
 
 const char *const SSE2_16bit::kName = "16-bit SSE2";
-
-#endif // __SSE2__
 
 } // namespace intgemm
