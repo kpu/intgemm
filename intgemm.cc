@@ -4,7 +4,9 @@
 #include "sse2_gemm.h"
 #include "ssse3_gemm.h"
 #include "avx2_gemm.h"
+#ifndef INTGEMM_NO_AVX512
 #include "avx512_gemm.h"
+#endif
 
 namespace intgemm {
 
@@ -66,9 +68,12 @@ const char *const Unsupported_8bit::kName = "8-bit Unsupported";
  */
 template <class T> T ChooseCPU(T avx512, T avx2, T ssse3, T sse2, T unsupported) {
   // TODO: don't catch Knights processors here!
+#ifndef INTGEMM_NO_AVX512
   if (__builtin_cpu_supports("avx512f")) {
     return avx512;
-  } else if (__builtin_cpu_supports("avx2")) {
+  }
+#endif
+  if (__builtin_cpu_supports("avx2")) {
     return avx2;
   } else if (__builtin_cpu_supports("ssse3")) {
     return ssse3;
@@ -78,6 +83,12 @@ template <class T> T ChooseCPU(T avx512, T avx2, T ssse3, T sse2, T unsupported)
     return unsupported;
   }
 }
+
+#ifdef INTGEMM_NO_AVX512
+// These won't ever be called in this capacity, but it does let the code below compile.
+typedef Unsupported_16bit AVX512_16bit;
+typedef Unsupported_8bit AVX512_8bit;
+#endif
 
 } // namespace
 
