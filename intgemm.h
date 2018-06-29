@@ -126,4 +126,6 @@ struct Int8 {
   static const char *const kName;
 };
 
+extern float (*MaxAbsolute)(const float *begin, const float *end);
+
 } // namespace intgemm

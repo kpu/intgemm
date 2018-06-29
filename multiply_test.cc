@@ -5,7 +5,7 @@
 #include "intgemm.h"
 #include "aligned.h"
 #include "interleave.h"
-#include "stop_watch.h"
+#include "multiply.h"
 
 #include <cassert>
 #include <cmath>
@@ -120,6 +120,17 @@ template <class Routine> void TestPrepare(int rows = 32, int cols = 16) {
     PrintMatrix(reference.get(), rows, cols);
     std::cerr << "Routine" << '\n';
     PrintMatrix(test.get(), rows, cols);
+  }
+}
+
+template <class Register> void TestMax() {
+  Register r = set1_ps<Register>(-2.0);
+  for (int i = 0; i < sizeof(Register) / sizeof(float); ++i) {
+    Register c = r;
+    reinterpret_cast<float*>(&c)[i] = -1.0;
+    if (MaxFloat32(c) != -1.0) {
+      std::cerr << "MaxFloat32 produced " << MaxFloat32(c) << std::endl;
+    }
   }
 }
 
@@ -260,6 +271,7 @@ int main(int argc, char ** argv) {
     TestPrepare<SSSE3_8bit>(32, 32);
     TestPrepare<SSE2_16bit>(8, 8);
     TestPrepare<SSE2_16bit>(32, 32);
+    TestMax<__m128>();
     // Top matrix sizes from Marian
     TestBoth(8, 256, 256);
     TestBoth(8, 2048, 256);
