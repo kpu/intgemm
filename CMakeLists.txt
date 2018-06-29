@@ -1,5 +1,12 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.1)
 project(intgemm)
+
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
+#Only the benchmark uses C++11
+set(CMAKE_CXX_STANDARD 11)
 
 set_source_files_properties(sse2_gemm.cc PROPERTIES COMPILE_FLAGS -msse2)
 set_source_files_properties(ssse3_gemm.cc PROPERTIES COMPILE_FLAGS "-msse2 -mssse3")
