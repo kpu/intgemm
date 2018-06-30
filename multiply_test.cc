@@ -136,7 +136,7 @@ template <class Routine> void TestSelectColumnsB(int rows = 32, int cols = 16) {
   Routine::PrepareB(input.get(), prepared.get(), 1, rows, cols);
 
   int kSelectCols = 8;
-  int select_cols[kSelectCols];
+  std::size_t select_cols[kSelectCols];
   for (int i = 0; i < kSelectCols; ++i) {
     select_cols[i] = rand() % cols;
   }
