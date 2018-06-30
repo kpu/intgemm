@@ -135,7 +135,7 @@ template <class Routine> void TestSelectColumnsB(int rows = 32, int cols = 16) {
   AlignedVector<Integer> prepared(rows * cols);
   Routine::PrepareB(input.get(), prepared.get(), 1, rows, cols);
 
-  int kSelectCols = 8;
+  int kSelectCols = 24;
   std::size_t select_cols[kSelectCols];
   for (int i = 0; i < kSelectCols; ++i) {
     select_cols[i] = rand() % cols;
@@ -326,19 +326,21 @@ int main(int argc, char ** argv) {
     TestPrepare<AVX512_16bit>(32, 8);
     TestPrepare<AVX512_16bit>(256, 32);
     TestSelectColumnsB<AVX512_8bit>();
-    TestSelectColumnsB<AVX512_16bit>();
+    TestSelectColumnsB<AVX512_16bit>(256, 256);
 #endif
     TestPrepare<AVX2_8bit>(64, 32);
     TestPrepare<AVX2_16bit>(64, 32);
-    TestSelectColumnsB<AVX2_8bit>();
-    TestSelectColumnsB<AVX2_16bit>();
+    TestSelectColumnsB<AVX2_8bit>(256, 256);
+    TestSelectColumnsB<AVX2_16bit>(256, 256);
     TestPrepare<SSSE3_8bit>(16, 8);
     TestPrepare<SSSE3_8bit>(32, 16);
     TestPrepare<SSSE3_8bit>(32, 32);
     TestSelectColumnsB<SSSE3_8bit>();
+    TestSelectColumnsB<SSSE3_8bit>(256, 256);
     TestPrepare<SSE2_16bit>(8, 8);
     TestPrepare<SSE2_16bit>(32, 32);
     TestSelectColumnsB<SSE2_16bit>();
+    TestSelectColumnsB<SSE2_16bit>(256, 256);
     TestMax<__m128>();
     TestMaxAbsolute<SSE2_MaxAbsolute>();
 /*    if (kCPU >= CPU_AVX2) {
