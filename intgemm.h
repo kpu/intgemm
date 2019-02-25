@@ -56,7 +56,7 @@ class UnsupportedCPU : public std::exception {
 
     ~UnsupportedCPU() throw();
 
-    const char *what() const throw();
+    const char *what() const throw() override;
 };
 
 /* 16-bit matrix multiplication. */
