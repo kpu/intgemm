@@ -98,15 +98,20 @@ static inline float MaxFloat32(__m256 a) {
   return MaxFloat32(max_ps(_mm256_castps256_ps128(a), _mm256_extractf128_ps(a, 1)));
 }
 
-static inline void WriteC(float *to, __m256i pack0123, __m256i pack4567, __m256 unquant_reg) {
+static inline __m256i permuteSummer(__m256i pack0123, __m256i pack4567) {
   // This instruction generates 1s 2s 3s 4s 5f 6f 7f 8f
   __m256i rev = _mm256_permute2f128_si256(pack0123, pack4567, 0x21);
   // This instruction generates 1f 2f 3f 4f 5s 6s 7s 8s
   __m256i blended = _mm256_blend_epi32(pack0123, pack4567, 0xf0);
-  __m256i total = _mm256_add_epi32(rev, blended);
+  return _mm256_add_epi32(rev, blended);
+}
+
+static inline void WriteC(float *to, __m256i pack0123, __m256i pack4567, __m256 unquant_reg) {
+  __m256i total = permuteSummer(pack0123, pack4567);
   // Convert to float, multiply by unquant, and write.
   *reinterpret_cast<__m256*>(to) = _mm256_mul_ps(_mm256_cvtepi32_ps(total), unquant_reg);
 }
+
 #endif
 #ifdef __AVX512BW__
 static inline __m512i add_epi32(__m512i first, __m512i second) {
@@ -134,7 +139,8 @@ static inline __m512 max_ps(__m512 first, __m512 second) {
 static inline __m512 and_ps(__m512 first, __m512 second) {
   return _mm512_and_ps(first, second);
 }
-static inline void WriteC(float *to, __m512i pack0123, __m512i pack4567, __m256 unquant_reg) {
+
+static inline __m256i permuteSummer(__m512i pack0123, __m512i pack4567) {
   // Form [0th 128-bit register of pack0123, 0st 128-bit register of pack4567, 2nd 128-bit register of pack0123, 2nd 128-bit register of pack4567]
   __m512i mix0 = _mm512_mask_permutex_epi64(pack0123, 0xcc, pack4567, (0 << 4) | (1 << 6));
   // Form [1st 128-bit register of pack0123, 1st 128-bit register of pack4567, 3rd 128-bit register of pack0123, 3rd 128-bit register of pack4567]
@@ -142,8 +148,13 @@ static inline void WriteC(float *to, __m512i pack0123, __m512i pack4567, __m256 
   __m512i added = _mm512_add_epi32(mix0, mix1);
   // Now we have 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7.
   // Fold register over itself.
-  __m256i folded = _mm256_add_epi32(_mm512_castsi512_si256(added), _mm512_extracti64x4_epi64(added, 1));
-  *reinterpret_cast<__m256*>(to) = _mm256_mul_ps(_mm256_cvtepi32_ps(folded), unquant_reg);
+  return _mm256_add_epi32(_mm512_castsi512_si256(added), _mm512_extracti64x4_epi64(added, 1));
+}
+
+static inline void WriteC(float *to, __m512i pack0123, __m512i pack4567, __m256 unquant_reg) {
+  __m256i total = permuteSummer(pack0123, pack4567);
+  // Convert to float, multiply by unquant, and write.
+  *reinterpret_cast<__m256*>(to) = _mm256_mul_ps(_mm256_cvtepi32_ps(total), unquant_reg);
 }
 
 // Find the maximum float.
