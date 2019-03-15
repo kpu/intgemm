@@ -2,7 +2,6 @@
 
 #include "interleave.h"
 
-#include <tuple>
 #include <cassert>
 #include <xmmintrin.h>
 #include <emmintrin.h>
@@ -16,7 +15,9 @@ namespace intgemm {
 template <class Register> static inline Register set1_epi16(int16_t to);
 template <class Register> static inline Register set1_ps(float to);
 #ifdef __SSE2__
-typedef std::tuple<__m128i, __m128i> __m256i_fake;
+struct MultiplyResult128 {
+  __m128i pack0123, pack4567;
+};
 static inline __m128i add_epi32(__m128i first, __m128i second) {
   return _mm_add_epi32(first, second);
 }
@@ -65,16 +66,19 @@ static inline float MaxFloat32(__m128 a) {
   return *reinterpret_cast<float*>(&a);
 }
 
-static inline __m256i_fake PermuteSummer(__m128i pack0123, __m128i pack4567) {
-  // This is just an identity function to get by type issues
-  return std::make_tuple(pack0123, pack4567);
+static inline MultiplyResult128 PermuteSummer(__m128i pack0123, __m128i pack4567) {
+  // No op for 128 bits: already reduced fully.
+  MultiplyResult128 ret;
+  ret.pack0123 = pack0123;
+  ret.pack4567 = pack4567;
+  return ret;
 }
 
 // Complete any reduction, multiply by scaling, and write to memory.
-static inline void WriteC(float *to, __m256i_fake total, __m128 unquant_reg) {
+static inline void WriteC(float *to, MultiplyResult128 total, __m128 unquant_reg) {
   // Convert to float, multiply by unquant, and write.
-  *reinterpret_cast<__m128*>(to) = _mul_ps(_cvtepi32_ps(std::get<0>(total)), unquant_reg);
-  *reinterpret_cast<__m128*>(to + 4) = _mul_ps(_cvtepi32_ps(std::get<1>(total)), unquant_reg);
+  *reinterpret_cast<__m128*>(to) = _mul_ps(_cvtepi32_ps(total.pack0123), unquant_reg);
+  *reinterpret_cast<__m128*>(to + 4) = _mul_ps(_cvtepi32_ps(total.pack4567), unquant_reg);
 }
 #endif
 #ifdef __AVX2__
