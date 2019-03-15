@@ -264,7 +264,9 @@ void AVX512_8bit::Multiply(const int8_t *A, const int8_t *B, float *C, float unq
       sum7 = madd_epi16(sum7, ones);
       Integer pack0123 = Pack0123(sum0, sum1, sum2, sum3);
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7);
-      WriteC(C + A_rowidx * B_cols + B0_colidx, pack0123, pack4567, unquant_reg);
+
+      auto total = PermuteSummer(pack0123, pack4567);
+      WriteC(C + A_rowidx * B_cols + B0_colidx, total, unquant_reg);
     }
   }
 }

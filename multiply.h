@@ -2,6 +2,7 @@
 
 #include "interleave.h"
 
+#include <tuple>
 #include <cassert>
 #include <xmmintrin.h>
 #include <emmintrin.h>
@@ -15,6 +16,7 @@ namespace intgemm {
 template <class Register> static inline Register set1_epi16(int16_t to);
 template <class Register> static inline Register set1_ps(float to);
 #ifdef __SSE2__
+typedef std::tuple<__m128i, __m128i> __m256i_fake;
 static inline __m128i add_epi32(__m128i first, __m128i second) {
   return _mm_add_epi32(first, second);
 }
@@ -45,6 +47,13 @@ static inline __m128 max_ps(__m128 first, __m128 second) {
 static inline __m128 and_ps(__m128 first, __m128 second) {
   return _mm_and_ps(first, second);
 }
+static inline __m128 _cvtepi32_ps(__m128i arg) {
+  return _mm_cvtepi32_ps(arg);
+}
+static inline __m128 _mul_ps (__m128 a, __m128 b) {
+  return _mm_mul_ps(a, b);
+}
+
 static inline float MaxFloat32(__m128 a) {
   // Fold to just using the first 64 bits.
   __m128 second_half = _mm_shuffle_ps(a, a, 3 * 4 + 2);
@@ -56,11 +65,16 @@ static inline float MaxFloat32(__m128 a) {
   return *reinterpret_cast<float*>(&a);
 }
 
+static inline __m256i_fake PermuteSummer(__m128i pack0123, __m128i pack4567) {
+  // This is just an identity function to get by type issues
+  return std::make_tuple(pack0123, pack4567);
+}
+
 // Complete any reduction, multiply by scaling, and write to memory.
-static inline void WriteC(float *to, __m128i pack0123, __m128i pack4567, __m128 unquant_reg) {
+static inline void WriteC(float *to, __m256i_fake total, __m128 unquant_reg) {
   // Convert to float, multiply by unquant, and write.
-  *reinterpret_cast<__m128*>(to) = _mm_mul_ps(_mm_cvtepi32_ps(pack0123), unquant_reg);
-  *reinterpret_cast<__m128*>(to + 4) = _mm_mul_ps(_mm_cvtepi32_ps(pack4567), unquant_reg);
+  *reinterpret_cast<__m128*>(to) = _mul_ps(_cvtepi32_ps(std::get<0>(total)), unquant_reg);
+  *reinterpret_cast<__m128*>(to + 4) = _mul_ps(_cvtepi32_ps(std::get<1>(total)), unquant_reg);
 }
 #endif
 #ifdef __AVX2__
@@ -94,11 +108,18 @@ static inline __m256 max_ps(__m256 first, __m256 second) {
 static inline __m256 and_ps(__m256 first, __m256 second) {
   return _mm256_and_ps(first, second);
 }
+static inline __m256 _cvtepi32_ps(__m256i arg) {
+  return _mm256_cvtepi32_ps(arg);
+}
+static inline __m256 _mul_ps (__m256 a, __m256 b) {
+  return _mm256_mul_ps(a, b);
+}
+
 static inline float MaxFloat32(__m256 a) {
   return MaxFloat32(max_ps(_mm256_castps256_ps128(a), _mm256_extractf128_ps(a, 1)));
 }
 
-static inline __m256i permuteSummer(__m256i pack0123, __m256i pack4567) {
+static inline __m256i PermuteSummer(__m256i pack0123, __m256i pack4567) {
   // This instruction generates 1s 2s 3s 4s 5f 6f 7f 8f
   __m256i rev = _mm256_permute2f128_si256(pack0123, pack4567, 0x21);
   // This instruction generates 1f 2f 3f 4f 5s 6s 7s 8s
@@ -106,10 +127,9 @@ static inline __m256i permuteSummer(__m256i pack0123, __m256i pack4567) {
   return _mm256_add_epi32(rev, blended);
 }
 
-static inline void WriteC(float *to, __m256i pack0123, __m256i pack4567, __m256 unquant_reg) {
-  __m256i total = permuteSummer(pack0123, pack4567);
+static inline void WriteC(float *to, __m256i total, __m256 unquant_reg) {
   // Convert to float, multiply by unquant, and write.
-  *reinterpret_cast<__m256*>(to) = _mm256_mul_ps(_mm256_cvtepi32_ps(total), unquant_reg);
+  *reinterpret_cast<__m256*>(to) = _mul_ps(_cvtepi32_ps(total), unquant_reg);
 }
 
 #endif
@@ -140,7 +160,7 @@ static inline __m512 and_ps(__m512 first, __m512 second) {
   return _mm512_and_ps(first, second);
 }
 
-static inline __m256i permuteSummer(__m512i pack0123, __m512i pack4567) {
+static inline __m256i PermuteSummer(__m512i pack0123, __m512i pack4567) {
   // Form [0th 128-bit register of pack0123, 0st 128-bit register of pack4567, 2nd 128-bit register of pack0123, 2nd 128-bit register of pack4567]
   __m512i mix0 = _mm512_mask_permutex_epi64(pack0123, 0xcc, pack4567, (0 << 4) | (1 << 6));
   // Form [1st 128-bit register of pack0123, 1st 128-bit register of pack4567, 3rd 128-bit register of pack0123, 3rd 128-bit register of pack4567]
@@ -149,12 +169,6 @@ static inline __m256i permuteSummer(__m512i pack0123, __m512i pack4567) {
   // Now we have 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7.
   // Fold register over itself.
   return _mm256_add_epi32(_mm512_castsi512_si256(added), _mm512_extracti64x4_epi64(added, 1));
-}
-
-static inline void WriteC(float *to, __m512i pack0123, __m512i pack4567, __m256 unquant_reg) {
-  __m256i total = permuteSummer(pack0123, pack4567);
-  // Convert to float, multiply by unquant, and write.
-  *reinterpret_cast<__m256*>(to) = _mm256_mul_ps(_mm256_cvtepi32_ps(total), unquant_reg);
 }
 
 // Find the maximum float.
@@ -265,7 +279,9 @@ template <class Integer, class Float> inline void Multiply16(const int16_t *A, c
       Integer pack0123 = Pack0123(sum0, sum1, sum2, sum3);
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7);
       // The specific implementation may need to reduce further.
-      WriteC(C + A_rowidx * B_cols + B0_colidx, pack0123, pack4567, unquant_reg);
+
+      auto total = PermuteSummer(pack0123, pack4567);
+      WriteC(C + A_rowidx * B_cols + B0_colidx, total, unquant_reg);
     }
   }
 }
@@ -485,7 +501,9 @@ template <class Algo, class Integer, class Float> inline void Multiply8_SSE2OrAV
       sum7 = madd_epi16(sum7, ones);
       Integer pack0123 = Pack0123(sum0, sum1, sum2, sum3);
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7);
-      WriteC(C + A_rowidx * B_cols + B0_colidx, pack0123, pack4567, unquant_reg);
+
+      auto total = PermuteSummer(pack0123, pack4567);
+      WriteC(C + A_rowidx * B_cols + B0_colidx, total, unquant_reg);
     }
   }
 }
