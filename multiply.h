@@ -48,10 +48,10 @@ static inline __m128 max_ps(__m128 first, __m128 second) {
 static inline __m128 and_ps(__m128 first, __m128 second) {
   return _mm_and_ps(first, second);
 }
-static inline __m128 _cvtepi32_ps(__m128i arg) {
+static inline __m128 cvtepi32_ps(__m128i arg) {
   return _mm_cvtepi32_ps(arg);
 }
-static inline __m128 _mul_ps (__m128 a, __m128 b) {
+static inline __m128 mul_ps (__m128 a, __m128 b) {
   return _mm_mul_ps(a, b);
 }
 
@@ -77,8 +77,8 @@ static inline MultiplyResult128 PermuteSummer(__m128i pack0123, __m128i pack4567
 // Complete any reduction, multiply by scaling, and write to memory.
 static inline void WriteC(float *to, MultiplyResult128 total, __m128 unquant_reg) {
   // Convert to float, multiply by unquant, and write.
-  *reinterpret_cast<__m128*>(to) = _mul_ps(_cvtepi32_ps(total.pack0123), unquant_reg);
-  *reinterpret_cast<__m128*>(to + 4) = _mul_ps(_cvtepi32_ps(total.pack4567), unquant_reg);
+  *reinterpret_cast<__m128*>(to) = mul_ps(cvtepi32_ps(total.pack0123), unquant_reg);
+  *reinterpret_cast<__m128*>(to + 4) = mul_ps(cvtepi32_ps(total.pack4567), unquant_reg);
 }
 #endif
 #ifdef __AVX2__
@@ -112,10 +112,10 @@ static inline __m256 max_ps(__m256 first, __m256 second) {
 static inline __m256 and_ps(__m256 first, __m256 second) {
   return _mm256_and_ps(first, second);
 }
-static inline __m256 _cvtepi32_ps(__m256i arg) {
+static inline __m256 cvtepi32_ps(__m256i arg) {
   return _mm256_cvtepi32_ps(arg);
 }
-static inline __m256 _mul_ps (__m256 a, __m256 b) {
+static inline __m256 mul_ps (__m256 a, __m256 b) {
   return _mm256_mul_ps(a, b);
 }
 
@@ -133,7 +133,7 @@ static inline __m256i PermuteSummer(__m256i pack0123, __m256i pack4567) {
 
 static inline void WriteC(float *to, __m256i total, __m256 unquant_reg) {
   // Convert to float, multiply by unquant, and write.
-  *reinterpret_cast<__m256*>(to) = _mul_ps(_cvtepi32_ps(total), unquant_reg);
+  *reinterpret_cast<__m256*>(to) = mul_ps(cvtepi32_ps(total), unquant_reg);
 }
 
 #endif
