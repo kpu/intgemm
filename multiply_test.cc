@@ -7,6 +7,11 @@
 #include "interleave.h"
 #include "multiply.h"
 
+#define CATCH_CONFIG_MAIN 
+#include "3rd_party/catch.hpp"
+#define CHECK_MESSAGE(cond, msg) do { INFO(msg); CHECK(cond); } while((void)0, 0)
+#define REQUIRE_MESSAGE(cond, msg) do { INFO(msg); REQUIRE(cond); } while((void)0, 0)
+
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -46,7 +51,8 @@ template <class V> void SlowTranspose(const V *from, V *to, Index rows, Index co
   }
 }
 
-void TestTranspose16() {
+
+TEST_CASE( "Transpose 16", "[transpose]") {
   AlignedVector<int16_t> input(8 * 8);
   for (int16_t i = 0; i < 64; ++i) {
     input.get()[i] = i;
@@ -59,13 +65,11 @@ void TestTranspose16() {
   Transpose16InLane(t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7]);
 
   for (int16_t i = 0; i < 64; ++i) {
-    if (ref.get()[i] != input.get()[i]) {
-      std::cerr << "16-bit transpose failure at " << i << ": " << ref.get()[i] << " != " << input.get()[i] << '\n';
-    }
+  	REQUIRE_MESSAGE(ref.get()[i] == input.get()[i], "16-bit transpose failure at: " << i << ": " << ref.get()[i] << " != " << input.get()[i]);
   }
 }
 
-void TestTranspose8() {
+TEST_CASE( "Transpose 8", "[transpose]") {
   AlignedVector<int8_t> input(16 * 16);
   for (int i = 0; i < 16 * 16; ++i) {
     input.get()[i] = i;
@@ -78,9 +82,7 @@ void TestTranspose8() {
   Transpose8InLane(t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7], t[8], t[9], t[10], t[11], t[12], t[13], t[14], t[15]);
 
   for (int i = 0; i < 16 * 16; ++i) {
-    if (ref.get()[i] != input.get()[i]) {
-      std::cerr << "8-bit transpose failure at " << i << ": " << (int16_t)ref.get()[i] << " != " << (int16_t)input.get()[i] << '\n';
-    }
+    REQUIRE_MESSAGE(ref.get()[i] == input.get()[i], "8-bit transpose failure at " << i << ": " << (int16_t)ref.get()[i] << " != " << (int16_t)input.get()[i]);
   }
 }
 
@@ -310,7 +312,7 @@ void TestBoth(Index A_rows, Index width, Index B_cols) {
 
 } // namespace intgemm
 
-// Program takes no input
+/* Program takes no input
 int main(int argc, char ** argv) {
     std::srand(45678);
     using namespace intgemm;
@@ -346,6 +348,7 @@ int main(int argc, char ** argv) {
 /*    if (kCPU >= CPU_AVX2) {
       TestMaxAbsolute<AVX2_MaxAbsolute>();
     }*/
+/*
     // Top matrix sizes from Marian
     TestBoth(8, 256, 256);
     TestBoth(8, 2048, 256);
@@ -356,3 +359,4 @@ int main(int argc, char ** argv) {
     TestBoth(200, 256, 256);
     return 0;
 }
+*/
