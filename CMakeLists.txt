@@ -26,7 +26,7 @@ if (AVX512)
   set(GEMMS avx512_gemm.cc ${GEMMS})
 else()
   message("Not building AVX512-based multiplication because your compiler is too old.\nFor details rerun cmake with --debug-trycompile then try to build in compile_tests/CMakeFiles/CMakeTmp.")
-  set_source_files_properties(intgemm.cc quantize_test.cc multiply_test.cc benchmark.cc PROPERTIES COMPILE_DEFINITIONS "INTGEMM_NO_AVX512")
+  set_source_files_properties(intgemm.cc test/quantize_test.cc test/multiply_test.cc benchmark.cc PROPERTIES COMPILE_DEFINITIONS "INTGEMM_NO_AVX512")
 endif()
 
 add_library(intgemm STATIC ${GEMMS} intgemm.cc)
