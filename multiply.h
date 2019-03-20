@@ -66,20 +66,6 @@ static inline float MaxFloat32(__m128 a) {
   return *reinterpret_cast<float*>(&a);
 }
 
-static inline __m128i UnquantNop(__m128i arg) {
-  return arg;
-}
-
-static inline __m128 UnquantFloat(__m128i arg, __m128 unquant_reg) {
-  return mul_ps(cvtepi32_ps(arg), unquant_reg);
-}
-
-static inline __m128 UnquantBias(__m128i arg, __m128 unquant_reg, __m128 bias) {
-  //We do not have FMA on SSE so we need to have two operations
-  __m128 unquant = UnquantFloat(arg, unquant_reg);
-  return _mm_add_ps(unquant, bias);
-}
-
 static inline MultiplyResult128 PermuteSummer(__m128i pack0123, __m128i pack4567) {
   // No op for 128 bits: already reduced fully.
   MultiplyResult128 ret;
@@ -95,7 +81,7 @@ static inline void WriteC(float *to, MultiplyResult128 total, __m128 unquant_reg
   *reinterpret_cast<__m128*>(to + 4) = mul_ps(cvtepi32_ps(total.pack4567), unquant_reg);
 }
 #endif
-#ifdef __AVX2__ 
+#ifdef __AVX2__
 static inline __m256i add_epi32(__m256i first, __m256i second) {
   return _mm256_add_epi32(first, second);
 }
@@ -135,19 +121,6 @@ static inline __m256 mul_ps (__m256 a, __m256 b) {
 
 static inline float MaxFloat32(__m256 a) {
   return MaxFloat32(max_ps(_mm256_castps256_ps128(a), _mm256_extractf128_ps(a, 1)));
-}
-
-static inline __m256i UnquantNop(__m256i arg) {
-  return arg;
-}
-
-static inline __m256 UnquantFloat(__m256i arg, __m256 unquant_reg) {
-  return mul_ps(cvtepi32_ps(arg), unquant_reg);
-}
-
-static inline __m256 UnquantBias(__m256i arg, __m256 unquant_reg, __m256 bias) {
-  //All processors supporting AVX2 should also support FMA
-  return _mm256_fmadd_ps(cvtepi32_ps(arg), unquant_reg, bias);
 }
 
 static inline __m256i PermuteSummer(__m256i pack0123, __m256i pack4567) {
