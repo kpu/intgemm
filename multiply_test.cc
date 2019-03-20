@@ -125,7 +125,7 @@ template <class Routine> void TestPrepare(Index rows = 32, Index cols = 16) {
   }
 }
 
-template <class Routine> void TestSelectColumnsB(Index rows = 32, Index cols = 16) {
+template <class Routine> void TestSelectColumnsB(Index rows = 64, Index cols = 16) {
   if (intgemm::kCPU < Routine::kUses) return;
   AlignedVector<float> input(rows * cols);
   for (int i = 0; i < rows * cols; ++i) {
