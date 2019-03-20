@@ -5,6 +5,8 @@
 #include "aligned.h"
 #include "intgemm.h"
 
+#include "3rd_party/catch.hpp"
+
 #include <cstring>
 #include <math.h>
 
@@ -72,27 +74,28 @@ template <class Backend> bool TestMany() {
   return success;
 }
 
-} // namespace
-} // namespace intgemm
+TEST_CASE ("Quantize SSE2", "[quantize]") {
+  if (kCPU < CPU_SSE2) return;
+  CHECK(TestMany<SSE2_16bit>());
+}
 
-int main() {
-  using namespace intgemm;
-  bool success = true;
+TEST_CASE ("Quantize SSE3", "[quantize]") {
+  if (kCPU < CPU_SSSE3) return;
+  CHECK(TestMany<SSSE3_8bit>());
+}
+
+TEST_CASE ("Quantize AVX2", "[quantize]") {
+  if (kCPU < CPU_AVX2) return;
+  CHECK(TestMany<AVX2_8bit>());
+  CHECK(TestMany<AVX2_16bit>());
+}
 #ifndef INTGEMM_NO_AVX512
-  if (kCPU >= CPU_AVX512BW) {
-    success &= TestMany<AVX512_8bit>();
-    success &= TestMany<AVX512_16bit>();
+  TEST_CASE ("Quantize AVX512", "[quantize]") {
+    if (kCPU < CPU_AVX512BW) return;
+    CHECK(TestMany<AVX512_8bit>());
+    CHECK(TestMany<AVX512_16bit>());
   }
 #endif
-  if (kCPU >= CPU_AVX2) {
-    success &= TestMany<AVX2_8bit>();
-    success &= TestMany<AVX2_16bit>();
-  }
-  if (kCPU >= CPU_SSSE3) {
-    success &= TestMany<SSSE3_8bit>();
-  }
-  if (kCPU >= CPU_SSE2) {
-    success &= TestMany<SSE2_16bit>();
-  }
-  return success ? 0 : 1;
-}
+
+} // namespace
+} // namespace intgemm

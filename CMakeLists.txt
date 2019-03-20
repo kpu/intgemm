@@ -30,7 +30,11 @@ else()
 endif()
 
 add_library(intgemm STATIC ${GEMMS} intgemm.cc)
-foreach(exe multiply_test quantize_test example benchmark)
+foreach(exe example benchmark)
   add_executable(${exe} ${exe}.cc)
   target_link_libraries(${exe} intgemm)
 endforeach()
+
+include_directories(.)
+add_executable(tests test/multiply_test.cc test/quantize_test.cc)
+target_link_libraries(tests intgemm)
