@@ -96,18 +96,18 @@ TEST_CASE("Transpose 8", "[transpose]") {
   }
 }
 
-template <class T> void PrintMatrix(const T *mem, Index rows, Index cols, std::ostringstream& out) {
+template <class T> std::string PrintMatrix(const T *mem, Index rows, Index cols) {
+  std::ostringstream out;
   for (int r = 0; r < rows; ++r) {
     for (int c = 0; c < cols; ++c) {
       out << std::setw(4) << (int64_t) mem[r * cols + c] << ' ';
     }
     out << '\n';
   }
+  return out.str();
 }
 
-template <class Routine> std::string TestPrepare(Index rows = 32, Index cols = 16) {
-  std::ostringstream out;
-
+template <class Routine> void TestPrepare(Index rows = 32, Index cols = 16) {
   // Create array.
   AlignedVector<float> input(rows * cols);
   for (int i = 0; i < rows * cols; ++i) {
@@ -126,69 +126,42 @@ template <class Routine> std::string TestPrepare(Index rows = 32, Index cols = 1
   AlignedVector<Integer> reference(rows * cols);
   // Note this won't work for Int8/Int16 generic routines because tile sizes vary.
   SlowRearrange<Integer>(quantized.get(), reference.get(), Routine::kBTileRow, Routine::kBTileCol, rows, cols);
-  if (memcmp(reference.get(), test.get(), rows * cols * sizeof(Integer))) {
-    out << "TestPrepare " << Routine::kName << " Mismatch:\n";
-    out << "Quantized Input" << '\n';
-    PrintMatrix(quantized.get(), rows, cols, out);
-    out << "Reference" << '\n';
-    PrintMatrix(reference.get(), rows, cols, out);
-    out << "Routine" << '\n';
-    PrintMatrix(test.get(), rows, cols, out);
-  }
-  return out.str();
+  CHECK_MESSAGE(memcmp(reference.get(), test.get(), rows * cols * sizeof(Integer)) == 0, Routine::kName << " Mismatch:\n" <<
+  	"Quantized Input" << '\n' << PrintMatrix(quantized.get(), rows, cols) << "Reference" << '\n' <<
+  	 PrintMatrix(reference.get(), rows, cols) << "Routine" << '\n' << PrintMatrix(test.get(), rows, cols));
 }
 
 TEST_CASE("Test prepare AVX512", "[prepare]") {
   if (kCPU < CPU_AVX512BW) return;
 #ifndef INTGEMM_NO_AVX512
-    std::string one = TestPrepare<AVX512_8bit>(64, 8);
-    CHECK(one == "");
-
-    std::string two = TestPrepare<AVX512_8bit>(256, 32);
-    CHECK(two == "");
-
-    std::string three = TestPrepare<AVX512_16bit>(256, 32);
-    CHECK(three == "");
-
-    std::string four = TestPrepare<AVX512_16bit>(256, 32);
-    CHECK(four == "");
+	TestPrepare<AVX512_8bit>(64, 8);
+	TestPrepare<AVX512_8bit>(256, 32);
+    TestPrepare<AVX512_16bit>(64, 8);
+    TestPrepare<AVX512_16bit>(256, 32);
 #endif
 }
 
 TEST_CASE("Test prepare AVX2", "[prepare]") {
   if (kCPU < CPU_AVX2) return;
-  std::string one = TestPrepare<AVX2_8bit>(64, 32);
-  CHECK(one == "");
-
-  std::string two = TestPrepare<AVX2_16bit>(64, 32);
-  CHECK(two == "");
+  TestPrepare<AVX2_8bit>(64, 32);
+  TestPrepare<AVX2_16bit>(64, 32);
 }
 
 TEST_CASE("Test prepare SSSE3", "[prepare]") {
   if (kCPU < CPU_SSSE3) return;
-  std::string one = TestPrepare<SSSE3_8bit>(16, 8);
-  CHECK(one == "");
-
-  std::string two = TestPrepare<SSSE3_8bit>(32, 16);
-  CHECK(two == "");
-
-  std::string three = TestPrepare<SSSE3_8bit>(32, 32);
-  CHECK(three == "");
+  TestPrepare<SSSE3_8bit>(16, 8);
+  TestPrepare<SSSE3_8bit>(32, 16);
+  TestPrepare<SSSE3_8bit>(32, 32);
 }
 
 TEST_CASE("Test prepare SSE2", "[prepare]") {
   if (kCPU < CPU_SSE2) return;
-  std::string one = TestPrepare<SSE2_16bit>(8, 8);
-  CHECK(one == "");
-
-  std::string two = TestPrepare<SSE2_16bit>(32, 32);
-  CHECK(two == "");
+  TestPrepare<SSE2_16bit>(8, 8);
+  TestPrepare<SSE2_16bit>(32, 32);
 }
 
 
-template <class Routine> std::string TestSelectColumnsB(Index rows = 32, Index cols = 16) {
-  std::ostringstream out;
-
+template <class Routine> void TestSelectColumnsB(Index rows = 32, Index cols = 16) {
   AlignedVector<float> input(rows * cols);
   for (int i = 0; i < rows * cols; ++i) {
     input.get()[i] = (float)rand() / (float)RAND_MAX * 256.0 - 127.0;
@@ -216,106 +189,79 @@ template <class Routine> std::string TestSelectColumnsB(Index rows = 32, Index c
   }
   AlignedVector<Integer> ref(rows * kSelectCols);
   Routine::PrepareB(selected.get(), ref.get(), 1, rows, kSelectCols);
-
-  if (memcmp(ref.get(), test.get(), sizeof(Integer) * rows * kSelectCols)) {
-    out << "SelectColumnsB failed.\nReference:\n";
-    PrintMatrix(ref.get(), rows, kSelectCols, out);
-    out << "Routine:\n";
-    PrintMatrix(test.get(), rows, kSelectCols, out);
-  }
-  return out.str();
+  CHECK_MESSAGE(memcmp(ref.get(), test.get(), sizeof(Integer) * rows * kSelectCols) == 0, "Reference:\n" <<
+  	PrintMatrix(ref.get(), rows, kSelectCols) << PrintMatrix(test.get(), rows, kSelectCols));
 }
 
 TEST_CASE("Test SelectColumnsB AVX512", "[select]") {
   if (kCPU < CPU_AVX512BW) return;
 #ifndef INTGEMM_NO_AVX512
-    std::string one = TestSelectColumnsB<AVX512_8bit>();
-    CHECK(one == "");
-
-    std::string two = TestSelectColumnsB<AVX512_16bit>(256, 256);
-    CHECK(two == "");
+    TestSelectColumnsB<AVX512_8bit>();
+    TestSelectColumnsB<AVX512_16bit>(256, 256);
 #endif
 }
 
 TEST_CASE("Test SelectColumnsB AVX2", "[select]") {
   if (kCPU < CPU_AVX2) return;
-  std::string one = TestSelectColumnsB<AVX2_8bit>(256, 256);
-  CHECK(one == "");
-
-  std::string two = TestSelectColumnsB<AVX2_16bit>(256, 256);
-  CHECK(two == "");
+  TestSelectColumnsB<AVX2_8bit>(256, 256);
+  TestSelectColumnsB<AVX2_16bit>(256, 256);
 }
 
 TEST_CASE("Test SelectColumnsB SSSE3", "[select]") {
   if (kCPU < CPU_SSSE3) return;
-  std::string one = TestSelectColumnsB<SSSE3_8bit>();
-  CHECK(one == "");
-
-  std::string two = TestSelectColumnsB<SSSE3_8bit>(256, 256);
-  CHECK(two == "");
+  TestSelectColumnsB<SSSE3_8bit>();
+  TestSelectColumnsB<SSSE3_8bit>(256, 256);
 }
 
 TEST_CASE("Test SelectColumnsB SSE2", "[select]") {
   if (kCPU < CPU_SSE2) return;
-  std::string one = TestSelectColumnsB<SSE2_16bit>();
-  CHECK(one == "");
-
-  std::string two = TestSelectColumnsB<SSE2_16bit>(256, 256);
-  CHECK(two == "");
+  TestSelectColumnsB<SSE2_16bit>();
+  TestSelectColumnsB<SSE2_16bit>(256, 256);
 }
 
-template <class Register> std::string TestMax() {
-  std::ostringstream out;
+template <class Register> void TestMax() {
   Register r = set1_ps<Register>(-2.0);
   for (int i = 0; i < sizeof(Register) / sizeof(float); ++i) {
     Register c = r;
     reinterpret_cast<float*>(&c)[i] = -1.0;
-    if (MaxFloat32(c) != -1.0) {
-      out << "MaxFloat32 produced " << MaxFloat32(c) << std::endl;
-    }
+    CHECK_MESSAGE((MaxFloat32(c) == -1.0), "MaxFloat32 produced " << MaxFloat32(c));
   }
-  return out.str();
 }
 
 TEST_CASE("Test Max", "[max]") {
-  std::string error = TestMax<__m128>();
-  CHECK(error == "");
+  TestMax<__m128>();
 }
 
-void CompareMaxAbs(const float *begin, const float *end, float test, std::ostringstream& out) {
+void CompareMaxAbs(const float *begin, const float *end, float test) {
   float largest = fabs(*std::max_element(begin, end));
   float smallest = fabs(*std::min_element(begin, end));
   largest = std::max(largest, smallest);
-  if (largest != test) out << "TestMaxAbsolute error: " << largest << " versus " << test << "\n";
+  CHECK_MESSAGE(largest == test, "Error: " << largest << " versus " << test);
 }
 
-template <float (*Backend) (const float *, const float *)> std::string TestMaxAbsolute() {
-  std::ostringstream out;
+template <float (*Backend) (const float *, const float *)> void TestMaxAbsolute() {
   const int kLength = 64;
   AlignedVector<float> test(kLength);
   // 64 tries.
   for (int t = 0; t < 64; ++t) {
     for (int i = 0; i < kLength; ++i)
       test[i] = rand() / (float)RAND_MAX * 16.0 - 8.0;
-    CompareMaxAbs(test.get(), test.get() + kLength, Backend(test.get(), test.get() + kLength), out);
+    CompareMaxAbs(test.get(), test.get() + kLength, Backend(test.get(), test.get() + kLength));
     test[t] = -32.0;
-    CompareMaxAbs(test.get(), test.get() + kLength, Backend(test.get(), test.get() + kLength), out);
+    CompareMaxAbs(test.get(), test.get() + kLength, Backend(test.get(), test.get() + kLength));
     test[t] = 32.0;
-    CompareMaxAbs(test.get(), test.get() + kLength, Backend(test.get(), test.get() + kLength), out);
+    CompareMaxAbs(test.get(), test.get() + kLength, Backend(test.get(), test.get() + kLength));
   }
-  return out.str();
 }
 
 TEST_CASE("Test Max absolute SSE2", "[max]") {
   if (kCPU < CPU_SSE2) return;
-  std::string error = TestMaxAbsolute<SSE2_MaxAbsolute>();
-  CHECK(error == "");
+  TestMaxAbsolute<SSE2_MaxAbsolute>();
 }
 
 TEST_CASE("Test Max absolute AVX2", "[max]") {
   if (kCPU < CPU_AVX2) return;
-  std::string error = TestMaxAbsolute<AVX2_MaxAbsolute>();;
-  CHECK(error == "");
+  TestMaxAbsolute<AVX2_MaxAbsolute>();;
 }
 
 // Based on https://arxiv.org/abs/1705.01991
@@ -366,27 +312,26 @@ template <class Integer> void SlowRefInt(const Integer *A, const Integer *B, flo
 }
 
 
-bool Compare(const float *float_ref, const float *int_ref, const float *int_test, std::size_t size, std::ostringstream& out) {
-  bool res = true;
+void Compare(const float *float_ref, const float *int_ref, const float *int_test, std::size_t size, std::string test_info,
+ float int_tolerance, float float_tolerance, float MSE_float_tolerance, float MSE_int_tolerance) {
   float int_sum = 0.0, float_sum = 0.0;
   for (std::size_t i = 0; i < size; ++i) {
     float int_diff = int_ref[i] - int_test[i];
     float float_diff = float_ref[i] - int_test[i];
-    if (fabs(int_diff) > .1 || fabs(float_diff) > 1) {
-      out << "Inaccurate at " << i << ' ' << float_ref[i] << ' ' << int_ref[i] << ' ' << int_test[i] << '\n';
-      res = false;
-    }
+    CHECK_MESSAGE(fabs(int_diff) <= int_tolerance, test_info << "Inaccurate compared to int reference at " << i << ' ' << int_ref[i] << ' ' << int_test[i]);
+    CHECK_MESSAGE(fabs(float_diff) <= float_tolerance, test_info << "Inaccurate compared to float reference at " << i << ' ' << float_ref[i] << ' ' << int_test[i]);
     int_sum += int_diff * int_diff;
     float_sum += float_diff * float_diff;
   }
-  out << "Float MSE = " << sqrt(float_sum / size) << "\tInt MSE = " << sqrt(int_sum / size) << std::endl;
-  return res;
+  CHECK_MESSAGE(fabs(sqrt(float_sum / size)) <= MSE_float_tolerance, test_info << "Float MSE = " << sqrt(float_sum / size));
+  CHECK_MESSAGE(fabs(sqrt(int_sum / size)) <= MSE_int_tolerance, test_info << "Int MSE = " << sqrt(int_sum / size));
 }
 
-template <class Routine> std::string TestMultiply(Index A_rows, Index width, Index B_cols) {
+template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_cols,
+ float int_tolerance=.1, float float_tolerance=1, float MSE_float_tolerance=0, float MSE_int_tolerance=0) {
   typedef typename Routine::Integer Integer;
-  std::ostringstream out;
-  out << Routine::kName << "\t" << A_rows << '\t' << width << '\t' << B_cols << '\n';
+  std::ostringstream info;
+  info << Routine::kName << "\t" << A_rows << '\t' << width << '\t' << B_cols << '\n';
 
   // Initialize A and B.
   AlignedVector<float> A(A_rows * width);
@@ -417,142 +362,71 @@ template <class Routine> std::string TestMultiply(Index A_rows, Index width, Ind
   AlignedVector<float> float_C(A_rows * B_cols);
   SlowRefFloat(A.get(), B.get(), float_C.get(), A_rows, width, B_cols);
 
-  bool res = Compare(float_C.get(), slowint_C.get(), test_C.get(), A_rows * B_cols, out);
-  if (res) {
-    return std::string("");
-  } else {
-    return out.str();
-  }
+  Compare(float_C.get(), slowint_C.get(), test_C.get(), A_rows * B_cols, info.str(),
+   int_tolerance, float_tolerance, MSE_float_tolerance, MSE_int_tolerance);
 }
 
 TEST_CASE ("Test Multiply SSE2 16bit", "[multiply]") {
   if (kCPU < CPU_SSE2) return;
-  std::string one = TestMultiply<SSE2_16bit>(8, 256, 256);
-  CHECK(one == "");
-
-  std::string two = TestMultiply<SSE2_16bit>(8, 2048, 256);
-  CHECK(two == "");
-
-  std::string three = TestMultiply<SSE2_16bit>(320, 256, 256);
-  CHECK(three == "");
-
-  std::string four = TestMultiply<SSE2_16bit>(472, 256, 256);
-  CHECK(four == "");
-
-  std::string five = TestMultiply<SSE2_16bit>(248, 256, 256);
-  CHECK(five == "");
-
-  std::string six = TestMultiply<SSE2_16bit>(200, 256, 256);
-  CHECK(six == "");
+  TestMultiply<SSE2_16bit>(8, 256, 256, .1, 1, 0.01);
+  TestMultiply<SSE2_16bit>(8, 2048, 256, .1, 1, 0.02);
+  TestMultiply<SSE2_16bit>(320, 256, 256, .1, 1, 0.01);
+  TestMultiply<SSE2_16bit>(472, 256, 256, .1, 1, 0.01);
+  TestMultiply<SSE2_16bit>(248, 256, 256, .1, 1, 0.01);
+  TestMultiply<SSE2_16bit>(200, 256, 256, .1, 1, 0.01);
 }
 
 TEST_CASE ("Test Multiply SSSE3 8bit", "[multiply]") {
   if (kCPU < CPU_SSSE3) return;
-  std::string one = TestMultiply<SSSE3_8bit>(8, 256, 256);
-  CHECK(one == "");
-
-  std::string two = TestMultiply<SSSE3_8bit>(8, 2048, 256);
-  CHECK_FALSE(two == ""); //Expected failiure due to int saturation
-
-  std::string three = TestMultiply<SSSE3_8bit>(320, 256, 256);
-  CHECK(three == "");
-
-  std::string four = TestMultiply<SSSE3_8bit>(472, 256, 256);
-  CHECK(four == "");
-
-  std::string five = TestMultiply<SSSE3_8bit>(248, 256, 256);
-  CHECK(five == "");
-
-  std::string six = TestMultiply<SSSE3_8bit>(200, 256, 256);
-  CHECK(six == "");
+  TestMultiply<SSSE3_8bit>(8, 256, 256, .1, 1, 0.06);
+  TestMultiply<SSSE3_8bit>(8, 2048, 256, 25, 25, 4.3, 4.3); //@TODO should have some fail version
+  TestMultiply<SSSE3_8bit>(320, 256, 256, 1.5, 1.5, 0.1, 0.01);
+  TestMultiply<SSSE3_8bit>(472, 256, 256, 2.1, 2.1, 0.1, 0.02);
+  TestMultiply<SSSE3_8bit>(248, 256, 256, 1.7, 1.7, 0.1, 0.02);
+  TestMultiply<SSSE3_8bit>(200, 256, 256, 1.2, 1.2, 0.1, 0.01);
 }
 
 TEST_CASE ("Test Multiply AVX2 8bit", "[multiply]") {
   if (kCPU < CPU_AVX2) return;
-  std::string one = TestMultiply<AVX2_8bit>(8, 256, 256);
-  CHECK(one == "");
-
-  std::string two = TestMultiply<AVX2_8bit>(8, 2048, 256);
-  CHECK_FALSE(two == ""); //Expected failiure due to int saturation
-
-  std::string three = TestMultiply<AVX2_8bit>(320, 256, 256);
-  CHECK(three == "");
-
-  std::string four = TestMultiply<AVX2_8bit>(472, 256, 256);
-  CHECK(four == "");
-
-  std::string five = TestMultiply<AVX2_8bit>(248, 256, 256);
-  CHECK(five == "");
-
-  std::string six = TestMultiply<AVX2_8bit>(200, 256, 256);
-  CHECK(six == "");
+  TestMultiply<AVX2_8bit>(8, 256, 256, .1, 1, 0.1);
+  TestMultiply<AVX2_8bit>(8, 2048, 256, 11, 11, 1.8, 1.8); //Expected failiure due to int saturation
+  TestMultiply<AVX2_8bit>(320, 256, 256, .1, 1, 0.1);
+  TestMultiply<AVX2_8bit>(472, 256, 256, .1, 1, 0.1);
+  TestMultiply<AVX2_8bit>(248, 256, 256, .1, 1, 0.1);
+  TestMultiply<AVX2_8bit>(200, 256, 256, .1, 1, 0.1);
 }
 
 TEST_CASE ("Test Multiply AVX2 16bit", "[multiply]") {
   if (kCPU < CPU_AVX2) return;
-  std::string one = TestMultiply<AVX2_16bit>(8, 256, 256);
-  CHECK(one == "");
-
-  std::string two = TestMultiply<AVX2_16bit>(8, 2048, 256);
-  CHECK(two == "");
-
-  std::string three = TestMultiply<AVX2_16bit>(320, 256, 256);
-  CHECK(three == "");
-
-  std::string four = TestMultiply<AVX2_16bit>(472, 256, 256);
-  CHECK(four == "");
-
-  std::string five = TestMultiply<AVX2_16bit>(248, 256, 256);
-  CHECK(five == "");
-
-  std::string six = TestMultiply<AVX2_16bit>(200, 256, 256);
-  CHECK(six == "");
+  TestMultiply<AVX2_16bit>(8, 256, 256, .1, 1, 0.01);
+  TestMultiply<AVX2_16bit>(8, 2048, 256, .1, 1, 0.02);
+  TestMultiply<AVX2_16bit>(320, 256, 256, .1, 1, 0.01);
+  TestMultiply<AVX2_16bit>(472, 256, 256, .1, 1, 0.01);
+  TestMultiply<AVX2_16bit>(248, 256, 256, .1, 1, 0.01);
+  TestMultiply<AVX2_16bit>(200, 256, 256, .1, 1, 0.01);
 }
 
 #ifndef INTGEMM_NO_AVX512
   TEST_CASE ("Test Multiply AVX512 8bit", "[multiply]") {
     if (kCPU < CPU_AVX512BW) return;
-    std::string one = TestMultiply<AVX512_8bit>(8, 256, 256);
-    CHECK(one == "");
-
-    std::string two = TestMultiply<AVX512_8bit>(8, 2048, 256);
-    CHECK(two == "");
-
-    std::string three = TestMultiply<AVX512_8bit>(320, 256, 256);
-    CHECK(three == "");
-
-    std::string four = TestMultiply<AVX512_8bit>(472, 256, 256);
-    CHECK(four == "");
-
-    std::string five = TestMultiply<AVX512_8bit>(248, 256, 256);
-    CHECK(five == "");
-
-    std::string six = TestMultiply<AVX512_8bit>(200, 256, 256);
-    CHECK(six == "");
+    TestMultiply<AVX512_8bit>(8, 256, 256);
+    TestMultiply<AVX512_8bit>(8, 2048, 256);
+    TestMultiply<AVX512_8bit>(320, 256, 256);
+    TestMultiply<AVX512_8bit>(472, 256, 256);
+    TestMultiply<AVX512_8bit>(248, 256, 256);
+    TestMultiply<AVX512_8bit>(200, 256, 256);
   }
 
   TEST_CASE ("Test Multiply AVX512 16bit", "[multiply]") {
     if (kCPU < CPU_AVX512BW) return;
-    std::string one = TestMultiply<AVX512_16bit>(8, 256, 256);
-    CHECK(one == "");
-
-    std::string two = TestMultiply<AVX512_16bit>(8, 2048, 256);
-    CHECK(two == "");
-
-    std::string three = TestMultiply<AVX512_16bit>(320, 256, 256);
-    CHECK(three == "");
-
-    std::string four = TestMultiply<AVX512_16bit>(472, 256, 256);
-    CHECK(four == "");
-
-    std::string five = TestMultiply<AVX512_16bit>(248, 256, 256);
-    CHECK(five == "");
-
-    std::string six = TestMultiply<AVX512_16bit>(200, 256, 256);
-    CHECK(six == "");
+    TestMultiply<AVX512_16bit>(8, 256, 256);
+    TestMultiply<AVX512_16bit>(8, 2048, 256);
+    TestMultiply<AVX512_16bit>(320, 256, 256);
+    TestMultiply<AVX512_16bit>(472, 256, 256);
+    TestMultiply<AVX512_16bit>(248, 256, 256);
+    TestMultiply<AVX512_16bit>(200, 256, 256);
   }
 #endif
-
 } // namespace intgemm
 
 int main(int argc, char ** argv) {
