@@ -7,6 +7,13 @@
 #include "interleave.h"
 #include "multiply.h"
 
+#define CATCH_CONFIG_RUNNER 
+#include "3rd_party/catch.hpp"
+#define CHECK_MESSAGE(cond, msg) do { INFO(msg); CHECK(cond); } while((void)0, 0)
+#define CHECK_FALSE_MESSAGE(cond, msg) do { INFO(msg); CHECK_FALSE(cond); } while((void)0, 0)
+#define REQUIRE_MESSAGE(cond, msg) do { INFO(msg); REQUIRE(cond); } while((void)0, 0)
+#define REQUIRE_FALSE_MESSAGE(cond, msg) do { INFO(msg); REQUIRE_FALSE(cond); } while((void)0, 0)
+
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -15,10 +22,16 @@
 #include <cstdlib>
 #include <memory>
 
+#include <sstream>
 #include <iostream>
 #include <iomanip>
 
 namespace intgemm {
+
+struct Result {
+  bool result;
+  std::string text;
+};
 
 // Rearrange a tile of simd x unroll entries.
 template <class V> void SlowRearrangeTile(const V *from, V *to, int simd, int unroll, Index cols) {
@@ -46,7 +59,9 @@ template <class V> void SlowTranspose(const V *from, V *to, Index rows, Index co
   }
 }
 
-void TestTranspose16() {
+
+TEST_CASE("Transpose 16", "[transpose]") {
+  if (kCPU < CPU_SSE2) return;
   AlignedVector<int16_t> input(8 * 8);
   for (int16_t i = 0; i < 64; ++i) {
     input.get()[i] = i;
@@ -59,13 +74,12 @@ void TestTranspose16() {
   Transpose16InLane(t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7]);
 
   for (int16_t i = 0; i < 64; ++i) {
-    if (ref.get()[i] != input.get()[i]) {
-      std::cerr << "16-bit transpose failure at " << i << ": " << ref.get()[i] << " != " << input.get()[i] << '\n';
-    }
+  	CHECK_MESSAGE(ref.get()[i] == input.get()[i], "16-bit transpose failure at: " << i << ": " << ref.get()[i] << " != " << input.get()[i]);
   }
 }
 
-void TestTranspose8() {
+TEST_CASE("Transpose 8", "[transpose]") {
+  if (kCPU < CPU_SSSE3) return;
   AlignedVector<int8_t> input(16 * 16);
   for (int i = 0; i < 16 * 16; ++i) {
     input.get()[i] = i;
@@ -78,23 +92,22 @@ void TestTranspose8() {
   Transpose8InLane(t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7], t[8], t[9], t[10], t[11], t[12], t[13], t[14], t[15]);
 
   for (int i = 0; i < 16 * 16; ++i) {
-    if (ref.get()[i] != input.get()[i]) {
-      std::cerr << "8-bit transpose failure at " << i << ": " << (int16_t)ref.get()[i] << " != " << (int16_t)input.get()[i] << '\n';
-    }
+    CHECK_MESSAGE(ref.get()[i] == input.get()[i], "8-bit transpose failure at " << i << ": " << (int16_t)ref.get()[i] << " != " << (int16_t)input.get()[i]);
   }
 }
 
-template <class T> void PrintMatrix(const T *mem, Index rows, Index cols) {
+template <class T> std::string PrintMatrix(const T *mem, Index rows, Index cols) {
+  std::ostringstream out;
   for (int r = 0; r < rows; ++r) {
     for (int c = 0; c < cols; ++c) {
-      std::cout << std::setw(4) << (int64_t) mem[r * cols + c] << ' ';
+      out << std::setw(4) << (int64_t) mem[r * cols + c] << ' ';
     }
-    std::cout << '\n';
+    out << '\n';
   }
+  return out.str();
 }
 
 template <class Routine> void TestPrepare(Index rows = 32, Index cols = 16) {
-  if (intgemm::kCPU < Routine::kUses) return;
   // Create array.
   AlignedVector<float> input(rows * cols);
   for (int i = 0; i < rows * cols; ++i) {
@@ -113,20 +126,42 @@ template <class Routine> void TestPrepare(Index rows = 32, Index cols = 16) {
   AlignedVector<Integer> reference(rows * cols);
   // Note this won't work for Int8/Int16 generic routines because tile sizes vary.
   SlowRearrange<Integer>(quantized.get(), reference.get(), Routine::kBTileRow, Routine::kBTileCol, rows, cols);
-
-  if (memcmp(reference.get(), test.get(), rows * cols * sizeof(Integer))) {
-    std::cerr << "TestPrepare " << Routine::kName << " Mismatch:\n";
-    std::cout << "Quantized Input" << '\n';
-    PrintMatrix(quantized.get(), rows, cols);
-    std::cerr << "Reference" << '\n';
-    PrintMatrix(reference.get(), rows, cols);
-    std::cerr << "Routine" << '\n';
-    PrintMatrix(test.get(), rows, cols);
-  }
+  CHECK_MESSAGE(memcmp(reference.get(), test.get(), rows * cols * sizeof(Integer)) == 0, Routine::kName << " Mismatch:\n" <<
+  	"Quantized Input" << '\n' << PrintMatrix(quantized.get(), rows, cols) << "Reference" << '\n' <<
+  	 PrintMatrix(reference.get(), rows, cols) << "Routine" << '\n' << PrintMatrix(test.get(), rows, cols));
 }
 
+TEST_CASE("Test prepare AVX512", "[prepare]") {
+  if (kCPU < CPU_AVX512BW) return;
+#ifndef INTGEMM_NO_AVX512
+	TestPrepare<AVX512_8bit>(64, 8);
+	TestPrepare<AVX512_8bit>(256, 32);
+    TestPrepare<AVX512_16bit>(64, 8);
+    TestPrepare<AVX512_16bit>(256, 32);
+#endif
+}
+
+TEST_CASE("Test prepare AVX2", "[prepare]") {
+  if (kCPU < CPU_AVX2) return;
+  TestPrepare<AVX2_8bit>(64, 32);
+  TestPrepare<AVX2_16bit>(64, 32);
+}
+
+TEST_CASE("Test prepare SSSE3", "[prepare]") {
+  if (kCPU < CPU_SSSE3) return;
+  TestPrepare<SSSE3_8bit>(16, 8);
+  TestPrepare<SSSE3_8bit>(32, 16);
+  TestPrepare<SSSE3_8bit>(32, 32);
+}
+
+TEST_CASE("Test prepare SSE2", "[prepare]") {
+  if (kCPU < CPU_SSE2) return;
+  TestPrepare<SSE2_16bit>(8, 8);
+  TestPrepare<SSE2_16bit>(32, 32);
+}
+
+
 template <class Routine> void TestSelectColumnsB(Index rows = 32, Index cols = 16) {
-  if (intgemm::kCPU < Routine::kUses) return;
   AlignedVector<float> input(rows * cols);
   for (int i = 0; i < rows * cols; ++i) {
     input.get()[i] = (float)rand() / (float)RAND_MAX * 256.0 - 127.0;
@@ -154,13 +189,34 @@ template <class Routine> void TestSelectColumnsB(Index rows = 32, Index cols = 1
   }
   AlignedVector<Integer> ref(rows * kSelectCols);
   Routine::PrepareB(selected.get(), ref.get(), 1, rows, kSelectCols);
+  CHECK_MESSAGE(memcmp(ref.get(), test.get(), sizeof(Integer) * rows * kSelectCols) == 0, "Reference:\n" <<
+  	PrintMatrix(ref.get(), rows, kSelectCols) << PrintMatrix(test.get(), rows, kSelectCols));
+}
 
-  if (memcmp(ref.get(), test.get(), sizeof(Integer) * rows * kSelectCols)) {
-    std::cout << "SelectColumnsB failed.\nReference:\n";
-    PrintMatrix(ref.get(), rows, kSelectCols);
-    std::cout << "Routine:\n";
-    PrintMatrix(test.get(), rows, kSelectCols);
-  }
+TEST_CASE("Test SelectColumnsB AVX512", "[select]") {
+  if (kCPU < CPU_AVX512BW) return;
+#ifndef INTGEMM_NO_AVX512
+    TestSelectColumnsB<AVX512_8bit>();
+    TestSelectColumnsB<AVX512_16bit>(256, 256);
+#endif
+}
+
+TEST_CASE("Test SelectColumnsB AVX2", "[select]") {
+  if (kCPU < CPU_AVX2) return;
+  TestSelectColumnsB<AVX2_8bit>(256, 256);
+  TestSelectColumnsB<AVX2_16bit>(256, 256);
+}
+
+TEST_CASE("Test SelectColumnsB SSSE3", "[select]") {
+  if (kCPU < CPU_SSSE3) return;
+  TestSelectColumnsB<SSSE3_8bit>();
+  TestSelectColumnsB<SSSE3_8bit>(256, 256);
+}
+
+TEST_CASE("Test SelectColumnsB SSE2", "[select]") {
+  if (kCPU < CPU_SSE2) return;
+  TestSelectColumnsB<SSE2_16bit>();
+  TestSelectColumnsB<SSE2_16bit>(256, 256);
 }
 
 template <class Register> void TestMax() {
@@ -168,17 +224,19 @@ template <class Register> void TestMax() {
   for (int i = 0; i < sizeof(Register) / sizeof(float); ++i) {
     Register c = r;
     reinterpret_cast<float*>(&c)[i] = -1.0;
-    if (MaxFloat32(c) != -1.0) {
-      std::cerr << "MaxFloat32 produced " << MaxFloat32(c) << std::endl;
-    }
+    CHECK_MESSAGE((MaxFloat32(c) == -1.0), "MaxFloat32 produced " << MaxFloat32(c));
   }
+}
+
+TEST_CASE("Test Max", "[max]") {
+  TestMax<__m128>();
 }
 
 void CompareMaxAbs(const float *begin, const float *end, float test) {
   float largest = fabs(*std::max_element(begin, end));
   float smallest = fabs(*std::min_element(begin, end));
   largest = std::max(largest, smallest);
-  if (largest != test) std::cerr << "TestMaxAbsolute error: " << largest << " versus " << test << "\n";
+  CHECK_MESSAGE(largest == test, "Error: " << largest << " versus " << test);
 }
 
 template <float (*Backend) (const float *, const float *)> void TestMaxAbsolute() {
@@ -194,6 +252,16 @@ template <float (*Backend) (const float *, const float *)> void TestMaxAbsolute(
     test[t] = 32.0;
     CompareMaxAbs(test.get(), test.get() + kLength, Backend(test.get(), test.get() + kLength));
   }
+}
+
+TEST_CASE("Test Max absolute SSE2", "[max]") {
+  if (kCPU < CPU_SSE2) return;
+  TestMaxAbsolute<SSE2_MaxAbsolute>();
+}
+
+TEST_CASE("Test Max absolute AVX2", "[max]") {
+  if (kCPU < CPU_AVX2) return;
+  TestMaxAbsolute<AVX2_MaxAbsolute>();;
 }
 
 // Based on https://arxiv.org/abs/1705.01991
@@ -244,24 +312,37 @@ template <class Integer> void SlowRefInt(const Integer *A, const Integer *B, flo
 }
 
 
-void Compare(const float *float_ref, const float *int_ref, const float *int_test, std::size_t size) {
+void Compare(const float *float_ref, const float *int_ref, const float *int_test, std::size_t size, std::string test_info,
+ float int_tolerance, float float_tolerance, float MSE_float_tolerance, float MSE_int_tolerance) {
   float int_sum = 0.0, float_sum = 0.0;
   for (std::size_t i = 0; i < size; ++i) {
     float int_diff = int_ref[i] - int_test[i];
     float float_diff = float_ref[i] - int_test[i];
-/*    if (fabs(int_diff) > .1 || fabs(float_diff) > 1) {
-      std::cerr << "Inaccurate at " << i << ' ' << float_ref[i] << ' ' << int_ref[i] << ' ' << int_test[i] << '\n';
-    }*/
+    CHECK_MESSAGE(fabs(int_diff) <= int_tolerance, test_info << "Inaccurate compared to int reference at " << i << ' ' << int_ref[i] << ' ' << int_test[i]);
+    CHECK_MESSAGE(fabs(float_diff) <= float_tolerance, test_info << "Inaccurate compared to float reference at " << i << ' ' << float_ref[i] << ' ' << int_test[i]);
     int_sum += int_diff * int_diff;
     float_sum += float_diff * float_diff;
   }
-  std::cout << "Float MSE = " << sqrt(float_sum / size) << "\tInt MSE = " << sqrt(int_sum / size) << std::endl;
+  CHECK_MESSAGE(fabs(sqrt(float_sum / size)) <= MSE_float_tolerance, test_info << "Float MSE = " << sqrt(float_sum / size));
+  CHECK_MESSAGE(fabs(sqrt(int_sum / size)) <= MSE_int_tolerance, test_info << "Int MSE = " << sqrt(int_sum / size));
+  //We want to see a test failure when we fix some of the accumulation errors, so that we also
+  //fix our tests after we fix the issue. The easiest way to test this is through the MSE
+  if (MSE_float_tolerance > 0.1) {
+    CHECK_FALSE_MESSAGE(fabs(sqrt(float_sum / size)) <= MSE_float_tolerance/2, test_info << "Float MSE = " << sqrt(float_sum / size) <<
+      " much better than the expected: " << MSE_float_tolerance);
+  }
+
+  if (MSE_int_tolerance > 0.01) {
+    CHECK_FALSE_MESSAGE(fabs(sqrt(int_sum / size)) <= MSE_int_tolerance/2, test_info << "Int MSE = " << sqrt(int_sum / size) << 
+      " much better than the expected: " << MSE_int_tolerance);
+  }
 }
 
-template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_cols) {
+template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_cols,
+ float int_tolerance=.1, float float_tolerance=1, float MSE_float_tolerance=0, float MSE_int_tolerance=0) {
   typedef typename Routine::Integer Integer;
-  if (intgemm::kCPU < Routine::kUses) return;
-  std::cout << Routine::kName << "\t" << A_rows << '\t' << width << '\t' << B_cols << '\n';
+  std::ostringstream info;
+  info << Routine::kName << "\t" << A_rows << '\t' << width << '\t' << B_cols << '\n';
 
   // Initialize A and B.
   AlignedVector<float> A(A_rows * width);
@@ -292,60 +373,79 @@ template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_co
   AlignedVector<float> float_C(A_rows * B_cols);
   SlowRefFloat(A.get(), B.get(), float_C.get(), A_rows, width, B_cols);
 
-  Compare(float_C.get(), slowint_C.get(), test_C.get(), A_rows * B_cols);
+  Compare(float_C.get(), slowint_C.get(), test_C.get(), A_rows * B_cols, info.str(),
+   int_tolerance, float_tolerance, MSE_float_tolerance, MSE_int_tolerance);
 }
 
-void TestBoth(Index A_rows, Index width, Index B_cols) {
-#ifndef INTGEMM_NO_AVX512
-  TestMultiply<AVX512_16bit>(A_rows, width, B_cols);
-#endif
-  TestMultiply<AVX2_16bit>(A_rows, width, B_cols);
-  TestMultiply<SSE2_16bit>(A_rows, width, B_cols);
-#ifndef INTGEMM_NO_AVX512
-  TestMultiply<AVX512_8bit>(A_rows, width, B_cols);
-#endif
-  TestMultiply<AVX2_8bit>(A_rows, width, B_cols);
-  TestMultiply<SSSE3_8bit>(A_rows, width, B_cols);
+TEST_CASE ("Test Multiply SSE2 16bit", "[multiply]") {
+  if (kCPU < CPU_SSE2) return;
+  TestMultiply<SSE2_16bit>(8, 256, 256, .1, 1, 0.01);
+  TestMultiply<SSE2_16bit>(8, 2048, 256, .1, 1, 0.02);
+  TestMultiply<SSE2_16bit>(320, 256, 256, .1, 1, 0.01);
+  TestMultiply<SSE2_16bit>(472, 256, 256, .1, 1, 0.01);
+  TestMultiply<SSE2_16bit>(248, 256, 256, .1, 1, 0.01);
+  TestMultiply<SSE2_16bit>(200, 256, 256, .1, 1, 0.01);
 }
 
+TEST_CASE ("Test Multiply SSSE3 8bit", "[multiply]") {
+  if (kCPU < CPU_SSSE3) return;
+  TestMultiply<SSSE3_8bit>(8, 256, 256, .1, 1, 0.06);
+  TestMultiply<SSSE3_8bit>(8, 2048, 256, 25, 25, 4.3, 4.3); //@TODO should have some fail version
+  TestMultiply<SSSE3_8bit>(320, 256, 256, 1.5, 1.5, 0.1, 0.01);
+  TestMultiply<SSSE3_8bit>(472, 256, 256, 2.1, 2.1, 0.1, 0.02);
+  TestMultiply<SSSE3_8bit>(248, 256, 256, 1.7, 1.7, 0.1, 0.02);
+  TestMultiply<SSSE3_8bit>(200, 256, 256, 1.2, 1.2, 0.1, 0.01);
+}
+
+TEST_CASE ("Test Multiply AVX2 8bit", "[multiply]") {
+  if (kCPU < CPU_AVX2) return;
+  TestMultiply<AVX2_8bit>(8, 256, 256, .1, 1, 0.1);
+  TestMultiply<AVX2_8bit>(8, 2048, 256, 11, 11, 1.8, 1.8); //Expected failiure due to int saturation
+  TestMultiply<AVX2_8bit>(320, 256, 256, .1, 1, 0.1);
+  TestMultiply<AVX2_8bit>(472, 256, 256, .1, 1, 0.1);
+  TestMultiply<AVX2_8bit>(248, 256, 256, .1, 1, 0.1);
+  TestMultiply<AVX2_8bit>(200, 256, 256, .1, 1, 0.1);
+}
+
+TEST_CASE ("Test Multiply AVX2 16bit", "[multiply]") {
+  if (kCPU < CPU_AVX2) return;
+  TestMultiply<AVX2_16bit>(8, 256, 256, .1, 1, 0.01);
+  TestMultiply<AVX2_16bit>(8, 2048, 256, .1, 1, 0.02);
+  TestMultiply<AVX2_16bit>(320, 256, 256, .1, 1, 0.01);
+  TestMultiply<AVX2_16bit>(472, 256, 256, .1, 1, 0.01);
+  TestMultiply<AVX2_16bit>(248, 256, 256, .1, 1, 0.01);
+  TestMultiply<AVX2_16bit>(200, 256, 256, .1, 1, 0.01);
+}
+
+#ifndef INTGEMM_NO_AVX512
+  TEST_CASE ("Test Multiply AVX512 8bit", "[multiply]") {
+    if (kCPU < CPU_AVX512BW) return;
+    TestMultiply<AVX512_8bit>(8, 256, 256);
+    TestMultiply<AVX512_8bit>(8, 2048, 256);
+    TestMultiply<AVX512_8bit>(320, 256, 256);
+    TestMultiply<AVX512_8bit>(472, 256, 256);
+    TestMultiply<AVX512_8bit>(248, 256, 256);
+    TestMultiply<AVX512_8bit>(200, 256, 256);
+  }
+
+  TEST_CASE ("Test Multiply AVX512 16bit", "[multiply]") {
+    if (kCPU < CPU_AVX512BW) return;
+    TestMultiply<AVX512_16bit>(8, 256, 256);
+    TestMultiply<AVX512_16bit>(8, 2048, 256);
+    TestMultiply<AVX512_16bit>(320, 256, 256);
+    TestMultiply<AVX512_16bit>(472, 256, 256);
+    TestMultiply<AVX512_16bit>(248, 256, 256);
+    TestMultiply<AVX512_16bit>(200, 256, 256);
+  }
+#endif
 } // namespace intgemm
 
-// Program takes no input
 int main(int argc, char ** argv) {
-    std::srand(45678);
-    using namespace intgemm;
-    if (kCPU >= CPU_SSE2) {
-      TestTranspose16();
-    }
-    if (kCPU >= CPU_SSSE3) {
-      TestTranspose8();
-    }
-#ifndef INTGEMM_NO_AVX512
-    TestPrepare<AVX512_8bit>(64, 8);
-    TestPrepare<AVX512_8bit>(256, 32);
-    TestPrepare<AVX512_16bit>(32, 8);
-    TestPrepare<AVX512_16bit>(256, 32);
-    TestSelectColumnsB<AVX512_8bit>();
-    TestSelectColumnsB<AVX512_16bit>(256, 256);
-#endif
-    TestPrepare<AVX2_8bit>(64, 32);
-    TestPrepare<AVX2_16bit>(64, 32);
-    TestSelectColumnsB<AVX2_8bit>(256, 256);
-    TestSelectColumnsB<AVX2_16bit>(256, 256);
-    TestPrepare<SSSE3_8bit>(16, 8);
-    TestPrepare<SSSE3_8bit>(32, 16);
-    TestPrepare<SSSE3_8bit>(32, 32);
-    TestSelectColumnsB<SSSE3_8bit>();
-    TestSelectColumnsB<SSSE3_8bit>(256, 256);
-    TestPrepare<SSE2_16bit>(8, 8);
-    TestPrepare<SSE2_16bit>(32, 32);
-    TestSelectColumnsB<SSE2_16bit>();
-    TestSelectColumnsB<SSE2_16bit>(256, 256);
-    TestMax<__m128>();
-    TestMaxAbsolute<SSE2_MaxAbsolute>();
-/*    if (kCPU >= CPU_AVX2) {
-      TestMaxAbsolute<AVX2_MaxAbsolute>();
-    }*/
+    std::srand(45678); //If the random seed is not crucial we can forego the main alltogether
+    int result = Catch::Session().run( argc, argv );
+}
+
+/*
     // Top matrix sizes from Marian
     TestBoth(8, 256, 256);
     TestBoth(8, 2048, 256);
@@ -356,3 +456,4 @@ int main(int argc, char ** argv) {
     TestBoth(200, 256, 256);
     return 0;
 }
+*/
