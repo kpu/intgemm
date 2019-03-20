@@ -28,11 +28,6 @@
 
 namespace intgemm {
 
-struct Result {
-  bool result;
-  std::string text;
-};
-
 // Rearrange a tile of simd x unroll entries.
 template <class V> void SlowRearrangeTile(const V *from, V *to, int simd, int unroll, Index cols) {
   for (int i = 0; i < unroll; ++i) {
