@@ -55,7 +55,7 @@ template <class Backend> bool Test(const float *input_unaligned, float quant_mul
   Backend::Quantize(input.get(), test.get(), quant_mult, size);
   for (std::size_t i = 0; i < size; ++i) {
     if (IsOff(input.get()[i] * quant_mult, ref.get()[i], test.get()[i])) {
-      std::cerr << "Error at " << i << " from " << input.get()[i] << '*' << quant_mult << '=' << (input.get()[i]*quant_mult) << " ref = " <<  ref.get()[i] << " test = " << test.get()[i] << '\n';
+      UNSCOPED_INFO("Error at " << i << " from " << input.get()[i] << '*' << quant_mult << '=' << (input.get()[i]*quant_mult) << " ref = " <<  ref.get()[i] << " test = " << test.get()[i]);
       success = false;
     }
   }
