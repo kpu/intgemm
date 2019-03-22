@@ -385,17 +385,17 @@ TEST_CASE ("Multiply SSE2 16bit", "[multiply]") {
 TEST_CASE ("Multiply SSSE3 8bit", "[multiply]") {
   if (kCPU < CPU_SSSE3) return;
   TestMultiply<SSSE3_8bit>(8, 256, 256, .1, 1, 0.06);
-  TestMultiply<SSSE3_8bit>(8, 2048, 256, 25, 25, 4.3, 4.3);
+  TestMultiply<SSSE3_8bit>(8, 2048, 256, 33, 33, 4.4, 4.4);
   TestMultiply<SSSE3_8bit>(320, 256, 256, 1.5, 1.5, 0.1, 0.01);
-  TestMultiply<SSSE3_8bit>(472, 256, 256, 2.1, 2.1, 0.1, 0.02);
-  TestMultiply<SSSE3_8bit>(248, 256, 256, 1.7, 1.7, 0.1, 0.02);
+  TestMultiply<SSSE3_8bit>(472, 256, 256, 2.1, 2.1, 0.1, 0.011);
+  TestMultiply<SSSE3_8bit>(248, 256, 256, 1.7, 1.7, 0.1, 0.012);
   TestMultiply<SSSE3_8bit>(200, 256, 256, 1.2, 1.2, 0.1, 0.01);
 }
 
 TEST_CASE ("Multiply AVX2 8bit", "[multiply]") {
   if (kCPU < CPU_AVX2) return;
   TestMultiply<AVX2_8bit>(8, 256, 256, .1, 1, 0.1);
-  TestMultiply<AVX2_8bit>(8, 2048, 256, 11, 11, 1.8, 1.8);
+  TestMultiply<AVX2_8bit>(8, 2048, 256, 19, 19, 1.8, 1.8);
   TestMultiply<AVX2_8bit>(320, 256, 256, .1, 1, 0.1);
   TestMultiply<AVX2_8bit>(472, 256, 256, .1, 1, 0.1);
   TestMultiply<AVX2_8bit>(248, 256, 256, .1, 1, 0.1);
@@ -438,6 +438,7 @@ TEST_CASE ("Multiply AVX2 16bit", "[multiply]") {
 int main(int argc, char ** argv) {
     std::srand(45678); //If the random seed is not crucial we can forego the main alltogether
     int result = Catch::Session().run( argc, argv );
+    return result;
 }
 
 /*

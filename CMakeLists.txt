@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.5)
 project(intgemm)
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -38,3 +38,9 @@ endforeach()
 include_directories(.)
 add_executable(tests test/multiply_test.cc test/quantize_test.cc)
 target_link_libraries(tests intgemm)
+
+#CTest integration with Catch2
+include(CMake/Catch.cmake)
+include(CTest)
+catch_discover_tests(tests)
+
