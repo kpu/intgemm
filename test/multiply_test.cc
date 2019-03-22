@@ -126,7 +126,7 @@ template <class Routine> void TestPrepare(Index rows = 32, Index cols = 16) {
   	 PrintMatrix(reference.get(), rows, cols) << "Routine" << '\n' << PrintMatrix(test.get(), rows, cols));
 }
 
-TEST_CASE("Test prepare AVX512", "[prepare]") {
+TEST_CASE("Prepare AVX512", "[prepare]") {
   if (kCPU < CPU_AVX512BW) return;
 #ifndef INTGEMM_NO_AVX512
 	TestPrepare<AVX512_8bit>(64, 8);
@@ -136,20 +136,20 @@ TEST_CASE("Test prepare AVX512", "[prepare]") {
 #endif
 }
 
-TEST_CASE("Test prepare AVX2", "[prepare]") {
+TEST_CASE("Prepare AVX2", "[prepare]") {
   if (kCPU < CPU_AVX2) return;
   TestPrepare<AVX2_8bit>(64, 32);
   TestPrepare<AVX2_16bit>(64, 32);
 }
 
-TEST_CASE("Test prepare SSSE3", "[prepare]") {
+TEST_CASE("Prepare SSSE3", "[prepare]") {
   if (kCPU < CPU_SSSE3) return;
   TestPrepare<SSSE3_8bit>(16, 8);
   TestPrepare<SSSE3_8bit>(32, 16);
   TestPrepare<SSSE3_8bit>(32, 32);
 }
 
-TEST_CASE("Test prepare SSE2", "[prepare]") {
+TEST_CASE("Prepare SSE2", "[prepare]") {
   if (kCPU < CPU_SSE2) return;
   TestPrepare<SSE2_16bit>(8, 8);
   TestPrepare<SSE2_16bit>(32, 32);
@@ -188,7 +188,7 @@ template <class Routine> void TestSelectColumnsB(Index rows = 32, Index cols = 1
   	PrintMatrix(ref.get(), rows, kSelectCols) << PrintMatrix(test.get(), rows, kSelectCols));
 }
 
-TEST_CASE("Test SelectColumnsB AVX512", "[select]") {
+TEST_CASE("SelectColumnsB AVX512", "[select]") {
   if (kCPU < CPU_AVX512BW) return;
 #ifndef INTGEMM_NO_AVX512
     TestSelectColumnsB<AVX512_8bit>();
@@ -196,19 +196,19 @@ TEST_CASE("Test SelectColumnsB AVX512", "[select]") {
 #endif
 }
 
-TEST_CASE("Test SelectColumnsB AVX2", "[select]") {
+TEST_CASE("SelectColumnsB AVX2", "[select]") {
   if (kCPU < CPU_AVX2) return;
   TestSelectColumnsB<AVX2_8bit>(256, 256);
   TestSelectColumnsB<AVX2_16bit>(256, 256);
 }
 
-TEST_CASE("Test SelectColumnsB SSSE3", "[select]") {
+TEST_CASE("SelectColumnsB SSSE3", "[select]") {
   if (kCPU < CPU_SSSE3) return;
   TestSelectColumnsB<SSSE3_8bit>();
   TestSelectColumnsB<SSSE3_8bit>(256, 256);
 }
 
-TEST_CASE("Test SelectColumnsB SSE2", "[select]") {
+TEST_CASE("SelectColumnsB SSE2", "[select]") {
   if (kCPU < CPU_SSE2) return;
   TestSelectColumnsB<SSE2_16bit>();
   TestSelectColumnsB<SSE2_16bit>(256, 256);
@@ -223,7 +223,7 @@ template <class Register> void TestMax() {
   }
 }
 
-TEST_CASE("Test Max", "[max]") {
+TEST_CASE("Max", "[max]") {
   TestMax<__m128>();
 }
 
@@ -249,12 +249,12 @@ template <float (*Backend) (const float *, const float *)> void TestMaxAbsolute(
   }
 }
 
-TEST_CASE("Test Max absolute SSE2", "[max]") {
+TEST_CASE("MaxAbsolute SSE2", "[max]") {
   if (kCPU < CPU_SSE2) return;
   TestMaxAbsolute<SSE2_MaxAbsolute>();
 }
 
-TEST_CASE("Test Max absolute AVX2", "[max]") {
+TEST_CASE("MaxAbsolute AVX2", "[max]") {
   if (kCPU < CPU_AVX2) return;
   TestMaxAbsolute<AVX2_MaxAbsolute>();;
 }
@@ -372,7 +372,7 @@ template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_co
    int_tolerance, float_tolerance, MSE_float_tolerance, MSE_int_tolerance);
 }
 
-TEST_CASE ("Test Multiply SSE2 16bit", "[multiply]") {
+TEST_CASE ("Multiply SSE2 16bit", "[multiply]") {
   if (kCPU < CPU_SSE2) return;
   TestMultiply<SSE2_16bit>(8, 256, 256, .1, 1, 0.01);
   TestMultiply<SSE2_16bit>(8, 2048, 256, .1, 1, 0.02);
@@ -382,27 +382,27 @@ TEST_CASE ("Test Multiply SSE2 16bit", "[multiply]") {
   TestMultiply<SSE2_16bit>(200, 256, 256, .1, 1, 0.01);
 }
 
-TEST_CASE ("Test Multiply SSSE3 8bit", "[multiply]") {
+TEST_CASE ("Multiply SSSE3 8bit", "[multiply]") {
   if (kCPU < CPU_SSSE3) return;
   TestMultiply<SSSE3_8bit>(8, 256, 256, .1, 1, 0.06);
-  TestMultiply<SSSE3_8bit>(8, 2048, 256, 25, 25, 4.3, 4.3); //@TODO should have some fail version
+  TestMultiply<SSSE3_8bit>(8, 2048, 256, 25, 25, 4.3, 4.3);
   TestMultiply<SSSE3_8bit>(320, 256, 256, 1.5, 1.5, 0.1, 0.01);
   TestMultiply<SSSE3_8bit>(472, 256, 256, 2.1, 2.1, 0.1, 0.02);
   TestMultiply<SSSE3_8bit>(248, 256, 256, 1.7, 1.7, 0.1, 0.02);
   TestMultiply<SSSE3_8bit>(200, 256, 256, 1.2, 1.2, 0.1, 0.01);
 }
 
-TEST_CASE ("Test Multiply AVX2 8bit", "[multiply]") {
+TEST_CASE ("Multiply AVX2 8bit", "[multiply]") {
   if (kCPU < CPU_AVX2) return;
   TestMultiply<AVX2_8bit>(8, 256, 256, .1, 1, 0.1);
-  TestMultiply<AVX2_8bit>(8, 2048, 256, 11, 11, 1.8, 1.8); //Expected failiure due to int saturation
+  TestMultiply<AVX2_8bit>(8, 2048, 256, 11, 11, 1.8, 1.8);
   TestMultiply<AVX2_8bit>(320, 256, 256, .1, 1, 0.1);
   TestMultiply<AVX2_8bit>(472, 256, 256, .1, 1, 0.1);
   TestMultiply<AVX2_8bit>(248, 256, 256, .1, 1, 0.1);
   TestMultiply<AVX2_8bit>(200, 256, 256, .1, 1, 0.1);
 }
 
-TEST_CASE ("Test Multiply AVX2 16bit", "[multiply]") {
+TEST_CASE ("Multiply AVX2 16bit", "[multiply]") {
   if (kCPU < CPU_AVX2) return;
   TestMultiply<AVX2_16bit>(8, 256, 256, .1, 1, 0.01);
   TestMultiply<AVX2_16bit>(8, 2048, 256, .1, 1, 0.02);
@@ -413,7 +413,7 @@ TEST_CASE ("Test Multiply AVX2 16bit", "[multiply]") {
 }
 
 #ifndef INTGEMM_NO_AVX512
-  TEST_CASE ("Test Multiply AVX512 8bit", "[multiply]") {
+  TEST_CASE ("Multiply AVX512 8bit", "[multiply]") {
     if (kCPU < CPU_AVX512BW) return;
     TestMultiply<AVX512_8bit>(8, 256, 256);
     TestMultiply<AVX512_8bit>(8, 2048, 256);
@@ -423,7 +423,7 @@ TEST_CASE ("Test Multiply AVX2 16bit", "[multiply]") {
     TestMultiply<AVX512_8bit>(200, 256, 256);
   }
 
-  TEST_CASE ("Test Multiply AVX512 16bit", "[multiply]") {
+  TEST_CASE ("Multiply AVX512 16bit", "[multiply]") {
     if (kCPU < CPU_AVX512BW) return;
     TestMultiply<AVX512_16bit>(8, 256, 256);
     TestMultiply<AVX512_16bit>(8, 2048, 256);
