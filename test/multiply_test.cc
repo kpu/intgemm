@@ -156,7 +156,7 @@ TEST_CASE("Prepare SSE2", "[prepare]") {
 }
 
 
-template <class Routine> void TestSelectColumnsB(Index rows = 32, Index cols = 16) {
+template <class Routine> void TestSelectColumnsB(Index rows = 64, Index cols = 16) {
   AlignedVector<float> input(rows * cols);
   for (int i = 0; i < rows * cols; ++i) {
     input.get()[i] = (float)rand() / (float)RAND_MAX * 256.0 - 127.0;
@@ -327,7 +327,7 @@ void Compare(const float *float_ref, const float *int_ref, const float *int_test
       " much better than the expected: " << MSE_float_tolerance);
   }
 
-  if (MSE_int_tolerance > 0.01) {
+  if (MSE_int_tolerance > 0.03) {
     CHECK_FALSE_MESSAGE(fabs(sqrt(int_sum / size)) <= MSE_int_tolerance/2, test_info << "Int MSE = " << sqrt(int_sum / size) << 
       " much better than the expected: " << MSE_int_tolerance);
   }
@@ -384,12 +384,12 @@ TEST_CASE ("Multiply SSE2 16bit", "[multiply]") {
 
 TEST_CASE ("Multiply SSSE3 8bit", "[multiply]") {
   if (kCPU < CPU_SSSE3) return;
-  TestMultiply<SSSE3_8bit>(8, 256, 256, .1, 1, 0.06);
+  TestMultiply<SSSE3_8bit>(8, 256, 256, 1.2, 1.2, 0.064, 0.026);
   TestMultiply<SSSE3_8bit>(8, 2048, 256, 33, 33, 4.4, 4.4);
-  TestMultiply<SSSE3_8bit>(320, 256, 256, 1.5, 1.5, 0.1, 0.01);
+  TestMultiply<SSSE3_8bit>(320, 256, 256, 1.9, 1.9, 0.1, 0.01);
   TestMultiply<SSSE3_8bit>(472, 256, 256, 2.1, 2.1, 0.1, 0.011);
   TestMultiply<SSSE3_8bit>(248, 256, 256, 1.7, 1.7, 0.1, 0.012);
-  TestMultiply<SSSE3_8bit>(200, 256, 256, 1.2, 1.2, 0.1, 0.01);
+  TestMultiply<SSSE3_8bit>(200, 256, 256, 1.8, 1.9, 0.1, 0.011);
 }
 
 TEST_CASE ("Multiply AVX2 8bit", "[multiply]") {
@@ -415,22 +415,22 @@ TEST_CASE ("Multiply AVX2 16bit", "[multiply]") {
 #ifndef INTGEMM_NO_AVX512
   TEST_CASE ("Multiply AVX512 8bit", "[multiply]") {
     if (kCPU < CPU_AVX512BW) return;
-    TestMultiply<AVX512_8bit>(8, 256, 256);
-    TestMultiply<AVX512_8bit>(8, 2048, 256);
-    TestMultiply<AVX512_8bit>(320, 256, 256);
-    TestMultiply<AVX512_8bit>(472, 256, 256);
-    TestMultiply<AVX512_8bit>(248, 256, 256);
-    TestMultiply<AVX512_8bit>(200, 256, 256);
+    TestMultiply<AVX512_8bit>(8, 256, 256, .1, 1, 0.06);
+    TestMultiply<AVX512_8bit>(8, 2048, 256, 4.2, 4, 0.41, 0.37);
+    TestMultiply<AVX512_8bit>(320, 256, 256, .1, 1, 0.06);
+    TestMultiply<AVX512_8bit>(472, 256, 256, .1, 1, 0.06);
+    TestMultiply<AVX512_8bit>(248, 256, 256, .1, 1, 0.06);
+    TestMultiply<AVX512_8bit>(200, 256, 256, .1, 1, 0.06);
   }
 
   TEST_CASE ("Multiply AVX512 16bit", "[multiply]") {
     if (kCPU < CPU_AVX512BW) return;
-    TestMultiply<AVX512_16bit>(8, 256, 256);
-    TestMultiply<AVX512_16bit>(8, 2048, 256);
-    TestMultiply<AVX512_16bit>(320, 256, 256);
-    TestMultiply<AVX512_16bit>(472, 256, 256);
-    TestMultiply<AVX512_16bit>(248, 256, 256);
-    TestMultiply<AVX512_16bit>(200, 256, 256);
+    TestMultiply<AVX512_16bit>(8, 256, 256, .1, 1, 0.01);
+    TestMultiply<AVX512_16bit>(8, 2048, 256, .1, 1, 0.011);
+    TestMultiply<AVX512_16bit>(320, 256, 256, .1, 1, 0.01);
+    TestMultiply<AVX512_16bit>(472, 256, 256, .1, 1, 0.01);
+    TestMultiply<AVX512_16bit>(248, 256, 256, .1, 1, 0.01);
+    TestMultiply<AVX512_16bit>(200, 256, 256, .1, 1, 0.01);
   }
 #endif
 } // namespace intgemm
