@@ -20,11 +20,11 @@
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
-#include <memory>
-
-#include <sstream>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
+#include <memory>
+#include <random>
+#include <sstream>
 
 namespace intgemm {
 
@@ -103,11 +103,13 @@ template <class T> std::string PrintMatrix(const T *mem, Index rows, Index cols)
 }
 
 template <class Routine> void TestPrepare(Index rows = 32, Index cols = 16) {
+  std::mt19937 gen;
+  // Go somewhat out of range too.
+  std::uniform_real_distribution<float> dist(-129.0, 129.0);
   // Create array.
   AlignedVector<float> input(rows * cols);
   for (int i = 0; i < rows * cols; ++i) {
-    input.get()[i] = //(i > 127) ? (i - 256) : i;
-      (float)rand() / (float)RAND_MAX * 256.0 - 127.0;
+    input.get()[i] = dist(gen);
   }
 
   typedef typename Routine::Integer Integer;
@@ -156,9 +158,12 @@ TEST_CASE("Prepare SSE2", "[prepare]") {
 }
 
 template <class Routine> void TestSelectColumnsB(Index rows = 64, Index cols = 16) {
+  std::mt19937 gen;
+  // Go somewhat out of range too.
+  std::uniform_real_distribution<float> dist(-129.0, 129.0);
   AlignedVector<float> input(rows * cols);
   for (int i = 0; i < rows * cols; ++i) {
-    input.get()[i] = (float)rand() / (float)RAND_MAX * 256.0 - 127.0;
+    input.get()[i] = dist(gen);
   }
   typedef typename Routine::Integer Integer;
   AlignedVector<Integer> prepared(rows * cols);
@@ -166,8 +171,9 @@ template <class Routine> void TestSelectColumnsB(Index rows = 64, Index cols = 1
 
   int kSelectCols = 24;
   Index select_cols[kSelectCols];
+  std::uniform_int_distribution<Index> col_dist(0, cols - 1);
   for (int i = 0; i < kSelectCols; ++i) {
-    select_cols[i] = rand() % cols;
+    select_cols[i] = col_dist(gen);
   }
 
   AlignedVector<Integer> test(rows * kSelectCols);
@@ -234,12 +240,16 @@ void CompareMaxAbs(const float *begin, const float *end, float test) {
 }
 
 template <float (*Backend) (const float *, const float *)> void TestMaxAbsolute() {
+  std::mt19937 gen;
+  std::uniform_real_distribution<float> dist(-8.0, 8.0);
   const int kLength = 64;
   AlignedVector<float> test(kLength);
   // 64 tries.
   for (int t = 0; t < 64; ++t) {
-    for (int i = 0; i < kLength; ++i)
-      test[i] = rand() / (float)RAND_MAX * 16.0 - 8.0;
+    // Fill with [-8, 8).
+    for (int i = 0; i < kLength; ++i) {
+      test[i] = dist(gen);
+    }
     CompareMaxAbs(test.get(), test.get() + kLength, Backend(test.get(), test.get() + kLength));
     test[t] = -32.0;
     CompareMaxAbs(test.get(), test.get() + kLength, Backend(test.get(), test.get() + kLength));
@@ -330,11 +340,13 @@ template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_co
   // Initialize A and B.
   AlignedVector<float> A(A_rows * width);
   AlignedVector<float> B(width * B_cols);
+  std::mt19937 gen;
+  std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
   for (int i = 0; i < A_rows * width; i++) {
-    A.get()[i] = ((float)rand()/(float)RAND_MAX)*2.0f - 1.0f;
+    A.get()[i] = dist(gen);
   }
   for (int i = 0; i < width * B_cols; ++i) {
-    B.get()[i] = ((float)rand()/(float)RAND_MAX)*2.0f - 1.0f;
+    B.get()[i] = dist(gen);
   }
   
   float quant_mult = (sizeof(Integer) == 2) ? 1024 : 64;
@@ -424,9 +436,7 @@ TEST_CASE ("Multiply AVX2 16bit", "[multiply]") {
 } // namespace intgemm
 
 int main(int argc, char ** argv) {
-    std::srand(45678); //If the random seed is not crucial we can forego the main alltogether
-    int result = Catch::Session().run( argc, argv );
-    return result;
+  return Catch::Session().run(argc, argv);
 }
 
 /*
