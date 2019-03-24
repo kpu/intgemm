@@ -319,17 +319,6 @@ void Compare(const float *float_ref, const float *int_ref, const float *int_test
   }
   CHECK_MESSAGE(fabs(sqrt(float_sum / size)) <= MSE_float_tolerance, test_info << "Float MSE = " << sqrt(float_sum / size));
   CHECK_MESSAGE(fabs(sqrt(int_sum / size)) <= MSE_int_tolerance, test_info << "Int MSE = " << sqrt(int_sum / size));
-  //We want to see a test failure when we fix some of the accumulation errors, so that we also
-  //fix our tests after we fix the issue. The easiest way to test this is through the MSE
-  if (MSE_float_tolerance > 0.1) {
-    CHECK_FALSE_MESSAGE(fabs(sqrt(float_sum / size)) <= MSE_float_tolerance/2, test_info << "Float MSE = " << sqrt(float_sum / size) <<
-      " much better than the expected: " << MSE_float_tolerance);
-  }
-
-  if (MSE_int_tolerance > 0.03) {
-    CHECK_FALSE_MESSAGE(fabs(sqrt(int_sum / size)) <= MSE_int_tolerance/2, test_info << "Int MSE = " << sqrt(int_sum / size) << 
-      " much better than the expected: " << MSE_int_tolerance);
-  }
 }
 
 template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_cols,
