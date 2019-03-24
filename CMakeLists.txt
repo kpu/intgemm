@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.5)
 project(intgemm)
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -26,11 +26,21 @@ if (AVX512)
   set(GEMMS avx512_gemm.cc ${GEMMS})
 else()
   message("Not building AVX512-based multiplication because your compiler is too old.\nFor details rerun cmake with --debug-trycompile then try to build in compile_tests/CMakeFiles/CMakeTmp.")
-  set_source_files_properties(intgemm.cc quantize_test.cc multiply_test.cc benchmark.cc PROPERTIES COMPILE_DEFINITIONS "INTGEMM_NO_AVX512")
+  set_source_files_properties(intgemm.cc test/quantize_test.cc test/multiply_test.cc benchmark.cc PROPERTIES COMPILE_DEFINITIONS "INTGEMM_NO_AVX512")
 endif()
 
 add_library(intgemm STATIC ${GEMMS} intgemm.cc)
-foreach(exe multiply_test quantize_test example benchmark)
+foreach(exe example benchmark)
   add_executable(${exe} ${exe}.cc)
   target_link_libraries(${exe} intgemm)
 endforeach()
+
+include_directories(.)
+add_executable(tests test/multiply_test.cc test/quantize_test.cc)
+target_link_libraries(tests intgemm)
+
+#CTest integration with Catch2
+include(CMake/Catch.cmake)
+include(CTest)
+catch_discover_tests(tests)
+

@@ -15,6 +15,9 @@ namespace intgemm {
 template <class Register> static inline Register set1_epi16(int16_t to);
 template <class Register> static inline Register set1_ps(float to);
 #ifdef __SSE2__
+struct MultiplyResult128 {
+  __m128i pack0123, pack4567;
+};
 static inline __m128i add_epi32(__m128i first, __m128i second) {
   return _mm_add_epi32(first, second);
 }
@@ -45,6 +48,13 @@ static inline __m128 max_ps(__m128 first, __m128 second) {
 static inline __m128 and_ps(__m128 first, __m128 second) {
   return _mm_and_ps(first, second);
 }
+static inline __m128 cvtepi32_ps(__m128i arg) {
+  return _mm_cvtepi32_ps(arg);
+}
+static inline __m128 mul_ps (__m128 a, __m128 b) {
+  return _mm_mul_ps(a, b);
+}
+
 static inline float MaxFloat32(__m128 a) {
   // Fold to just using the first 64 bits.
   __m128 second_half = _mm_shuffle_ps(a, a, 3 * 4 + 2);
@@ -56,11 +66,19 @@ static inline float MaxFloat32(__m128 a) {
   return *reinterpret_cast<float*>(&a);
 }
 
+static inline MultiplyResult128 PermuteSummer(__m128i pack0123, __m128i pack4567) {
+  // No op for 128 bits: already reduced fully.
+  MultiplyResult128 ret;
+  ret.pack0123 = pack0123;
+  ret.pack4567 = pack4567;
+  return ret;
+}
+
 // Complete any reduction, multiply by scaling, and write to memory.
-static inline void WriteC(float *to, __m128i pack0123, __m128i pack4567, __m128 unquant_reg) {
+static inline void WriteC(float *to, MultiplyResult128 total, __m128 unquant_reg) {
   // Convert to float, multiply by unquant, and write.
-  *reinterpret_cast<__m128*>(to) = _mm_mul_ps(_mm_cvtepi32_ps(pack0123), unquant_reg);
-  *reinterpret_cast<__m128*>(to + 4) = _mm_mul_ps(_mm_cvtepi32_ps(pack4567), unquant_reg);
+  *reinterpret_cast<__m128*>(to) = mul_ps(cvtepi32_ps(total.pack0123), unquant_reg);
+  *reinterpret_cast<__m128*>(to + 4) = mul_ps(cvtepi32_ps(total.pack4567), unquant_reg);
 }
 #endif
 #ifdef __AVX2__
@@ -94,19 +112,30 @@ static inline __m256 max_ps(__m256 first, __m256 second) {
 static inline __m256 and_ps(__m256 first, __m256 second) {
   return _mm256_and_ps(first, second);
 }
+static inline __m256 cvtepi32_ps(__m256i arg) {
+  return _mm256_cvtepi32_ps(arg);
+}
+static inline __m256 mul_ps (__m256 a, __m256 b) {
+  return _mm256_mul_ps(a, b);
+}
+
 static inline float MaxFloat32(__m256 a) {
   return MaxFloat32(max_ps(_mm256_castps256_ps128(a), _mm256_extractf128_ps(a, 1)));
 }
 
-static inline void WriteC(float *to, __m256i pack0123, __m256i pack4567, __m256 unquant_reg) {
+static inline __m256i PermuteSummer(__m256i pack0123, __m256i pack4567) {
   // This instruction generates 1s 2s 3s 4s 5f 6f 7f 8f
   __m256i rev = _mm256_permute2f128_si256(pack0123, pack4567, 0x21);
   // This instruction generates 1f 2f 3f 4f 5s 6s 7s 8s
   __m256i blended = _mm256_blend_epi32(pack0123, pack4567, 0xf0);
-  __m256i total = _mm256_add_epi32(rev, blended);
-  // Convert to float, multiply by unquant, and write.
-  *reinterpret_cast<__m256*>(to) = _mm256_mul_ps(_mm256_cvtepi32_ps(total), unquant_reg);
+  return _mm256_add_epi32(rev, blended);
 }
+
+static inline void WriteC(float *to, __m256i total, __m256 unquant_reg) {
+  // Convert to float, multiply by unquant, and write.
+  *reinterpret_cast<__m256*>(to) = mul_ps(cvtepi32_ps(total), unquant_reg);
+}
+
 #endif
 #ifdef __AVX512BW__
 static inline __m512i add_epi32(__m512i first, __m512i second) {
@@ -134,7 +163,8 @@ static inline __m512 max_ps(__m512 first, __m512 second) {
 static inline __m512 and_ps(__m512 first, __m512 second) {
   return _mm512_and_ps(first, second);
 }
-static inline void WriteC(float *to, __m512i pack0123, __m512i pack4567, __m256 unquant_reg) {
+
+static inline __m256i PermuteSummer(__m512i pack0123, __m512i pack4567) {
   // Form [0th 128-bit register of pack0123, 0st 128-bit register of pack4567, 2nd 128-bit register of pack0123, 2nd 128-bit register of pack4567]
   __m512i mix0 = _mm512_mask_permutex_epi64(pack0123, 0xcc, pack4567, (0 << 4) | (1 << 6));
   // Form [1st 128-bit register of pack0123, 1st 128-bit register of pack4567, 3rd 128-bit register of pack0123, 3rd 128-bit register of pack4567]
@@ -142,8 +172,7 @@ static inline void WriteC(float *to, __m512i pack0123, __m512i pack4567, __m256 
   __m512i added = _mm512_add_epi32(mix0, mix1);
   // Now we have 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7.
   // Fold register over itself.
-  __m256i folded = _mm256_add_epi32(_mm512_castsi512_si256(added), _mm512_extracti64x4_epi64(added, 1));
-  *reinterpret_cast<__m256*>(to) = _mm256_mul_ps(_mm256_cvtepi32_ps(folded), unquant_reg);
+  return _mm256_add_epi32(_mm512_castsi512_si256(added), _mm512_extracti64x4_epi64(added, 1));
 }
 
 // Find the maximum float.
@@ -204,7 +233,7 @@ template <class Register> inline Register Pack0123(Register sum0, Register sum1,
 // A_rows can be anything non-negative.
 // width must be a multiple of the register size.
 // B_cols must be a multiple of 8.
-template <class Integer, class Float> inline void Multiply16(const int16_t *A, const int16_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols) {
+template <class Integer, class Float> inline void Multiply16(const int16_t *A, const int16_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {
   assert(width % (sizeof(Integer) / sizeof(int16_t)) == 0);
   assert(B_cols % 8 == 0);
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0);
@@ -254,7 +283,9 @@ template <class Integer, class Float> inline void Multiply16(const int16_t *A, c
       Integer pack0123 = Pack0123(sum0, sum1, sum2, sum3);
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7);
       // The specific implementation may need to reduce further.
-      WriteC(C + A_rowidx * B_cols + B0_colidx, pack0123, pack4567, unquant_reg);
+
+      auto total = PermuteSummer(pack0123, pack4567);
+      WriteC(C + A_rowidx * B_cols + B0_colidx, total, unquant_reg);
     }
   }
 }
@@ -409,7 +440,7 @@ struct Multiply8_C {
   }
 };
 
-template <class Algo, class Integer, class Float> inline void Multiply8_SSE2OrAVX2(const int8_t *A, const int8_t *B, float *C, float unquant_mult, int A_rows, int width, int B_cols) {
+template <class Algo, class Integer, class Float> inline void Multiply8_SSE2OrAVX2(const int8_t *A, const int8_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {
   assert(width % sizeof(Integer) == 0);
   assert(B_cols % 8 == 0);
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0);
@@ -474,7 +505,9 @@ template <class Algo, class Integer, class Float> inline void Multiply8_SSE2OrAV
       sum7 = madd_epi16(sum7, ones);
       Integer pack0123 = Pack0123(sum0, sum1, sum2, sum3);
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7);
-      WriteC(C + A_rowidx * B_cols + B0_colidx, pack0123, pack4567, unquant_reg);
+
+      auto total = PermuteSummer(pack0123, pack4567);
+      WriteC(C + A_rowidx * B_cols + B0_colidx, total, unquant_reg);
     }
   }
 }
