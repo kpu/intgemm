@@ -415,7 +415,7 @@ TEST_CASE ("Multiply AVX2 16bit", "[multiply]") {
 #ifndef INTGEMM_NO_AVX512
   TEST_CASE ("Multiply AVX512 8bit", "[multiply]") {
     if (kCPU < CPU_AVX512BW) return;
-    TestMultiply<AVX512_8bit>(8, 256, 256, .1, 1, 0.06);
+    TestMultiply<AVX512_8bit>(8, 256, 256, .1, 1, 0.062);
     TestMultiply<AVX512_8bit>(8, 2048, 256, 4.2, 4, 0.41, 0.37);
     TestMultiply<AVX512_8bit>(320, 256, 256, .1, 1, 0.06);
     TestMultiply<AVX512_8bit>(472, 256, 256, .1, 1, 0.06);
