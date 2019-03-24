@@ -155,7 +155,6 @@ TEST_CASE("Prepare SSE2", "[prepare]") {
   TestPrepare<SSE2_16bit>(32, 32);
 }
 
-
 template <class Routine> void TestSelectColumnsB(Index rows = 64, Index cols = 16) {
   AlignedVector<float> input(rows * cols);
   for (int i = 0; i < rows * cols; ++i) {
