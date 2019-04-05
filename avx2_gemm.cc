@@ -1,4 +1,5 @@
 #include "avx2_gemm.h"
+#include "cops.h"
 #include "interleave.h"
 #include "multiply.h"
 
@@ -137,7 +138,7 @@ void AVX2_8bit::SelectColumnsB(const int8_t *input, int8_t *output, Index rows, 
 }
 
 void AVX2_16bit::Multiply(const int16_t *A, const int16_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {
-  Multiply16<__m256i, __m256>(A, B, C, unquant_mult, A_rows, width, B_cols);
+  Multiply16<__m256i, JustUnquantizeC> (A, B, JustUnquantizeC(C, unquant_mult), A_rows, width, B_cols);
 }
 
 void AVX2_8bit::Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {

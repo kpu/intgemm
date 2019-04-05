@@ -1,5 +1,6 @@
 // This is only 16-bit.  8-bit is in ssse3_gemm.cc since it requires that.
 #include "sse2_gemm.h"
+#include "cops.h"
 
 #include "interleave.h"
 #include "multiply.h"
@@ -64,7 +65,7 @@ void SSE2_16bit::SelectColumnsB(const int16_t *input, int16_t *output, Index row
 }
 
 void SSE2_16bit::Multiply(const int16_t *A, const int16_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {
-  Multiply16<__m128i, __m128>(A, B, C, unquant_mult, A_rows, width, B_cols);
+  Multiply16<__m128i, JustUnquantizeC> (A, B, JustUnquantizeC(C, unquant_mult), A_rows, width, B_cols);
 }
 
 const char *const SSE2_16bit::kName = "16-bit SSE2";

@@ -1,6 +1,7 @@
 #include "avx512_gemm.h"
 #include "interleave.h"
 #include "multiply.h"
+#include "cops.h"
 
 #include <cassert>
 #include <cstddef>
@@ -155,7 +156,7 @@ void AVX512_8bit::SelectColumnsB(const int8_t *input, int8_t *output, Index rows
 
 void AVX512_16bit::Multiply(const int16_t *A, const int16_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {
   // The unquantization is only 256-bit wide because there are 8 results.
-  Multiply16<__m512i, __m256> (A, B, C, unquant_mult, A_rows, width, B_cols);
+  Multiply16<__m512i, JustUnquantizeC> (A, B, JustUnquantizeC(C, unquant_mult), A_rows, width, B_cols);
 }
 
 // Special AVX512 implementation due to having 32 registers (so I don't have to

@@ -1,59 +1,10 @@
 #pragma once
 
-#include "interleave.h"
-
-#include <cassert>
-#include <xmmintrin.h>
-#include <emmintrin.h>
-#include <immintrin.h>
+#include "intrinsics.h"
 
 namespace intgemm {
 
-/* Define a bunch of intrinstics as overloaded functions so they work with
- * templates.
- */
-template <class Register> static inline Register set1_epi16(int16_t to);
-template <class Register> static inline Register set1_ps(float to);
 #ifdef __SSE2__
-struct MultiplyResult128 {
-  __m128i pack0123, pack4567;
-};
-static inline __m128i add_epi32(__m128i first, __m128i second) {
-  return _mm_add_epi32(first, second);
-}
-static inline __m128i adds_epi16(__m128i first, __m128i second) {
-  return _mm_adds_epi16(first, second);
-}
-template <> inline __m128i set1_epi16<__m128i>(int16_t to) {
-  return _mm_set1_epi16(to);
-}
-template <> inline __m128 set1_ps<__m128>(float to) {
-  return _mm_set1_ps(to);
-}
-static inline __m128i madd_epi16(__m128i first, __m128i second) {
-  return _mm_madd_epi16(first, second);
-}
-static inline __m128i maddubs_epi16(__m128i first, __m128i second) {
-  return _mm_maddubs_epi16(first, second);
-}
-static inline __m128i sign_epi8(__m128i first, __m128i second) {
-  return _mm_sign_epi8(first, second);
-}
-static inline __m128i abs_epi8(__m128i arg) {
-  return _mm_abs_epi8(arg);
-}
-static inline __m128 max_ps(__m128 first, __m128 second) {
-  return _mm_max_ps(first, second);
-}
-static inline __m128 and_ps(__m128 first, __m128 second) {
-  return _mm_and_ps(first, second);
-}
-static inline __m128 cvtepi32_ps(__m128i arg) {
-  return _mm_cvtepi32_ps(arg);
-}
-static inline __m128 mul_ps (__m128 a, __m128 b) {
-  return _mm_mul_ps(a, b);
-}
 
 static inline float MaxFloat32(__m128 a) {
   // Fold to just using the first 64 bits.
@@ -82,42 +33,6 @@ static inline void WriteC(float *to, MultiplyResult128 total, __m128 unquant_reg
 }
 #endif
 #ifdef __AVX2__
-static inline __m256i add_epi32(__m256i first, __m256i second) {
-  return _mm256_add_epi32(first, second);
-}
-static inline __m256i adds_epi16(__m256i first, __m256i second) {
-  return _mm256_adds_epi16(first, second);
-}
-template <> inline __m256i set1_epi16<__m256i>(int16_t to) {
-  return _mm256_set1_epi16(to);
-}
-template <> inline __m256 set1_ps<__m256>(float to) {
-  return _mm256_set1_ps(to);
-}
-static inline __m256i madd_epi16(__m256i first, __m256i second) {
-  return _mm256_madd_epi16(first, second);
-}
-static inline __m256i maddubs_epi16(__m256i first, __m256i second) {
-  return _mm256_maddubs_epi16(first, second);
-}
-static inline __m256i sign_epi8(__m256i first, __m256i second) {
-  return _mm256_sign_epi8(first, second);
-}
-static inline __m256i abs_epi8(__m256i arg) {
-  return _mm256_abs_epi8(arg);
-}
-static inline __m256 max_ps(__m256 first, __m256 second) {
-  return _mm256_max_ps(first, second);
-}
-static inline __m256 and_ps(__m256 first, __m256 second) {
-  return _mm256_and_ps(first, second);
-}
-static inline __m256 cvtepi32_ps(__m256i arg) {
-  return _mm256_cvtepi32_ps(arg);
-}
-static inline __m256 mul_ps (__m256 a, __m256 b) {
-  return _mm256_mul_ps(a, b);
-}
 
 static inline float MaxFloat32(__m256 a) {
   return MaxFloat32(max_ps(_mm256_castps256_ps128(a), _mm256_extractf128_ps(a, 1)));
@@ -138,31 +53,6 @@ static inline void WriteC(float *to, __m256i total, __m256 unquant_reg) {
 
 #endif
 #ifdef __AVX512BW__
-static inline __m512i add_epi32(__m512i first, __m512i second) {
-  return _mm512_add_epi32(first, second);
-}
-template <> inline __m512i set1_epi16<__m512i>(int16_t to) {
-  return _mm512_set1_epi16(to);
-}
-template <> inline __m512 set1_ps<__m512>(float to) {
-  return _mm512_set1_ps(to);
-}
-static inline __m512i madd_epi16(__m512i first, __m512i second) {
-  return _mm512_madd_epi16(first, second);
-}
-static inline __m512i maddubs_epi16(__m512i first, __m512i second) {
-  return _mm512_maddubs_epi16(first, second);
-}
-static inline __m512i abs_epi8(__m512i arg) {
-  return _mm512_abs_epi8(arg);
-}
-static inline __m512 max_ps(__m512 first, __m512 second) {
-  return _mm512_max_ps(first, second);
-}
-// Technically __AVX512DQ__
-static inline __m512 and_ps(__m512 first, __m512 second) {
-  return _mm512_and_ps(first, second);
-}
 
 static inline __m256i PermuteSummer(__m512i pack0123, __m512i pack4567) {
   // Form [0th 128-bit register of pack0123, 0st 128-bit register of pack4567, 2nd 128-bit register of pack0123, 2nd 128-bit register of pack4567]
@@ -233,14 +123,17 @@ template <class Register> inline Register Pack0123(Register sum0, Register sum1,
 // A_rows can be anything non-negative.
 // width must be a multiple of the register size.
 // B_cols must be a multiple of 8.
-template <class Integer, class Float> inline void Multiply16(const int16_t *A, const int16_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {
+//#define Multiply16(Integer, Annotate) \ 
+  template <class WriteC> Annotate inline void Multiply16(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) {
+//
+template <class Integer, class WriteC> inline void Multiply16(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) {
   assert(width % (sizeof(Integer) / sizeof(int16_t)) == 0);
   assert(B_cols % 8 == 0);
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0);
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0);
-  assert(reinterpret_cast<uintptr_t>(C) % sizeof(Integer) == 0);
+  //assert(reinterpret_cast<uintptr_t>(C) % sizeof(Integer) == 0);
   const int simd_width = width / (sizeof(Integer) / sizeof(int16_t));
-  const Float unquant_reg = set1_ps<Float>(unquant_mult);
+  //const Float unquant_reg = set1_ps<Float>(unquant_mult);
   const Integer *B0_col = reinterpret_cast<const Integer *>(B);
   for (int B0_colidx = 0; B0_colidx < B_cols; B0_col += 8 * simd_width, B0_colidx += 8) {
     // Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.
@@ -285,7 +178,8 @@ template <class Integer, class Float> inline void Multiply16(const int16_t *A, c
       // The specific implementation may need to reduce further.
 
       auto total = PermuteSummer(pack0123, pack4567);
-      WriteC(C + A_rowidx * B_cols + B0_colidx, total, unquant_reg);
+      functor(A_rowidx, B_cols, B0_colidx, total);
+      //WriteC(C + A_rowidx * B_cols + B0_colidx, total, unquant_reg);
     }
   }
 }
