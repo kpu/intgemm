@@ -29,15 +29,15 @@ else()
   set_source_files_properties(intgemm.cc test/quantize_test.cc test/multiply_test.cc benchmark.cc PROPERTIES COMPILE_DEFINITIONS "INTGEMM_NO_AVX512")
 endif()
 
-add_library(intgemm STATIC ${GEMMS} intgemm.cc)
-foreach(exe example benchmark)
-  add_executable(${exe} ${exe}.cc)
-  target_link_libraries(${exe} intgemm)
-endforeach()
+#add_library(intgemm STATIC ${GEMMS} intgemm.cc)
+#foreach(exe example benchmark)
+#  add_executable(${exe} ${exe}.cc)
+#  target_link_libraries(${exe} intgemm)
+#endforeach()
 
 include_directories(.)
-add_executable(tests test/multiply_test.cc test/quantize_test.cc)
-target_link_libraries(tests intgemm)
+add_executable(tests test/multiply_test.cc test/quantize_test.cc avx2_gemm.cc) # avx512_gemm.cc)
+#target_link_libraries(tests intgemm)
 
 #CTest integration with Catch2
 include(CMake/Catch.cmake)

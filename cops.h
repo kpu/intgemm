@@ -1,26 +1,9 @@
+#pragma once
 #include "intrinsics.h"
 
 #include <exception>
 
 namespace intgemm {
-
-// This will be thrown if a CPU isn't supported by the routines (16-bit without SSE2 or 8-bit without SSSE3).
-class UnsupportedCPU : public std::exception {
-  public:
-    UnsupportedCPU();
-
-    ~UnsupportedCPU() throw();
-
-    const char *what() const throw() override;
-};
-
-UnsupportedCPU::UnsupportedCPU() {}
-
-UnsupportedCPU::~UnsupportedCPU() throw() {}
-
-const char *UnsupportedCPU::what() const throw() {
-  return "Integer matrix multiplication has not been efficiently implemented for your CPU.";
-}
 
 class JustUnquantizeC {
 public:

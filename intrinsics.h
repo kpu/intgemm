@@ -33,13 +33,14 @@ template <> SSE2 inline __m128 set1_ps<__m128>(float to) {
 SSE2 static inline __m128i madd_epi16(__m128i first, __m128i second) {
   return _mm_madd_epi16(first, second);
 }
-SSE2 static inline __m128i maddubs_epi16(__m128i first, __m128i second) {
+SSSE3 static inline __m128i maddubs_epi16(__m128i first, __m128i second) {
   return _mm_maddubs_epi16(first, second);
 }
-SSE2 static inline __m128i sign_epi8(__m128i first, __m128i second) {
+SSSE3 static inline __m128i sign_epi8(__m128i first, __m128i second) {
   return _mm_sign_epi8(first, second);
 }
-SSE2 static inline __m128i abs_epi8(__m128i arg) {
+
+SSSE3 static inline __m128i abs_epi8(__m128i arg) {
   return _mm_abs_epi8(arg);
 }
 SSE2 static inline __m128 max_ps(__m128 first, __m128 second) {

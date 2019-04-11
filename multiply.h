@@ -17,7 +17,7 @@ static inline float MaxFloat32(__m128 a) {
   return *reinterpret_cast<float*>(&a);
 }
 
-static inline MultiplyResult128 PermuteSummer(__m128i pack0123, __m128i pack4567) {
+SSE2 static inline MultiplyResult128 PermuteSummer(__m128i pack0123, __m128i pack4567) {
   // No op for 128 bits: already reduced fully.
   MultiplyResult128 ret;
   ret.pack0123 = pack0123;
@@ -38,7 +38,7 @@ static inline float MaxFloat32(__m256 a) {
   return MaxFloat32(max_ps(_mm256_castps256_ps128(a), _mm256_extractf128_ps(a, 1)));
 }
 
-static inline __m256i PermuteSummer(__m256i pack0123, __m256i pack4567) {
+AVX2 static inline __m256i PermuteSummer(__m256i pack0123, __m256i pack4567) {
   // This instruction generates 1s 2s 3s 4s 5f 6f 7f 8f
   __m256i rev = _mm256_permute2f128_si256(pack0123, pack4567, 0x21);
   // This instruction generates 1f 2f 3f 4f 5s 6s 7s 8s
@@ -54,7 +54,7 @@ static inline void WriteC(float *to, __m256i total, __m256 unquant_reg) {
 #endif
 #ifdef __AVX512BW__
 
-static inline __m256i PermuteSummer(__m512i pack0123, __m512i pack4567) {
+AVX512F static inline __m256i PermuteSummer(__m512i pack0123, __m512i pack4567) {
   // Form [0th 128-bit register of pack0123, 0st 128-bit register of pack4567, 2nd 128-bit register of pack0123, 2nd 128-bit register of pack4567]
   __m512i mix0 = _mm512_mask_permutex_epi64(pack0123, 0xcc, pack4567, (0 << 4) | (1 << 6));
   // Form [1st 128-bit register of pack0123, 1st 128-bit register of pack4567, 3rd 128-bit register of pack0123, 3rd 128-bit register of pack4567]
@@ -123,8 +123,8 @@ template <class Register> inline Register Pack0123(Register sum0, Register sum1,
 // A_rows can be anything non-negative.
 // width must be a multiple of the register size.
 // B_cols must be a multiple of 8.
-//#define Multiply16(Integer, Annotate) \ 
-  template <class WriteC> Annotate inline void Multiply16(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) {
+//#define Multiply16(Integer, Annotate) \ //fd
+//  template <class WriteC> Annotate inline void Multiply16(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) {
 //
 template <class Integer, class WriteC> inline void Multiply16(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) {
   assert(width % (sizeof(Integer) / sizeof(int16_t)) == 0);
