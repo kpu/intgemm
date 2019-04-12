@@ -24,23 +24,23 @@ namespace intgemm {
  *   INTGEMM_INTERLEAVE(__m256i, 256)
  *   INTGEMM_INTERLEAVE(__m512i, 512)
  */
-#define INTGEMM_INTERLEAVE(type, prefix) \
-static inline void Interleave8(type &first, type &second) { \
+#define INTGEMM_INTERLEAVE(target, type, prefix) \
+target static inline void Interleave8(type &first, type &second) { \
   type temp = _mm##prefix##_unpacklo_epi8(first, second); \
   second = _mm##prefix##_unpackhi_epi8(first, second); \
   first = temp; \
 } \
-static inline void Interleave16(type &first, type &second) { \
+target static inline void Interleave16(type &first, type &second) { \
   type temp = _mm##prefix##_unpacklo_epi16(first, second); \
   second = _mm##prefix##_unpackhi_epi16(first, second); \
   first = temp; \
 } \
-static inline void Interleave32(type &first, type &second) { \
+target static inline void Interleave32(type &first, type &second) { \
   type temp = _mm##prefix##_unpacklo_epi32(first, second); \
   second = _mm##prefix##_unpackhi_epi32(first, second); \
   first = temp; \
 } \
-static inline void Interleave64(type &first, type &second) { \
+target static inline void Interleave64(type &first, type &second) { \
   type temp = _mm##prefix##_unpacklo_epi64(first, second); \
   second = _mm##prefix##_unpackhi_epi64(first, second); \
   first = temp; \
@@ -48,21 +48,19 @@ static inline void Interleave64(type &first, type &second) { \
 
 
 template <class Register> static inline Register setzero_si() __attribute__((always_inline));;
-#ifdef __SSE2__
-INTGEMM_INTERLEAVE(__m128i, )
-template <> inline __m128i setzero_si<__m128i>() {
+
+INTGEMM_INTERLEAVE(SSE2, __m128i, )
+template <> SSE2 inline __m128i setzero_si<__m128i>() {
   return _mm_setzero_si128();
 }
-#endif
-#ifdef __AVX2__
-INTGEMM_INTERLEAVE(__m256i, 256)
-template <> inline __m256i setzero_si<__m256i>() {
+
+INTGEMM_INTERLEAVE(AVX2, __m256i, 256)
+template <> AVX2 inline __m256i setzero_si<__m256i>() {
   return _mm256_setzero_si256();
 }
-#endif
-#ifdef __AVX512F__
-INTGEMM_INTERLEAVE(__m512i, 512)
-template <> inline __m512i setzero_si<__m512i>() {
+#ifndef INTGEMM_NO_AVX512
+INTGEMM_INTERLEAVE(AVX512F, __m512i, 512)
+template <> AVX512F inline __m512i setzero_si<__m512i>() {
   return _mm512_setzero_si512();
 }
 #endif

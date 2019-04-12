@@ -4,9 +4,7 @@
 
 namespace intgemm {
 
-#ifdef __SSE2__
-
-static inline float MaxFloat32(__m128 a) {
+SSE2 static inline float MaxFloat32(__m128 a) {
   // Fold to just using the first 64 bits.
   __m128 second_half = _mm_shuffle_ps(a, a, 3 * 4 + 2);
   a = _mm_max_ps(a, second_half);
@@ -26,15 +24,13 @@ SSE2 static inline MultiplyResult128 PermuteSummer(__m128i pack0123, __m128i pac
 }
 
 // Complete any reduction, multiply by scaling, and write to memory.
-static inline void WriteC(float *to, MultiplyResult128 total, __m128 unquant_reg) {
+SSE2 static inline void WriteC(float *to, MultiplyResult128 total, __m128 unquant_reg) {
   // Convert to float, multiply by unquant, and write.
   *reinterpret_cast<__m128*>(to) = mul_ps(cvtepi32_ps(total.pack0123), unquant_reg);
   *reinterpret_cast<__m128*>(to + 4) = mul_ps(cvtepi32_ps(total.pack4567), unquant_reg);
 }
-#endif
-#ifdef __AVX2__
 
-static inline float MaxFloat32(__m256 a) {
+AVX2 static inline float MaxFloat32(__m256 a) {
   return MaxFloat32(max_ps(_mm256_castps256_ps128(a), _mm256_extractf128_ps(a, 1)));
 }
 
@@ -46,13 +42,12 @@ AVX2 static inline __m256i PermuteSummer(__m256i pack0123, __m256i pack4567) {
   return _mm256_add_epi32(rev, blended);
 }
 
-static inline void WriteC(float *to, __m256i total, __m256 unquant_reg) {
+AVX2 static inline void WriteC(float *to, __m256i total, __m256 unquant_reg) {
   // Convert to float, multiply by unquant, and write.
   *reinterpret_cast<__m256*>(to) = mul_ps(cvtepi32_ps(total), unquant_reg);
 }
 
-#endif
-#ifdef __AVX512BW__
+#ifndef INTGEMM_NO_AVX512
 
 AVX512F static inline __m256i PermuteSummer(__m512i pack0123, __m512i pack4567) {
   // Form [0th 128-bit register of pack0123, 0st 128-bit register of pack4567, 2nd 128-bit register of pack0123, 2nd 128-bit register of pack4567]

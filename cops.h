@@ -9,8 +9,8 @@ class JustUnquantizeC {
 public:
  JustUnquantizeC(float *C, float unquant_mult);
 
- inline void operator()(Index rowIDX, Index cols, Index colIDX, MultiplyResult128 result);
- inline void operator()(Index rowIDX, Index cols, Index colIDX, __m256i result);
+ SSE2 inline void operator()(Index rowIDX, Index cols, Index colIDX, MultiplyResult128 result);
+ AVX2 inline void operator()(Index rowIDX, Index cols, Index colIDX, __m256i result);
 
 private:
   DEFAULT void InitRegister(float unquant_mult);
@@ -42,13 +42,11 @@ JustUnquantizeC::JustUnquantizeC(float *C, float unquant_mult) : C_(C) {
 }
 
 
-inline void JustUnquantizeC::operator()(Index rowIDX, Index cols, Index colIDX, MultiplyResult128 result){
+SSE2 inline void JustUnquantizeC::operator()(Index rowIDX, Index cols, Index colIDX, MultiplyResult128 result){
   *reinterpret_cast<__m128*>(C_ + rowIDX*cols + colIDX) = mul_ps(cvtepi32_ps(result.pack0123), unquant_mult_128);
   *reinterpret_cast<__m128*>(C_ + rowIDX*cols + colIDX + 4) = mul_ps(cvtepi32_ps(result.pack4567), unquant_mult_128);
 }
-#ifdef __AVX2__
-inline void JustUnquantizeC::operator()(Index rowIDX, Index cols, Index colIDX, __m256i result) {
+AVX2 inline void JustUnquantizeC::operator()(Index rowIDX, Index cols, Index colIDX, __m256i result) {
    *reinterpret_cast<__m256*>(C_ + rowIDX*cols + colIDX) = mul_ps(cvtepi32_ps(result), unquant_mult_256);
 }
-#endif
 } //Namespace
