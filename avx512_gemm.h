@@ -143,10 +143,12 @@ struct AVX512_16bit {
   // Tile size for B; B must be a multiple of this block size.
   static const Index kBTileRow = 32;
   static const Index kBTileCol = 8;
-
+/*
   AVX512F static void PrepareB(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) {
     PrepareBFor16(input, output, avx512f::QuantizeTile16(quant_mult), rows, cols);
   }
+*/
+  PREPARE_B_16_DEF(AVX512F, avx512f::QuantizeTile16)
 
   AVX512F static void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     SelectColumnsOfB((const __m512i*)input, (__m512i*)output, rows * 2, cols_begin, cols_end);
@@ -154,7 +156,7 @@ struct AVX512_16bit {
 
   AVX512F static void Multiply(const int16_t *A, const int16_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {
     // The unquantization is only 256-bit wide because there are 8 results.
-    Multiply16<__m512i, JustUnquantizeC> (A, B, JustUnquantizeC(C, unquant_mult), A_rows, width, B_cols);
+    Multiply16__m512i<JustUnquantizeC> (A, B, JustUnquantizeC(C, unquant_mult), A_rows, width, B_cols);
   }
 
   constexpr static const char *const kName = "16-bit AVX512";
@@ -190,10 +192,11 @@ struct AVX512_8bit {
   // Tile size for B; B must be a multiple of this block size.
   static const Index kBTileRow = 64;
   static const Index kBTileCol = 8;
-
+/*
   AVX512F static void PrepareB(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
     PrepareBFor8(input, output, avx512f::QuantizeTile8(quant_mult), rows, cols);
-  }
+  }*/
+  PREPARE_B_8_DEF(AVX512F, avx512f::QuantizeTile8)
 
   AVX512F static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     SelectColumnsOfB((const __m512i*)input, (__m512i*)output, rows, cols_begin, cols_end);
@@ -317,8 +320,8 @@ struct AVX512_8bit {
   static const CPUType kUses = CPU_AVX512BW;
 };
 
-AVX512F float AVX512_MaxAbsolute(const float *begin, const float *end) {
-  return MaxAbsoluteBackend<__m512>(begin, end);
+AVX512F float AVX512_MaxAbsolute(const float *begin_float, const float *end_float) {
+  MAXABS_DEFINE(__m512)
 }
 
 } // namespace intgemm

@@ -69,7 +69,7 @@ static inline float MaxFloat32(__m512 a) {
 
 /* Take 4 registers with 32-bit values to be horizontally added.  Reduce them
  * to one register with 32-bit values in the pattern 1 2 3 4 1 2 3 4, leaving
- * the final addition (which crosses 128-bit lanes) to the caller. */
+ * the final addition (which crosses 128-bit lanes) to the caller. 
 template <class Register> inline Register Pack0123(Register sum0, Register sum1, Register sum2, Register sum3) {
   // 1 2 1 2 1 2 1 2
   Interleave32(sum0, sum1);
@@ -81,6 +81,22 @@ template <class Register> inline Register Pack0123(Register sum0, Register sum1,
   // 1 2 3 4 1 2 3 4
   return add_epi32(pack01, pack23);
 }
+ */
+#define PACK_DEFINE(target, Register) \
+target inline Register Pack0123(Register sum0, Register sum1, Register sum2, Register sum3) { \
+  Interleave32(sum0, sum1); \
+  Register pack01 = add_epi32(sum0, sum1); \
+  Interleave32(sum2, sum3); \
+  Register pack23 = add_epi32(sum2, sum3); \
+  Interleave64(pack01, pack23); \
+  return add_epi32(pack01, pack23); \
+} \
+
+PACK_DEFINE(SSE2, __m128i)
+PACK_DEFINE(AVX2, __m256i)
+#ifndef INTGEMM_NO_AVX512
+PACK_DEFINE(AVX512F, __m512i)
+#endif
 
 // 16-bit multiplier for SSE2, AVX2, and AVX512.
 // C = A * B * unquant_mult
@@ -118,67 +134,71 @@ template <class Register> inline Register Pack0123(Register sum0, Register sum1,
 // A_rows can be anything non-negative.
 // width must be a multiple of the register size.
 // B_cols must be a multiple of 8.
-//#define Multiply16(Integer, Annotate) \ //fd
-//  template <class WriteC> Annotate inline void Multiply16(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) {
-//
-template <class Integer, class WriteC> inline void Multiply16(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) {
-  assert(width % (sizeof(Integer) / sizeof(int16_t)) == 0);
-  assert(B_cols % 8 == 0);
-  assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0);
-  assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0);
-  //assert(reinterpret_cast<uintptr_t>(C) % sizeof(Integer) == 0);
-  const int simd_width = width / (sizeof(Integer) / sizeof(int16_t));
-  //const Float unquant_reg = set1_ps<Float>(unquant_mult);
-  const Integer *B0_col = reinterpret_cast<const Integer *>(B);
-  for (int B0_colidx = 0; B0_colidx < B_cols; B0_col += 8 * simd_width, B0_colidx += 8) {
-    // Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.
-    for (int A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) {
-      const Integer *A_row = reinterpret_cast<const Integer*>(A + A_rowidx * width);
-      // These will be packed 32-bit integers containing sums for each row of B multiplied by the row of A.
-      // Iterate over shared (inner) dimension.
-      int k = 0;
-      Integer a = *(A_row + k);
-      Integer sum0 = madd_epi16(a, *(B0_col + k * 8));
-      Integer sum1 = madd_epi16(a, *(B0_col + k * 8 + 1));
-      Integer sum2 = madd_epi16(a, *(B0_col + k * 8 + 2));
-      Integer sum3 = madd_epi16(a, *(B0_col + k * 8 + 3));
-      Integer sum4 = madd_epi16(a, *(B0_col + k * 8 + 4));
-      Integer sum5 = madd_epi16(a, *(B0_col + k * 8 + 5));
-      Integer sum6 = madd_epi16(a, *(B0_col + k * 8 + 6));
-      Integer sum7 = madd_epi16(a, *(B0_col + k * 8 + 7));
-      for (int k = 1; k < simd_width; ++k) {
-        Integer a = *(A_row + k);
-        // Multiply 16-bit, horizontally add to packed 32-bit integers.
-        Integer mult0 = madd_epi16(a, *(B0_col + k * 8));
-        Integer mult1 = madd_epi16(a, *(B0_col + k * 8 + 1));
-        Integer mult2 = madd_epi16(a, *(B0_col + k * 8 + 2));
-        Integer mult3 = madd_epi16(a, *(B0_col + k * 8 + 3));
-        Integer mult4 = madd_epi16(a, *(B0_col + k * 8 + 4));
-        Integer mult5 = madd_epi16(a, *(B0_col + k * 8 + 5));
-        Integer mult6 = madd_epi16(a, *(B0_col + k * 8 + 6));
-        Integer mult7 = madd_epi16(a, *(B0_col + k * 8 + 7));
-        // Sum packed 32-bit integers with danger of overflow.  TODO: accumulate in 64-bit every so often.
-        sum0 = add_epi32(sum0, mult0);
-        sum1 = add_epi32(sum1, mult1);
-        sum2 = add_epi32(sum2, mult2);
-        sum3 = add_epi32(sum3, mult3);
-        sum4 = add_epi32(sum4, mult4);
-        sum5 = add_epi32(sum5, mult5);
-        sum6 = add_epi32(sum6, mult6);
-        sum7 = add_epi32(sum7, mult7);
-      }
-      // Reduce sums within 128-bit lanes.
-      Integer pack0123 = Pack0123(sum0, sum1, sum2, sum3);
-      Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7);
-      // The specific implementation may need to reduce further.
+//template <class Integer, class WriteC> inline void Multiply16(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) {
+#define MULTIPLY16_define(Integer, target) \
+  template <class WriteC> target inline void Multiply16##Integer(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) { \
+  assert(width % (sizeof(Integer) / sizeof(int16_t)) == 0); \
+  assert(B_cols % 8 == 0); \
+  assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0); \
+  assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0); \
+  /*assert(reinterpret_cast<uintptr_t>(C) % sizeof(Integer) == 0); Moved to WriteC*/ \
+  const int simd_width = width / (sizeof(Integer) / sizeof(int16_t)); \
+  /*const Float unquant_reg = set1_ps<Float>(unquant_mult); moved to WriteC*/ \
+  const Integer *B0_col = reinterpret_cast<const Integer *>(B); \
+  for (int B0_colidx = 0; B0_colidx < B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
+    /* Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.*/ \
+    for (int A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) { \
+      const Integer *A_row = reinterpret_cast<const Integer*>(A + A_rowidx * width); \
+      /* These will be packed 32-bit integers containing sums for each row of B multiplied by the row of A. \
+         Iterate over shared (inner) dimension.*/ \
+      int k = 0; \
+      Integer a = *(A_row + k); \
+      Integer sum0 = madd_epi16(a, *(B0_col + k * 8)); \
+      Integer sum1 = madd_epi16(a, *(B0_col + k * 8 + 1)); \
+      Integer sum2 = madd_epi16(a, *(B0_col + k * 8 + 2)); \
+      Integer sum3 = madd_epi16(a, *(B0_col + k * 8 + 3)); \
+      Integer sum4 = madd_epi16(a, *(B0_col + k * 8 + 4)); \
+      Integer sum5 = madd_epi16(a, *(B0_col + k * 8 + 5)); \
+      Integer sum6 = madd_epi16(a, *(B0_col + k * 8 + 6)); \
+      Integer sum7 = madd_epi16(a, *(B0_col + k * 8 + 7)); \
+      for (int k = 1; k < simd_width; ++k) { \
+        Integer a = *(A_row + k); \
+        /* Multiply 16-bit, horizontally add to packed 32-bit integers.*/ \
+        Integer mult0 = madd_epi16(a, *(B0_col + k * 8)); \
+        Integer mult1 = madd_epi16(a, *(B0_col + k * 8 + 1)); \
+        Integer mult2 = madd_epi16(a, *(B0_col + k * 8 + 2)); \
+        Integer mult3 = madd_epi16(a, *(B0_col + k * 8 + 3)); \
+        Integer mult4 = madd_epi16(a, *(B0_col + k * 8 + 4)); \
+        Integer mult5 = madd_epi16(a, *(B0_col + k * 8 + 5)); \
+        Integer mult6 = madd_epi16(a, *(B0_col + k * 8 + 6)); \
+        Integer mult7 = madd_epi16(a, *(B0_col + k * 8 + 7)); \
+        /* Sum packed 32-bit integers with danger of overflow.  TODO: accumulate in 64-bit every so often.*/ \
+        sum0 = add_epi32(sum0, mult0); \
+        sum1 = add_epi32(sum1, mult1); \
+        sum2 = add_epi32(sum2, mult2); \
+        sum3 = add_epi32(sum3, mult3); \
+        sum4 = add_epi32(sum4, mult4); \
+        sum5 = add_epi32(sum5, mult5); \
+        sum6 = add_epi32(sum6, mult6); \
+        sum7 = add_epi32(sum7, mult7); \
+      } \
+      /* Reduce sums within 128-bit lanes.*/ \
+      Integer pack0123 = Pack0123(sum0, sum1, sum2, sum3); \
+      Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
+      /*The specific implementation may need to reduce further.*/ \
+      auto total = PermuteSummer(pack0123, pack4567); \
+      functor(A_rowidx, B_cols, B0_colidx, total); \
+    } \
+  } \
+} \
 
-      auto total = PermuteSummer(pack0123, pack4567);
-      functor(A_rowidx, B_cols, B0_colidx, total);
-      //WriteC(C + A_rowidx * B_cols + B0_colidx, total, unquant_reg);
-    }
-  }
-}
+MULTIPLY16_define(__m128i, SSE2)
 
+MULTIPLY16_define(__m256i, AVX2)
+#ifndef INTGEMM_NO_AVX512
+MULTIPLY16_define(__m512i, AVX512F)
+#endif
+//MULTIPLY16_define(__m256i, AVX2)
 /* 8-bit matrix multiply used by AVX and AVX2.
  * These have two peculiar properties:
  * 1. The sign instructions don't exist in AVX512.
@@ -192,7 +212,7 @@ template <class Integer, class WriteC> inline void Multiply16(const int16_t *A, 
  * vpmaddubsw.  That's why this code is generic over 128-bit or 256-bit.
  */
 struct Multiply8_AVXAVX2 {
-  template <class Integer> inline static void Inner(
+  template <class Integer> AVX2 inline static void Inner(
       Integer a, const Integer *b,
       Integer &sum0, Integer &sum1, Integer &sum2, Integer &sum3,
       Integer &sum4, Integer &sum5, Integer &sum6, Integer &sum7) {
@@ -328,44 +348,41 @@ struct Multiply8_C {
     sum7 = adds_epi16(sum7, maddubs_epi16(a_positive, sign_epi8(b[7], a)));
   }
 };
-
-template <class Algo, class Integer, class Float> inline void Multiply8_SSE2OrAVX2(const int8_t *A, const int8_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {
-  assert(width % sizeof(Integer) == 0);
-  assert(B_cols % 8 == 0);
-  assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0);
-  assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0);
-  assert(reinterpret_cast<uintptr_t>(C) % sizeof(Integer) == 0);
-  Float unquant_reg = set1_ps<Float>(unquant_mult);
-  const int simd_width = width / sizeof(Integer);
-  const Integer *B0_col = reinterpret_cast<const Integer*>(B);
-  // Go over 8 columns of B at a time.
-  for (int B0_colidx = 0; B0_colidx != B_cols; B0_col += 8 * simd_width, B0_colidx += 8) {
-    // Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.
-    for (int A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) {
-      // Iterate over shared (inner) dimension.
-      const Integer *A_live = reinterpret_cast<const Integer *>(A + A_rowidx * width);
-      const Integer *A_end = A_live + simd_width;
-      const Integer *B_live = B0_col;
-
-      // Rather than initializing as zeros and adding, just initialize the first.
-      Integer a = *(A_live++);
-      Integer a_positive = abs_epi8(a);
-      // These will be packed 16-bit integers containing sums for each column of B multiplied by the row of A.
-      Integer sum0 = maddubs_epi16(a_positive, sign_epi8(B_live[0], a));
-      Integer sum1 = maddubs_epi16(a_positive, sign_epi8(B_live[1], a));
-      Integer sum2 = maddubs_epi16(a_positive, sign_epi8(B_live[2], a));
-      Integer sum3 = maddubs_epi16(a_positive, sign_epi8(B_live[3], a));
-      Integer sum4 = maddubs_epi16(a_positive, sign_epi8(B_live[4], a));
-      Integer sum5 = maddubs_epi16(a_positive, sign_epi8(B_live[5], a));
-      Integer sum6 = maddubs_epi16(a_positive, sign_epi8(B_live[6], a));
-      Integer sum7 = maddubs_epi16(a_positive, sign_epi8(B_live[7], a));
-      B_live += 8;
-
-      // Use A as the loop variable so the add can be done where gcc likes it
-      // for branch prediction.
-      for (; A_live != A_end; ++A_live, B_live += 8) {
-        Algo::Inner(*A_live, B_live, sum0, sum1, sum2, sum3, sum4, sum5, sum6, sum7);
-      }
+#define MULTIPLY8_define(Integer, Float, target) \
+template <class Algo> target inline void Multiply8_SSE2OrAVX2##Integer(const int8_t *A, const int8_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) { \
+  assert(width % sizeof(Integer) == 0); \
+  assert(B_cols % 8 == 0); \
+  assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0); \
+  assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0); \
+  assert(reinterpret_cast<uintptr_t>(C) % sizeof(Integer) == 0); \
+  Float unquant_reg = set1_ps<Float>(unquant_mult); \
+  const int simd_width = width / sizeof(Integer); \
+  const Integer *B0_col = reinterpret_cast<const Integer*>(B); \
+  /*Go over 8 columns of B at a time.*/ \
+  for (int B0_colidx = 0; B0_colidx != B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
+    /*Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.*/ \
+    for (int A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) { \
+      /*Iterate over shared (inner) dimension.*/ \
+      const Integer *A_live = reinterpret_cast<const Integer *>(A + A_rowidx * width); \
+      const Integer *A_end = A_live + simd_width; \
+      const Integer *B_live = B0_col; \
+      /* Rather than initializing as zeros and adding, just initialize the first.*/ \
+      Integer a = *(A_live++); \
+      Integer a_positive = abs_epi8(a); \
+      /* These will be packed 16-bit integers containing sums for each column of B multiplied by the row of A.*/ \
+      Integer sum0 = maddubs_epi16(a_positive, sign_epi8(B_live[0], a)); \
+      Integer sum1 = maddubs_epi16(a_positive, sign_epi8(B_live[1], a)); \
+      Integer sum2 = maddubs_epi16(a_positive, sign_epi8(B_live[2], a)); \
+      Integer sum3 = maddubs_epi16(a_positive, sign_epi8(B_live[3], a)); \
+      Integer sum4 = maddubs_epi16(a_positive, sign_epi8(B_live[4], a)); \
+      Integer sum5 = maddubs_epi16(a_positive, sign_epi8(B_live[5], a)); \
+      Integer sum6 = maddubs_epi16(a_positive, sign_epi8(B_live[6], a)); \
+      Integer sum7 = maddubs_epi16(a_positive, sign_epi8(B_live[7], a)); \
+      B_live += 8; \
+      /* Use A as the loop variable so the add can be done where gcc likes it for branch prediction.*/ \
+      for (; A_live != A_end; ++A_live, B_live += 8) { \
+        Algo::Inner(*A_live, B_live, sum0, sum1, sum2, sum3, sum4, sum5, sum6, sum7); \
+      } \
       /* Convert 16-bit to 32-bit and add, not caring what parts are added.
        * Implementations:
        * 1. https://github.com/tesseract-ocr/tesseract/blob/master/src/arch/intsimdmatrixavx2.cpp#L67 under Apache license:
@@ -382,26 +399,31 @@ template <class Algo, class Integer, class Float> inline void Multiply8_SSE2OrAV
        * sum = _mm512_add_epi32(
        *      _mm512_srai_epi32(_mm512_slli_epi32(sum, 16), 16),
        *      _mm512_srai_epi32(sum, 16));
-       */
-      Integer ones = set1_epi16<Integer>(1);
-      sum0 = madd_epi16(sum0, ones);
-      sum1 = madd_epi16(sum1, ones);
-      sum2 = madd_epi16(sum2, ones);
-      sum3 = madd_epi16(sum3, ones);
-      sum4 = madd_epi16(sum4, ones);
-      sum5 = madd_epi16(sum5, ones);
-      sum6 = madd_epi16(sum6, ones);
-      sum7 = madd_epi16(sum7, ones);
-      Integer pack0123 = Pack0123(sum0, sum1, sum2, sum3);
-      Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7);
+       */ \
+      Integer ones = set1_epi16<Integer>(1); \
+      sum0 = madd_epi16(sum0, ones); \
+      sum1 = madd_epi16(sum1, ones); \
+      sum2 = madd_epi16(sum2, ones); \
+      sum3 = madd_epi16(sum3, ones); \
+      sum4 = madd_epi16(sum4, ones); \
+      sum5 = madd_epi16(sum5, ones); \
+      sum6 = madd_epi16(sum6, ones); \
+      sum7 = madd_epi16(sum7, ones); \
+      Integer pack0123 = Pack0123(sum0, sum1, sum2, sum3); \
+      Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
+      auto total = PermuteSummer(pack0123, pack4567); \
+      WriteC(C + A_rowidx * B_cols + B0_colidx, total, unquant_reg); \
+    } \
+  } \
+} \
 
-      auto total = PermuteSummer(pack0123, pack4567);
-      WriteC(C + A_rowidx * B_cols + B0_colidx, total, unquant_reg);
-    }
-  }
-}
+MULTIPLY8_define(__m128i, __m128, SSSE3)
+
+MULTIPLY8_define(__m256i, __m256, AVX2)
+
 
 // Find the maximum absolute value of packed float32s.
+/*
 template <class Register> inline static float MaxAbsoluteBackend(const float *begin_float, const float *end_float) {
   assert(end_float > begin_float);
   assert((end_float - begin_float) % (sizeof(Register) / sizeof(float)) == 0);
@@ -418,6 +440,20 @@ template <class Register> inline static float MaxAbsoluteBackend(const float *be
   }
 
   return MaxFloat32(highest);
-}
+}*/
+#define MAXABS_DEFINE(Register) \
+  assert(end_float > begin_float); \
+  assert((end_float - begin_float) % (sizeof(Register) / sizeof(float)) == 0); \
+  const Register *begin = reinterpret_cast<const Register*>(begin_float); \
+  const Register *end = reinterpret_cast<const Register*>(end_float); \
+  union {float f; int32_t i;} float_convert; \
+  float_convert.i = 0x7fffffff; \
+  Register and_me = set1_ps<Register>(float_convert.f); \
+  Register highest = and_ps(and_me, *begin); \
+  for (++begin; begin != end; ++begin) { \
+    Register reg = and_ps(and_me, *begin); \
+    highest = max_ps(highest, reg); \
+  } \
+  return MaxFloat32(highest); \
 
 } // namespace intgemm

@@ -19,7 +19,7 @@ class QuantizeTile16 {
   public:
     typedef __m128i Integer;
 
-    explicit QuantizeTile16(float mult) : mult_reg_(_mm_set1_ps(mult)) {}
+    SSE2 explicit QuantizeTile16(float mult) : mult_reg_(_mm_set1_ps(mult)) {}
 
     // Quantize 8xfloat into 8xint16_t
     SSE2 inline __m128i Consecutive(const float *input) {
@@ -59,11 +59,13 @@ struct SSE2_16bit {
   // Tile size for B; B must be a multiple of this block size.
   static const Index kBTileRow = 8;
   static const Index kBTileCol = 8;
-
+/*
   SSE2 static void PrepareB(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) {
     //TODO #DEFINE
     PrepareBFor16(input, output, sse2::QuantizeTile16(quant_mult), rows, cols);
-  }
+  }*/
+
+  PREPARE_B_16_DEF(SSE2, sse2::QuantizeTile16)
 
   SSE2 static void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     //TODO #DEFINE
@@ -72,7 +74,7 @@ struct SSE2_16bit {
 
   SSE2 static void Multiply(const int16_t *A, const int16_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {
     //TODO #DEFINE
-    Multiply16<__m128i, JustUnquantizeC> (A, B, JustUnquantizeC(C, unquant_mult), A_rows, width, B_cols);
+    Multiply16__m128i<JustUnquantizeC> (A, B, JustUnquantizeC(C, unquant_mult), A_rows, width, B_cols);
   }
 
   constexpr static const char *const kName = "16-bit SSE2";
@@ -81,8 +83,8 @@ struct SSE2_16bit {
 };
 
 // Technically only requires SSE
-SSE2 float SSE2_MaxAbsolute(const float *begin, const float *end) {
-  return MaxAbsoluteBackend<__m128>(begin, end);
+SSE2 float SSE2_MaxAbsolute(const float *begin_float, const float *end_float) {
+  MAXABS_DEFINE(__m128)
 }
 
 } // namespace intgemm

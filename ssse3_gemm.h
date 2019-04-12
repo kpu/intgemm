@@ -86,17 +86,19 @@ struct SSSE3_8bit {
   // Tile size for B; B must be a multiple of this block size.
   static const Index kBTileRow = 16;
   static const Index kBTileCol = 8;
-
+/*
   SSSE3 static void PrepareB(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
     PrepareBFor8(input, output, ssse3::QuantizeTile8(quant_mult), rows, cols);
-  }
+  }*/
+  PREPARE_B_8_DEF(SSSE3, ssse3::QuantizeTile8)
 
   SSSE3 static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     SelectColumnsOfB((const __m128i*)input, (__m128i*)output, rows, cols_begin, cols_end);
   }
 
   SSSE3 static void Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {
-    Multiply8_SSE2OrAVX2<Multiply8_C, __m128i, __m128>(A, B, C, unquant_mult, A_rows, width, B_cols);
+    //Multiply8_SSE2OrAVX2<Multiply8_C, __m128i, __m128>(A, B, C, unquant_mult, A_rows, width, B_cols);
+    Multiply8_SSE2OrAVX2__m128i<Multiply8_C>(A, B, C, unquant_mult, A_rows, width, B_cols);
   }
   
   constexpr static const char *const kName = "8-bit SSSE3";

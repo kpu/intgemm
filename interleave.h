@@ -65,60 +65,70 @@ template <> AVX512F inline __m512i setzero_si<__m512i>() {
 }
 #endif
 
-template <class Register> static inline void Swap(Register &a, Register &b) {
-  Register tmp = a;
-  a = b;
-  b = tmp;
-}
+#define SWAP_DEFINE(target, Register) \
+target static inline void Swap(Register &a, Register &b) { \
+  Register tmp = a; \
+  a = b; \
+  b = tmp; \
+} \
+
+SWAP_DEFINE(SSE2, __m128i)
+SWAP_DEFINE(AVX2, __m256i)
+#ifndef INTGEMM_NO_AVX512
+SWAP_DEFINE(AVX512F, __m512i)
+#endif
 
 /* Transpose registers containing 8 packed 16-bit integers.
  * Each 128-bit lane is handled independently.
  */
-template <class Register> static inline void Transpose16InLane(Register &r0, Register &r1, Register &r2, Register &r3, Register &r4, Register &r5, Register &r6, Register &r7) {
-  // r0: columns 0 1 2 3 4 5 6 7 from row 0
-  // r1: columns 0 1 2 3 4 5 6 7 from row 1
+#define TRANSPOSE16_DEFINE(target, Register) \
+target static inline void Transpose16InLane(Register &r0, Register &r1, Register &r2, Register &r3, Register &r4, Register &r5, Register &r6, Register &r7) { \
+  /* r0: columns 0 1 2 3 4 5 6 7 from row 0
+     r1: columns 0 1 2 3 4 5 6 7 from row 1*/ \
+  Interleave16(r0, r1); \
+  Interleave16(r2, r3); \
+  Interleave16(r4, r5); \
+  Interleave16(r6, r7); \
+  /* r0: columns 0 0 1 1 2 2 3 3 from rows 0 and 1
+     r1: columns 4 4 5 5 6 6 7 7 from rows 0 and 1
+     r2: columns 0 0 1 1 2 2 3 3 from rows 2 and 3
+     r3: columns 4 4 5 5 6 6 7 7 from rows 2 and 3
+     r4: columns 0 0 1 1 2 2 3 3 from rows 4 and 5
+     r5: columns 4 4 5 5 6 6 7 7 from rows 4 and 5
+     r6: columns 0 0 1 1 2 2 3 3 from rows 6 and 7
+     r7: columns 4 4 5 5 6 6 7 7 from rows 6 and 7*/ \
+  Interleave32(r0, r2); \
+  Interleave32(r1, r3); \
+  Interleave32(r4, r6); \
+  Interleave32(r5, r7); \
+  /* r0: columns 0 0 0 0 1 1 1 1 from rows 0, 1, 2, and 3
+     r1: columns 4 4 4 4 5 5 5 5 from rows 0, 1, 2, and 3
+     r2: columns 2 2 2 2 3 3 3 3 from rows 0, 1, 2, and 3
+     r3: columns 6 6 6 6 7 7 7 7 from rows 0, 1, 2, and 3
+     r4: columns 0 0 0 0 1 1 1 1 from rows 4, 5, 6, and 7
+     r5: columns 4 4 4 4 5 5 5 5 from rows 4, 5, 6, and 7
+     r6: columns 2 2 2 2 3 3 3 3 from rows 4, 5, 6, and 7
+     r7: columns 6 6 6 6 7 7 7 7 from rows 4, 5, 6, and 7*/ \
+  Interleave64(r0, r4); \
+  Interleave64(r1, r5); \
+  Interleave64(r2, r6); \
+  Interleave64(r3, r7); \
+  /* r0: columns 0 0 0 0 0 0 0 0 from rows 0 through 7
+     r1: columns 4 4 4 4 4 4 4 4 from rows 0 through 7
+     r2: columns 2 2 2 2 2 2 2 2 from rows 0 through 7
+     r3: columns 6 6 6 6 6 6 6 6 from rows 0 through 7
+     r4: columns 1 1 1 1 1 1 1 1 from rows 0 through 7
+     r5: columns 5 5 5 5 5 5 5 5 from rows 0 through 7*/ \
+  /* Empirically gcc is able to remove these movs and just rename the outputs of Interleave64. */ \
+  Swap(r1, r4); \
+  Swap(r3, r6); \
+} \
 
-  Interleave16(r0, r1);
-  Interleave16(r2, r3);
-  Interleave16(r4, r5);
-  Interleave16(r6, r7);
-  // r0: columns 0 0 1 1 2 2 3 3 from rows 0 and 1
-  // r1: columns 4 4 5 5 6 6 7 7 from rows 0 and 1
-  // r2: columns 0 0 1 1 2 2 3 3 from rows 2 and 3
-  // r3: columns 4 4 5 5 6 6 7 7 from rows 2 and 3
-  // r4: columns 0 0 1 1 2 2 3 3 from rows 4 and 5
-  // r5: columns 4 4 5 5 6 6 7 7 from rows 4 and 5
-  // r6: columns 0 0 1 1 2 2 3 3 from rows 6 and 7
-  // r7: columns 4 4 5 5 6 6 7 7 from rows 6 and 7
-
-  Interleave32(r0, r2);
-  Interleave32(r1, r3);
-  Interleave32(r4, r6);
-  Interleave32(r5, r7);
-  // r0: columns 0 0 0 0 1 1 1 1 from rows 0, 1, 2, and 3
-  // r1: columns 4 4 4 4 5 5 5 5 from rows 0, 1, 2, and 3
-  // r2: columns 2 2 2 2 3 3 3 3 from rows 0, 1, 2, and 3
-  // r3: columns 6 6 6 6 7 7 7 7 from rows 0, 1, 2, and 3
-  // r4: columns 0 0 0 0 1 1 1 1 from rows 4, 5, 6, and 7
-  // r5: columns 4 4 4 4 5 5 5 5 from rows 4, 5, 6, and 7
-  // r6: columns 2 2 2 2 3 3 3 3 from rows 4, 5, 6, and 7
-  // r7: columns 6 6 6 6 7 7 7 7 from rows 4, 5, 6, and 7
-
-  Interleave64(r0, r4);
-  Interleave64(r1, r5);
-  Interleave64(r2, r6);
-  Interleave64(r3, r7);
-  // r0: columns 0 0 0 0 0 0 0 0 from rows 0 through 7
-  // r1: columns 4 4 4 4 4 4 4 4 from rows 0 through 7
-  // r2: columns 2 2 2 2 2 2 2 2 from rows 0 through 7
-  // r3: columns 6 6 6 6 6 6 6 6 from rows 0 through 7
-  // r4: columns 1 1 1 1 1 1 1 1 from rows 0 through 7
-  // r5: columns 5 5 5 5 5 5 5 5 from rows 0 through 7
-  
-  // Empirically gcc is able to remove these movs and just rename the outputs of Interleave64.
-  Swap(r1, r4);
-  Swap(r3, r6);
-}
+TRANSPOSE16_DEFINE(SSE2, __m128i)
+TRANSPOSE16_DEFINE(AVX2, __m256i)
+#ifndef INTGEMM_NO_AVX512
+TRANSPOSE16_DEFINE(AVX512F, __m512i)
+#endif
 
 /* Tranpose registers containing 16 packed 8-bit integers.
  * Each 128-bit lane is handled independently.
@@ -196,57 +206,61 @@ template <class Register> static inline void Transpose8InLane(
 // 256 272
 // 257 273
 // ... ...
-template <class Quantizer> static inline void PrepareBFor8(const float *input, int8_t *output_shadow, Quantizer q, Index rows, Index cols) {
-  typedef typename Quantizer::Integer Register;
-  // Currently all multipliers have a stride of 8 columns.
-  const int kColStride = 8;
-  assert(cols % kColStride == 0);
-  assert(rows % sizeof(Register) == 0);
-  assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0);
-  Register *output = reinterpret_cast<Register*>(output_shadow);
-  assert(reinterpret_cast<uintptr_t>(output) % sizeof(Register) == 0);
+#define PREPARE_B_8_DEF(target, QuantClass) \
+target static inline void PrepareB(const float *input, int8_t *output_shadow, float quant_mult, Index rows, Index cols) { \
+  typedef typename QuantClass Quantizer; \
+  typedef typename Quantizer::Integer Register; \
+  Quantizer q = Quantizer(quant_mult); \
+  /* Currently all multipliers have a stride of 8 columns.*/ \
+  const int kColStride = 8; \
+  assert(cols % kColStride == 0); \
+  assert(rows % sizeof(Register) == 0); \
+  assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0); \
+  Register *output = reinterpret_cast<Register*>(output_shadow); \
+  assert(reinterpret_cast<uintptr_t>(output) % sizeof(Register) == 0); \
+  for (int c = 0; c < cols; c += kColStride) { \
+    for (int r = 0; r < rows; r += sizeof(Register), output += 8) { \
+      /* Quantize and perform a transpose with height sizeof(Register) and width 8. \
+         This isn't quite Transpose8InLane because it's half the number of columns, \
+         so each register starts with two rows instead of being one row. \
+         The quantizers know to skip a row.*/ \
+      output[0] = q.ForReshape(input + cols * (r    ) + c, cols); \
+      output[1] = q.ForReshape(input + cols * (r + 1) + c, cols); \
+      output[2] = q.ForReshape(input + cols * (r + 4) + c, cols); \
+      output[3] = q.ForReshape(input + cols * (r + 5) + c, cols); \
+      output[4] = q.ForReshape(input + cols * (r + 8) + c, cols); \
+      output[5] = q.ForReshape(input + cols * (r + 9) + c, cols); \
+      output[6] = q.ForReshape(input + cols * (r + 12) + c, cols); \
+      output[7] = q.ForReshape(input + cols * (r + 13) + c, cols); \
+      Interleave8(output[0], output[1]); \
+      Interleave8(output[2], output[3]); \
+      Interleave8(output[4], output[5]); \
+      Interleave8(output[6], output[7]); \
+      Transpose16InLane(output[0], output[1], output[2], output[3], output[4], output[5], output[6], output[7]); \
+    } \
+  } \
+} \
 
-  for (int c = 0; c < cols; c += kColStride) {
-    for (int r = 0; r < rows; r += sizeof(Register), output += 8) {
-      // Quantize and perform a transpose with height sizeof(Register) and width 8.
-      // This isn't quite Transpose8InLane because it's half the number of columns,
-      // so each register starts with two rows instead of being one row.
-      // The quantizers know to skip a row.
-      output[0] = q.ForReshape(input + cols * (r    ) + c, cols);
-      output[1] = q.ForReshape(input + cols * (r + 1) + c, cols);
-      output[2] = q.ForReshape(input + cols * (r + 4) + c, cols);
-      output[3] = q.ForReshape(input + cols * (r + 5) + c, cols);
-      output[4] = q.ForReshape(input + cols * (r + 8) + c, cols);
-      output[5] = q.ForReshape(input + cols * (r + 9) + c, cols);
-      output[6] = q.ForReshape(input + cols * (r + 12) + c, cols);
-      output[7] = q.ForReshape(input + cols * (r + 13) + c, cols);
-      Interleave8(output[0], output[1]);
-      Interleave8(output[2], output[3]);
-      Interleave8(output[4], output[5]);
-      Interleave8(output[6], output[7]);
-      Transpose16InLane(output[0], output[1], output[2], output[3], output[4], output[5], output[6], output[7]);
-    }
-  }
-}
-
-template <class Quantizer> static inline void PrepareBFor16(const float *input, int16_t *output_shadow, Quantizer q, Index rows, Index cols) {
-  typedef typename Quantizer::Integer Register;
-  assert(cols % 8 == 0);
-  assert(rows % (sizeof(Register) / sizeof(int16_t)) == 0);
-  assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0);
-  Register *output = reinterpret_cast<Register*>(output_shadow);
-  assert(reinterpret_cast<uintptr_t>(output) % sizeof(Register) == 0);
-
-  for (int c = 0; c < cols; c += 8) {
-    for (int r = 0; r < rows; r += (sizeof(Register) / sizeof(int16_t)), output += 8) {
-      // gcc unrolls this loop and uses registers for output[k]
-      for (int k = 0; k < 8; ++k) {
-        output[k] = q.ForReshape(input + cols * (r + k) + c, cols);
-      }
-      Transpose16InLane(output[0], output[1], output[2], output[3], output[4], output[5], output[6], output[7]);
-    }
-  }
-}
+#define PREPARE_B_16_DEF(target, QuantClass) \
+target static inline void PrepareB(const float *input, int16_t *output_shadow, float quant_mult, Index rows, Index cols) { \
+  typedef typename QuantClass Quantizer; \
+  typedef typename Quantizer::Integer Register; \
+  Quantizer q = Quantizer(quant_mult); \
+  assert(cols % 8 == 0); \
+  assert(rows % (sizeof(Register) / sizeof(int16_t)) == 0); \
+  assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0); \
+  Register *output = reinterpret_cast<Register*>(output_shadow); \
+  assert(reinterpret_cast<uintptr_t>(output) % sizeof(Register) == 0); \
+  for (int c = 0; c < cols; c += 8) { \
+    for (int r = 0; r < rows; r += (sizeof(Register) / sizeof(int16_t)), output += 8) { \
+      /* gcc unrolls this loop and uses registers for output[k]*/ \
+      for (int k = 0; k < 8; ++k) { \
+        output[k] = q.ForReshape(input + cols * (r + k) + c, cols); \
+      } \
+      Transpose16InLane(output[0], output[1], output[2], output[3], output[4], output[5], output[6], output[7]); \
+    } \
+  } \
+} \
 
 /* Select columns of B from PrepareB format to PrepareB format.
  */
