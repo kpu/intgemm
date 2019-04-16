@@ -15,6 +15,8 @@ SSE2 inline __m128i QuantizerGrab(const float *input, const __m128 quant_mult_re
   return _mm_cvtps_epi32(_mm_mul_ps(*reinterpret_cast<const __m128*>(input), quant_mult_reg));
 }
 
+SELECT_COL_B_DEF(SSE2, __m128i)
+
 class QuantizeTile16 {
   public:
     typedef __m128i Integer;
@@ -69,7 +71,7 @@ struct SSE2_16bit {
 
   SSE2 static void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     //TODO #DEFINE
-    SelectColumnsOfB((const __m128i*)input, (__m128i*)output, rows * 2, cols_begin, cols_end);
+    sse2::SelectColumnsOfB((const __m128i*)input, (__m128i*)output, rows * 2, cols_begin, cols_end);
   }
 
   SSE2 static void Multiply(const int16_t *A, const int16_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {

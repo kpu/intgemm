@@ -17,6 +17,8 @@ SSSE3 inline __m128i QuantizerGrab(const float *input, const __m128 quant_mult_r
   return _mm_cvtps_epi32(_mm_mul_ps(*reinterpret_cast<const __m128*>(input), quant_mult_reg));
 }
 
+SELECT_COL_B_DEF(SSSE3, __m128i)
+
 class QuantizeTile8 {
   public:
     typedef __m128i Integer;
@@ -93,7 +95,7 @@ struct SSSE3_8bit {
   PREPARE_B_8_DEF(SSSE3, ssse3::QuantizeTile8)
 
   SSSE3 static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
-    SelectColumnsOfB((const __m128i*)input, (__m128i*)output, rows, cols_begin, cols_end);
+    ssse3::SelectColumnsOfB((const __m128i*)input, (__m128i*)output, rows, cols_begin, cols_end);
   }
 
   SSSE3 static void Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {

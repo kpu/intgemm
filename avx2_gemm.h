@@ -18,6 +18,8 @@ AVX2 inline __m256i QuantizerGrab(const float *input, const __m256 quant_mult_re
   return _mm256_cvtps_epi32(_mm256_mul_ps(*reinterpret_cast<const __m256*>(input), quant_mult_reg));
 }
 
+SELECT_COL_B_DEF(AVX2, __m256i)
+
 class QuantizeTile16 {
   public:
     typedef __m256i Integer;
@@ -78,7 +80,7 @@ struct AVX2_16bit {
   PREPARE_B_16_DEF(AVX2, avx2::QuantizeTile16)
 
   AVX2 static void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
-    SelectColumnsOfB((const __m256i*)input, (__m256i*)output, rows * 2, cols_begin, cols_end);
+    avx2::SelectColumnsOfB((const __m256i*)input, (__m256i*)output, rows * 2, cols_begin, cols_end);
   }
 
   AVX2 static void Multiply(const int16_t *A, const int16_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {
@@ -170,7 +172,7 @@ struct AVX2_8bit {
   PREPARE_B_8_DEF(AVX2, avx2::QuantizeTile8)
 
   AVX2 static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
-    SelectColumnsOfB((const __m256i*)input, (__m256i*)output, rows, cols_begin, cols_end);
+    avx2::SelectColumnsOfB((const __m256i*)input, (__m256i*)output, rows, cols_begin, cols_end);
   }
 
   AVX2 static void Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {

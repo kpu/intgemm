@@ -264,23 +264,24 @@ target static inline void PrepareB(const float *input, int16_t *output_shadow, f
 
 /* Select columns of B from PrepareB format to PrepareB format.
  */
-template <class Register> static inline void SelectColumnsOfB(const Register *input, Register *output, Index rows_bytes /* number of bytes in a row */, const Index *cols_begin, const Index *cols_end) {
-  assert(rows_bytes % sizeof(Register) == 0);
-  assert((cols_end - cols_begin) % 8 == 0); 
-  // Do columns for multiples of 8.
-  int register_rows = rows_bytes / sizeof(Register);
-  const Register *starts[8];
-  for (; cols_begin != cols_end; cols_begin += 8) {
-    for (int k = 0; k < 8; ++k) {
-      starts[k] = input + (cols_begin[k] & 7) + (cols_begin[k] & ~7) * register_rows;
-    }
-    for (int r = 0; r < register_rows; ++r) {
-      for (int k = 0; k < 8; ++k) {
-        *(output++) = *starts[k];
-        starts[k] += 8;
-      }
-    }
-  }
-}
+#define SELECT_COL_B_DEF(target, Register) \
+target static inline void SelectColumnsOfB(const Register *input, Register *output, Index rows_bytes /* number of bytes in a row */, const Index *cols_begin, const Index *cols_end) { \
+  assert(rows_bytes % sizeof(Register) == 0); \
+  assert((cols_end - cols_begin) % 8 == 0);  \
+  /* Do columns for multiples of 8.*/ \
+  int register_rows = rows_bytes / sizeof(Register); \
+  const Register *starts[8]; \
+  for (; cols_begin != cols_end; cols_begin += 8) { \
+    for (int k = 0; k < 8; ++k) { \
+      starts[k] = input + (cols_begin[k] & 7) + (cols_begin[k] & ~7) * register_rows; \
+    } \
+    for (int r = 0; r < register_rows; ++r) { \
+      for (int k = 0; k < 8; ++k) { \
+        *(output++) = *starts[k]; \
+        starts[k] += 8; \
+      } \
+    } \
+  } \
+} \
 
 } // namespace intgemm

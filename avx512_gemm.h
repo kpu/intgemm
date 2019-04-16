@@ -41,6 +41,8 @@ AVX512F inline __m512i QuantizerGrab(const float *input, const __m512 quant_mult
   return _mm512_cvtps_epi32(val);
 }
 
+SELECT_COL_B_DEF(AVX512F, __m512i)
+
 // For PrepareB we want to read 8 columns at a time.  When converting 32-bit
 // floats to 8-bit values, that's 32 bytes of floats.  But AVX512 is 64 bytes
 // wide so it reads off the edge of the tile.  We could expand the tile size
@@ -151,7 +153,7 @@ struct AVX512_16bit {
   PREPARE_B_16_DEF(AVX512F, avx512f::QuantizeTile16)
 
   AVX512F static void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
-    SelectColumnsOfB((const __m512i*)input, (__m512i*)output, rows * 2, cols_begin, cols_end);
+    avx512f::SelectColumnsOfB((const __m512i*)input, (__m512i*)output, rows * 2, cols_begin, cols_end);
   }
 
   AVX512F static void Multiply(const int16_t *A, const int16_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {
@@ -199,7 +201,7 @@ struct AVX512_8bit {
   PREPARE_B_8_DEF(AVX512F, avx512f::QuantizeTile8)
 
   AVX512F static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
-    SelectColumnsOfB((const __m512i*)input, (__m512i*)output, rows, cols_begin, cols_end);
+    avx512f::SelectColumnsOfB((const __m512i*)input, (__m512i*)output, rows, cols_begin, cols_end);
   }
 
   // Special AVX512 implementation due to having 32 registers (so I don't have to
