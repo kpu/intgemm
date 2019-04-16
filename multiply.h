@@ -211,145 +211,144 @@ MULTIPLY16_define(__m512i, AVX512F)
  * 256-bit.  We had to wait for AVX2 to get 256-bit versions of vpsignb and
  * vpmaddubsw.  That's why this code is generic over 128-bit or 256-bit.
  */
-struct Multiply8_AVXAVX2 {
-  template <class Integer> AVX2 inline static void Inner(
-      Integer a, const Integer *b,
-      Integer &sum0, Integer &sum1, Integer &sum2, Integer &sum3,
-      Integer &sum4, Integer &sum5, Integer &sum6, Integer &sum7) {
-    // Annoyingly the only 8-bit multiply is signed * unsigned (maddubs).
-    // So we take the sign bits off of a and apply them each b in a * b.
-    //
-    // We have only 16 YMM registers but we want to store:
-    // 1 for a (or |a|)
-    // 8 temporaries for applying sign to each column of B.
-    // 8 sums.
-    //
-    // gcc's register allocator does:
-    // 1 for a, do all the sign application, then overwrite with |a|
-    // 8 temporaries
-    // 7 sums in registers + 1 on the stack
-    //
-    // But it's possible to complete an operation early, freeing up its
-    // temporary register for reuse.  But completing an operation early
-    // requires us to have |a| for vpmaddubsw while completing the later
-    // operation needs a again to apply sign.
-    //
-    // So we do two columns, 0 and 1, early.  This allows b0_b6 and b1_b7
-    // to be reused by columns 6 and 7, respectively.  And there's enough
-    // registers to store both a and |a|.
-    //
-    // These are the temporary variables used to process each column of b.
-    // We let the compiler choose which register number is which, but force
-    // it to allocate all registers.
-    Integer absa;
-    Integer b0_b6, b1_b7, b2, b3, b4, b5;
-    // Maybe this will tell gcc that we're accessing 8 registers starting
-    // at B_live.  Though I doubt it because we're passing the address as a
-    // register.
-    typedef struct { Integer x[8]; } B_range;
-    asm(
-        // Copy the first 6 columns of b to registers.  We assume B has
-        // been rearranged so that these 8 columns are consecutive.
-        // vpsignb does not take a memory address as its second argument,
-        // so this can't be inlined into vsignb.
-        "vmovdqa          (%[B]), %[b0_b6]\n"
-        "vmovdqa   %c[size](%[B]), %[b1_b7]\n"
-        // These multiplies are executed by the assembler, not by the CPU
-        // at run time.
-        // I would have liked to just initialize b2 etc above but that
-        // would make it an input argument "+x" instead of "=&x".  And +x
-        // counts as two operands for purposes of gcc's annoying 30-operand
-        // limit.
-        "vmovdqa 2*%c[size](%[B]), %[b2]\n"
-        "vmovdqa 3*%c[size](%[B]), %[b3]\n"
-        "vmovdqa 4*%c[size](%[B]), %[b4]\n"
-        "vmovdqa 5*%c[size](%[B]), %[b5]\n"
-        // Store the absolute value of a in absa.
-        "vpabsb  %[a], %[absa]\n"
-        // If a byte of a is negative, negate the corresponding byte in
-        // b0_b6 etc.
-        "vpsignb %[a], %[b0_b6], %[b0_b6]\n"
-        "vpsignb %[a], %[b1_b7], %[b1_b7]\n"
-        // Multiply signed * unsigned then horizontally add to form packed
-        // 16-bit integers:
-        // b0[0] * |a|[0] + b0[1] * |a|[1], b0[2] * |a|[2] + b0[3] * |a|[3], ...
-        "vpmaddubsw %[b0_b6], %[absa], %[b0_b6]\n"
-        "vpmaddubsw %[b1_b7], %[absa], %[b1_b7]\n"
-        // vpmaddubsw has latency 5 so work on some other sign bits while
-        // we're at it.
-        "vpsignb %[a], %[b2], %[b2]\n"
-        "vpsignb %[a], %[b3], %[b3]\n"
-        "vpsignb %[a], %[b4], %[b4]\n"
-        "vpsignb %[a], %[b5], %[b5]\n"
-        // Perform a 16-bit add with saturation to accumlate sums.
-        "vpaddsw %[b0_b6], %[sum0], %[sum0]\n"
-        // Now we can reuse b0_b6 for b6
-        "vmovdqa 6*%c[size](%[B]), %[b0_b6]\n"
-        "vpaddsw %[b1_b7], %[sum1], %[sum1]\n"
-        // Now we can reuse b1_b7 for b7
-        "vmovdqa 7*%c[size](%[B]), %[b1_b7]\n"
-        // More crunching while the load happens.
-        "vpmaddubsw %[b2], %[absa], %[b2]\n"
-        "vpmaddubsw %[b3], %[absa], %[b3]\n"
-        "vpmaddubsw %[b4], %[absa], %[b4]\n"
-        "vpsignb %[a], %[b0_b6], %[b0_b6]\n"
-        "vpsignb %[a], %[b1_b7], %[b1_b7]\n"
-        "vpmaddubsw %[b5], %[absa], %[b5]\n"
-        "vpmaddubsw %[b0_b6], %[absa], %[b0_b6]\n"
-        "vpmaddubsw %[b1_b7], %[absa], %[b1_b7]\n"
-        "vpaddsw %[b2], %[sum2], %[sum2]\n"
-        "vpaddsw %[b3], %[sum3], %[sum3]\n"
-        "vpaddsw %[b4], %[sum4], %[sum4]\n"
-        "vpaddsw %[b5], %[sum5], %[sum5]\n"
-        "vpaddsw %[b0_b6], %[sum6], %[sum6]\n"
-        "vpaddsw %[b1_b7], %[sum7], %[sum7]\n"
-        : [sum0] "+x" (sum0),
-          [sum1] "+x" (sum1),
-          [sum2] "+x" (sum2),
-          [sum3] "+x" (sum3),
-          [sum4] "+x" (sum4),
-          [sum5] "+x" (sum5),
-          [sum6] "+x" (sum6),
-          [sum7] "+x" (sum7),
-          [b0_b6] "=&x" (b0_b6),
-          [b1_b7] "=&x" (b1_b7),
-          [b2] "=&x" (b2),
-          [b3] "=&x" (b3),
-          [b4] "=&x" (b4),
-          [b5] "=&x" (b5),
-          [absa] "=&x" (absa)
-        : 
-          // I would like to use m here but that non-deterministically
-          // chooses %(eax) or -256$(eax) and there's no way to add to that
-          // memory address:
-          // https://gcc.gnu.org/ml/gcc-help/2011-04/msg00518.html
-          //
-          [B] "r" (reinterpret_cast<const B_range*>(b)),
-          [a] "x" (a),
-          [size] "i" (sizeof(Integer))
-      );
-  }
-};
+
+AVX2 inline static void InnerAVX2(
+    __m256i a, const __m256i *b,
+    __m256i &sum0, __m256i &sum1, __m256i &sum2, __m256i &sum3,
+    __m256i &sum4, __m256i &sum5, __m256i &sum6, __m256i &sum7) {
+  // Annoyingly the only 8-bit multiply is signed * unsigned (maddubs).
+  // So we take the sign bits off of a and apply them each b in a * b.
+  //
+  // We have only 16 YMM registers but we want to store:
+  // 1 for a (or |a|)
+  // 8 temporaries for applying sign to each column of B.
+  // 8 sums.
+  //
+  // gcc's register allocator does:
+  // 1 for a, do all the sign application, then overwrite with |a|
+  // 8 temporaries
+  // 7 sums in registers + 1 on the stack
+  //
+  // But it's possible to complete an operation early, freeing up its
+  // temporary register for reuse.  But completing an operation early
+  // requires us to have |a| for vpmaddubsw while completing the later
+  // operation needs a again to apply sign.
+  //
+  // So we do two columns, 0 and 1, early.  This allows b0_b6 and b1_b7
+  // to be reused by columns 6 and 7, respectively.  And there's enough
+  // registers to store both a and |a|.
+  //
+  // These are the temporary variables used to process each column of b.
+  // We let the compiler choose which register number is which, but force
+  // it to allocate all registers.
+  __m256i absa;
+  __m256i b0_b6, b1_b7, b2, b3, b4, b5;
+  // Maybe this will tell gcc that we're accessing 8 registers starting
+  // at B_live.  Though I doubt it because we're passing the address as a
+  // register.
+  typedef struct { __m256i x[8]; } B_range;
+  asm(
+      // Copy the first 6 columns of b to registers.  We assume B has
+      // been rearranged so that these 8 columns are consecutive.
+      // vpsignb does not take a memory address as its second argument,
+      // so this can't be inlined into vsignb.
+      "vmovdqa          (%[B]), %[b0_b6]\n"
+      "vmovdqa   %c[size](%[B]), %[b1_b7]\n"
+      // These multiplies are executed by the assembler, not by the CPU
+      // at run time.
+      // I would have liked to just initialize b2 etc above but that
+      // would make it an input argument "+x" instead of "=&x".  And +x
+      // counts as two operands for purposes of gcc's annoying 30-operand
+      // limit.
+      "vmovdqa 2*%c[size](%[B]), %[b2]\n"
+      "vmovdqa 3*%c[size](%[B]), %[b3]\n"
+      "vmovdqa 4*%c[size](%[B]), %[b4]\n"
+      "vmovdqa 5*%c[size](%[B]), %[b5]\n"
+      // Store the absolute value of a in absa.
+      "vpabsb  %[a], %[absa]\n"
+      // If a byte of a is negative, negate the corresponding byte in
+      // b0_b6 etc.
+      "vpsignb %[a], %[b0_b6], %[b0_b6]\n"
+      "vpsignb %[a], %[b1_b7], %[b1_b7]\n"
+      // Multiply signed * unsigned then horizontally add to form packed
+      // 16-bit integers:
+      // b0[0] * |a|[0] + b0[1] * |a|[1], b0[2] * |a|[2] + b0[3] * |a|[3], ...
+      "vpmaddubsw %[b0_b6], %[absa], %[b0_b6]\n"
+      "vpmaddubsw %[b1_b7], %[absa], %[b1_b7]\n"
+      // vpmaddubsw has latency 5 so work on some other sign bits while
+      // we're at it.
+      "vpsignb %[a], %[b2], %[b2]\n"
+      "vpsignb %[a], %[b3], %[b3]\n"
+      "vpsignb %[a], %[b4], %[b4]\n"
+      "vpsignb %[a], %[b5], %[b5]\n"
+      // Perform a 16-bit add with saturation to accumlate sums.
+      "vpaddsw %[b0_b6], %[sum0], %[sum0]\n"
+      // Now we can reuse b0_b6 for b6
+      "vmovdqa 6*%c[size](%[B]), %[b0_b6]\n"
+      "vpaddsw %[b1_b7], %[sum1], %[sum1]\n"
+      // Now we can reuse b1_b7 for b7
+      "vmovdqa 7*%c[size](%[B]), %[b1_b7]\n"
+      // More crunching while the load happens.
+      "vpmaddubsw %[b2], %[absa], %[b2]\n"
+      "vpmaddubsw %[b3], %[absa], %[b3]\n"
+      "vpmaddubsw %[b4], %[absa], %[b4]\n"
+      "vpsignb %[a], %[b0_b6], %[b0_b6]\n"
+      "vpsignb %[a], %[b1_b7], %[b1_b7]\n"
+      "vpmaddubsw %[b5], %[absa], %[b5]\n"
+      "vpmaddubsw %[b0_b6], %[absa], %[b0_b6]\n"
+      "vpmaddubsw %[b1_b7], %[absa], %[b1_b7]\n"
+      "vpaddsw %[b2], %[sum2], %[sum2]\n"
+      "vpaddsw %[b3], %[sum3], %[sum3]\n"
+      "vpaddsw %[b4], %[sum4], %[sum4]\n"
+      "vpaddsw %[b5], %[sum5], %[sum5]\n"
+      "vpaddsw %[b0_b6], %[sum6], %[sum6]\n"
+      "vpaddsw %[b1_b7], %[sum7], %[sum7]\n"
+      : [sum0] "+x" (sum0),
+        [sum1] "+x" (sum1),
+        [sum2] "+x" (sum2),
+        [sum3] "+x" (sum3),
+        [sum4] "+x" (sum4),
+        [sum5] "+x" (sum5),
+        [sum6] "+x" (sum6),
+        [sum7] "+x" (sum7),
+        [b0_b6] "=&x" (b0_b6),
+        [b1_b7] "=&x" (b1_b7),
+        [b2] "=&x" (b2),
+        [b3] "=&x" (b3),
+        [b4] "=&x" (b4),
+        [b5] "=&x" (b5),
+        [absa] "=&x" (absa)
+      : 
+        // I would like to use m here but that non-deterministically
+        // chooses %(eax) or -256$(eax) and there's no way to add to that
+        // memory address:
+        // https://gcc.gnu.org/ml/gcc-help/2011-04/msg00518.html
+        //
+        [B] "r" (reinterpret_cast<const B_range*>(b)),
+        [a] "x" (a),
+        [size] "i" (sizeof(__m256i))
+    );
+}
+
 
 // For SSSE3 without AVX
-struct Multiply8_C {
-  template <class Integer> inline static void Inner(
-      Integer a, const Integer *b,
-      Integer &sum0, Integer &sum1, Integer &sum2, Integer &sum3,
-      Integer &sum4, Integer &sum5, Integer &sum6, Integer &sum7) {
-    Integer a_positive = abs_epi8(a);
-    sum0 = adds_epi16(sum0, maddubs_epi16(a_positive, sign_epi8(b[0], a)));
-    sum1 = adds_epi16(sum1, maddubs_epi16(a_positive, sign_epi8(b[1], a)));
-    sum2 = adds_epi16(sum2, maddubs_epi16(a_positive, sign_epi8(b[2], a)));
-    sum3 = adds_epi16(sum3, maddubs_epi16(a_positive, sign_epi8(b[3], a)));
-    sum4 = adds_epi16(sum4, maddubs_epi16(a_positive, sign_epi8(b[4], a)));
-    sum5 = adds_epi16(sum5, maddubs_epi16(a_positive, sign_epi8(b[5], a)));
-    sum6 = adds_epi16(sum6, maddubs_epi16(a_positive, sign_epi8(b[6], a)));
-    sum7 = adds_epi16(sum7, maddubs_epi16(a_positive, sign_epi8(b[7], a)));
-  }
-};
+SSSE3 inline static void InnerSSSE3(
+    __m128i a, const __m128i *b,
+    __m128i &sum0, __m128i &sum1, __m128i &sum2, __m128i &sum3,
+    __m128i &sum4, __m128i &sum5, __m128i &sum6, __m128i &sum7) {
+  __m128i a_positive = abs_epi8(a);
+  sum0 = adds_epi16(sum0, maddubs_epi16(a_positive, sign_epi8(b[0], a)));
+  sum1 = adds_epi16(sum1, maddubs_epi16(a_positive, sign_epi8(b[1], a)));
+  sum2 = adds_epi16(sum2, maddubs_epi16(a_positive, sign_epi8(b[2], a)));
+  sum3 = adds_epi16(sum3, maddubs_epi16(a_positive, sign_epi8(b[3], a)));
+  sum4 = adds_epi16(sum4, maddubs_epi16(a_positive, sign_epi8(b[4], a)));
+  sum5 = adds_epi16(sum5, maddubs_epi16(a_positive, sign_epi8(b[5], a)));
+  sum6 = adds_epi16(sum6, maddubs_epi16(a_positive, sign_epi8(b[6], a)));
+  sum7 = adds_epi16(sum7, maddubs_epi16(a_positive, sign_epi8(b[7], a)));
+}
+
 #define MULTIPLY8_define(Integer, target) \
-template <class Algo, class WriteC> target inline void Multiply8_SSE2OrAVX2##Integer(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) { \
+template <class WriteC> target inline void Multiply8_SSE2OrAVX2##Integer(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) { \
   assert(width % sizeof(Integer) == 0); \
   assert(B_cols % 8 == 0); \
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0); \
@@ -381,7 +380,7 @@ template <class Algo, class WriteC> target inline void Multiply8_SSE2OrAVX2##Int
       B_live += 8; \
       /* Use A as the loop variable so the add can be done where gcc likes it for branch prediction.*/ \
       for (; A_live != A_end; ++A_live, B_live += 8) { \
-        Algo::Inner(*A_live, B_live, sum0, sum1, sum2, sum3, sum4, sum5, sum6, sum7); \
+        Inner##target(*A_live, B_live, sum0, sum1, sum2, sum3, sum4, sum5, sum6, sum7); \
       } \
       /* Convert 16-bit to 32-bit and add, not caring what parts are added.
        * Implementations:
