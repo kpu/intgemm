@@ -348,14 +348,14 @@ struct Multiply8_C {
     sum7 = adds_epi16(sum7, maddubs_epi16(a_positive, sign_epi8(b[7], a)));
   }
 };
-#define MULTIPLY8_define(Integer, Float, target) \
-template <class Algo> target inline void Multiply8_SSE2OrAVX2##Integer(const int8_t *A, const int8_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) { \
+#define MULTIPLY8_define(Integer, target) \
+template <class Algo, class WriteC> target inline void Multiply8_SSE2OrAVX2##Integer(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) { \
   assert(width % sizeof(Integer) == 0); \
   assert(B_cols % 8 == 0); \
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0); \
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0); \
   assert(reinterpret_cast<uintptr_t>(C) % sizeof(Integer) == 0); \
-  Float unquant_reg = set1_ps<Float>(unquant_mult); \
+  /*Float unquant_reg = set1_ps<Float>(unquant_mult);*/ \
   const int simd_width = width / sizeof(Integer); \
   const Integer *B0_col = reinterpret_cast<const Integer*>(B); \
   /*Go over 8 columns of B at a time.*/ \
@@ -412,14 +412,15 @@ template <class Algo> target inline void Multiply8_SSE2OrAVX2##Integer(const int
       Integer pack0123 = Pack0123(sum0, sum1, sum2, sum3); \
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
       auto total = PermuteSummer(pack0123, pack4567); \
-      WriteC(C + A_rowidx * B_cols + B0_colidx, total, unquant_reg); \
+      /*WriteC(C + A_rowidx * B_cols + B0_colidx, total, unquant_reg);*/ \
+      functor(A_rowidx, B_cols, B0_colidx, total); \
     } \
   } \
 } \
 
-MULTIPLY8_define(__m128i, __m128, SSSE3)
+MULTIPLY8_define(__m128i, SSSE3)
 
-MULTIPLY8_define(__m256i, __m256, AVX2)
+MULTIPLY8_define(__m256i, AVX2)
 
 
 // Find the maximum absolute value of packed float32s.
