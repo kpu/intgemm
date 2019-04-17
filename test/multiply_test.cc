@@ -127,7 +127,7 @@ template <class Routine> void TestPrepare(Index rows = 32, Index cols = 16) {
   	"Quantized Input" << '\n' << PrintMatrix(quantized.get(), rows, cols) << "Reference" << '\n' <<
   	 PrintMatrix(reference.get(), rows, cols) << "Routine" << '\n' << PrintMatrix(test.get(), rows, cols));
 }
-/*
+
 TEST_CASE("Prepare AVX512", "[prepare]") {
   if (kCPU < CPU_AVX512BW) return;
 #ifndef INTGEMM_NO_AVX512
@@ -137,7 +137,7 @@ TEST_CASE("Prepare AVX512", "[prepare]") {
     TestPrepare<AVX512_16bit>(256, 32);
 #endif
 }
-*/
+
 TEST_CASE("Prepare AVX2", "[prepare]") {
   if (kCPU < CPU_AVX2) return;
   TestPrepare<AVX2_8bit>(64, 32);
@@ -192,7 +192,7 @@ template <class Routine> void TestSelectColumnsB(Index rows = 64, Index cols = 1
   CHECK_MESSAGE(memcmp(ref.get(), test.get(), sizeof(Integer) * rows * kSelectCols) == 0, "Reference:\n" <<
   	PrintMatrix(ref.get(), rows, kSelectCols) << PrintMatrix(test.get(), rows, kSelectCols));
 }
-/*
+
 TEST_CASE("SelectColumnsB AVX512", "[select]") {
   if (kCPU < CPU_AVX512BW) return;
 #ifndef INTGEMM_NO_AVX512
@@ -200,7 +200,7 @@ TEST_CASE("SelectColumnsB AVX512", "[select]") {
     TestSelectColumnsB<AVX512_16bit>(256, 256);
 #endif
 }
-*/
+
 TEST_CASE("SelectColumnsB AVX2", "[select]") {
   if (kCPU < CPU_AVX2) return;
   TestSelectColumnsB<AVX2_8bit>(256, 256);
@@ -411,7 +411,7 @@ TEST_CASE ("Multiply AVX2 16bit", "[multiply]") {
   TestMultiply<AVX2_16bit>(248, 256, 256, .1, 1, 0.01);
   TestMultiply<AVX2_16bit>(200, 256, 256, .1, 1, 0.01);
 }
-/*
+
 #ifndef INTGEMM_NO_AVX512
   TEST_CASE ("Multiply AVX512 8bit", "[multiply]") {
     if (kCPU < CPU_AVX512BW) return;
@@ -433,7 +433,7 @@ TEST_CASE ("Multiply AVX2 16bit", "[multiply]") {
     TestMultiply<AVX512_16bit>(200, 256, 256, .1, 1, 0.01);
   }
 #endif
- */
+
 } // namespace intgemm
 
 int main(int argc, char ** argv) {
