@@ -132,7 +132,8 @@ template <class T> T ChooseCPU(T avx512, T avx2, T ssse3, T sse2, T unsupported)
 }
 
 /* 16-bit matrix multiplication. */
-struct Int16 {
+class Int16 {
+public:
   typedef int16_t Integer;
 
   // A's size must be a multiple of 1x32.
@@ -174,7 +175,8 @@ const char *const Int16::kName = ChooseCPU(AVX512_16bit::kName, AVX2_16bit::kNam
 
 
 /* 8-bit matrix multiplication */
-struct Int8 {
+class Int8 {
+public:
   typedef int8_t Integer;
 
   // A's size must be a multiple of 1x64.
