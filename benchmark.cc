@@ -62,7 +62,7 @@ struct RandomMatrices {
   AlignedVector<float> A, B;
 };
 
-template <class Backend> void Run(const RandomMatrices &m, std::vector<uint64_t> &stats) {
+template <class Backend, class WriteC> void Run(const RandomMatrices &m, std::vector<uint64_t> &stats) {
   typedef typename Backend::Integer Integer;
   float quant_mult = 127.0 / 2;
   float unquant_mult = 1.0 / (quant_mult * quant_mult);
@@ -72,20 +72,20 @@ template <class Backend> void Run(const RandomMatrices &m, std::vector<uint64_t>
   Backend::PrepareB(m.B.get(), B_prepared.get(), quant_mult, m.width, m.B_cols);
   AlignedVector<float> output(m.A_rows * m.B_cols);
   // Burn in
-  Backend::Multiply(A_prepared.get(), B_prepared.get(), output.get(), unquant_mult, m.A_rows, m.width, m.B_cols);
+  Backend::template Multiply<WriteC>(A_prepared.get(), B_prepared.get(), JustUnquantizeC(output.get(), unquant_mult), m.A_rows, m.width, m.B_cols);
   {
     StopWatch w(stats);
-    Backend::Multiply(A_prepared.get(), B_prepared.get(), output.get(), unquant_mult, m.A_rows, m.width, m.B_cols);
+    Backend::template Multiply<WriteC>(A_prepared.get(), B_prepared.get(), JustUnquantizeC(output.get(), unquant_mult), m.A_rows, m.width, m.B_cols);
   }
 }
 
-template <class Backend> void RunAll(RandomMatrices *matrices, RandomMatrices *matrices_end, std::vector<std::vector<uint64_t> > &stats) {
+template <class Backend, class WriteC> void RunAll(RandomMatrices *matrices, RandomMatrices *matrices_end, std::vector<std::vector<uint64_t> > &stats) {
   if (Backend::kUses > kCPU) return;
   std::size_t size = matrices_end - matrices;
   if (stats.size() < size)
     stats.resize(size);
   for (std::size_t i = 0; i < size; ++i) {
-    Run<Backend>(matrices[i], stats[i]);
+    Run<Backend, WriteC>(matrices[i], stats[i]);
   }
 }
 
@@ -169,13 +169,13 @@ int main(int argc, char ** argv) {
   for (int samples = 0; samples < kSamples; ++samples) {
     std::cerr << "Sample " << samples << " / " << kSamples << std::endl;
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
-    RunAll<SSSE3_8bit>(matrices, end, stats.ssse3_8bit);
-    RunAll<SSE2_16bit>(matrices, end, stats.sse2_16bit);
-    RunAll<AVX2_8bit>(matrices, end, stats.avx2_8bit);
-    RunAll<AVX2_16bit>(matrices, end, stats.avx2_16bit);
+    RunAll<SSSE3_8bit, JustUnquantizeC>(matrices, end, stats.ssse3_8bit);
+    RunAll<SSE2_16bit, JustUnquantizeC>(matrices, end, stats.sse2_16bit);
+    RunAll<AVX2_8bit, JustUnquantizeC>(matrices, end, stats.avx2_8bit);
+    RunAll<AVX2_16bit, JustUnquantizeC>(matrices, end, stats.avx2_16bit);
 #ifndef INTGEMM_NO_AVX512
-    RunAll<AVX512_8bit>(matrices, end, stats.avx512_8bit);
-    RunAll<AVX512_16bit>(matrices, end, stats.avx512_16bit);
+    RunAll<AVX512_8bit, JustUnquantizeC>(matrices, end, stats.avx512_8bit);
+    RunAll<AVX512_16bit, JustUnquantizeC>(matrices, end, stats.avx512_16bit);
 #endif
   }
 

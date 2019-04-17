@@ -73,11 +73,12 @@ struct SSE2_16bit {
     //TODO #DEFINE
     sse2::SelectColumnsOfB((const __m128i*)input, (__m128i*)output, rows * 2, cols_begin, cols_end);
   }
-
+/*
   SSE2 static void Multiply(const int16_t *A, const int16_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {
     //TODO #DEFINE
     Multiply16__m128i<JustUnquantizeC> (A, B, JustUnquantizeC(C, unquant_mult), A_rows, width, B_cols);
-  }
+  }*/
+  MULTIPLY16_define(__m128i, SSE2)
 
   constexpr static const char *const kName = "16-bit SSE2";
 

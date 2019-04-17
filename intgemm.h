@@ -56,7 +56,9 @@
 
 namespace intgemm {
 
-struct Unsupported_16bit {
+template<class WriteC>
+class Unsupported_16bit {
+public:
   static void Quantize(const float *, int16_t *, float, Index) {
     throw UnsupportedCPU();
   }
@@ -66,13 +68,15 @@ struct Unsupported_16bit {
   static void SelectColumnsB(const int16_t *, int16_t *, Index, const Index *, const Index *) {
     throw UnsupportedCPU();
   }
-  static void Multiply(const int16_t *, const int16_t *, float *, float, Index, Index, Index) {
+  static void Multiply(const int16_t *, const int16_t *, WriteC, Index, Index, Index) {
     throw UnsupportedCPU();
   }
   constexpr static const char *const kName = "16-bit Unsupported";
 };
 
-struct Unsupported_8bit {
+template<class WriteC>
+class Unsupported_8bit {
+public:
   static void Quantize(const float *, int8_t *, float, Index) {
     throw UnsupportedCPU();
   }
@@ -82,7 +86,7 @@ struct Unsupported_8bit {
   static void SelectColumnsB(const int8_t *, int8_t *, Index, const Index *, const Index *) {
     throw UnsupportedCPU();
   }
-  static void Multiply(const int8_t *, const int8_t *, float *, float, Index, Index, Index) {
+  static void Multiply(const int8_t *, const int8_t *, WriteC, Index, Index, Index) {
     throw UnsupportedCPU();
   }
   constexpr static const char *const kName = "8-bit Unsupported";
@@ -132,7 +136,7 @@ template <class T> T ChooseCPU(T avx512, T avx2, T ssse3, T sse2, T unsupported)
 }
 
 /* 16-bit matrix multiplication. */
-template<class cOperator>
+template<class WriteC>
 class Int16 {
 public:
   typedef int16_t Integer;
@@ -163,28 +167,28 @@ public:
   static void (*SelectColumnsB)(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
 
   // Multiply C = A * B, presuming A and B have been prepared.
-  static void (*Multiply)(const int16_t *A, const int16_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols);
+  static void (*Multiply)(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols);
 
   static const char *const kName;
 };
-template <class cOperator>
-void (*Int16<cOperator>::Quantize)(const float *input, int16_t *output, float quant_mult, Index size) = ChooseCPU(AVX512_16bit::Quantize, AVX2_16bit::Quantize, SSE2_16bit::Quantize, SSE2_16bit::Quantize, Unsupported_16bit::Quantize);
+template <class WriteC>
+void (*Int16<WriteC>::Quantize)(const float *input, int16_t *output, float quant_mult, Index size) = ChooseCPU(AVX512_16bit::Quantize, AVX2_16bit::Quantize, SSE2_16bit::Quantize, SSE2_16bit::Quantize, Unsupported_16bit<WriteC>::Quantize);
 
-template <class cOperator>
-void (*Int16<cOperator>::PrepareB)(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) = ChooseCPU(AVX512_16bit::PrepareB, AVX2_16bit::PrepareB, SSE2_16bit::PrepareB, SSE2_16bit::PrepareB, Unsupported_16bit::PrepareB);
+template <class WriteC>
+void (*Int16<WriteC>::PrepareB)(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) = ChooseCPU(AVX512_16bit::PrepareB, AVX2_16bit::PrepareB, SSE2_16bit::PrepareB, SSE2_16bit::PrepareB, Unsupported_16bit<WriteC>::PrepareB);
 
-template <class cOperator>
-void (*Int16<cOperator>::SelectColumnsB)(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) = ChooseCPU(AVX512_16bit::SelectColumnsB, AVX2_16bit::SelectColumnsB, SSE2_16bit::SelectColumnsB, SSE2_16bit::SelectColumnsB, Unsupported_16bit::SelectColumnsB);
+template <class WriteC>
+void (*Int16<WriteC>::SelectColumnsB)(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) = ChooseCPU(AVX512_16bit::SelectColumnsB, AVX2_16bit::SelectColumnsB, SSE2_16bit::SelectColumnsB, SSE2_16bit::SelectColumnsB, Unsupported_16bit<WriteC>::SelectColumnsB);
 
-template <class cOperator>
-void (*Int16<cOperator>::Multiply)(const int16_t *A, const int16_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) = ChooseCPU(AVX512_16bit::Multiply, AVX2_16bit::Multiply, SSE2_16bit::Multiply, SSE2_16bit::Multiply, Unsupported_16bit::Multiply);
+template <class WriteC>
+void (*Int16<WriteC>::Multiply)(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) = ChooseCPU(AVX512_16bit::Multiply<WriteC>, AVX2_16bit::Multiply<WriteC>, SSE2_16bit::Multiply<WriteC>, SSE2_16bit::Multiply<WriteC>, Unsupported_16bit<WriteC>::Multiply);
 
-template <class cOperator>
-const char *const Int16<cOperator>::kName = ChooseCPU(AVX512_16bit::kName, AVX2_16bit::kName, SSE2_16bit::kName, SSE2_16bit::kName, Unsupported_16bit::kName);
+template <class WriteC>
+const char *const Int16<WriteC>::kName = ChooseCPU(AVX512_16bit::kName, AVX2_16bit::kName, SSE2_16bit::kName, SSE2_16bit::kName, Unsupported_16bit<WriteC>::kName);
 
 
 /* 8-bit matrix multiplication */
-template<class cOperator>
+template<class WriteC>
 class Int8 {
 public:
   typedef int8_t Integer;
@@ -214,25 +218,25 @@ public:
   static void (*SelectColumnsB)(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
 
   // Multiply C = A * B, presuming A and B have been prepared.
-  static void (*Multiply)(const int8_t *A, const int8_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols);
+  static void (*Multiply)(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols);
   
   static const char *const kName;
 };
 
-template<class cOperator>
-void (*Int8<cOperator>::Quantize)(const float *input, int8_t *output, float quant_mult, Index size) = ChooseCPU(AVX512_8bit::Quantize, AVX2_8bit::Quantize, SSSE3_8bit::Quantize, Unsupported_8bit::Quantize, Unsupported_8bit::Quantize);
+template<class WriteC>
+void (*Int8<WriteC>::Quantize)(const float *input, int8_t *output, float quant_mult, Index size) = ChooseCPU(AVX512_8bit::Quantize, AVX2_8bit::Quantize, SSSE3_8bit::Quantize, Unsupported_8bit<WriteC>::Quantize, Unsupported_8bit<WriteC>::Quantize);
 
-template<class cOperator>
-void (*Int8<cOperator>::PrepareB)(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) = ChooseCPU(AVX512_8bit::PrepareB, AVX2_8bit::PrepareB, SSSE3_8bit::PrepareB, Unsupported_8bit::PrepareB, Unsupported_8bit::PrepareB);
+template<class WriteC>
+void (*Int8<WriteC>::PrepareB)(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) = ChooseCPU(AVX512_8bit::PrepareB, AVX2_8bit::PrepareB, SSSE3_8bit::PrepareB, Unsupported_8bit<WriteC>::PrepareB, Unsupported_8bit<WriteC>::PrepareB);
 
-template<class cOperator>
-void (*Int8<cOperator>::SelectColumnsB)(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) = ChooseCPU(AVX512_8bit::SelectColumnsB, AVX2_8bit::SelectColumnsB, SSSE3_8bit::SelectColumnsB, Unsupported_8bit::SelectColumnsB, Unsupported_8bit::SelectColumnsB);
+template<class WriteC>
+void (*Int8<WriteC>::SelectColumnsB)(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) = ChooseCPU(AVX512_8bit::SelectColumnsB, AVX2_8bit::SelectColumnsB, SSSE3_8bit::SelectColumnsB, Unsupported_8bit<WriteC>::SelectColumnsB, Unsupported_8bit<WriteC>::SelectColumnsB);
 
-template<class cOperator>
-void (*Int8<cOperator>::Multiply)(const int8_t *A, const int8_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) = ChooseCPU(AVX512_8bit::Multiply, AVX2_8bit::Multiply, SSSE3_8bit::Multiply, Unsupported_8bit::Multiply, Unsupported_8bit::Multiply);
+template<class WriteC>
+void (*Int8<WriteC>::Multiply)(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) = ChooseCPU(AVX512_8bit::Multiply<WriteC>, AVX2_8bit::Multiply<WriteC>, SSSE3_8bit::Multiply<WriteC>, Unsupported_8bit<WriteC>::Multiply, Unsupported_8bit<WriteC>::Multiply);
 
-template<class cOperator>
-const char *const Int8<cOperator>::kName = ChooseCPU(AVX512_8bit::kName, AVX2_8bit::kName, SSSE3_8bit::kName, Unsupported_8bit::kName, Unsupported_8bit::kName);
+template<class WriteC>
+const char *const Int8<WriteC>::kName = ChooseCPU(AVX512_8bit::kName, AVX2_8bit::kName, SSSE3_8bit::kName, Unsupported_8bit<WriteC>::kName, Unsupported_8bit<WriteC>::kName);
 
 const CPUType kCPU = ChooseCPU(CPU_AVX512BW, CPU_AVX2, CPU_SSSE3, CPU_SSE2, CPU_UNSUPPORTED);
 

@@ -134,9 +134,9 @@ PACK_DEFINE(AVX512F, __m512i)
 // A_rows can be anything non-negative.
 // width must be a multiple of the register size.
 // B_cols must be a multiple of 8.
-//template <class Integer, class WriteC> inline void Multiply16(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) {
+// Multiply16
 #define MULTIPLY16_define(Integer, target) \
-  template <class WriteC> target inline void Multiply16##Integer(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) { \
+  template <class WriteC> target static void Multiply(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) { \
   assert(width % (sizeof(Integer) / sizeof(int16_t)) == 0); \
   assert(B_cols % 8 == 0); \
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0); \
@@ -192,13 +192,6 @@ PACK_DEFINE(AVX512F, __m512i)
   } \
 } \
 
-MULTIPLY16_define(__m128i, SSE2)
-
-MULTIPLY16_define(__m256i, AVX2)
-#ifndef INTGEMM_NO_AVX512
-MULTIPLY16_define(__m512i, AVX512F)
-#endif
-//MULTIPLY16_define(__m256i, AVX2)
 /* 8-bit matrix multiply used by AVX and AVX2.
  * These have two peculiar properties:
  * 1. The sign instructions don't exist in AVX512.
@@ -346,9 +339,9 @@ SSSE3 inline static void InnerSSSE3(
   sum6 = adds_epi16(sum6, maddubs_epi16(a_positive, sign_epi8(b[6], a)));
   sum7 = adds_epi16(sum7, maddubs_epi16(a_positive, sign_epi8(b[7], a)));
 }
-
+//AVX2 or SSSE3 multiply
 #define MULTIPLY8_define(Integer, target) \
-template <class WriteC> target inline void Multiply8_SSE2OrAVX2##Integer(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) { \
+template <class WriteC> target static void Multiply(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) { \
   assert(width % sizeof(Integer) == 0); \
   assert(B_cols % 8 == 0); \
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0); \
@@ -414,10 +407,6 @@ template <class WriteC> target inline void Multiply8_SSE2OrAVX2##Integer(const i
     } \
   } \
 } \
-
-MULTIPLY8_define(__m128i, SSSE3)
-
-MULTIPLY8_define(__m256i, AVX2)
 
 
 // Find the maximum absolute value of packed float32s.

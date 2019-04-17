@@ -155,11 +155,12 @@ struct AVX512_16bit {
   AVX512F static void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     avx512f::SelectColumnsOfB((const __m512i*)input, (__m512i*)output, rows * 2, cols_begin, cols_end);
   }
-
+/*
   AVX512F static void Multiply(const int16_t *A, const int16_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {
     // The unquantization is only 256-bit wide because there are 8 results.
     Multiply16__m512i<JustUnquantizeC> (A, B, JustUnquantizeC(C, unquant_mult), A_rows, width, B_cols);
-  }
+  }*/
+  MULTIPLY16_define(__m512i, AVX512F)
 
   constexpr static const char *const kName = "16-bit AVX512";
 
@@ -206,16 +207,17 @@ struct AVX512_8bit {
 
   // Special AVX512 implementation due to having 32 registers (so I don't have to
   // allocate registers manually) and no sign instruction.
-  AVX512BW static void Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {
+  template <class WriteC>
+  AVX512BW static void Multiply(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) {
   typedef __m512i Integer;
-  typedef __m256 Float; // For quantization we only do 8 at a time.
+  //typedef __m256 Float; // For quantization we only do 8 at a time.
   // This is copy-paste from Multiply8_SSE2OrAVX2.
   assert(width % sizeof(Integer) == 0);
   assert(B_cols % 8 == 0);
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0);
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0);
-  assert(reinterpret_cast<uintptr_t>(C) % sizeof(Integer) == 0);
-  Float unquant_reg = set1_ps<Float>(unquant_mult);
+  //assert(reinterpret_cast<uintptr_t>(C) % sizeof(Integer) == 0);
+  //Float unquant_reg = set1_ps<Float>(unquant_mult);
   const int simd_width = width / sizeof(Integer);
   const Integer *B0_col = reinterpret_cast<const Integer*>(B);
   // Added for AVX512.
@@ -312,7 +314,8 @@ struct AVX512_8bit {
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7);
 
       auto total = PermuteSummer(pack0123, pack4567);
-      WriteC(C + A_rowidx * B_cols + B0_colidx, total, unquant_reg);
+      //WriteC(C + A_rowidx * B_cols + B0_colidx, total, unquant_reg);
+      functor(A_rowidx, B_cols, B0_colidx, total);
     }
   }
 }
