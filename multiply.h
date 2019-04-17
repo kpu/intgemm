@@ -61,7 +61,7 @@ AVX512F static inline __m256i PermuteSummer(__m512i pack0123, __m512i pack4567) 
 }
 
 // Find the maximum float.
-static inline float MaxFloat32(__m512 a) {
+static inline AVX512DQ float MaxFloat32(__m512 a) {
   return MaxFloat32(max_ps(_mm512_castps512_ps256(a), _mm512_extractf32x8_ps(a, 1)));
 }
 
@@ -353,8 +353,6 @@ template <class WriteC> target inline void Multiply8_SSE2OrAVX2##Integer(const i
   assert(B_cols % 8 == 0); \
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0); \
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0); \
-  assert(reinterpret_cast<uintptr_t>(C) % sizeof(Integer) == 0); \
-  /*Float unquant_reg = set1_ps<Float>(unquant_mult);*/ \
   const int simd_width = width / sizeof(Integer); \
   const Integer *B0_col = reinterpret_cast<const Integer*>(B); \
   /*Go over 8 columns of B at a time.*/ \

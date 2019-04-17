@@ -7,7 +7,9 @@
 #define SSSE3 __attribute__ ((target ("ssse3")))
 #define AVX2 __attribute__ ((target ("avx2")))
 //#define AVX2_512F __attribute__ ((target ("avx2"), target("avx512f"))) //Not supported by clang
-#define AVX512F __attribute__ ((target ("avx512bw")))
+#define AVX512F __attribute__ ((target ("avx512f")))
+#define AVX512BW __attribute__ ((target ("avx512bw")))
+#define AVX512DQ __attribute__ ((target ("avx512dq")))
 
 namespace intgemm {
 

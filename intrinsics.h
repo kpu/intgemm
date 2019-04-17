@@ -93,30 +93,30 @@ AVX2 static inline __m256 mul_ps (__m256 a, __m256 b) {
   return _mm256_mul_ps(a, b);
 }
 
-#ifdef __AVX512BW__
-AVX512F static inline __m512i add_epi32(__m512i first, __m512i second) {
+#ifndef INTGEMM_NO_AVX512
+AVX512BW static inline __m512i add_epi32(__m512i first, __m512i second) {
   return _mm512_add_epi32(first, second);
 }
-template <> inline AVX512F __m512i set1_epi16<__m512i>(int16_t to) {
+template <> inline AVX512BW __m512i set1_epi16<__m512i>(int16_t to) {
   return _mm512_set1_epi16(to);
 }
-template <> inline AVX512F __m512 set1_ps<__m512>(float to) {
+template <> inline AVX512BW __m512 set1_ps<__m512>(float to) {
   return _mm512_set1_ps(to);
 }
-AVX512F static inline __m512i madd_epi16(__m512i first, __m512i second) {
+AVX512BW static inline __m512i madd_epi16(__m512i first, __m512i second) {
   return _mm512_madd_epi16(first, second);
 }
-AVX512F static inline __m512i maddubs_epi16(__m512i first, __m512i second) {
+AVX512BW static inline __m512i maddubs_epi16(__m512i first, __m512i second) {
   return _mm512_maddubs_epi16(first, second);
 }
-AVX512F static inline __m512i abs_epi8(__m512i arg) {
+AVX512BW static inline __m512i abs_epi8(__m512i arg) {
   return _mm512_abs_epi8(arg);
 }
-AVX512F static inline __m512 max_ps(__m512 first, __m512 second) {
+AVX512BW static inline __m512 max_ps(__m512 first, __m512 second) {
   return _mm512_max_ps(first, second);
 }
 // Technically __AVX512DQ__
-AVX512F static inline __m512 and_ps(__m512 first, __m512 second) {
+AVX512DQ static inline __m512 and_ps(__m512 first, __m512 second) {
   return _mm512_and_ps(first, second);
 }
 #endif

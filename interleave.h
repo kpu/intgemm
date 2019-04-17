@@ -59,7 +59,7 @@ template <> AVX2 inline __m256i setzero_si<__m256i>() {
   return _mm256_setzero_si256();
 }
 #ifndef INTGEMM_NO_AVX512
-INTGEMM_INTERLEAVE(AVX512F, __m512i, 512)
+INTGEMM_INTERLEAVE(AVX512BW, __m512i, 512)
 template <> AVX512F inline __m512i setzero_si<__m512i>() {
   return _mm512_setzero_si512();
 }

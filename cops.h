@@ -27,12 +27,12 @@ DEFAULT void JustUnquantizeC::InitRegister(float) {
 }
 
 SSE2 void JustUnquantizeC::InitRegister(float unquant_mult) {
-  //assert(reinterpret_cast<uintptr_t>(C_) % sizeof(__m128) == 0);
+  assert(reinterpret_cast<uintptr_t>(C_) % sizeof(__m128) == 0);
   unquant_mult_128 = _mm_set1_ps(unquant_mult);
 }
 
 AVX2 void JustUnquantizeC::InitRegister(float unquant_mult) {
-  //assert(reinterpret_cast<uintptr_t>(C_) % sizeof(__m256) == 0);
+  assert(reinterpret_cast<uintptr_t>(C_) % sizeof(__m256) == 0);
   unquant_mult_128 = _mm_set1_ps(unquant_mult);
   unquant_mult_256 = _mm256_set1_ps(unquant_mult);
 }

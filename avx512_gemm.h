@@ -49,7 +49,7 @@ SELECT_COL_B_DEF(AVX512F, __m512i)
 // but then the memory written to won't be contiguous anyway so we'd be doing a
 // scatter anyway.  Easier to just read the 8 columns we wanted as 256 bits
 // concatenate.
-AVX512F inline __m512 Concat(const __m256 first, const __m256 second) {
+AVX512DQ inline __m512 Concat(const __m256 first, const __m256 second) {
   // AVX512DQ but that goes with AVX512BW anyway.
   return _mm512_insertf32x8(_mm512_castps256_ps512(first), second, 1);
 }
@@ -68,9 +68,9 @@ class QuantizeTile16 {
   public:
     typedef __m512i Integer;
 
-    explicit QuantizeTile16(float mult) : mult_reg_(_mm512_set1_ps(mult)) {}
+    AVX512F explicit QuantizeTile16(float mult) : mult_reg_(_mm512_set1_ps(mult)) {}
 
-    AVX512F inline __m512i ForReshape(const float *input, Index cols) {
+    AVX512BW inline __m512i ForReshape(const float *input, Index cols) {
       __m512i g0 = QuantizerGrabHalves(input, input + 16 * cols, mult_reg_);
       __m512i g1 = QuantizerGrabHalves(input + 8 * cols, input + 24 * cols, mult_reg_);
       __m512i packed = _mm512_packs_epi32(g0, g1);
@@ -86,9 +86,9 @@ class QuantizeTile8 {
   public:
     typedef __m512i Integer;
 
-    explicit QuantizeTile8(float mult) : mult_reg_(_mm512_set1_ps(mult)) {}
+    AVX512F explicit QuantizeTile8(float mult) : mult_reg_(_mm512_set1_ps(mult)) {}
 
-    AVX512F inline __m512i ForReshape(const float *input, Index cols) {
+    AVX512BW inline __m512i ForReshape(const float *input, Index cols) {
       // TODO: try alternative: _mm512_cvtsepi32_epi8 ?
       const __m512i neg127 = _mm512_set1_epi8(-127);
       // In reverse order: grabbing the first 32-bit values from each 128-bit register, then the second 32-bit values, etc.
@@ -206,7 +206,7 @@ struct AVX512_8bit {
 
   // Special AVX512 implementation due to having 32 registers (so I don't have to
   // allocate registers manually) and no sign instruction.
-  AVX512F static void Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {
+  AVX512BW static void Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {
   typedef __m512i Integer;
   typedef __m256 Float; // For quantization we only do 8 at a time.
   // This is copy-paste from Multiply8_SSE2OrAVX2.
