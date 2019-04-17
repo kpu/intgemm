@@ -3,7 +3,6 @@
 #include "ssse3_gemm.h"
 #include "sse2_gemm.h"
 #include "aligned.h"
-#include "intgemm.h"
 
 #include "3rd_party/catch.hpp"
 

@@ -2,7 +2,6 @@
 #include "types.h"
 #include <cstdint>
 #include <stdint.h>
-#include "cops.h"
 #include "multiply.h"
 // 8 bit is in ssse3_gemm.h
 
@@ -37,6 +36,11 @@ class QuantizeTile16 {
   private:
     const __m128 mult_reg_;
 };
+
+// Technically only requires SSE
+
+MAXABS_DEFINE(__m128, SSE2)
+
 } //namespace
 // This should be pure SSE2 (and below).
 struct SSE2_16bit {
@@ -84,10 +88,5 @@ struct SSE2_16bit {
 
   static const CPUType kUses = CPU_SSE2;
 };
-
-// Technically only requires SSE
-SSE2 float SSE2_MaxAbsolute(const float *begin_float, const float *end_float) {
-  MAXABS_DEFINE(__m128)
-}
 
 } // namespace intgemm

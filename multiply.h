@@ -428,7 +428,8 @@ template <class Register> inline static float MaxAbsoluteBackend(const float *be
 
   return MaxFloat32(highest);
 }*/
-#define MAXABS_DEFINE(Register) \
+#define MAXABS_DEFINE(Register, target) \
+target static float MaxAbsolute(const float *begin_float, const float *end_float) { \
   assert(end_float > begin_float); \
   assert((end_float - begin_float) % (sizeof(Register) / sizeof(float)) == 0); \
   const Register *begin = reinterpret_cast<const Register*>(begin_float); \
@@ -442,5 +443,6 @@ template <class Register> inline static float MaxAbsoluteBackend(const float *be
     highest = max_ps(highest, reg); \
   } \
   return MaxFloat32(highest); \
+} \
 
 } // namespace intgemm

@@ -9,7 +9,6 @@
 
 #include "interleave.h"
 #include "multiply.h"
-#include "cops.h"
 
 #include "types.h"
 
@@ -113,6 +112,8 @@ class QuantizeTile8 {
   private:
     const __m512 mult_reg_;
 };
+
+MAXABS_DEFINE(__m512, AVX512F)
 
 } // namespace
 
@@ -324,9 +325,5 @@ struct AVX512_8bit {
 
   static const CPUType kUses = CPU_AVX512BW;
 };
-
-AVX512F float AVX512_MaxAbsolute(const float *begin_float, const float *end_float) {
-  MAXABS_DEFINE(__m512)
-}
 
 } // namespace intgemm

@@ -48,6 +48,7 @@
 #include "sse2_gemm.h"
 #include "ssse3_gemm.h"
 #include "avx2_gemm.h"
+#include "cops.h"
 #ifndef INTGEMM_NO_AVX512
 #include "avx512_gemm.h"
 #endif
@@ -242,7 +243,7 @@ const CPUType kCPU = ChooseCPU(CPU_AVX512BW, CPU_AVX2, CPU_SSSE3, CPU_SSE2, CPU_
 
 // Get the maximum absolute value of an array of floats.  The number of floats must be a multiple of 16 and 64-byte aligned.
 extern float (*MaxAbsolute)(const float *begin, const float *end);
-float (*MaxAbsolute)(const float *begin, const float *end) = ChooseCPU(AVX512_MaxAbsolute, AVX2_MaxAbsolute, SSE2_MaxAbsolute, SSE2_MaxAbsolute, Unsupported_MaxAbsolute);
+float (*MaxAbsolute)(const float *begin, const float *end) = ChooseCPU(avx512f::MaxAbsolute, avx2::MaxAbsolute, sse2::MaxAbsolute, sse2::MaxAbsolute, Unsupported_MaxAbsolute);
 
 
 } // namespace intgemm

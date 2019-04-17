@@ -39,7 +39,7 @@ void BenchmarkMaxAbsolute() {
   }
   {
     StopWatch w(stats);
-    result = AVX2_MaxAbsolute(v.get(), v.get() + size);
+    result = avx2::MaxAbsolute(v.get(), v.get() + size);
   }
   std::cout << "MaxAbsolute baseline = " << stats[0] << " optimized = " << stats[1] << " speedup = " << ((float)stats[0] / (float)stats[1])<< '\n';
 

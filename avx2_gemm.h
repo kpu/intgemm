@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <stdint.h>
 
-#include "cops.h"
 #include "interleave.h"
 #include "multiply.h"
 
@@ -141,6 +140,10 @@ class QuantizeTile8 {
     
     const __m256 mult_;
 };
+
+// Technically only requires AVX
+MAXABS_DEFINE(__m256, AVX2)
+
 } // namespace
 
 struct AVX2_8bit {
@@ -187,10 +190,5 @@ struct AVX2_8bit {
 
   static const CPUType kUses = CPU_AVX2;
 };
-
-// Technically only requires AVX
-AVX2 float AVX2_MaxAbsolute(const float *begin_float, const float *end_float) {
-  MAXABS_DEFINE(__m256)
-}
 
 } // namespace intgemm

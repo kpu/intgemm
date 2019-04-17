@@ -2,6 +2,7 @@
 #include "avx2_gemm.h"
 #include "ssse3_gemm.h"
 #include "sse2_gemm.h"
+#include "cops.h"
 #include "intgemm.h"
 #include "aligned.h"
 #include "interleave.h"
@@ -260,12 +261,19 @@ template <float (*Backend) (const float *, const float *)> void TestMaxAbsolute(
 
 TEST_CASE("MaxAbsolute SSE2", "[max]") {
   if (kCPU < CPU_SSE2) return;
-  TestMaxAbsolute<SSE2_MaxAbsolute>();
+  TestMaxAbsolute<sse2::MaxAbsolute>();
 }
 
 TEST_CASE("MaxAbsolute AVX2", "[max]") {
   if (kCPU < CPU_AVX2) return;
-  TestMaxAbsolute<AVX2_MaxAbsolute>();;
+  TestMaxAbsolute<avx2::MaxAbsolute>();
+}
+
+TEST_CASE("MaxAbsolute AVX512F", "[max]") {
+  if (kCPU < CPU_AVX512BW) return;
+  #ifndef INTGEMM_NO_AVX512
+  TestMaxAbsolute<avx512f::MaxAbsolute>();
+  #endif
 }
 
 // Based on https://arxiv.org/abs/1705.01991
