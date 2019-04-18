@@ -25,7 +25,7 @@ endif()
 
 if (NOT AVX512)
   message("${Orange}Not building AVX512-based multiplication because your compiler is too old.\nFor details rerun cmake with --debug-trycompile then try to build in compile_tests/CMakeFiles/CMakeTmp.${ColourReset}")
-  set_source_files_properties(intgemm.cc test/quantize_test.cc test/multiply_test.cc benchmark.cc PROPERTIES COMPILE_DEFINITIONS "INTGEMM_NO_AVX512")
+  set_source_files_properties(example.cc test/quantize_test.cc test/multiply_test.cc benchmark.cc PROPERTIES COMPILE_DEFINITIONS "INTGEMM_NO_AVX512")
 endif()
 
 foreach(exe example benchmark)
