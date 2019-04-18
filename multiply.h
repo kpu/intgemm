@@ -135,15 +135,14 @@ PACK_DEFINE(AVX512F, __m512i)
 // width must be a multiple of the register size.
 // B_cols must be a multiple of 8.
 // Multiply16
-#define MULTIPLY16_define(Integer, target) \
-  template <class WriteC> target static void Multiply(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) { \
+#define MULTIPLY16_define(Integer, target, WriteCSubType) \
+  template <class WriteC> target static void Multiply(const int16_t *A, const int16_t *B, WriteC C, Index A_rows, Index width, Index B_cols) { \
   assert(width % (sizeof(Integer) / sizeof(int16_t)) == 0); \
   assert(B_cols % 8 == 0); \
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0); \
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0); \
-  /*assert(reinterpret_cast<uintptr_t>(C) % sizeof(Integer) == 0); Moved to WriteC*/ \
   const int simd_width = width / (sizeof(Integer) / sizeof(int16_t)); \
-  /*const Float unquant_reg = set1_ps<Float>(unquant_mult); moved to WriteC*/ \
+  typename WriteC::WriteCSubType write_C(C); \
   const Integer *B0_col = reinterpret_cast<const Integer *>(B); \
   for (int B0_colidx = 0; B0_colidx < B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
     /* Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.*/ \
@@ -187,7 +186,7 @@ PACK_DEFINE(AVX512F, __m512i)
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
       /*The specific implementation may need to reduce further.*/ \
       auto total = PermuteSummer(pack0123, pack4567); \
-      functor(A_rowidx, B_cols, B0_colidx, total); \
+      write_C(A_rowidx, B_cols, B0_colidx, total); \
     } \
   } \
 } \
@@ -340,14 +339,15 @@ SSSE3 inline static void InnerSSSE3(
   sum7 = adds_epi16(sum7, maddubs_epi16(a_positive, sign_epi8(b[7], a)));
 }
 //AVX2 or SSSE3 multiply
-#define MULTIPLY8_define(Integer, target) \
-template <class WriteC> target static void Multiply(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) { \
+#define MULTIPLY8_define(Integer, target, WriteCSubType) \
+template <class WriteC> target static void Multiply(const int8_t *A, const int8_t *B, WriteC C, Index A_rows, Index width, Index B_cols) { \
   assert(width % sizeof(Integer) == 0); \
   assert(B_cols % 8 == 0); \
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0); \
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0); \
   const int simd_width = width / sizeof(Integer); \
   const Integer *B0_col = reinterpret_cast<const Integer*>(B); \
+  typename WriteC::WriteCSubType c_writer(C); \
   /*Go over 8 columns of B at a time.*/ \
   for (int B0_colidx = 0; B0_colidx != B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
     /*Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.*/ \
@@ -403,7 +403,7 @@ template <class WriteC> target static void Multiply(const int8_t *A, const int8_
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
       auto total = PermuteSummer(pack0123, pack4567); \
       /*WriteC(C + A_rowidx * B_cols + B0_colidx, total, unquant_reg);*/ \
-      functor(A_rowidx, B_cols, B0_colidx, total); \
+      c_writer(A_rowidx, B_cols, B0_colidx, total); \
     } \
   } \
 } \

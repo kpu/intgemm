@@ -65,11 +65,6 @@ struct SSE2_16bit {
   // Tile size for B; B must be a multiple of this block size.
   static const Index kBTileRow = 8;
   static const Index kBTileCol = 8;
-/*
-  SSE2 static void PrepareB(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) {
-    //TODO #DEFINE
-    PrepareBFor16(input, output, sse2::QuantizeTile16(quant_mult), rows, cols);
-  }*/
 
   PREPARE_B_16_DEF(SSE2, sse2::QuantizeTile16)
 
@@ -77,12 +72,7 @@ struct SSE2_16bit {
     //TODO #DEFINE
     sse2::SelectColumnsOfB((const __m128i*)input, (__m128i*)output, rows * 2, cols_begin, cols_end);
   }
-/*
-  SSE2 static void Multiply(const int16_t *A, const int16_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {
-    //TODO #DEFINE
-    Multiply16__m128i<JustUnquantizeC> (A, B, JustUnquantizeC(C, unquant_mult), A_rows, width, B_cols);
-  }*/
-  MULTIPLY16_define(__m128i, SSE2)
+  MULTIPLY16_define(__m128i, SSE2, OnSSE2)
 
   constexpr static const char *const kName = "16-bit SSE2";
 

@@ -102,7 +102,7 @@ struct SSSE3_8bit {
     //Multiply8_SSE2OrAVX2<Multiply8_C, __m128i, __m128>(A, B, C, unquant_mult, A_rows, width, B_cols);
     Multiply8_SSE2OrAVX2__m128i<JustUnquantizeC>(A, B, JustUnquantizeC(C, unquant_mult), A_rows, width, B_cols);
   }*/
-  MULTIPLY8_define(__m128i, SSSE3)
+  MULTIPLY8_define(__m128i, SSSE3, OnSSE2)
   
   constexpr static const char *const kName = "8-bit SSSE3";
 
