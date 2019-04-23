@@ -165,19 +165,45 @@ int main(int argc, char ** argv) {
 
   BackendStats stats;
   const int kSamples = 100;
-  // Run samples far apart to reduce temporary noise.
+  // Realistically, we don't expect different architectures or different precisions to run in the
+  // same run of an application. Benchmark per architecture and per precision level.
+  std::cerr << "SSSE3 8bit, 100 samples..." << std::endl;
   for (int samples = 0; samples < kSamples; ++samples) {
-    std::cerr << "Sample " << samples << " / " << kSamples << std::endl;
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
     RunAll<SSSE3_8bit>(matrices, end, stats.ssse3_8bit);
-    RunAll<SSE2_16bit>(matrices, end, stats.sse2_16bit);
-    RunAll<AVX2_8bit>(matrices, end, stats.avx2_8bit);
-    RunAll<AVX2_16bit>(matrices, end, stats.avx2_16bit);
-#ifndef INTGEMM_NO_AVX512
-    RunAll<AVX512_8bit>(matrices, end, stats.avx512_8bit);
-    RunAll<AVX512_16bit>(matrices, end, stats.avx512_16bit);
-#endif
   }
+
+  std::cerr << "SSE2 16bit, 100 samples..." << std::endl;
+  for (int samples = 0; samples < kSamples; ++samples) {
+    RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
+    RunAll<SSE2_16bit>(matrices, end, stats.sse2_16bit);
+  }
+
+  std::cerr << "AVX2 8bit, 100 samples..." << std::endl;
+  for (int samples = 0; samples < kSamples; ++samples) {
+    RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
+    RunAll<AVX2_8bit>(matrices, end, stats.avx2_8bit);
+  }
+
+  std::cerr << "AVX2 16bit, 100 samples..." << std::endl;
+  for (int samples = 0; samples < kSamples; ++samples) {
+    RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
+    RunAll<AVX2_16bit>(matrices, end, stats.avx2_16bit);
+  }
+
+#ifndef INTGEMM_NO_AVX512
+  std::cerr << "AVX512 8bit, 100 samples..." << std::endl;
+  for (int samples = 0; samples < kSamples; ++samples) {
+    RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
+    RunAll<AVX512_8bit>(matrices, end, stats.avx512_8bit);
+  }
+
+  std::cerr << "AVX512 16bit, 100 samples..." << std::endl;
+  for (int samples = 0; samples < kSamples; ++samples) {
+    RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
+    RunAll<AVX512_16bit>(matrices, end, stats.avx512_16bit);
+  }
+#endif
 
   if (stats.sse2_16bit.empty()) {
     std::cerr << "No CPU support." << std::endl;
