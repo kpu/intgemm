@@ -46,4 +46,45 @@ class JustUnquantizeC {
     float unquant_mult_;
 };
 
+class Identity {
+  public:
+    //We reinterpret to int * because we only care about having the correct pointer arithmetic
+    //when calculating the write address
+    Identity(int16_t *C) : C_(reinterpret_cast<int *>(C)) {}
+    Identity(int8_t *C) : C_(reinterpret_cast<int *>(C)) {}
+
+    class OnSSE2 {
+      public:
+        SSE2 explicit OnSSE2(const Identity &from)
+          : C_(from.C_) {
+          assert(reinterpret_cast<uintptr_t>(C_) % sizeof(__m128i) == 0);
+         }
+
+        SSE2 inline void operator()(Index rowIDX, Index cols, Index colIDX, MultiplyResult128 result) {
+          _mm_storeu_si128(reinterpret_cast<__m128i*>(C_ + rowIDX*cols + colIDX), result.pack0123);
+          _mm_storeu_si128(reinterpret_cast<__m128i*>(C_ + rowIDX*cols + colIDX + 4), result.pack4567);
+        }
+      private:
+        int *C_;
+    };
+
+    class OnAVX2 {
+      public:
+        AVX2 explicit OnAVX2(const Identity &from)
+          : C_(from.C_) {
+          assert(reinterpret_cast<uintptr_t>(C_) % sizeof(__m256i) == 0);
+        }
+
+        AVX2 inline void operator()(Index rowIDX, Index cols, Index colIDX, __m256i result) {
+          _mm256_storeu_si256(reinterpret_cast<__m256i*>(C_ + rowIDX*cols + colIDX), result);
+        }
+
+      private:
+        int *C_;
+    };
+
+  private:
+    int *C_;
+};
+
 } //Namespace
