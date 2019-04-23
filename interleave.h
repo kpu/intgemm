@@ -60,7 +60,8 @@ template <> AVX2 inline __m256i setzero_si<__m256i>() {
 }
 #ifndef INTGEMM_NO_AVX512
 INTGEMM_INTERLEAVE(AVX512BW, __m512i, 512)
-template <> AVX512F inline __m512i setzero_si<__m512i>() {
+/* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
+template <> AVX512BW inline __m512i setzero_si<__m512i>() {
   return _mm512_setzero_si512();
 }
 #endif
@@ -75,7 +76,8 @@ target static inline void Swap(Register &a, Register &b) { \
 SWAP_DEFINE(SSE2, __m128i)
 SWAP_DEFINE(AVX2, __m256i)
 #ifndef INTGEMM_NO_AVX512
-SWAP_DEFINE(AVX512F, __m512i)
+/* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
+SWAP_DEFINE(AVX512BW, __m512i)
 #endif
 
 /* Transpose registers containing 8 packed 16-bit integers.
@@ -127,7 +129,8 @@ target static inline void Transpose16InLane(Register &r0, Register &r1, Register
 TRANSPOSE16_DEFINE(SSE2, __m128i)
 TRANSPOSE16_DEFINE(AVX2, __m256i)
 #ifndef INTGEMM_NO_AVX512
-TRANSPOSE16_DEFINE(AVX512F, __m512i)
+/* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
+TRANSPOSE16_DEFINE(AVX512BW, __m512i)
 #endif
 
 /* Tranpose registers containing 16 packed 8-bit integers.

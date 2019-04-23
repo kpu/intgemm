@@ -23,13 +23,6 @@ SSE2 static inline MultiplyResult128 PermuteSummer(__m128i pack0123, __m128i pac
   return ret;
 }
 
-// Complete any reduction, multiply by scaling, and write to memory.
-SSE2 static inline void WriteC(float *to, MultiplyResult128 total, __m128 unquant_reg) {
-  // Convert to float, multiply by unquant, and write.
-  *reinterpret_cast<__m128*>(to) = mul_ps(cvtepi32_ps(total.pack0123), unquant_reg);
-  *reinterpret_cast<__m128*>(to + 4) = mul_ps(cvtepi32_ps(total.pack4567), unquant_reg);
-}
-
 AVX2 static inline float MaxFloat32(__m256 a) {
   return MaxFloat32(max_ps(_mm256_castps256_ps128(a), _mm256_extractf128_ps(a, 1)));
 }
@@ -42,14 +35,9 @@ AVX2 static inline __m256i PermuteSummer(__m256i pack0123, __m256i pack4567) {
   return _mm256_add_epi32(rev, blended);
 }
 
-AVX2 static inline void WriteC(float *to, __m256i total, __m256 unquant_reg) {
-  // Convert to float, multiply by unquant, and write.
-  *reinterpret_cast<__m256*>(to) = mul_ps(cvtepi32_ps(total), unquant_reg);
-}
-
 #ifndef INTGEMM_NO_AVX512
-
-AVX512F static inline __m256i PermuteSummer(__m512i pack0123, __m512i pack4567) {
+/* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
+AVX512BW static inline __m256i PermuteSummer(__m512i pack0123, __m512i pack4567) {
   // Form [0th 128-bit register of pack0123, 0st 128-bit register of pack4567, 2nd 128-bit register of pack0123, 2nd 128-bit register of pack4567]
   __m512i mix0 = _mm512_mask_permutex_epi64(pack0123, 0xcc, pack4567, (0 << 4) | (1 << 6));
   // Form [1st 128-bit register of pack0123, 1st 128-bit register of pack4567, 3rd 128-bit register of pack0123, 3rd 128-bit register of pack4567]
@@ -95,7 +83,8 @@ target inline Register Pack0123(Register sum0, Register sum1, Register sum2, Reg
 PACK_DEFINE(SSE2, __m128i)
 PACK_DEFINE(AVX2, __m256i)
 #ifndef INTGEMM_NO_AVX512
-PACK_DEFINE(AVX512F, __m512i)
+/* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
+PACK_DEFINE(AVX512BW, __m512i)
 #endif
 
 // 16-bit multiplier for SSE2, AVX2, and AVX512.

@@ -33,14 +33,16 @@ namespace intgemm {
 namespace avx512f {
 
 // Load from memory, multiply, and convert to int32_t.
-AVX512F inline __m512i QuantizerGrab(const float *input, const __m512 quant_mult_reg) {
+/* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
+AVX512BW inline __m512i QuantizerGrab(const float *input, const __m512 quant_mult_reg) {
   // Multiply each by the quantization factor.
   __m512 val = _mm512_mul_ps(*reinterpret_cast<const __m512*>(input), quant_mult_reg);
   // Cast to 32-bit int
   return _mm512_cvtps_epi32(val);
 }
 
-SELECT_COL_B_DEF(AVX512F, __m512i)
+/* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
+SELECT_COL_B_DEF(AVX512BW, __m512i)
 
 // For PrepareB we want to read 8 columns at a time.  When converting 32-bit
 // floats to 8-bit values, that's 32 bytes of floats.  But AVX512 is 64 bytes
@@ -54,7 +56,8 @@ AVX512DQ inline __m512 Concat(const __m256 first, const __m256 second) {
 }
 
 // Like QuantizerGrab, but allows 32-byte halves (i.e. 8 columns) to be controlled independently.
-AVX512F inline __m512i QuantizerGrabHalves(const float *input0, const float *input1, const __m512 quant_mult_reg) {
+/* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
+AVX512BW inline __m512i QuantizerGrabHalves(const float *input0, const float *input1, const __m512 quant_mult_reg) {
   __m512 appended = avx512f::Concat(*reinterpret_cast<const __m256*>(input0), *reinterpret_cast<const __m256*>(input1));
   appended = _mm512_mul_ps(appended, quant_mult_reg);
   return _mm512_cvtps_epi32(appended);
@@ -67,7 +70,8 @@ class QuantizeTile16 {
   public:
     typedef __m512i Integer;
 
-    AVX512F explicit QuantizeTile16(float mult) : mult_reg_(_mm512_set1_ps(mult)) {}
+    /* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
+    AVX512BW explicit QuantizeTile16(float mult) : mult_reg_(_mm512_set1_ps(mult)) {}
 
     AVX512BW inline __m512i ForReshape(const float *input, Index cols) {
       __m512i g0 = QuantizerGrabHalves(input, input + 16 * cols, mult_reg_);
@@ -85,7 +89,8 @@ class QuantizeTile8 {
   public:
     typedef __m512i Integer;
 
-    AVX512F explicit QuantizeTile8(float mult) : mult_reg_(_mm512_set1_ps(mult)) {}
+    /* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
+    AVX512BW explicit QuantizeTile8(float mult) : mult_reg_(_mm512_set1_ps(mult)) {}
 
     AVX512BW inline __m512i ForReshape(const float *input, Index cols) {
       // TODO: try alternative: _mm512_cvtsepi32_epi8 ?
@@ -113,7 +118,8 @@ class QuantizeTile8 {
     const __m512 mult_reg_;
 };
 
-MAXABS_DEFINE(__m512, AVX512F)
+/* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
+MAXABS_DEFINE(__m512, AVX512BW)
 
 } // namespace
 
@@ -122,7 +128,8 @@ struct AVX512_16bit {
 
   // Currently A is prepared by quantization but this could theoretically change.
   // rows * cols must be a multiple of 16.
-  AVX512F static inline void PrepareA(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) {
+  /* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
+  AVX512BW static inline void PrepareA(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) {
     Quantize(input, output, quant_mult, rows * cols);
   }
 
@@ -130,7 +137,8 @@ struct AVX512_16bit {
   // But then it will need to be aligned for Multiply.
   // size must be a multiple of 16.
   // Convert to 16-bit signed integers.
-  AVX512F static void Quantize(const float *input, int16_t *output, float quant_mult, Index size) {
+  /* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
+  AVX512BW static void Quantize(const float *input, int16_t *output, float quant_mult, Index size) {
     assert(size % 16 == 0);
     assert(reinterpret_cast<uintptr_t>(input) % 64 == 0);
     // Fill with the quantization multiplier.
@@ -151,13 +159,16 @@ struct AVX512_16bit {
     PrepareBFor16(input, output, avx512f::QuantizeTile16(quant_mult), rows, cols);
   }
 */
-  PREPARE_B_16_DEF(AVX512F, avx512f::QuantizeTile16)
+  /* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
+  PREPARE_B_16_DEF(AVX512BW, avx512f::QuantizeTile16)
 
-  AVX512F static void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
+  /* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
+  AVX512BW static void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     avx512f::SelectColumnsOfB((const __m512i*)input, (__m512i*)output, rows * 2, cols_begin, cols_end);
   }
   
-  MULTIPLY16_define(__m512i, AVX512F, OnAVX2)
+  /* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
+  MULTIPLY16_define(__m512i, AVX512BW, OnAVX2)
 
   constexpr static const char *const kName = "16-bit AVX512";
 
@@ -168,14 +179,16 @@ struct AVX512_8bit {
   typedef int8_t Integer;
 
   // Currently A is prepared by quantization but this could theoretically change.
-  AVX512F static inline void PrepareA(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
+  /* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
+  AVX512BW static inline void PrepareA(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
     Quantize(input, output, quant_mult, rows * cols);
   }
 
   // Technically output can be unaligned in Quantize.
   // But then it will need to be aligned for Multiply.
   // Convert to 8-bit signed integers.
-  AVX512F static void Quantize(const float *input, int8_t *output, float quant_mult, Index size) {
+  /* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
+  AVX512BW static void Quantize(const float *input, int8_t *output, float quant_mult, Index size) {
     assert(size % 16 == 0);
     assert(reinterpret_cast<uintptr_t>(input) % 64 == 0);
     const __m512i neg127 = _mm512_set1_epi32(-127);
@@ -196,9 +209,11 @@ struct AVX512_8bit {
   AVX512F static void PrepareB(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
     PrepareBFor8(input, output, avx512f::QuantizeTile8(quant_mult), rows, cols);
   }*/
-  PREPARE_B_8_DEF(AVX512F, avx512f::QuantizeTile8)
+  /* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
+  PREPARE_B_8_DEF(AVX512BW, avx512f::QuantizeTile8)
 
-  AVX512F static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
+  /* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
+  AVX512BW static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     avx512f::SelectColumnsOfB((const __m512i*)input, (__m512i*)output, rows, cols_begin, cols_end);
   }
 
