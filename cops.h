@@ -48,10 +48,7 @@ class JustUnquantizeC {
 
 class Identity {
   public:
-    //We reinterpret to int * because we only care about having the correct pointer arithmetic
-    //when calculating the write address
-    Identity(int16_t *C) : C_(reinterpret_cast<int *>(C)) {}
-    Identity(int8_t *C) : C_(reinterpret_cast<int *>(C)) {}
+    Identity(int *C) : C_(C) {}
 
     class OnSSE2 {
       public:
