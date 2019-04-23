@@ -48,7 +48,7 @@ class JustUnquantizeC {
 
 class Identity {
   public:
-    Identity(int *C) : C_(C) {}
+    Identity(int32_t *C) : C_(C) {}
 
     class OnSSE2 {
       public:
@@ -62,7 +62,7 @@ class Identity {
           _mm_storeu_si128(reinterpret_cast<__m128i*>(C_ + rowIDX*cols + colIDX + 4), result.pack4567);
         }
       private:
-        int *C_;
+        int32_t *C_;
     };
 
     class OnAVX2 {
@@ -77,11 +77,11 @@ class Identity {
         }
 
       private:
-        int *C_;
+        int32_t *C_;
     };
 
   private:
-    int *C_;
+    int32_t *C_;
 };
 
 } //Namespace
