@@ -70,7 +70,7 @@ template <class Register> inline Register Pack0123(Register sum0, Register sum1,
   return add_epi32(pack01, pack23);
 }
  */
-#define PACK_DEFINE(target, Register) \
+#define PACK0123_DEFINE(target, Register) \
 target inline Register Pack0123(Register sum0, Register sum1, Register sum2, Register sum3) { \
   Interleave32(sum0, sum1); \
   Register pack01 = add_epi32(sum0, sum1); \
@@ -80,11 +80,11 @@ target inline Register Pack0123(Register sum0, Register sum1, Register sum2, Reg
   return add_epi32(pack01, pack23); \
 } \
 
-PACK_DEFINE(SSE2, __m128i)
-PACK_DEFINE(AVX2, __m256i)
+PACK0123_DEFINE(SSE2, __m128i)
+PACK0123_DEFINE(AVX2, __m256i)
 #ifndef INTGEMM_NO_AVX512
 /* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
-PACK_DEFINE(AVX512BW, __m512i)
+PACK0123_DEFINE(AVX512BW, __m512i)
 #endif
 
 // 16-bit multiplier for SSE2, AVX2, and AVX512.
@@ -124,7 +124,7 @@ PACK_DEFINE(AVX512BW, __m512i)
 // width must be a multiple of the register size.
 // B_cols must be a multiple of 8.
 // Multiply16
-#define MULTIPLY16_define(Integer, target, WriteCSubType) \
+#define MULTIPLY16_DEFINE(Integer, target, WriteCSubType) \
   template <class WriteC> target static void Multiply(const int16_t *A, const int16_t *B, WriteC C, Index A_rows, Index width, Index B_cols) { \
   assert(width % (sizeof(Integer) / sizeof(int16_t)) == 0); \
   assert(B_cols % 8 == 0); \
@@ -328,7 +328,7 @@ SSSE3 inline static void InnerSSSE3(
   sum7 = adds_epi16(sum7, maddubs_epi16(a_positive, sign_epi8(b[7], a)));
 }
 //AVX2 or SSSE3 multiply
-#define MULTIPLY8_define(Integer, target, WriteCSubType) \
+#define MULTIPLY8_DEFINE(Integer, target, WriteCSubType) \
 template <class WriteC> target static void Multiply(const int8_t *A, const int8_t *B, WriteC C, Index A_rows, Index width, Index B_cols) { \
   assert(width % sizeof(Integer) == 0); \
   assert(B_cols % 8 == 0); \
@@ -417,7 +417,7 @@ template <class Register> inline static float MaxAbsoluteBackend(const float *be
 
   return MaxFloat32(highest);
 }*/
-#define MAXABS_DEFINE(Register, target) \
+#define MAXABSOLUTE_DEFINE(Register, target) \
 target static float MaxAbsolute(const float *begin_float, const float *end_float) { \
   assert(end_float > begin_float); \
   assert((end_float - begin_float) % (sizeof(Register) / sizeof(float)) == 0); \

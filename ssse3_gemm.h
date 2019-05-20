@@ -17,7 +17,7 @@ SSSE3 inline __m128i QuantizerGrab(const float *input, const __m128 quant_mult_r
   return _mm_cvtps_epi32(_mm_mul_ps(*reinterpret_cast<const __m128*>(input), quant_mult_reg));
 }
 
-SELECT_COL_B_DEF(SSSE3, __m128i)
+SELECT_COL_B_DEFINE(SSSE3, __m128i)
 
 class QuantizeTile8 {
   public:
@@ -92,7 +92,7 @@ struct SSSE3_8bit {
   SSSE3 static void PrepareB(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
     PrepareBFor8(input, output, ssse3::QuantizeTile8(quant_mult), rows, cols);
   }*/
-  PREPARE_B_8_DEF(SSSE3, ssse3::QuantizeTile8)
+  PREPARE_B_8_DEFINE(SSSE3, ssse3::QuantizeTile8)
 
   SSSE3 static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     ssse3::SelectColumnsOfB((const __m128i*)input, (__m128i*)output, rows, cols_begin, cols_end);
@@ -102,7 +102,7 @@ struct SSSE3_8bit {
     //Multiply8_SSE2OrAVX2<Multiply8_C, __m128i, __m128>(A, B, C, unquant_mult, A_rows, width, B_cols);
     Multiply8_SSE2OrAVX2__m128i<JustUnquantizeC>(A, B, JustUnquantizeC(C, unquant_mult), A_rows, width, B_cols);
   }*/
-  MULTIPLY8_define(__m128i, SSSE3, OnSSE2)
+  MULTIPLY8_DEFINE(__m128i, SSSE3, OnSSE2)
   
   constexpr static const char *const kName = "8-bit SSSE3";
 

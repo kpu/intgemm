@@ -14,7 +14,7 @@ SSE2 inline __m128i QuantizerGrab(const float *input, const __m128 quant_mult_re
   return _mm_cvtps_epi32(_mm_mul_ps(*reinterpret_cast<const __m128*>(input), quant_mult_reg));
 }
 
-SELECT_COL_B_DEF(SSE2, __m128i)
+SELECT_COL_B_DEFINE(SSE2, __m128i)
 
 class QuantizeTile16 {
   public:
@@ -39,7 +39,7 @@ class QuantizeTile16 {
 
 // Technically only requires SSE
 
-MAXABS_DEFINE(__m128, SSE2)
+MAXABSOLUTE_DEFINE(__m128, SSE2)
 
 } //namespace
 // This should be pure SSE2 (and below).
@@ -66,13 +66,13 @@ struct SSE2_16bit {
   static const Index kBTileRow = 8;
   static const Index kBTileCol = 8;
 
-  PREPARE_B_16_DEF(SSE2, sse2::QuantizeTile16)
+  PREPARE_B_16_DEFINE(SSE2, sse2::QuantizeTile16)
 
   SSE2 static void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     //TODO #DEFINE
     sse2::SelectColumnsOfB((const __m128i*)input, (__m128i*)output, rows * 2, cols_begin, cols_end);
   }
-  MULTIPLY16_define(__m128i, SSE2, OnSSE2)
+  MULTIPLY16_DEFINE(__m128i, SSE2, OnSSE2)
 
   constexpr static const char *const kName = "16-bit SSE2";
 

@@ -17,7 +17,7 @@ AVX2 inline __m256i QuantizerGrab(const float *input, const __m256 quant_mult_re
   return _mm256_cvtps_epi32(_mm256_mul_ps(*reinterpret_cast<const __m256*>(input), quant_mult_reg));
 }
 
-SELECT_COL_B_DEF(AVX2, __m256i)
+SELECT_COL_B_DEFINE(AVX2, __m256i)
 
 class QuantizeTile16 {
   public:
@@ -76,13 +76,13 @@ struct AVX2_16bit {
   AVX2 static void PrepareB(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) {
     PrepareBFor16(input, output, avx2::QuantizeTile16(quant_mult), rows, cols);
   }*/
-  PREPARE_B_16_DEF(AVX2, avx2::QuantizeTile16)
+  PREPARE_B_16_DEFINE(AVX2, avx2::QuantizeTile16)
 
   AVX2 static void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     avx2::SelectColumnsOfB((const __m256i*)input, (__m256i*)output, rows * 2, cols_begin, cols_end);
   }
   
-  MULTIPLY16_define(__m256i, AVX2, OnAVX2)
+  MULTIPLY16_DEFINE(__m256i, AVX2, OnAVX2)
 
   constexpr static const char *const kName = "16-bit AVX2";
 
@@ -138,7 +138,7 @@ class QuantizeTile8 {
 };
 
 // Technically only requires AVX
-MAXABS_DEFINE(__m256, AVX2)
+MAXABSOLUTE_DEFINE(__m256, AVX2)
 
 } // namespace
 
@@ -170,7 +170,7 @@ struct AVX2_8bit {
     PrepareBFor8(input, output, avx2::QuantizeTile8(quant_mult), rows, cols);
   }*/
 
-  PREPARE_B_8_DEF(AVX2, avx2::QuantizeTile8)
+  PREPARE_B_8_DEFINE(AVX2, avx2::QuantizeTile8)
 
   AVX2 static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     avx2::SelectColumnsOfB((const __m256i*)input, (__m256i*)output, rows, cols_begin, cols_end);
@@ -180,7 +180,7 @@ struct AVX2_8bit {
     //Multiply8_SSE2OrAVX2<Multiply8_AVXAVX2, __m256i, __m256>(A, B, C, unquant_mult, A_rows, width, B_cols);
     Multiply8_SSE2OrAVX2__m256i<JustUnquantizeC>(A, B, JustUnquantizeC(C, unquant_mult), A_rows, width, B_cols);
   }*/
-  MULTIPLY8_define(__m256i, AVX2, OnAVX2)
+  MULTIPLY8_DEFINE(__m256i, AVX2, OnAVX2)
   
   constexpr static const char *const kName = "8-bit AVX2";
 

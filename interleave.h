@@ -209,7 +209,7 @@ template <class Register> static inline void Transpose8InLane(
 // 256 272
 // 257 273
 // ... ...
-#define PREPARE_B_8_DEF(target, QuantClass) \
+#define PREPARE_B_8_DEFINE(target, QuantClass) \
 target static inline void PrepareB(const float *input, int8_t *output_shadow, float quant_mult, Index rows, Index cols) { \
   typedef typename QuantClass Quantizer; \
   typedef typename Quantizer::Integer Register; \
@@ -244,7 +244,7 @@ target static inline void PrepareB(const float *input, int8_t *output_shadow, fl
   } \
 } \
 
-#define PREPARE_B_16_DEF(target, QuantClass) \
+#define PREPARE_B_16_DEFINE(target, QuantClass) \
 target static inline void PrepareB(const float *input, int16_t *output_shadow, float quant_mult, Index rows, Index cols) { \
   typedef typename QuantClass Quantizer; \
   typedef typename Quantizer::Integer Register; \
@@ -267,7 +267,7 @@ target static inline void PrepareB(const float *input, int16_t *output_shadow, f
 
 /* Select columns of B from PrepareB format to PrepareB format.
  */
-#define SELECT_COL_B_DEF(target, Register) \
+#define SELECT_COL_B_DEFINE(target, Register) \
 target static inline void SelectColumnsOfB(const Register *input, Register *output, Index rows_bytes /* number of bytes in a row */, const Index *cols_begin, const Index *cols_end) { \
   assert(rows_bytes % sizeof(Register) == 0); \
   assert((cols_end - cols_begin) % 8 == 0);  \

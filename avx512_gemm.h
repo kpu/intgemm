@@ -42,7 +42,7 @@ AVX512BW inline __m512i QuantizerGrab(const float *input, const __m512 quant_mul
 }
 
 /* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
-SELECT_COL_B_DEF(AVX512BW, __m512i)
+SELECT_COL_B_DEFINE(AVX512BW, __m512i)
 
 // For PrepareB we want to read 8 columns at a time.  When converting 32-bit
 // floats to 8-bit values, that's 32 bytes of floats.  But AVX512 is 64 bytes
@@ -119,7 +119,7 @@ class QuantizeTile8 {
 };
 
 /* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
-MAXABS_DEFINE(__m512, AVX512BW)
+MAXABSOLUTE_DEFINE(__m512, AVX512BW)
 
 } // namespace
 
@@ -160,7 +160,7 @@ struct AVX512_16bit {
   }
 */
   /* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
-  PREPARE_B_16_DEF(AVX512BW, avx512f::QuantizeTile16)
+  PREPARE_B_16_DEFINE(AVX512BW, avx512f::QuantizeTile16)
 
   /* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
   AVX512BW static void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
@@ -168,7 +168,7 @@ struct AVX512_16bit {
   }
   
   /* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
-  MULTIPLY16_define(__m512i, AVX512BW, OnAVX2)
+  MULTIPLY16_DEFINE(__m512i, AVX512BW, OnAVX2)
 
   constexpr static const char *const kName = "16-bit AVX512";
 
@@ -210,7 +210,7 @@ struct AVX512_8bit {
     PrepareBFor8(input, output, avx512f::QuantizeTile8(quant_mult), rows, cols);
   }*/
   /* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
-  PREPARE_B_8_DEF(AVX512BW, avx512f::QuantizeTile8)
+  PREPARE_B_8_DEFINE(AVX512BW, avx512f::QuantizeTile8)
 
   /* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
   AVX512BW static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
