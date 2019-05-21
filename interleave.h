@@ -49,41 +49,41 @@ target static inline void Interleave64(type &first, type &second) { \
 
 template <class Register> static inline Register setzero_si() __attribute__((always_inline));;
 
-INTGEMM_INTERLEAVE(SSE2, __m128i, )
-template <> SSE2 inline __m128i setzero_si<__m128i>() {
+INTGEMM_INTERLEAVE(INTGEMM_SSE2, __m128i, )
+template <> INTGEMM_SSE2 inline __m128i setzero_si<__m128i>() {
   return _mm_setzero_si128();
 }
 
-INTGEMM_INTERLEAVE(AVX2, __m256i, 256)
-template <> AVX2 inline __m256i setzero_si<__m256i>() {
+INTGEMM_INTERLEAVE(INTGEMM_AVX2, __m256i, 256)
+template <> INTGEMM_AVX2 inline __m256i setzero_si<__m256i>() {
   return _mm256_setzero_si256();
 }
 #ifndef INTGEMM_NO_AVX512
-INTGEMM_INTERLEAVE(AVX512BW, __m512i, 512)
-/* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
-template <> AVX512BW inline __m512i setzero_si<__m512i>() {
+INTGEMM_INTERLEAVE(INTGEMM_AVX512BW, __m512i, 512)
+/* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
+template <> INTGEMM_AVX512BW inline __m512i setzero_si<__m512i>() {
   return _mm512_setzero_si512();
 }
 #endif
 
-#define SWAP_DEFINE(target, Register) \
+#define INTGEMM_SWAP(target, Register) \
 target static inline void Swap(Register &a, Register &b) { \
   Register tmp = a; \
   a = b; \
   b = tmp; \
 } \
 
-SWAP_DEFINE(SSE2, __m128i)
-SWAP_DEFINE(AVX2, __m256i)
+INTGEMM_SWAP(INTGEMM_SSE2, __m128i)
+INTGEMM_SWAP(INTGEMM_AVX2, __m256i)
 #ifndef INTGEMM_NO_AVX512
-/* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
-SWAP_DEFINE(AVX512BW, __m512i)
+/* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
+INTGEMM_SWAP(INTGEMM_AVX512BW, __m512i)
 #endif
 
 /* Transpose registers containing 8 packed 16-bit integers.
  * Each 128-bit lane is handled independently.
  */
-#define TRANSPOSE16_DEFINE(target, Register) \
+#define INTGEMM_TRANSPOSE16(target, Register) \
 target static inline void Transpose16InLane(Register &r0, Register &r1, Register &r2, Register &r3, Register &r4, Register &r5, Register &r6, Register &r7) { \
   /* r0: columns 0 1 2 3 4 5 6 7 from row 0
      r1: columns 0 1 2 3 4 5 6 7 from row 1*/ \
@@ -126,11 +126,11 @@ target static inline void Transpose16InLane(Register &r0, Register &r1, Register
   Swap(r3, r6); \
 } \
 
-TRANSPOSE16_DEFINE(SSE2, __m128i)
-TRANSPOSE16_DEFINE(AVX2, __m256i)
+INTGEMM_TRANSPOSE16(INTGEMM_SSE2, __m128i)
+INTGEMM_TRANSPOSE16(INTGEMM_AVX2, __m256i)
 #ifndef INTGEMM_NO_AVX512
-/* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
-TRANSPOSE16_DEFINE(AVX512BW, __m512i)
+/* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
+INTGEMM_TRANSPOSE16(INTGEMM_AVX512BW, __m512i)
 #endif
 
 /* Tranpose registers containing 16 packed 8-bit integers.
@@ -180,7 +180,7 @@ template <class Register> static inline void Transpose8InLane(
 //
 // We presume B starts in row-major order.
 //
-// In AVX2, a register holds 32 8-bit values or 16 16-bit values and we want
+// In INTGEMM_AVX2, a register holds 32 8-bit values or 16 16-bit values and we want
 // that many values from the same column in the register.
 //
 // The multiplier reads 8 rows at a time and we want these reads to be
@@ -189,7 +189,7 @@ template <class Register> static inline void Transpose8InLane(
 // Each 8x32 (for 8-bit) or 8x16 (for 16-bit) tile of B is transposed.
 // The tiles are stored in column major order.
 //
-// For AVX2, this matrix shows what index each value of B will be stored at:
+// For INTGEMM_AVX2, this matrix shows what index each value of B will be stored at:
 //   0  16 ... 240
 //   1  17 ... 241
 //   2  18 ... 242
@@ -209,7 +209,7 @@ template <class Register> static inline void Transpose8InLane(
 // 256 272
 // 257 273
 // ... ...
-#define PREPARE_B_8_DEFINE(target, QuantClass) \
+#define INTGEMM_PREPARE_B_8(target, QuantClass) \
 target static inline void PrepareB(const float *input, int8_t *output_shadow, float quant_mult, Index rows, Index cols) { \
   typedef typename QuantClass Quantizer; \
   typedef typename Quantizer::Integer Register; \
@@ -244,7 +244,7 @@ target static inline void PrepareB(const float *input, int8_t *output_shadow, fl
   } \
 } \
 
-#define PREPARE_B_16_DEFINE(target, QuantClass) \
+#define INTGEMM_PREPARE_B_16(target, QuantClass) \
 target static inline void PrepareB(const float *input, int16_t *output_shadow, float quant_mult, Index rows, Index cols) { \
   typedef typename QuantClass Quantizer; \
   typedef typename Quantizer::Integer Register; \
@@ -267,7 +267,7 @@ target static inline void PrepareB(const float *input, int16_t *output_shadow, f
 
 /* Select columns of B from PrepareB format to PrepareB format.
  */
-#define SELECT_COL_B_DEFINE(target, Register) \
+#define INTGEMM_SELECT_COL_B(target, Register) \
 target static inline void SelectColumnsOfB(const Register *input, Register *output, Index rows_bytes /* number of bytes in a row */, const Index *cols_begin, const Index *cols_end) { \
   assert(rows_bytes % sizeof(Register) == 0); \
   assert((cols_end - cols_begin) % 8 == 0);  \

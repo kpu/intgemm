@@ -4,7 +4,7 @@
 
 namespace intgemm {
 
-SSE2 static inline float MaxFloat32(__m128 a) {
+INTGEMM_SSE2 static inline float MaxFloat32(__m128 a) {
   // Fold to just using the first 64 bits.
   __m128 second_half = _mm_shuffle_ps(a, a, 3 * 4 + 2);
   a = _mm_max_ps(a, second_half);
@@ -15,7 +15,7 @@ SSE2 static inline float MaxFloat32(__m128 a) {
   return *reinterpret_cast<float*>(&a);
 }
 
-SSE2 static inline MultiplyResult128 PermuteSummer(__m128i pack0123, __m128i pack4567) {
+INTGEMM_SSE2 static inline MultiplyResult128 PermuteSummer(__m128i pack0123, __m128i pack4567) {
   // No op for 128 bits: already reduced fully.
   MultiplyResult128 ret;
   ret.pack0123 = pack0123;
@@ -23,11 +23,11 @@ SSE2 static inline MultiplyResult128 PermuteSummer(__m128i pack0123, __m128i pac
   return ret;
 }
 
-AVX2 static inline float MaxFloat32(__m256 a) {
+INTGEMM_AVX2 static inline float MaxFloat32(__m256 a) {
   return MaxFloat32(max_ps(_mm256_castps256_ps128(a), _mm256_extractf128_ps(a, 1)));
 }
 
-AVX2 static inline __m256i PermuteSummer(__m256i pack0123, __m256i pack4567) {
+INTGEMM_AVX2 static inline __m256i PermuteSummer(__m256i pack0123, __m256i pack4567) {
   // This instruction generates 1s 2s 3s 4s 5f 6f 7f 8f
   __m256i rev = _mm256_permute2f128_si256(pack0123, pack4567, 0x21);
   // This instruction generates 1f 2f 3f 4f 5s 6s 7s 8s
@@ -36,8 +36,8 @@ AVX2 static inline __m256i PermuteSummer(__m256i pack0123, __m256i pack4567) {
 }
 
 #ifndef INTGEMM_NO_AVX512
-/* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
-AVX512BW static inline __m256i PermuteSummer(__m512i pack0123, __m512i pack4567) {
+/* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
+INTGEMM_AVX512BW static inline __m256i PermuteSummer(__m512i pack0123, __m512i pack4567) {
   // Form [0th 128-bit register of pack0123, 0st 128-bit register of pack4567, 2nd 128-bit register of pack0123, 2nd 128-bit register of pack4567]
   __m512i mix0 = _mm512_mask_permutex_epi64(pack0123, 0xcc, pack4567, (0 << 4) | (1 << 6));
   // Form [1st 128-bit register of pack0123, 1st 128-bit register of pack4567, 3rd 128-bit register of pack0123, 3rd 128-bit register of pack4567]
@@ -49,7 +49,7 @@ AVX512BW static inline __m256i PermuteSummer(__m512i pack0123, __m512i pack4567)
 }
 
 // Find the maximum float.
-static inline AVX512DQ float MaxFloat32(__m512 a) {
+static inline INTGEMM_AVX512DQ float MaxFloat32(__m512 a) {
   return MaxFloat32(max_ps(_mm512_castps512_ps256(a), _mm512_extractf32x8_ps(a, 1)));
 }
 
@@ -70,7 +70,7 @@ template <class Register> inline Register Pack0123(Register sum0, Register sum1,
   return add_epi32(pack01, pack23);
 }
  */
-#define PACK0123_DEFINE(target, Register) \
+#define INTGEMM_PACK0123(target, Register) \
 target inline Register Pack0123(Register sum0, Register sum1, Register sum2, Register sum3) { \
   Interleave32(sum0, sum1); \
   Register pack01 = add_epi32(sum0, sum1); \
@@ -80,14 +80,14 @@ target inline Register Pack0123(Register sum0, Register sum1, Register sum2, Reg
   return add_epi32(pack01, pack23); \
 } \
 
-PACK0123_DEFINE(SSE2, __m128i)
-PACK0123_DEFINE(AVX2, __m256i)
+INTGEMM_PACK0123(INTGEMM_SSE2, __m128i)
+INTGEMM_PACK0123(INTGEMM_AVX2, __m256i)
 #ifndef INTGEMM_NO_AVX512
-/* Only AVX512F is necessary but due to GCC 5.4 bug we have to set AVX512BW */
-PACK0123_DEFINE(AVX512BW, __m512i)
+/* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
+INTGEMM_PACK0123(INTGEMM_AVX512BW, __m512i)
 #endif
 
-// 16-bit multiplier for SSE2, AVX2, and AVX512.
+// 16-bit multiplier for INTGEMM_SSE2, INTGEMM_AVX2, and AVX512.
 // C = A * B * unquant_mult
 //
 // This has been substantially revised from Jacob Devlin's SSE code which is:
@@ -116,15 +116,15 @@ PACK0123_DEFINE(AVX512BW, __m512i)
 // C is output in row-major form.
 //
 // All of A, B, and C must be in aligned to a multiple of the register size:
-// SSE2: 16 bytes
-// AVX2: 32 bytes
+// INTGEMM_SSE2: 16 bytes
+// INTGEMM_AVX2: 32 bytes
 // AVX512: 64 bytes.
 //
 // A_rows can be anything non-negative.
 // width must be a multiple of the register size.
 // B_cols must be a multiple of 8.
 // Multiply16
-#define MULTIPLY16_DEFINE(Integer, target, WriteCSubType) \
+#define INTGEMM_MULTIPLY16(Integer, target, WriteCSubType) \
   template <class WriteC> target static void Multiply(const int16_t *A, const int16_t *B, WriteC C, Index A_rows, Index width, Index B_cols) { \
   assert(width % (sizeof(Integer) / sizeof(int16_t)) == 0); \
   assert(B_cols % 8 == 0); \
@@ -180,7 +180,7 @@ PACK0123_DEFINE(AVX512BW, __m512i)
   } \
 } \
 
-/* 8-bit matrix multiply used by AVX and AVX2.
+/* 8-bit matrix multiply used by AVX and INTGEMM_AVX2.
  * These have two peculiar properties:
  * 1. The sign instructions don't exist in AVX512.
  * 2. 16 registers means gcc's register allocation failed so I wrote it in my
@@ -189,11 +189,11 @@ PACK0123_DEFINE(AVX512BW, __m512i)
  *
  * Fun fact: AVX introduced the three-argument vpsignb and vpmaddubsw but only
  * for 128-bit, despite the primary change in AVX being the addition of
- * 256-bit.  We had to wait for AVX2 to get 256-bit versions of vpsignb and
+ * 256-bit.  We had to wait for INTGEMM_AVX2 to get 256-bit versions of vpsignb and
  * vpmaddubsw.  That's why this code is generic over 128-bit or 256-bit.
  */
 
-AVX2 inline static void InnerAVX2(
+INTGEMM_AVX2 inline static void InnerINTGEMM_AVX2(
     __m256i a, const __m256i *b,
     __m256i &sum0, __m256i &sum1, __m256i &sum2, __m256i &sum3,
     __m256i &sum4, __m256i &sum5, __m256i &sum6, __m256i &sum7) {
@@ -312,8 +312,8 @@ AVX2 inline static void InnerAVX2(
 }
 
 
-// For SSSE3 without AVX
-SSSE3 inline static void InnerSSSE3(
+// For INTGEMM_SSSE3 without AVX
+INTGEMM_SSSE3 inline static void InnerINTGEMM_SSSE3(
     __m128i a, const __m128i *b,
     __m128i &sum0, __m128i &sum1, __m128i &sum2, __m128i &sum3,
     __m128i &sum4, __m128i &sum5, __m128i &sum6, __m128i &sum7) {
@@ -327,8 +327,8 @@ SSSE3 inline static void InnerSSSE3(
   sum6 = adds_epi16(sum6, maddubs_epi16(a_positive, sign_epi8(b[6], a)));
   sum7 = adds_epi16(sum7, maddubs_epi16(a_positive, sign_epi8(b[7], a)));
 }
-//AVX2 or SSSE3 multiply
-#define MULTIPLY8_DEFINE(Integer, target, WriteCSubType) \
+//INTGEMM_AVX2 or INTGEMM_SSSE3 multiply
+#define INTGEMM_MULTIPLY8(Integer, target, WriteCSubType) \
 template <class WriteC> target static void Multiply(const int8_t *A, const int8_t *B, WriteC C, Index A_rows, Index width, Index B_cols) { \
   assert(width % sizeof(Integer) == 0); \
   assert(B_cols % 8 == 0); \
@@ -417,7 +417,7 @@ template <class Register> inline static float MaxAbsoluteBackend(const float *be
 
   return MaxFloat32(highest);
 }*/
-#define MAXABSOLUTE_DEFINE(Register, target) \
+#define INTGEMM_MAXABSOLUTE(Register, target) \
 target static float MaxAbsolute(const float *begin_float, const float *end_float) { \
   assert(end_float > begin_float); \
   assert((end_float - begin_float) % (sizeof(Register) / sizeof(float)) == 0); \

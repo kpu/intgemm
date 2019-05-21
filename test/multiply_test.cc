@@ -51,7 +51,7 @@ template <class V> void SlowTranspose(const V *from, V *to, Index rows, Index co
 }
 
 
-TEST_CASE("Transpose 16", "[transpose]") {
+INTGEMM_SSE2 TEST_CASE("Transpose 16", "[transpose]") {
   if (kCPU < CPU_SSE2) return;
   AlignedVector<int16_t> input(8 * 8);
   for (int16_t i = 0; i < 64; ++i) {
@@ -69,7 +69,7 @@ TEST_CASE("Transpose 16", "[transpose]") {
   }
 }
 
-SSSE3 TEST_CASE("Transpose 8", "[transpose]") {
+INTGEMM_SSSE3 TEST_CASE("Transpose 8", "[transpose]") {
   if (kCPU < CPU_SSSE3) return;
   AlignedVector<int8_t> input(16 * 16);
   for (int i = 0; i < 16 * 16; ++i) {

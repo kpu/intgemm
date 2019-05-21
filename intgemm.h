@@ -107,14 +107,14 @@ float MaxAbsolute(const float *begin, const float *end) {
 #endif
 
 /* Returns:
- * avx512 if the CPU supports AVX512F (though really it should be AVX512BW, but
+ * avx512 if the CPU supports INTGEMM_AVX512F (though really it should be INTGEMM_AVX512BW, but
  * cloud providers lie).  TODO: don't catch Knights processors with this.
  *
- * avx2 if the CPU supports AVX2
+ * avx2 if the CPU supports INTGEMM_AVX2
  * 
- * ssse3 if the CPU supports SSSE3 (this distinction from SSE2 matters for 8-bit)
+ * ssse3 if the CPU supports INTGEMM_SSSE3 (this distinction from INTGEMM_SSE2 matters for 8-bit)
  * 
- * sse2 if the CPU supports SSE2
+ * sse2 if the CPU supports INTGEMM_SSE2
  *
  * unsupported otherwise
  */
