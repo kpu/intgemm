@@ -360,7 +360,7 @@ template <class Routine, class WriteC> void TestMultiply(Index A_rows, Index wid
   Routine::PrepareB(B.get(), B_prep.get(), quant_mult, width, B_cols);
 
   AlignedVector<float> test_C(A_rows * B_cols);
-  Routine::template Multiply<WriteC>(A_prep.get(), B_prep.get(), WriteC(test_C.get(), unquant_mult), A_rows, width, B_cols);
+  Routine::Multiply(A_prep.get(), B_prep.get(), WriteC(test_C.get(), unquant_mult), A_rows, width, B_cols);
 
   AlignedVector<Integer> B_quant(width * B_cols);
   Routine::Quantize(B.get(), B_quant.get(), quant_mult, width * B_cols);
