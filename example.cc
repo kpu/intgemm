@@ -42,14 +42,14 @@ int main() {
     AlignedVector<int16_t> A_prepared(A_rows * width);
     AlignedVector<int16_t> B_prepared(width * B_cols);
     // Quantize A.
-    intgemm::Int16<intgemm::JustUnquantizeC>::PrepareA(A.get(), A_prepared.get(), quant_mult, A_rows, width);
+    intgemm::Int16::PrepareA(A.get(), A_prepared.get(), quant_mult, A_rows, width);
     // Quantize and reshape B.
     // Typically you will do this once when parameters are loaded, not every time.
-    intgemm::Int16<intgemm::JustUnquantizeC>::PrepareB(B.get(), B_prepared.get(), quant_mult, width, B_cols);
+    intgemm::Int16::PrepareB(B.get(), B_prepared.get(), quant_mult, width, B_cols);
 
     AlignedVector<float> C(A_rows * B_cols);
     // Do the actual multiply.
-    intgemm::Int16<intgemm::JustUnquantizeC>::Multiply(A_prepared.get(), B_prepared.get(), intgemm::JustUnquantizeC(C.get(), 1.0 / (quant_mult * quant_mult)), A_rows, width, B_cols);
+    intgemm::Int16::Multiply<intgemm::JustUnquantizeC>(A_prepared.get(), B_prepared.get(), intgemm::JustUnquantizeC(C.get(), 1.0 / (quant_mult * quant_mult)), A_rows, width, B_cols);
     // Sanity check.  C will be row major.
     assert(fabs(C[0] - top_left_reference) < 0.05);
   }
@@ -61,14 +61,14 @@ int main() {
     AlignedVector<int8_t> A_prepared(A_rows * width);
     AlignedVector<int8_t> B_prepared(width * B_cols);
     // Quantize A.
-    intgemm::Int8<intgemm::JustUnquantizeC>::PrepareA(A.get(), A_prepared.get(), quant_mult, A_rows, width);
+    intgemm::Int8::PrepareA(A.get(), A_prepared.get(), quant_mult, A_rows, width);
     // Quantize and reshape B.
     // Typically you will do this once when parameters are loaded, not every time.
-    intgemm::Int8<intgemm::JustUnquantizeC>::PrepareB(B.get(), B_prepared.get(), quant_mult, width, B_cols);
+    intgemm::Int8::PrepareB(B.get(), B_prepared.get(), quant_mult, width, B_cols);
 
     AlignedVector<float> C(A_rows * B_cols);
     // Do the actual multiply.
-    intgemm::Int8<intgemm::JustUnquantizeC>::Multiply(A_prepared.get(), B_prepared.get(), intgemm::JustUnquantizeC(C.get(), 1.0 / (quant_mult * quant_mult)), A_rows, width, B_cols);
+    intgemm::Int8::Multiply<intgemm::JustUnquantizeC>(A_prepared.get(), B_prepared.get(), intgemm::JustUnquantizeC(C.get(), 1.0 / (quant_mult * quant_mult)), A_rows, width, B_cols);
     // Sanity check.  C will be row major.
     assert(fabs(C[0] - top_left_reference) < 0.05);
   }
