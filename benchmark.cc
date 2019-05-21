@@ -72,10 +72,10 @@ template <class Backend, class WriteC> void Run(const RandomMatrices &m, std::ve
   Backend::PrepareB(m.B.get(), B_prepared.get(), quant_mult, m.width, m.B_cols);
   AlignedVector<float> output(m.A_rows * m.B_cols);
   // Burn in
-  Backend::template Multiply<WriteC>(A_prepared.get(), B_prepared.get(), JustUnquantizeC(output.get(), unquant_mult), m.A_rows, m.width, m.B_cols);
+  Backend::template Multiply<WriteC>(A_prepared.get(), B_prepared.get(), WriteC(output.get(), unquant_mult), m.A_rows, m.width, m.B_cols);
   {
     StopWatch w(stats);
-    Backend::template Multiply<WriteC>(A_prepared.get(), B_prepared.get(), JustUnquantizeC(output.get(), unquant_mult), m.A_rows, m.width, m.B_cols);
+    Backend::template Multiply<WriteC>(A_prepared.get(), B_prepared.get(), WriteC(output.get(), unquant_mult), m.A_rows, m.width, m.B_cols);
   }
 }
 
