@@ -48,7 +48,7 @@ class JustUnquantizeC {
 
 class Identity {
   public:
-    Identity(int32_t *C) : C_(C) {}
+    explicit Identity(int32_t *C) : C_(C) {}
 
     class OnSSE2 {
       public:

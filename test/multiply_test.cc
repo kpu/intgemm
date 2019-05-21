@@ -1,8 +1,3 @@
-//#include "avx512_gemm.h"
-#include "avx2_gemm.h"
-#include "ssse3_gemm.h"
-#include "sse2_gemm.h"
-#include "cops.h"
 #include "intgemm.h"
 #include "aligned.h"
 #include "interleave.h"

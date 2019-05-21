@@ -8,8 +8,6 @@
 
 namespace intgemm {
 
-// PREPARE A: just quantization in the same memory order.
-
 namespace avx2 {
 // Read a vector of floats, multiply them, and cast to 32-bit integer.
 // EVIL EVIL CODE DUPLICATION, FIX
