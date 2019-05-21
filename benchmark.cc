@@ -39,7 +39,7 @@ void BenchmarkMaxAbsolute() {
   }
   {
     StopWatch w(stats);
-    result = AVX2_MaxAbsolute(v.get(), v.get() + size);
+    result = avx2::MaxAbsolute(v.get(), v.get() + size);
   }
   std::cout << "MaxAbsolute baseline = " << stats[0] << " optimized = " << stats[1] << " speedup = " << ((float)stats[0] / (float)stats[1])<< '\n';
 
@@ -62,7 +62,7 @@ struct RandomMatrices {
   AlignedVector<float> A, B;
 };
 
-template <class Backend> void Run(const RandomMatrices &m, std::vector<uint64_t> &stats) {
+template <class Backend, class WriteC> void Run(const RandomMatrices &m, std::vector<uint64_t> &stats) {
   typedef typename Backend::Integer Integer;
   float quant_mult = 127.0 / 2;
   float unquant_mult = 1.0 / (quant_mult * quant_mult);
@@ -72,20 +72,20 @@ template <class Backend> void Run(const RandomMatrices &m, std::vector<uint64_t>
   Backend::PrepareB(m.B.get(), B_prepared.get(), quant_mult, m.width, m.B_cols);
   AlignedVector<float> output(m.A_rows * m.B_cols);
   // Burn in
-  Backend::Multiply(A_prepared.get(), B_prepared.get(), output.get(), unquant_mult, m.A_rows, m.width, m.B_cols);
+  Backend::template Multiply<WriteC>(A_prepared.get(), B_prepared.get(), WriteC(output.get(), unquant_mult), m.A_rows, m.width, m.B_cols);
   {
     StopWatch w(stats);
-    Backend::Multiply(A_prepared.get(), B_prepared.get(), output.get(), unquant_mult, m.A_rows, m.width, m.B_cols);
+    Backend::template Multiply<WriteC>(A_prepared.get(), B_prepared.get(), WriteC(output.get(), unquant_mult), m.A_rows, m.width, m.B_cols);
   }
 }
 
-template <class Backend> void RunAll(RandomMatrices *matrices, RandomMatrices *matrices_end, std::vector<std::vector<uint64_t> > &stats) {
+template <class Backend, class WriteC> void RunAll(RandomMatrices *matrices, RandomMatrices *matrices_end, std::vector<std::vector<uint64_t> > &stats) {
   if (Backend::kUses > kCPU) return;
   std::size_t size = matrices_end - matrices;
   if (stats.size() < size)
     stats.resize(size);
   for (std::size_t i = 0; i < size; ++i) {
-    Run<Backend>(matrices[i], stats[i]);
+    Run<Backend, WriteC>(matrices[i], stats[i]);
   }
 }
 
@@ -165,19 +165,45 @@ int main(int argc, char ** argv) {
 
   BackendStats stats;
   const int kSamples = 100;
-  // Run samples far apart to reduce temporary noise.
+  // Realistically, we don't expect different architectures or different precisions to run in the
+  // same run of an application. Benchmark per architecture and per precision level.
+  std::cerr << "SSSE3 8bit, 100 samples..." << std::endl;
   for (int samples = 0; samples < kSamples; ++samples) {
-    std::cerr << "Sample " << samples << " / " << kSamples << std::endl;
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
-    RunAll<SSSE3_8bit>(matrices, end, stats.ssse3_8bit);
-    RunAll<SSE2_16bit>(matrices, end, stats.sse2_16bit);
-    RunAll<AVX2_8bit>(matrices, end, stats.avx2_8bit);
-    RunAll<AVX2_16bit>(matrices, end, stats.avx2_16bit);
-#ifndef INTGEMM_NO_AVX512
-    RunAll<AVX512_8bit>(matrices, end, stats.avx512_8bit);
-    RunAll<AVX512_16bit>(matrices, end, stats.avx512_16bit);
-#endif
+    RunAll<SSSE3_8bit, JustUnquantizeC>(matrices, end, stats.ssse3_8bit);
   }
+
+  std::cerr << "SSE2 16bit, 100 samples..." << std::endl;
+  for (int samples = 0; samples < kSamples; ++samples) {
+    RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
+    RunAll<SSE2_16bit, JustUnquantizeC>(matrices, end, stats.sse2_16bit);
+  }
+
+  std::cerr << "AVX2 8bit, 100 samples..." << std::endl;
+  for (int samples = 0; samples < kSamples; ++samples) {
+    RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
+    RunAll<AVX2_8bit, JustUnquantizeC>(matrices, end, stats.avx2_8bit);
+  }
+
+  std::cerr << "AVX2 16bit, 100 samples..." << std::endl;
+  for (int samples = 0; samples < kSamples; ++samples) {
+    RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
+    RunAll<AVX2_16bit, JustUnquantizeC>(matrices, end, stats.avx2_16bit);
+  }
+
+#ifndef INTGEMM_NO_AVX512
+  std::cerr << "AVX512 8bit, 100 samples..." << std::endl;
+  for (int samples = 0; samples < kSamples; ++samples) {
+    RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
+    RunAll<AVX512_8bit, JustUnquantizeC>(matrices, end, stats.avx512_8bit);
+  }
+
+  std::cerr << "AVX512 16bit, 100 samples..." << std::endl;
+  for (int samples = 0; samples < kSamples; ++samples) {
+    RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
+    RunAll<AVX512_16bit, JustUnquantizeC>(matrices, end, stats.avx512_16bit);
+  }
+#endif
 
   if (stats.sse2_16bit.empty()) {
     std::cerr << "No CPU support." << std::endl;

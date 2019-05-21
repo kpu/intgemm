@@ -32,11 +32,13 @@ intgemm::Int16::PrepareA(A, A_prepared, quant_mult, A_rows, width);
 /* Prepare B for multiplication.  This is typically done offline. */
 intgemm::Int16::PrepareB(B, B_prepared, quant_mult, width, B_cols);
 /* Multiply and produce results in C */
-intgemm::Int16::Multiply(A_prepared, B_prepared, C, 1.0 / (quant_mult * quant_mult), A_rows, width, B_cols);
+intgemm::Int16::Multiply<intgemm::JustUnquantizeC>(A_prepared.get(), B_prepared.get(), intgemm::JustUnquantizeC(C.get(), 1.0 / (quant_mult * quant_mult)), A_rows, width, B_cols);
 ```
 For 8-bit, use `Int8` instead of `Int16`.
 
 When repesented as floats, all of A, B, and C are in row-major format.
+
+You can write your own PostProcessing functions on C and use them as a template argument to `Multiply`. For details, see [cops.h](cops.h).
 
 ## Quantization
 Floating-point values are multiplied by a user-specified constant then rounded to an integer.  

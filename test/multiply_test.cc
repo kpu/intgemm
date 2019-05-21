@@ -1,7 +1,3 @@
-#include "avx512_gemm.h"
-#include "avx2_gemm.h"
-#include "ssse3_gemm.h"
-#include "sse2_gemm.h"
 #include "intgemm.h"
 #include "aligned.h"
 #include "interleave.h"
@@ -55,7 +51,7 @@ template <class V> void SlowTranspose(const V *from, V *to, Index rows, Index co
 }
 
 
-TEST_CASE("Transpose 16", "[transpose]") {
+INTGEMM_SSE2 TEST_CASE("Transpose 16", "[transpose]") {
   if (kCPU < CPU_SSE2) return;
   AlignedVector<int16_t> input(8 * 8);
   for (int16_t i = 0; i < 64; ++i) {
@@ -73,7 +69,7 @@ TEST_CASE("Transpose 16", "[transpose]") {
   }
 }
 
-TEST_CASE("Transpose 8", "[transpose]") {
+INTGEMM_SSSE3 TEST_CASE("Transpose 8", "[transpose]") {
   if (kCPU < CPU_SSSE3) return;
   AlignedVector<int8_t> input(16 * 16);
   for (int i = 0; i < 16 * 16; ++i) {
@@ -260,12 +256,19 @@ template <float (*Backend) (const float *, const float *)> void TestMaxAbsolute(
 
 TEST_CASE("MaxAbsolute SSE2", "[max]") {
   if (kCPU < CPU_SSE2) return;
-  TestMaxAbsolute<SSE2_MaxAbsolute>();
+  TestMaxAbsolute<sse2::MaxAbsolute>();
 }
 
 TEST_CASE("MaxAbsolute AVX2", "[max]") {
   if (kCPU < CPU_AVX2) return;
-  TestMaxAbsolute<AVX2_MaxAbsolute>();;
+  TestMaxAbsolute<avx2::MaxAbsolute>();
+}
+
+TEST_CASE("MaxAbsolute AVX512F", "[max]") {
+  if (kCPU < CPU_AVX512BW) return;
+  #ifndef INTGEMM_NO_AVX512
+  TestMaxAbsolute<avx512f::MaxAbsolute>();
+  #endif
 }
 
 // Based on https://arxiv.org/abs/1705.01991
@@ -331,7 +334,7 @@ void Compare(const float *float_ref, const float *int_ref, const float *int_test
   CHECK_MESSAGE(fabs(sqrt(int_sum / size)) <= MSE_int_tolerance, test_info << "Int MSE = " << sqrt(int_sum / size));
 }
 
-template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_cols,
+template <class Routine, class WriteC> void TestMultiply(Index A_rows, Index width, Index B_cols,
  float int_tolerance=.1, float float_tolerance=1, float MSE_float_tolerance=0, float MSE_int_tolerance=0) {
   typedef typename Routine::Integer Integer;
   std::ostringstream info;
@@ -357,7 +360,7 @@ template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_co
   Routine::PrepareB(B.get(), B_prep.get(), quant_mult, width, B_cols);
 
   AlignedVector<float> test_C(A_rows * B_cols);
-  Routine::Multiply(A_prep.get(), B_prep.get(), test_C.get(), unquant_mult, A_rows, width, B_cols);
+  Routine::template Multiply<WriteC>(A_prep.get(), B_prep.get(), WriteC(test_C.get(), unquant_mult), A_rows, width, B_cols);
 
   AlignedVector<Integer> B_quant(width * B_cols);
   Routine::Quantize(B.get(), B_quant.get(), quant_mult, width * B_cols);
@@ -374,65 +377,66 @@ template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_co
 
 TEST_CASE ("Multiply SSE2 16bit", "[multiply]") {
   if (kCPU < CPU_SSE2) return;
-  TestMultiply<SSE2_16bit>(8, 256, 256, .1, 1, 0.01);
-  TestMultiply<SSE2_16bit>(8, 2048, 256, .1, 1, 0.02);
-  TestMultiply<SSE2_16bit>(320, 256, 256, .1, 1, 0.01);
-  TestMultiply<SSE2_16bit>(472, 256, 256, .1, 1, 0.01);
-  TestMultiply<SSE2_16bit>(248, 256, 256, .1, 1, 0.01);
-  TestMultiply<SSE2_16bit>(200, 256, 256, .1, 1, 0.01);
+  TestMultiply<SSE2_16bit, JustUnquantizeC>(8, 256, 256, .1, 1, 0.01);
+  TestMultiply<SSE2_16bit, JustUnquantizeC>(8, 2048, 256, .1, 1, 0.02);
+  TestMultiply<SSE2_16bit, JustUnquantizeC>(320, 256, 256, .1, 1, 0.01);
+  TestMultiply<SSE2_16bit, JustUnquantizeC>(472, 256, 256, .1, 1, 0.01);
+  TestMultiply<SSE2_16bit, JustUnquantizeC>(248, 256, 256, .1, 1, 0.01);
+  TestMultiply<SSE2_16bit, JustUnquantizeC>(200, 256, 256, .1, 1, 0.01);
 }
 
 TEST_CASE ("Multiply SSSE3 8bit", "[multiply]") {
   if (kCPU < CPU_SSSE3) return;
-  TestMultiply<SSSE3_8bit>(8, 256, 256, 1.2, 1.2, 0.064, 0.026);
-  TestMultiply<SSSE3_8bit>(8, 2048, 256, 33, 33, 4.4, 4.4);
-  TestMultiply<SSSE3_8bit>(320, 256, 256, 1.9, 1.9, 0.1, 0.01);
-  TestMultiply<SSSE3_8bit>(472, 256, 256, 2.1, 2.1, 0.1, 0.011);
-  TestMultiply<SSSE3_8bit>(248, 256, 256, 1.7, 1.7, 0.1, 0.012);
-  TestMultiply<SSSE3_8bit>(200, 256, 256, 1.8, 1.9, 0.1, 0.011);
+  TestMultiply<SSSE3_8bit, JustUnquantizeC>(8, 256, 256, 1.2, 1.2, 0.064, 0.026);
+  TestMultiply<SSSE3_8bit, JustUnquantizeC>(8, 2048, 256, 33, 33, 4.4, 4.4);
+  TestMultiply<SSSE3_8bit, JustUnquantizeC>(320, 256, 256, 1.9, 1.9, 0.1, 0.01);
+  TestMultiply<SSSE3_8bit, JustUnquantizeC>(472, 256, 256, 2.1, 2.1, 0.1, 0.011);
+  TestMultiply<SSSE3_8bit, JustUnquantizeC>(248, 256, 256, 1.7, 1.7, 0.1, 0.012);
+  TestMultiply<SSSE3_8bit, JustUnquantizeC>(200, 256, 256, 1.8, 1.9, 0.1, 0.011);
 }
 
 TEST_CASE ("Multiply AVX2 8bit", "[multiply]") {
   if (kCPU < CPU_AVX2) return;
-  TestMultiply<AVX2_8bit>(8, 256, 256, .1, 1, 0.1);
-  TestMultiply<AVX2_8bit>(8, 2048, 256, 19, 19, 1.8, 1.8);
-  TestMultiply<AVX2_8bit>(320, 256, 256, .1, 1, 0.1);
-  TestMultiply<AVX2_8bit>(472, 256, 256, .1, 1, 0.1);
-  TestMultiply<AVX2_8bit>(248, 256, 256, .1, 1, 0.1);
-  TestMultiply<AVX2_8bit>(200, 256, 256, .1, 1, 0.1);
+  TestMultiply<AVX2_8bit, JustUnquantizeC>(8, 256, 256, .1, 1, 0.1);
+  TestMultiply<AVX2_8bit, JustUnquantizeC>(8, 2048, 256, 19, 19, 1.8, 1.8);
+  TestMultiply<AVX2_8bit, JustUnquantizeC>(320, 256, 256, .1, 1, 0.1);
+  TestMultiply<AVX2_8bit, JustUnquantizeC>(472, 256, 256, .1, 1, 0.1);
+  TestMultiply<AVX2_8bit, JustUnquantizeC>(248, 256, 256, .1, 1, 0.1);
+  TestMultiply<AVX2_8bit, JustUnquantizeC>(200, 256, 256, .1, 1, 0.1);
 }
 
 TEST_CASE ("Multiply AVX2 16bit", "[multiply]") {
   if (kCPU < CPU_AVX2) return;
-  TestMultiply<AVX2_16bit>(8, 256, 256, .1, 1, 0.01);
-  TestMultiply<AVX2_16bit>(8, 2048, 256, .1, 1, 0.02);
-  TestMultiply<AVX2_16bit>(320, 256, 256, .1, 1, 0.01);
-  TestMultiply<AVX2_16bit>(472, 256, 256, .1, 1, 0.01);
-  TestMultiply<AVX2_16bit>(248, 256, 256, .1, 1, 0.01);
-  TestMultiply<AVX2_16bit>(200, 256, 256, .1, 1, 0.01);
+  TestMultiply<AVX2_16bit, JustUnquantizeC>(8, 256, 256, .1, 1, 0.01);
+  TestMultiply<AVX2_16bit, JustUnquantizeC>(8, 2048, 256, .1, 1, 0.02);
+  TestMultiply<AVX2_16bit, JustUnquantizeC>(320, 256, 256, .1, 1, 0.01);
+  TestMultiply<AVX2_16bit, JustUnquantizeC>(472, 256, 256, .1, 1, 0.01);
+  TestMultiply<AVX2_16bit, JustUnquantizeC>(248, 256, 256, .1, 1, 0.01);
+  TestMultiply<AVX2_16bit, JustUnquantizeC>(200, 256, 256, .1, 1, 0.01);
 }
 
 #ifndef INTGEMM_NO_AVX512
   TEST_CASE ("Multiply AVX512 8bit", "[multiply]") {
     if (kCPU < CPU_AVX512BW) return;
-    TestMultiply<AVX512_8bit>(8, 256, 256, .1, 1, 0.062);
-    TestMultiply<AVX512_8bit>(8, 2048, 256, 4.2, 4, 0.41, 0.37);
-    TestMultiply<AVX512_8bit>(320, 256, 256, .1, 1, 0.06);
-    TestMultiply<AVX512_8bit>(472, 256, 256, .1, 1, 0.06);
-    TestMultiply<AVX512_8bit>(248, 256, 256, .1, 1, 0.06);
-    TestMultiply<AVX512_8bit>(200, 256, 256, .1, 1, 0.06);
+    TestMultiply<AVX512_8bit, JustUnquantizeC>(8, 256, 256, .1, 1, 0.062);
+    TestMultiply<AVX512_8bit, JustUnquantizeC>(8, 2048, 256, 4.2, 4, 0.41, 0.37);
+    TestMultiply<AVX512_8bit, JustUnquantizeC>(320, 256, 256, .1, 1, 0.06);
+    TestMultiply<AVX512_8bit, JustUnquantizeC>(472, 256, 256, .1, 1, 0.06);
+    TestMultiply<AVX512_8bit, JustUnquantizeC>(248, 256, 256, .1, 1, 0.06);
+    TestMultiply<AVX512_8bit, JustUnquantizeC>(200, 256, 256, .1, 1, 0.06);
   }
 
   TEST_CASE ("Multiply AVX512 16bit", "[multiply]") {
     if (kCPU < CPU_AVX512BW) return;
-    TestMultiply<AVX512_16bit>(8, 256, 256, .1, 1, 0.01);
-    TestMultiply<AVX512_16bit>(8, 2048, 256, .1, 1, 0.011);
-    TestMultiply<AVX512_16bit>(320, 256, 256, .1, 1, 0.01);
-    TestMultiply<AVX512_16bit>(472, 256, 256, .1, 1, 0.01);
-    TestMultiply<AVX512_16bit>(248, 256, 256, .1, 1, 0.01);
-    TestMultiply<AVX512_16bit>(200, 256, 256, .1, 1, 0.01);
+    TestMultiply<AVX512_16bit, JustUnquantizeC>(8, 256, 256, .1, 1, 0.01);
+    TestMultiply<AVX512_16bit, JustUnquantizeC>(8, 2048, 256, .1, 1, 0.011);
+    TestMultiply<AVX512_16bit, JustUnquantizeC>(320, 256, 256, .1, 1, 0.01);
+    TestMultiply<AVX512_16bit, JustUnquantizeC>(472, 256, 256, .1, 1, 0.01);
+    TestMultiply<AVX512_16bit, JustUnquantizeC>(248, 256, 256, .1, 1, 0.01);
+    TestMultiply<AVX512_16bit, JustUnquantizeC>(200, 256, 256, .1, 1, 0.01);
   }
 #endif
+
 } // namespace intgemm
 
 int main(int argc, char ** argv) {
