@@ -107,14 +107,14 @@ float MaxAbsolute(const float *begin, const float *end) {
 #endif
 
 /* Returns:
- * avx512 if the CPU supports INTGEMM_AVX512F (though really it should be INTGEMM_AVX512BW, but
+ * avx512 if the CPU supports AVX512F (though really it should be AVX512BW, but
  * cloud providers lie).  TODO: don't catch Knights processors with this.
  *
- * avx2 if the CPU supports INTGEMM_AVX2
+ * avx2 if the CPU supports AVX2
  * 
- * ssse3 if the CPU supports INTGEMM_SSSE3 (this distinction from INTGEMM_SSE2 matters for 8-bit)
+ * ssse3 if the CPU supports SSSE3 (this distinction from SSE2 matters for 8-bit)
  * 
- * sse2 if the CPU supports INTGEMM_SSE2
+ * sse2 if the CPU supports SSE2
  *
  * unsupported otherwise
  */
@@ -137,6 +137,17 @@ template <class T> T ChooseCPU(T avx512, T avx2, T ssse3, T sse2, T unsupported)
 }
 
 /* 16-bit matrix multiplication. */
+template<class WriteC>
+class Int16Mult {
+public:
+  // Multiply C = A * B, presuming A and B have been prepared.
+  static void (*Multiply)(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols);
+};
+
+template <class WriteC>
+void (*Int16Mult<WriteC>::Multiply)(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) = ChooseCPU(AVX512_16bit::Multiply<WriteC>, AVX2_16bit::Multiply<WriteC>, SSE2_16bit::Multiply<WriteC>, SSE2_16bit::Multiply<WriteC>, Unsupported_16bit::Multiply);
+
+
 struct Int16 {
   typedef int16_t Integer;
 
@@ -156,33 +167,46 @@ struct Int16 {
 
   // Multiply floats by quant_mult then convert to 16-bit integers with saturation.
   // input
-  static void Quantize(const float *input, int16_t *output, float quant_mult, Index size) {
-    ChooseCPU(AVX512_16bit::Quantize, AVX2_16bit::Quantize, SSE2_16bit::Quantize, Unsupported_16bit::Quantize, Unsupported_16bit::Quantize)(input, output, quant_mult, size);
-  }
+  static void (*Quantize)(const float *input, int16_t *output, float quant_mult, Index size);
 
   // Warning: the output of PrepareB depends on the CPU.
   // It will match the Multiply function on the same CPU though.
-  static void PrepareB(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) {
-    ChooseCPU(AVX512_16bit::PrepareB, AVX2_16bit::PrepareB, SSE2_16bit::PrepareB, Unsupported_16bit::PrepareB, Unsupported_16bit::PrepareB)(input, output, quant_mult, rows, cols);
-  }
+  static void (*PrepareB)(const float *input, int16_t *output, float quant_mult, Index rows, Index cols);
 
   // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8. 
-  static void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
-    ChooseCPU(AVX512_16bit::SelectColumnsB, AVX2_16bit::SelectColumnsB, SSE2_16bit::SelectColumnsB, Unsupported_16bit::SelectColumnsB, Unsupported_16bit::SelectColumnsB)(input, output, rows, cols_begin, cols_end);
-  }
+  static void (*SelectColumnsB)(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
 
   // Multiply C = A * B, presuming A and B have been prepared.
   template<class WriteC>
   static void Multiply(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) {
-    ChooseCPU(AVX512_16bit::Multiply<WriteC>, AVX2_16bit::Multiply<WriteC>, SSE2_16bit::Multiply<WriteC>, Unsupported_16bit::Multiply<WriteC>, Unsupported_16bit::Multiply<WriteC>)(A, B, functor, A_rows, width, B_cols);
+    Int16Mult<WriteC>::Multiply(A, B, functor, A_rows, width, B_cols);
   }
 
   static const char *const kName;
 };
 
+void (*Int16::Quantize)(const float *input, int16_t *output, float quant_mult, Index size) = ChooseCPU(AVX512_16bit::Quantize, AVX2_16bit::Quantize, SSE2_16bit::Quantize, SSE2_16bit::Quantize, Unsupported_16bit::Quantize);
+
+void (*Int16::PrepareB)(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) = ChooseCPU(AVX512_16bit::PrepareB, AVX2_16bit::PrepareB, SSE2_16bit::PrepareB, SSE2_16bit::PrepareB, Unsupported_16bit::PrepareB);
+
+void (*Int16::SelectColumnsB)(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) = ChooseCPU(AVX512_16bit::SelectColumnsB, AVX2_16bit::SelectColumnsB, SSE2_16bit::SelectColumnsB, SSE2_16bit::SelectColumnsB, Unsupported_16bit::SelectColumnsB);
+
 const char *const Int16::kName = ChooseCPU(AVX512_16bit::kName, AVX2_16bit::kName, SSE2_16bit::kName, SSE2_16bit::kName, Unsupported_16bit::kName);
 
+
 /* 8-bit matrix multiplication */
+template<class WriteC>
+class Int8Mult {
+public:
+  // Multiply C = A * B, presuming A and B have been prepared.
+  static void (*Multiply)(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols);
+};
+
+template <class WriteC>
+void (*Int8Mult<WriteC>::Multiply)(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) = ChooseCPU(AVX512_8bit::Multiply<WriteC>, AVX2_8bit::Multiply<WriteC>, SSSE3_8bit::Multiply<WriteC>, SSSE3_8bit::Multiply<WriteC>, Unsupported_8bit::Multiply);
+
+
+
 struct Int8 {
   typedef int8_t Integer;
 
@@ -201,29 +225,29 @@ struct Int8 {
   }
 
   // Multiply floats by quant_mult then convert to 8-bit integers with saturation.
-  static void Quantize(const float *input, int8_t *output, float quant_mult, Index size) {
-    ChooseCPU(AVX512_8bit::Quantize, AVX2_8bit::Quantize, SSSE3_8bit::Quantize, Unsupported_8bit::Quantize, Unsupported_8bit::Quantize)(input, output, quant_mult, size);
-  }
+  static void (*Quantize)(const float *input, int8_t *output, float quant_mult, Index size);
   
   // Warning: the output of PrepareB depends on the CPU.
   // It will match the Multiply function on the same CPU though.
-  static void PrepareB(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
-    ChooseCPU(AVX512_8bit::PrepareB, AVX2_8bit::PrepareB, SSSE3_8bit::PrepareB, Unsupported_8bit::PrepareB, Unsupported_8bit::PrepareB)(input, output, quant_mult, rows, cols);
-  }
+  static void (*PrepareB)(const float *input, int8_t *output, float quant_mult, Index rows, Index cols);
 
   // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8. 
-  static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
-    ChooseCPU(AVX512_8bit::SelectColumnsB, AVX2_8bit::SelectColumnsB, SSSE3_8bit::SelectColumnsB, Unsupported_8bit::SelectColumnsB, Unsupported_8bit::SelectColumnsB)(input, output, rows, cols_begin, cols_end);
-  }
+  static void (*SelectColumnsB)(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
 
   // Multiply C = A * B, presuming A and B have been prepared.
   template<class WriteC>
   static void Multiply(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) {
-    ChooseCPU(AVX512_8bit::Multiply<WriteC>, AVX2_8bit::Multiply<WriteC>, SSSE3_8bit::Multiply<WriteC>, Unsupported_8bit::Multiply<WriteC>, Unsupported_8bit::Multiply<WriteC>)(A, B, functor, A_rows, width, B_cols);
+    Int8Mult<WriteC>::Multiply(A, B, functor, A_rows, width, B_cols);
   }
   
   static const char *const kName;
 };
+
+void (*Int8::Quantize)(const float *input, int8_t *output, float quant_mult, Index size) = ChooseCPU(AVX512_8bit::Quantize, AVX2_8bit::Quantize, SSSE3_8bit::Quantize, Unsupported_8bit::Quantize, Unsupported_8bit::Quantize);
+
+void (*Int8::PrepareB)(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) = ChooseCPU(AVX512_8bit::PrepareB, AVX2_8bit::PrepareB, SSSE3_8bit::PrepareB, Unsupported_8bit::PrepareB, Unsupported_8bit::PrepareB);
+
+void (*Int8::SelectColumnsB)(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) = ChooseCPU(AVX512_8bit::SelectColumnsB, AVX2_8bit::SelectColumnsB, SSSE3_8bit::SelectColumnsB, Unsupported_8bit::SelectColumnsB, Unsupported_8bit::SelectColumnsB);
 
 const char *const Int8::kName = ChooseCPU(AVX512_8bit::kName, AVX2_8bit::kName, SSSE3_8bit::kName, Unsupported_8bit::kName, Unsupported_8bit::kName);
 
