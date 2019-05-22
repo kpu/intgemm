@@ -33,7 +33,11 @@ foreach(exe example benchmark)
 endforeach()
 
 include_directories(.)
-add_executable(tests test/multiply_test.cc test/quantize_test.cc)
+add_executable(tests
+  test/multiply_test.cc
+  test/quantize_test.cc
+  test/relu_test.cc
+)
 
 #CTest integration with Catch2
 include(CMake/Catch.cmake)
