@@ -129,6 +129,7 @@ class ReLU {
         __m256i zeros_;
     };
 
+#ifndef INTGEMM_NO_AVX512
     class OnAVX512 {
       public:
         INTGEMM_AVX512BW explicit OnAVX512(const ReLU& from)
@@ -145,6 +146,7 @@ class ReLU {
         int32_t *C_;
         __m512i zeros_;
     };
+#endif
 
   private:
     int32_t *C_;
