@@ -6,6 +6,8 @@
 namespace intgemm {
 
 INTGEMM_SSE2 TEST_CASE("ReLU SSE2",) {
+    if (kCPU < CPU_SSE2)
+        return;
     const unsigned N = 4;
 
     int32_t raw_input[2 * N];
@@ -32,6 +34,9 @@ INTGEMM_SSE2 TEST_CASE("ReLU SSE2",) {
 }
 
 INTGEMM_AVX2 TEST_CASE("ReLU AVX2",) {
+    if (kCPU < CPU_AVX2)
+        return;
+
     const unsigned N = 8;
 
     int32_t raw_input[N];
@@ -58,6 +63,9 @@ INTGEMM_AVX2 TEST_CASE("ReLU AVX2",) {
 #ifndef INTGEMM_NO_AVX512
 
 INTGEMM_AVX512BW TEST_CASE("ReLU AVX512",) {
+    if (kCPU < CPU_AVX512BW)
+        return;
+
     const unsigned N = 16;
 
     int32_t raw_input[N];
