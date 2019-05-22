@@ -1,5 +1,7 @@
 #pragma once
+
 #include "intrinsics.h"
+#include "vec_utils.h"
 
 #include <exception>
 
@@ -17,8 +19,8 @@ class JustUnquantizeC {
          }
 
         INTGEMM_SSE2 inline void operator()(Index rowIDX, Index cols, Index colIDX, MultiplyResult128 result) {
-          *reinterpret_cast<__m128*>(C_ + rowIDX*cols + colIDX) = mul_ps(cvtepi32_ps(result.pack0123), unquant_mult_);
-          *reinterpret_cast<__m128*>(C_ + rowIDX*cols + colIDX + 4) = mul_ps(cvtepi32_ps(result.pack4567), unquant_mult_);
+          storeu_ps(C_ + rowIDX*cols + colIDX    , unquantize(result.pack0123, unquant_mult_));
+          storeu_ps(C_ + rowIDX*cols + colIDX + 4, unquantize(result.pack4567, unquant_mult_));
         }
       private:
         float *C_;
@@ -33,7 +35,7 @@ class JustUnquantizeC {
         }
 
         INTGEMM_AVX2 inline void operator()(Index rowIDX, Index cols, Index colIDX, __m256i result) {
-          *reinterpret_cast<__m256*>(C_ + rowIDX*cols + colIDX) = mul_ps(cvtepi32_ps(result), unquant_mult_);
+          storeu_ps(C_ + rowIDX*cols + colIDX, unquantize(result, unquant_mult_));
         }
 
       private:
@@ -96,11 +98,11 @@ class ReLU {
         }
 
         INTGEMM_SSE2 inline void operator()(Index rowIDX, Index cols, Index colIDX, MultiplyResult128 result) {
-          auto unquantized0123 = mul_ps(cvtepi32_ps(result.pack0123), unquant_mult_);
+          auto unquantized0123 = unquantize(result.pack0123, unquant_mult_);
           auto nonnegative0123 = max_ps(zeros_, unquantized0123);
           storeu_ps(C_ + rowIDX*cols + colIDX, nonnegative0123);
 
-          auto unquantized4567 = mul_ps(cvtepi32_ps(result.pack4567), unquant_mult_);
+          auto unquantized4567 = unquantize(result.pack4567, unquant_mult_);
           auto nonnegative4567 = max_ps(zeros_, unquantized4567);
           storeu_ps(C_ + rowIDX*cols + colIDX + 4, nonnegative4567);
         }
@@ -121,7 +123,7 @@ class ReLU {
         }
 
         INTGEMM_AVX2 inline void operator()(Index rowIDX, Index cols, Index colIDX, __m256i result) {
-          auto nonnegative = max_ps(zeros_, mul_ps(cvtepi32_ps(result), unquant_mult_));
+          auto nonnegative = max_ps(zeros_, unquantize(result, unquant_mult_));
           storeu_ps(C_ + rowIDX*cols + colIDX, nonnegative);
         }
 
@@ -140,7 +142,7 @@ class ReLU {
         }
 
         INTGEMM_AVX512BW inline void operator()(Index rowIDX, Index cols, Index colIDX, __m512i result) {
-          auto nonnegative = max_ps(zeros_, mul_ps(cvtepi32_ps(result), unquant_mult_));
+          auto nonnegative = max_ps(zeros_, unquantize(result, unquant_mult_));
           storeu_ps(C_ + rowIDX*cols + colIDX, nonnegative);
         }
 
