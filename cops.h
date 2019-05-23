@@ -3,6 +3,7 @@
 #include "intrinsics.h"
 #include "vec_utils.h"
 
+#include <cassert>
 #include <exception>
 
 namespace intgemm {

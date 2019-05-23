@@ -4,6 +4,10 @@
 
 namespace intgemm {
 
+struct MultiplyResult128 {
+  __m128i pack0123, pack4567;
+};
+
 //------------------------------------------------------------------------------
 //
 // Unquantize
