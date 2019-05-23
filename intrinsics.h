@@ -18,6 +18,7 @@ namespace intgemm {
 template <class Register> static inline Register set1_epi16(int16_t to);
 template <class Register> static inline Register set1_epi32(int32_t to);
 template <class Register> static inline Register set1_ps(float to);
+template <class Register> static inline Register setzero_ps();
 
 /*
  *
@@ -59,6 +60,9 @@ template <> INTGEMM_SSE2 inline __m128i set1_epi32<__m128i>(int32_t to) {
 }
 template <> INTGEMM_SSE2 inline __m128 set1_ps<__m128>(float to) {
   return _mm_set1_ps(to);
+}
+template <> INTGEMM_SSE2 inline __m128 setzero_ps<__m128>() {
+  return _mm_setzero_ps();
 }
 INTGEMM_SSSE3 static inline __m128i sign_epi8(__m128i first, __m128i second) {
   return _mm_sign_epi8(first, second);
@@ -107,6 +111,9 @@ template <> INTGEMM_AVX2 inline __m256i set1_epi32<__m256i>(int32_t to) {
 }
 template <> INTGEMM_AVX2 inline __m256 set1_ps<__m256>(float to) {
   return _mm256_set1_ps(to);
+}
+template <> INTGEMM_AVX2 inline __m256 setzero_ps<__m256>() {
+  return _mm256_setzero_ps();
 }
 INTGEMM_AVX2 static inline __m256i sign_epi8(__m256i first, __m256i second) {
   return _mm256_sign_epi8(first, second);
@@ -157,6 +164,9 @@ template <> inline INTGEMM_AVX512BW __m512i set1_epi32<__m512i>(int32_t to) {
 }
 template <> inline INTGEMM_AVX512BW __m512 set1_ps<__m512>(float to) {
   return _mm512_set1_ps(to);
+}
+template <> INTGEMM_AVX512BW inline __m512 setzero_ps<__m512>() {
+  return _mm512_setzero_ps();
 }
 /*
  * Missing sign_epi8

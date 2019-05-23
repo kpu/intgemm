@@ -94,7 +94,7 @@ class ReLU {
     class OnSSE2 {
       public:
         INTGEMM_SSE2 explicit OnSSE2(const ReLU& from)
-          : C_(from.C_), zeros_(set1_ps<__m128>(0)), unquant_mult_(set1_ps<__m128>(from.unquant_mult_)) {
+          : C_(from.C_), zeros_(setzero_ps<__m128>()), unquant_mult_(set1_ps<__m128>(from.unquant_mult_)) {
           assert(reinterpret_cast<uintptr_t>(C_) % sizeof(__m128i) == 0);
         }
 
@@ -119,7 +119,7 @@ class ReLU {
     class OnAVX2 {
       public:
         INTGEMM_AVX2 explicit OnAVX2(const ReLU& from)
-          : C_(from.C_), zeros_(set1_ps<__m256>(0)), unquant_mult_(set1_ps<__m256>(from.unquant_mult_)) {
+          : C_(from.C_), zeros_(setzero_ps<__m256>()), unquant_mult_(set1_ps<__m256>(from.unquant_mult_)) {
           assert(reinterpret_cast<uintptr_t>(C_) % sizeof(__m256i) == 0);
         }
 
@@ -138,7 +138,7 @@ class ReLU {
     class OnAVX512 {
       public:
         INTGEMM_AVX512BW explicit OnAVX512(const ReLU& from)
-          : C_(from.C_), zeros_(set1_ps<__m512>(0)), unquant_mult_(set1_ps<__m512>(from.unquant_mult_)) {
+          : C_(from.C_), zeros_(setzero_ps<__m512>()), unquant_mult_(set1_ps<__m512>(from.unquant_mult_)) {
           assert(reinterpret_cast<uintptr_t>(C_) % sizeof(__m512i) == 0);
         }
 
