@@ -55,6 +55,9 @@ INTGEMM_SSE2 static inline __m128 cvtepi32_ps(__m128i arg) {
 INTGEMM_SSE2 static inline __m128 mul_ps (__m128 a, __m128 b) {
   return _mm_mul_ps(a, b);
 }
+INTGEMM_SSE2 static inline __m128 add_ps (__m128 a, __m128 b) {
+  return _mm_add_ps(a, b);
+}
 
 INTGEMM_AVX2 static inline __m256i add_epi32(__m256i first, __m256i second) {
   return _mm256_add_epi32(first, second);
@@ -92,6 +95,9 @@ INTGEMM_AVX2 static inline __m256 cvtepi32_ps(__m256i arg) {
 INTGEMM_AVX2 static inline __m256 mul_ps (__m256 a, __m256 b) {
   return _mm256_mul_ps(a, b);
 }
+INTGEMM_AVX2 static inline __m256 add_ps (__m256 a, __m256 b) {
+  return _mm256_add_ps(a, b);
+}
 
 #ifndef INTGEMM_NO_AVX512
 INTGEMM_AVX512BW static inline __m512i add_epi32(__m512i first, __m512i second) {
@@ -114,6 +120,9 @@ INTGEMM_AVX512BW static inline __m512i abs_epi8(__m512i arg) {
 }
 INTGEMM_AVX512BW static inline __m512 max_ps(__m512 first, __m512 second) {
   return _mm512_max_ps(first, second);
+}
+INTGEMM_AVX512BW static inline __m512 add_ps(__m512 first, __m512 second) {
+  return _mm512_add_ps(first, second);
 }
 // Technically __AVX512DQ__
 INTGEMM_AVX512DQ static inline __m512 and_ps(__m512 first, __m512 second) {
