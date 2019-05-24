@@ -166,7 +166,7 @@ struct AVX512_16bit {
   }
   
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
-  INTGEMM_MULTIPLY16(__m512i, INTGEMM_AVX512BW, OnAVX2)
+  INTGEMM_MULTIPLY16(__m512i, INTGEMM_AVX512BW, CPUType::CPU_AVX2)
 
   constexpr static const char *const kName = "16-bit AVX512";
 
@@ -217,8 +217,8 @@ struct AVX512_8bit {
 
   // Special AVX512 implementation due to having 32 registers (so I don't have to
   // allocate registers manually) and no sign instruction.
-  template <class WriteC>
-  INTGEMM_AVX512BW static void Multiply(const int8_t *A, const int8_t *B, WriteC C, Index A_rows, Index width, Index B_cols) {
+  template <typename PostprocessPipeline>
+  INTGEMM_AVX512BW static void Multiply(const int8_t *A, const int8_t *B, float *C, PostprocessPipeline pipeline, Index A_rows, Index width, Index B_cols) {
   typedef __m512i Integer;
   //typedef __m256 Float; // For quantization we only do 8 at a time.
   // This is copy-paste from Multiply8_SSE2OrAVX2.
@@ -227,7 +227,7 @@ struct AVX512_8bit {
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0);
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0);
   // There's 8 results for INTGEMM_AVX2 to handle.
-  typename WriteC::OnAVX2 write_C(C);
+  auto inited_pipeline = InitPostprocessPipeline<CPUType::CPU_AVX2>(pipeline);
   const int simd_width = width / sizeof(Integer);
   const Integer *B0_col = reinterpret_cast<const Integer*>(B);
   // Added for AVX512.
@@ -324,7 +324,8 @@ struct AVX512_8bit {
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7);
 
       auto total = PermuteSummer(pack0123, pack4567);
-      write_C(A_rowidx, B_cols, B0_colidx, total);
+      auto result = inited_pipeline.run(total);
+      writer(C, A_rowidx, B_cols, B0_colidx, result);
     }
   }
 }

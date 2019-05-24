@@ -80,7 +80,7 @@ struct AVX2_16bit {
     avx2::SelectColumnsOfB((const __m256i*)input, (__m256i*)output, rows * 2, cols_begin, cols_end);
   }
   
-  INTGEMM_MULTIPLY16(__m256i, INTGEMM_AVX2, OnAVX2)
+  INTGEMM_MULTIPLY16(__m256i, INTGEMM_AVX2, CPUType::CPU_AVX2)
 
   constexpr static const char *const kName = "16-bit INTGEMM_AVX2";
 
@@ -163,22 +163,13 @@ struct AVX2_8bit {
   static const Index kBTileRow = 32;
   static const Index kBTileCol = 8;
 
-/*
-  INTGEMM_AVX2 static void PrepareB(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
-    PrepareBFor8(input, output, avx2::QuantizeTile8(quant_mult), rows, cols);
-  }*/
-
   INTGEMM_PREPARE_B_8(INTGEMM_AVX2, avx2::QuantizeTile8)
 
   INTGEMM_AVX2 static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     avx2::SelectColumnsOfB((const __m256i*)input, (__m256i*)output, rows, cols_begin, cols_end);
   }
-/*
-  INTGEMM_AVX2 static void Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {
-    //Multiply8_SSE2OrAVX2<Multiply8_AVXAVX2, __m256i, __m256>(A, B, C, unquant_mult, A_rows, width, B_cols);
-    Multiply8_SSE2OrAVX2__m256i<JustUnquantizeC>(A, B, JustUnquantizeC(C, unquant_mult), A_rows, width, B_cols);
-  }*/
-  INTGEMM_MULTIPLY8(__m256i, INTGEMM_AVX2, OnAVX2)
+
+  INTGEMM_MULTIPLY8(__m256i, INTGEMM_AVX2, CPUType::CPU_AVX2)
   
   constexpr static const char *const kName = "8-bit INTGEMM_AVX2";
 

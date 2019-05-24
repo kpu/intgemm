@@ -48,7 +48,7 @@
 #include "sse2_gemm.h"
 #include "ssse3_gemm.h"
 #include "avx2_gemm.h"
-#include "cops.h"
+#include "postprocess.h"
 #ifndef INTGEMM_NO_AVX512
 #include "avx512_gemm.h"
 #endif
@@ -67,8 +67,8 @@ struct Unsupported_16bit {
   static void SelectColumnsB(const int16_t *, int16_t *, Index, const Index *, const Index *) {
     throw UnsupportedCPU();
   }
-  template<class WriteC>
-  static void Multiply(const int16_t *, const int16_t *, WriteC, Index, Index, Index) {
+  template <typename PostprocessPipeline>
+  static void Multiply(const int16_t *, const int16_t *, float *, PostprocessPipeline, Index, Index, Index) {
     throw UnsupportedCPU();
   }
   constexpr static const char *const kName = "16-bit Unsupported";
@@ -84,8 +84,8 @@ struct Unsupported_8bit {
   static void SelectColumnsB(const int8_t *, int8_t *, Index, const Index *, const Index *) {
     throw UnsupportedCPU();
   }
-  template<class WriteC>
-  static void Multiply(const int8_t *, const int8_t *, WriteC, Index, Index, Index) {
+  template <typename PostprocessPipeline>
+  static void Multiply(const int8_t *, const int8_t *, float *, PostprocessPipeline, Index, Index, Index) {
     throw UnsupportedCPU();
   }
   constexpr static const char *const kName = "8-bit Unsupported";
@@ -133,15 +133,15 @@ template <class T> T ChooseCPU(T avx512, T avx2, T ssse3, T sse2, T unsupported)
 }
 
 /* 16-bit matrix multiplication. */
-template<class WriteC>
+template <typename PostprocessPipeline>
 class Int16Mult {
 public:
   // Multiply C = A * B, presuming A and B have been prepared.
-  static void (*Multiply)(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols);
+  static void (*Multiply)(const int16_t *A, const int16_t *B, float *C, PostprocessPipeline pipeline, Index A_rows, Index width, Index B_cols);
 };
 
-template <class WriteC>
-void (*Int16Mult<WriteC>::Multiply)(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) = ChooseCPU(AVX512_16bit::Multiply<WriteC>, AVX2_16bit::Multiply<WriteC>, SSE2_16bit::Multiply<WriteC>, SSE2_16bit::Multiply<WriteC>, Unsupported_16bit::Multiply);
+template <typename PostprocessPipeline>
+void (*Int16Mult<PostprocessPipeline>::Multiply)(const int16_t *A, const int16_t *B, float *C, PostprocessPipeline pipeline, Index A_rows, Index width, Index B_cols) = ChooseCPU(AVX512_16bit::Multiply<PostprocessPipeline>, AVX2_16bit::Multiply<PostprocessPipeline>, SSE2_16bit::Multiply<PostprocessPipeline>, SSE2_16bit::Multiply<PostprocessPipeline>, Unsupported_16bit::Multiply);
 
 struct Int16 {
   typedef int16_t Integer;
@@ -172,24 +172,24 @@ struct Int16 {
   static void (*SelectColumnsB)(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
 
   // Multiply C = A * B, presuming A and B have been prepared.
-  template<class WriteC>
-  static void Multiply(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) {
-    Int16Mult<WriteC>::Multiply(A, B, functor, A_rows, width, B_cols);
+  template <typename PostprocessPipeline>
+  static void Multiply(const int16_t *A, const int16_t *B, float *C, PostprocessPipeline pipeline, Index A_rows, Index width, Index B_cols) {
+    Int16Mult<PostprocessPipeline>::Multiply(A, B, C, pipeline, A_rows, width, B_cols);
   }
 
   static const char *const kName;
 };
 
 /* 8-bit matrix multiplication */
-template<class WriteC>
+template <typename PostprocessPipeline>
 class Int8Mult {
 public:
   // Multiply C = A * B, presuming A and B have been prepared.
-  static void (*Multiply)(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols);
+  static void (*Multiply)(const int8_t *A, const int8_t *B, float *C, PostprocessPipeline pipeline, Index A_rows, Index width, Index B_cols);
 };
 
-template <class WriteC>
-void (*Int8Mult<WriteC>::Multiply)(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) = ChooseCPU(AVX512_8bit::Multiply<WriteC>, AVX2_8bit::Multiply<WriteC>, SSSE3_8bit::Multiply<WriteC>, SSSE3_8bit::Multiply<WriteC>, Unsupported_8bit::Multiply);
+template <typename PostprocessPipeline>
+void (*Int8Mult<PostprocessPipeline>::Multiply)(const int8_t *A, const int8_t *B, float *C, PostprocessPipeline pipeline, Index A_rows, Index width, Index B_cols) = ChooseCPU(AVX512_8bit::Multiply<PostprocessPipeline>, AVX2_8bit::Multiply<PostprocessPipeline>, SSSE3_8bit::Multiply<PostprocessPipeline>, SSSE3_8bit::Multiply<PostprocessPipeline>, Unsupported_8bit::Multiply);
 
 struct Int8 {
   typedef int8_t Integer;
@@ -219,9 +219,9 @@ struct Int8 {
   static void (*SelectColumnsB)(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
 
   // Multiply C = A * B, presuming A and B have been prepared.
-  template<class WriteC>
-  static void Multiply(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) {
-    Int8Mult<WriteC>::Multiply(A, B, functor, A_rows, width, B_cols);
+  template <typename PostprocessPipeline>
+  static void Multiply(const int8_t *A, const int8_t *B, float* C, PostprocessPipeline pipeline, Index A_rows, Index width, Index B_cols) {
+    Int8Mult<PostprocessPipeline>::Multiply(A, B, C, pipeline, A_rows, width, B_cols);
   }
   
   static const char *const kName;

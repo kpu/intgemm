@@ -78,10 +78,10 @@ template <class Backend> void Run(const RandomMatrices &m, std::vector<uint64_t>
   Backend::PrepareB(m.B.begin(), B_prepared.begin(), quant_mult, m.width, m.B_cols);
   AlignedVector<float> output(m.A_rows * m.B_cols);
   // Burn in
-  Backend::Multiply(A_prepared.begin(), B_prepared.begin(), JustUnquantizeC(output.begin(), unquant_mult), m.A_rows, m.width, m.B_cols);
+  Backend::Multiply(A_prepared.begin(), B_prepared.begin(), output.begin(), CreatePostprocessPipeline(Unquantize(unquant_mult)), m.A_rows, m.width, m.B_cols);
   {
     StopWatch w(stats);
-    Backend::Multiply(A_prepared.begin(), B_prepared.begin(), JustUnquantizeC(output.begin(), unquant_mult), m.A_rows, m.width, m.B_cols);
+    Backend::Multiply(A_prepared.begin(), B_prepared.begin(), output.begin(), CreatePostprocessPipeline(Unquantize(unquant_mult)), m.A_rows, m.width, m.B_cols);
   }
 }
 

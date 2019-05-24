@@ -72,7 +72,7 @@ struct SSE2_16bit {
     //TODO #DEFINE
     sse2::SelectColumnsOfB((const __m128i*)input, (__m128i*)output, rows * 2, cols_begin, cols_end);
   }
-  INTGEMM_MULTIPLY16(__m128i, INTGEMM_SSE2, OnSSE2)
+  INTGEMM_MULTIPLY16(__m128i, INTGEMM_SSE2, CPUType::CPU_SSE2)
 
   constexpr static const char *const kName = "16-bit INTGEMM_SSE2";
 

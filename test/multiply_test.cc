@@ -1,7 +1,8 @@
-#include "intgemm.h"
 #include "aligned.h"
 #include "interleave.h"
+#include "intgemm.h"
 #include "multiply.h"
+#include "postprocess.h"
 
 #define CATCH_CONFIG_RUNNER 
 #include "3rd_party/catch.hpp"
@@ -366,7 +367,7 @@ template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_co
   Routine::PrepareB(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
 
   AlignedVector<float> test_C(A_rows * B_cols);
-  Routine::Multiply(A_prep.begin(), B_prep.begin(), JustUnquantizeC(test_C.begin(), unquant_mult), A_rows, width, B_cols);
+  Routine::Multiply(A_prep.begin(), B_prep.begin(), test_C.begin(), CreatePostprocessPipeline(Unquantize(unquant_mult)), A_rows, width, B_cols);
 
   AlignedVector<Integer> B_quant(B.size());
   Routine::Quantize(B.begin(), B_quant.begin(), quant_mult, B.size());
@@ -415,7 +416,7 @@ template <class Routine> void TestMultiplyBias(Index A_rows, Index width, Index 
 
   AlignedVector<float> test_C(A_rows * B_cols);
 
-  Routine::Multiply(A_prep.begin(), B_prep.begin(), BiasAddUnquantizeC(test_C.begin(), bias.begin(), unquant_mult), A_rows, width, B_cols);
+  Routine::Multiply(A_prep.begin(), B_prep.begin(), test_C.begin(), CreatePostprocessPipeline(Unquantize(unquant_mult), AddBias(bias.begin())), A_rows, width, B_cols);
 
   AlignedVector<Integer> B_quant(B.size());
   Routine::Quantize(B.begin(), B_quant.begin(), quant_mult, B.size());
