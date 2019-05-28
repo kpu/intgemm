@@ -37,6 +37,7 @@ add_executable(tests
   test/multiply_test.cc
   test/quantize_test.cc
   test/relu_test.cc
+  test/sigmoid_test.cc
 )
 
 #CTest integration with Catch2
