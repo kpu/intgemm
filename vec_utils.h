@@ -1,6 +1,7 @@
 #pragma once
 
 #include "intrinsics.h"
+#include "meta_math.h"
 
 namespace intgemm {
 
@@ -96,7 +97,7 @@ INTGEMM_AVX512BW static inline __m512 floor_ff(__m512 a) {
 
   (this is the zlib license)
 */
-INTGEMM_AVX2 static inline __m256 exp_approx_reyoung(__m256 x) { // 31-32 instrinsics
+INTGEMM_AVX2 static inline __m256 exp_approx_reyoung(__m256 x) { // 31 instrinsics
   static const auto cephes_LOG2EF = set1_ps<__m256>(1.44269504088896341);
   static const auto cephes_exp_C1 = set1_ps<__m256>(0.693359375);
   static const auto cephes_exp_C2 = set1_ps<__m256>(-2.12194440e-4);
@@ -170,53 +171,17 @@ INTGEMM_AVX2 static inline __m256 exp_approx_reyoung(__m256 x) { // 31-32 instri
 //
 //------------------------------------------------------------------------------
 namespace { // anonymous namespace
-template <unsigned N> constexpr long long factorial() { return N * factorial<N-1>(); }
-template <> constexpr long long factorial<0>() { return 1; }
 
 template <typename Register>
 Register exp_approx_taylor(Register x) { // 21-22 intrinsics
   const static float LOOKUP[] = {
-    /* e^-20 = */ 2.061153622438558e-09f,
-    /* e^-19 = */ 5.602796437537268e-09f,
-    /* e^-18 = */ 1.522997974471263e-08f,
-    /* e^-17 = */ 4.139937718785167e-08f,
-    /* e^-16 = */ 1.1253517471925912e-07f,
-    /* e^-15 = */ 3.059023205018258e-07f,
-    /* e^-14 = */ 8.315287191035679e-07f,
-    /* e^-13 = */ 2.2603294069810542e-06f,
-    /* e^-12 = */ 6.14421235332821e-06f,
-    /* e^-11 = */ 1.670170079024566e-05f,
-    /* e^-10 = */ 4.5399929762484854e-05f,
-    /* e^-9 =  */ 0.00012340980408667956f,
-    /* e^-8 =  */ 0.00033546262790251185f,
-    /* e^-7 =  */ 0.0009118819655545162f,
-    /* e^-6 =  */ 0.0024787521766663585f,
-    /* e^-5 =  */ 0.006737946999085467f,
-    /* e^-4 =  */ 0.01831563888873418f,
-    /* e^-3 =  */ 0.049787068367863944f,
-    /* e^-2 =  */ 0.1353352832366127f,
-    /* e^-1 =  */ 0.36787944117144233f,
-    /* e^0 =   */ 1.0f,
-    /* e^1 =   */ 2.718281828459045f,
-    /* e^2 =   */ 7.38905609893065f,
-    /* e^3 =   */ 20.085536923187668f,
-    /* e^4 =   */ 54.598150033144236f,
-    /* e^5 =   */ 148.4131591025766f,
-    /* e^6 =   */ 403.4287934927351f,
-    /* e^7 =   */ 1096.6331584284585f,
-    /* e^8 =   */ 2980.9579870417283f,
-    /* e^9 =   */ 8103.083927575384f,
-    /* e^10 =  */ 22026.465794806718f,
-    /* e^11 =  */ 59874.14171519782f,
-    /* e^12 =  */ 162754.79141900392f,
-    /* e^13 =  */ 442413.3920089205f,
-    /* e^14 =  */ 1202604.2841647768f,
-    /* e^15 =  */ 3269017.3724721107f,
-    /* e^16 =  */ 8886110.520507872f,
-    /* e^17 =  */ 24154952.7535753f,
-    /* e^18 =  */ 65659969.13733051f,
-    /* e^19 =  */ 178482300.96318725f,
-    /* e^20 =  */ 485165195.4097903f,
+    exp<-20>(), exp<-19>(), exp<-18>(), exp<-17>(), exp<-16>(), exp<-15>(),
+    exp<-14>(), exp<-13>(), exp<-12>(), exp<-11>(), exp<-10>(), exp<-9>(),
+    exp<-8>(), exp<-7>(), exp<-6>(), exp<-5>(), exp<-4>(), exp<-3>(), exp<-2>(),
+    exp<-1>(), exp<0>(), exp<1>(), exp<2>(), exp<3>(), exp<4>(), exp<5>(),
+    exp<6>(), exp<7>(), exp<8>(), exp<9>(), exp<10>(), exp<11>(), exp<12>(),
+    exp<13>(), exp<14>(), exp<15>(), exp<16>(), exp<17>(), exp<18>(), exp<19>(),
+    exp<20>(),
   };
   const static Register dividers[] = {
     set1_ps<Register>(1.f / factorial<7>()),
