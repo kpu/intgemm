@@ -12,7 +12,7 @@ class JustUnquantizeC {
     class OnSSE2 {
       public:
         INTGEMM_SSE2 explicit OnSSE2(const JustUnquantizeC &from)
-          : C_(from.C_), unquant_mult_(_mm_set1_ps(from.unquant_mult_)) {
+          : C_(from.C_), unquant_mult_(set1_ps<__m128>(from.unquant_mult_)) {
           assert(reinterpret_cast<uintptr_t>(C_) % sizeof(__m128i) == 0);
          }
 
@@ -28,7 +28,7 @@ class JustUnquantizeC {
     class OnAVX2 {
       public:
         INTGEMM_AVX2 explicit OnAVX2(const JustUnquantizeC &from)
-          : C_(from.C_), unquant_mult_(_mm256_set1_ps(from.unquant_mult_)) {
+          : C_(from.C_), unquant_mult_(set1_ps<__m256>(from.unquant_mult_)) {
           assert(reinterpret_cast<uintptr_t>(C_) % sizeof(__m256i) == 0);
         }
 
@@ -84,4 +84,76 @@ class Identity {
     int32_t *C_;
 };
 
-} //Namespace
+class ReLU {
+  public:
+    explicit ReLU(float *C, float unquant_mult) : C_(C), unquant_mult_(unquant_mult) {}
+
+    class OnSSE2 {
+      public:
+        INTGEMM_SSE2 explicit OnSSE2(const ReLU& from)
+          : C_(from.C_), zeros_(set1_ps<__m128>(0)), unquant_mult_(set1_ps<__m128>(from.unquant_mult_)) {
+          assert(reinterpret_cast<uintptr_t>(C_) % sizeof(__m128i) == 0);
+        }
+
+        INTGEMM_SSE2 inline void operator()(Index rowIDX, Index cols, Index colIDX, MultiplyResult128 result) {
+          auto unquantized0123 = mul_ps(cvtepi32_ps(result.pack0123), unquant_mult_);
+          auto nonnegative0123 = max_ps(zeros_, unquantized0123);
+          storeu_ps(C_ + rowIDX*cols + colIDX, nonnegative0123);
+
+          auto unquantized4567 = mul_ps(cvtepi32_ps(result.pack4567), unquant_mult_);
+          auto nonnegative4567 = max_ps(zeros_, unquantized4567);
+          storeu_ps(C_ + rowIDX*cols + colIDX + 4, nonnegative4567);
+        }
+
+      private:
+        float* C_;
+        __m128 unquant_mult_;
+        __m128 zeros_;
+    };
+
+    using OnSSSE2 = OnSSE2;
+
+    class OnAVX2 {
+      public:
+        INTGEMM_AVX2 explicit OnAVX2(const ReLU& from)
+          : C_(from.C_), zeros_(set1_ps<__m256>(0)), unquant_mult_(set1_ps<__m256>(from.unquant_mult_)) {
+          assert(reinterpret_cast<uintptr_t>(C_) % sizeof(__m256i) == 0);
+        }
+
+        INTGEMM_AVX2 inline void operator()(Index rowIDX, Index cols, Index colIDX, __m256i result) {
+          auto nonnegative = max_ps(zeros_, mul_ps(cvtepi32_ps(result), unquant_mult_));
+          storeu_ps(C_ + rowIDX*cols + colIDX, nonnegative);
+        }
+
+      private:
+        float* C_;
+        __m256 unquant_mult_;
+        __m256 zeros_;
+    };
+
+#ifndef INTGEMM_NO_AVX512
+    class OnAVX512 {
+      public:
+        INTGEMM_AVX512BW explicit OnAVX512(const ReLU& from)
+          : C_(from.C_), zeros_(set1_ps<__m512>(0)), unquant_mult_(set1_ps<__m512>(from.unquant_mult_)) {
+          assert(reinterpret_cast<uintptr_t>(C_) % sizeof(__m512i) == 0);
+        }
+
+        INTGEMM_AVX512BW inline void operator()(Index rowIDX, Index cols, Index colIDX, __m512i result) {
+          auto nonnegative = max_ps(zeros_, mul_ps(cvtepi32_ps(result), unquant_mult_));
+          storeu_ps(C_ + rowIDX*cols + colIDX, nonnegative);
+        }
+
+      private:
+        float* C_;
+        __m512 unquant_mult_;
+        __m512 zeros_;
+    };
+#endif
+
+  private:
+    float* C_;
+    float unquant_mult_;
+};
+
+}
