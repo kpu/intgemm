@@ -40,6 +40,9 @@ INTGEMM_SSE2 static inline __m128 and_ps(__m128 first, __m128 second) {
 INTGEMM_SSE2 static inline __m128 cvtepi32_ps(__m128i arg) {
   return _mm_cvtepi32_ps(arg);
 }
+INTGEMM_SSE2 static inline __m128i cvtps_epi32(__m128 arg) {
+  return _mm_cvtps_epi32(arg);
+}
 INTGEMM_SSE2 static inline __m128i madd_epi16(__m128i first, __m128i second) {
   return _mm_madd_epi16(first, second);
 }
@@ -90,6 +93,9 @@ INTGEMM_AVX2 static inline __m256 and_ps(__m256 first, __m256 second) {
 }
 INTGEMM_AVX2 static inline __m256 cvtepi32_ps(__m256i arg) {
   return _mm256_cvtepi32_ps(arg);
+}
+INTGEMM_AVX2 static inline __m256i cvtps_epi32(__m256 arg) {
+  return _mm256_cvtps_epi32(arg);
 }
 INTGEMM_AVX2 static inline __m256i madd_epi16(__m256i first, __m256i second) {
   return _mm256_madd_epi16(first, second);
@@ -143,6 +149,9 @@ INTGEMM_AVX512DQ static inline __m512 and_ps(__m512 first, __m512 second) {
 }
 INTGEMM_AVX512BW static inline __m512 cvtepi32_ps(__m512i arg) {
   return _mm512_cvtepi32_ps(arg);
+}
+INTGEMM_AVX512BW static inline __m512i cvtps_epi32(__m512 arg) {
+  return _mm512_cvtps_epi32(arg);
 }
 INTGEMM_AVX512BW static inline __m512i madd_epi16(__m512i first, __m512i second) {
   return _mm512_madd_epi16(first, second);

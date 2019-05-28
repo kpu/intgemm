@@ -1,4 +1,5 @@
 #pragma once
+
 #include <stdint.h>
 #include <cstdint>
 #include <cassert>
@@ -35,10 +36,7 @@ namespace avx512f {
 // Load from memory, multiply, and convert to int32_t.
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_AVX512BW inline __m512i QuantizerGrab(const float *input, const __m512 quant_mult_reg) {
-  // Multiply each by the quantization factor.
-  __m512 val = _mm512_mul_ps(*reinterpret_cast<const __m512*>(input), quant_mult_reg);
-  // Cast to 32-bit int
-  return _mm512_cvtps_epi32(val);
+  return quantize(*reinterpret_cast<const __m512*>(input), quant_mult_reg);
 }
 
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */

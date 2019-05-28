@@ -1,4 +1,5 @@
 #pragma once
+
 #include "types.h"
 #include <cstdint>
 #include <stdint.h>
@@ -11,10 +12,9 @@
 namespace intgemm {
 
 namespace ssse3 {
-// Same implementation as AVX512, just width.  Grabs 4 32-bit values.
-//TODO duplicated function requires the removal of the annonymous namespace
+
 INTGEMM_SSSE3 inline __m128i QuantizerGrab(const float *input, const __m128 quant_mult_reg) {
-  return _mm_cvtps_epi32(_mm_mul_ps(*reinterpret_cast<const __m128*>(input), quant_mult_reg));
+  return quantize(*reinterpret_cast<const __m128*>(input), quant_mult_reg);
 }
 
 INTGEMM_SELECT_COL_B(INTGEMM_SSSE3, __m128i)
