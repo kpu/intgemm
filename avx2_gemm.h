@@ -1,4 +1,5 @@
 #pragma once
+
 #include "types.h"
 #include <cstdint>
 #include <stdint.h>
@@ -9,10 +10,9 @@
 namespace intgemm {
 
 namespace avx2 {
-// Read a vector of floats, multiply them, and cast to 32-bit integer.
-// EVIL EVIL CODE DUPLICATION, FIX
+
 INTGEMM_AVX2 inline __m256i QuantizerGrab(const float *input, const __m256 quant_mult_reg) {
-  return _mm256_cvtps_epi32(_mm256_mul_ps(*reinterpret_cast<const __m256*>(input), quant_mult_reg));
+  return quantize(*reinterpret_cast<const __m256*>(input), quant_mult_reg);
 }
 
 INTGEMM_SELECT_COL_B(INTGEMM_AVX2, __m256i)

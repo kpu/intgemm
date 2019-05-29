@@ -1,6 +1,8 @@
 #pragma once
 
+#include "interleave.h"
 #include "intrinsics.h"
+#include "vec_utils.h"
 
 namespace intgemm {
 
