@@ -7,10 +7,6 @@
 
 namespace intgemm {
 
-INTGEMM_SSE2 static inline void writer(float* C, Index offset, __m128 result) {
-  *reinterpret_cast<__m128*>(C + offset) = result;
-}
-
 INTGEMM_SSE2 static inline void writer(float* C, Index offset, RegisterPair128 result) {
   *reinterpret_cast<__m128*>(C + offset) = result.pack0123;
   *reinterpret_cast<__m128*>(C + offset + 4) = result.pack4567;
