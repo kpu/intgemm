@@ -51,7 +51,7 @@ class JustUnquantizeC {
 
 class BiasAddUnquantizeC {
   public:
-    BiasAddUnquantizeC(float *C, float *bias, float unquant_mult) : C_(C), bias_(bias), unquant_mult_(unquant_mult) {}
+    BiasAddUnquantizeC(float *C, const float *bias, float unquant_mult) : C_(C), bias_(bias), unquant_mult_(unquant_mult) {}
 
     class OnSSE2 {
       public:
@@ -61,14 +61,14 @@ class BiasAddUnquantizeC {
          }
 
         INTGEMM_SSE2 inline void operator()(Index rowIDX, Index cols, Index colIDX, MultiplyResult128 result) {
-          __m128* biasSection = reinterpret_cast<__m128*>(bias_ + colIDX);
-          __m128* biasSection2 = reinterpret_cast<__m128*>(bias_ + colIDX + 4);
-          *reinterpret_cast<__m128*>(C_ + rowIDX*cols + colIDX) = add_ps(mul_ps(cvtepi32_ps(result.pack0123), unquant_mult_), *biasSection);
-          *reinterpret_cast<__m128*>(C_ + rowIDX*cols + colIDX + 4) = add_ps(mul_ps(cvtepi32_ps(result.pack4567), unquant_mult_), *biasSection2);
+          const __m128* biasSection = reinterpret_cast<const __m128*>(bias_ + colIDX);
+          const __m128* biasSection2 = reinterpret_cast<const __m128*>(bias_ + colIDX + 4);
+          storeu_ps(C_ + rowIDX*cols + colIDX, add_ps(unquantize(result.pack0123, unquant_mult_), *biasSection));
+          storeu_ps(C_ + rowIDX*cols + colIDX + 4, add_ps(unquantize(result.pack4567, unquant_mult_), *biasSection2));
         }
       private:
         float *C_;
-        float *bias_;
+        const float *bias_;
         __m128 unquant_mult_;
     };
 
@@ -80,19 +80,19 @@ class BiasAddUnquantizeC {
         }
 
         INTGEMM_AVX2 inline void operator()(Index rowIDX, Index cols, Index colIDX, __m256i result) {
-          __m256* biasSection = reinterpret_cast<__m256*>(bias_ + colIDX);
-          *reinterpret_cast<__m256*>(C_ + rowIDX*cols + colIDX) = add_ps(mul_ps(cvtepi32_ps(result), unquant_mult_), *biasSection);
+          const __m256* biasSection = reinterpret_cast<const __m256*>(bias_ + colIDX);
+          storeu_ps(C_ + rowIDX*cols + colIDX, add_ps(unquantize(result, unquant_mult_), *biasSection));
         }
 
       private:
         float *C_;
-        float *bias_;
+        const float *bias_;
         __m256 unquant_mult_;
     };
 
   private:
     float *C_;
-    float *bias_;
+    const float *bias_;
     float unquant_mult_;
 };
 
