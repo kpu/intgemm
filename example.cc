@@ -22,16 +22,16 @@ int main() {
 
   // Fill with random values in range [-2, 2].
   srand(1);
-  for (int i = 0; i < A_rows * width; ++i) {
+  for (Index i = 0; i < A_rows * width; ++i) {
     A[i] = ((float)rand()/(float)RAND_MAX)*4.0f - 2.0f;
   }
-  for (int i = 0; i < width * B_cols; ++i) {
+  for (Index i = 0; i < width * B_cols; ++i) {
     B[i] = ((float)rand()/(float)RAND_MAX)*4.0f - 2.0f;
   }
 
   // Compute the top left corner of C as a sanity check.
   float top_left_reference = 0.0;
-  for (int w = 0; w < width; ++w) {
+  for (Index w = 0; w < width; ++w) {
     top_left_reference += A[w] * B[w * B_cols];
   }
 
