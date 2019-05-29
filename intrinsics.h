@@ -73,6 +73,9 @@ INTGEMM_SSSE3 static inline __m128i sign_epi8(__m128i first, __m128i second) {
 INTGEMM_SSE2 static inline void storeu_ps(float* mem_addr, __m128 a) {
   _mm_storeu_ps(mem_addr, a);
 }
+INTGEMM_SSE2 static inline __m128 add_ps (__m128 a, __m128 b) {
+  return _mm_add_ps(a, b);
+}
 
 /*
  *
@@ -127,6 +130,9 @@ INTGEMM_AVX2 static inline __m256i sign_epi8(__m256i first, __m256i second) {
 INTGEMM_AVX2 static inline void storeu_ps(float* mem_addr, __m256 a) {
   _mm256_storeu_ps(mem_addr, a);
 }
+INTGEMM_AVX2 static inline __m256 add_ps (__m256 a, __m256 b) {
+  return _mm256_add_ps(a, b);
+}
 
 /*
  *
@@ -162,6 +168,11 @@ INTGEMM_AVX512BW static inline __m512i maddubs_epi16(__m512i first, __m512i seco
 INTGEMM_AVX512BW static inline __m512 max_ps(__m512 first, __m512 second) {
   return _mm512_max_ps(first, second);
 }
+
+INTGEMM_AVX512BW static inline __m512 add_ps(__m512 first, __m512 second) {
+  return _mm512_add_ps(first, second);
+}
+
 INTGEMM_AVX512BW static inline __m512 mul_ps(__m512 a, __m512 b) {
   return _mm512_mul_ps(a, b);
 }
