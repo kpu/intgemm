@@ -15,7 +15,7 @@ INTGEMM_AVX2 TEST_CASE("PostprocessPipeline AVX2", "Unquantize-ReLU") {
   auto input = *reinterpret_cast<__m256i*>(raw_input);
   auto pipeline = CreatePostprocessPipeline(Unquantize(0.5f), ReLU());
   auto inited_pipeline = InitPostprocessPipeline<CPU_AVX2>(pipeline);
-  auto output = inited_pipeline.run(input);
+  auto output = inited_pipeline.run(input, 0);
 
   float* raw_output = reinterpret_cast<float*>(&output);
 

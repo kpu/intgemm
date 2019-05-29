@@ -17,7 +17,7 @@ INTGEMM_SSE2 TEST_CASE("ReLU SSE2",) {
   input.pack4567 = *reinterpret_cast<__m128*>(raw_input + 4);
 
   auto postproc = PostprocessImpl<ReLU, CPUType::CPU_SSE2>(ReLU());
-  auto output = postproc.run(input);
+  auto output = postproc.run(input, 0);
   auto raw_output = reinterpret_cast<float*>(&output);
 
   CHECK(raw_output[0] == 0.f); // input = -2
@@ -39,7 +39,7 @@ INTGEMM_AVX2 TEST_CASE("ReLU AVX2",) {
 
   auto input = *reinterpret_cast<__m256*>(raw_input);
   auto postproc = PostprocessImpl<ReLU, CPUType::CPU_AVX2>(ReLU());
-  auto output = postproc.run(input);
+  auto output = postproc.run(input, 0);
   auto raw_output = reinterpret_cast<float*>(&output);
 
   CHECK(raw_output[0] == 0.f); // input = -4
@@ -63,7 +63,7 @@ INTGEMM_AVX512BW TEST_CASE("ReLU AVX512",) {
 
   auto input = *reinterpret_cast<__m512*>(raw_input);
   auto postproc = PostprocessImpl<ReLU, CPUType::CPU_AVX512BW>(ReLU());
-  auto output = postproc.run(input);
+  auto output = postproc.run(input, 0);
   auto raw_output = reinterpret_cast<float*>(&output);
 
   CHECK(raw_output[0]  == 0.f); // input = -8

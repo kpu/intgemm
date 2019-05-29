@@ -86,20 +86,20 @@ template <CPUType CpuType>
 struct RunPostprocessPipelineImpl;
 
 #define RUN_POSTPROCESS_PIPELINE_IMPL_INSERT_IMPL(attribute, cpu_type) \
-  template <>                                                                                            \
-  struct RunPostprocessPipelineImpl<cpu_type> {                                                          \
-    template <typename Stage>                                                                            \
-    attribute static constexpr typename Stage::OutputRegister                                            \
-    run(std::tuple<Stage> pipeline, typename Stage::InputRegister input) {                               \
-      return std::get<0>(pipeline).run(input);                                                           \
-    }                                                                                                    \
-    template <typename... Stages>                                                                        \
-    attribute static constexpr typename get_last_stage_type<Stages...>::OutputRegister                   \
-    run(std::tuple<Stages...> pipeline, typename get_first_stage_type<Stages...>::InputRegister input) { \
-      return run(                                                                                        \
-        ShiftPostprocessPipeline(pipeline),                                                              \
-        std::get<0>(pipeline).run(input));                                                               \
-    }                                                                                                    \
+  template <>                                                                                                          \
+  struct RunPostprocessPipelineImpl<cpu_type> {                                                                        \
+    template <typename Stage>                                                                                          \
+    attribute static constexpr typename Stage::OutputRegister                                                          \
+    run(std::tuple<Stage> pipeline, typename Stage::InputRegister input, Index offset) {                               \
+      return std::get<0>(pipeline).run(input, offset);                                                                 \
+    }                                                                                                                  \
+    template <typename... Stages>                                                                                      \
+    attribute static constexpr typename get_last_stage_type<Stages...>::OutputRegister                                 \
+    run(std::tuple<Stages...> pipeline, typename get_first_stage_type<Stages...>::InputRegister input, Index offset) { \
+      return run(                                                                                                      \
+        ShiftPostprocessPipeline(pipeline),                                                                            \
+        std::get<0>(pipeline).run(input, offset), offset);                                                             \
+    }                                                                                                                  \
   };
 
 RUN_POSTPROCESS_PIPELINE_IMPL_INSERT_IMPL(INTGEMM_SSE2, CPUType::CPU_SSE2)
@@ -125,8 +125,8 @@ constexpr InitedPostprocessPipeline<CpuType, Stages...> InitPostprocessPipeline(
     using OutputRegister = typename get_last_stage_type<PostprocessImpl<Stages, cpu_type>...>::OutputRegister; \
     InitedPostprocessPipeline(std::tuple<Stages...> pipeline)                                                  \
         : inited_pipeline(InitPostprocessPipelineImpl<cpu_type, Stages...>(pipeline)) {}                       \
-    attribute inline OutputRegister run(InputRegister input) {                                                 \
-      return RunPostprocessPipelineImpl<cpu_type>::run(inited_pipeline, input);                                \
+    attribute inline OutputRegister run(InputRegister input, Index offset) {                                   \
+      return RunPostprocessPipelineImpl<cpu_type>::run(inited_pipeline, input, offset);                        \
     }                                                                                                          \
   private:                                                                                                     \
     const std::tuple<PostprocessImpl<Stages, cpu_type>...> inited_pipeline;                                    \

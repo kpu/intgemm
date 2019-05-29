@@ -416,7 +416,7 @@ template <class Routine> void TestMultiplyBias(Index A_rows, Index width, Index 
 
   AlignedVector<float> test_C(A_rows * B_cols);
 
-  Routine::Multiply(A_prep.begin(), B_prep.begin(), test_C.begin(), CreatePostprocessPipeline(Unquantize(unquant_mult), AddBias(bias.begin())), A_rows, width, B_cols);
+  Routine::Multiply(A_prep.begin(), B_prep.begin(), test_C.begin(), CreatePostprocessPipeline(Unquantize(unquant_mult), AddBias(bias.begin(), B_cols)), A_rows, width, B_cols);
 
   AlignedVector<Integer> B_quant(B.size());
   Routine::Quantize(B.begin(), B_quant.begin(), quant_mult, B.size());

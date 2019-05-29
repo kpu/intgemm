@@ -7,22 +7,22 @@
 
 namespace intgemm {
 
-INTGEMM_SSE2 static inline void writer(float* C, Index rowIDX, Index cols, Index colIDX, __m128 result) {
-  *reinterpret_cast<__m128*>(C + rowIDX*cols + colIDX) = result;
+INTGEMM_SSE2 static inline void writer(float* C, Index offset, __m128 result) {
+  *reinterpret_cast<__m128*>(C + offset) = result;
 }
 
-INTGEMM_SSE2 static inline void writer(float* C, Index rowIDX, Index cols, Index colIDX, RegisterPair128 result) {
-  *reinterpret_cast<__m128*>(C + rowIDX*cols + colIDX) = result.pack0123;
-  *reinterpret_cast<__m128*>(C + rowIDX*cols + colIDX + 4) = result.pack4567;
+INTGEMM_SSE2 static inline void writer(float* C, Index offset, RegisterPair128 result) {
+  *reinterpret_cast<__m128*>(C + offset) = result.pack0123;
+  *reinterpret_cast<__m128*>(C + offset + 4) = result.pack4567;
 }
 
-INTGEMM_AVX2 static inline void writer(float* C, Index rowIDX, Index cols, Index colIDX, __m256 result) {
-  *reinterpret_cast<__m256*>(C + rowIDX*cols + colIDX) = result;
+INTGEMM_AVX2 static inline void writer(float* C, Index offset, __m256 result) {
+  *reinterpret_cast<__m256*>(C + offset) = result;
 }
 
 #ifndef INTGEMM_NO_AVX512
-INTGEMM_AVX512BW static inline void writer(float* C, Index rowIDX, Index cols, Index colIDX, __m512 result) {
-  *reinterpret_cast<__m512*>(C + rowIDX*cols + colIDX) = result;
+INTGEMM_AVX512BW static inline void writer(float* C, Index offset, __m512 result) {
+  *reinterpret_cast<__m512*>(C + offset) = result;
 }
 #endif
 
@@ -197,8 +197,9 @@ template <typename PostprocessPipeline> target static void Multiply(const int16_
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
       /*The specific implementation may need to reduce further.*/ \
       auto total = PermuteSummer(pack0123, pack4567); \
-      auto result = inited_pipeline.run(total); \
-      writer(C, A_rowidx, B_cols, B0_colidx, result); \
+      auto offset = A_rowidx * B_cols + B0_colidx; \
+      auto result = inited_pipeline.run(total, offset); \
+      writer(C, offset, result); \
     } \
   } \
 } \
@@ -414,8 +415,9 @@ INTGEMM_SSSE3 inline static void InnerINTGEMM_SSSE3(
       Integer pack0123 = Pack0123(sum0, sum1, sum2, sum3); \
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
       auto total = PermuteSummer(pack0123, pack4567); \
-      auto result = inited_pipeline.run(total); \
-      writer(C, A_rowidx, B_cols, B0_colidx, result); \
+      auto offset = A_rowidx * B_cols + B0_colidx; \
+      auto result = inited_pipeline.run(total, offset); \
+      writer(C, offset, result); \
     } \
   } \
 } \
