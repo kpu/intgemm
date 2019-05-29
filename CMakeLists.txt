@@ -19,7 +19,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
   # Working around https://bugs.llvm.org/show_bug.cgi?id=41482
   # Anything compiled with clang might not work properly in SSE2/SSSE3 world
   message("${Orange}Compiling with Clang and using -mavx2 due to https://bugs.llvm.org/show_bug.cgi?id=41482. Support for SSE2/SSSE3 is likely broken.${ColourReset}")
-  SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -mavx2")
+  set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -mavx2")
 endif()
 
 
