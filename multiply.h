@@ -135,9 +135,9 @@ INTGEMM_PACK0123(INTGEMM_AVX512BW, __m512i)
   const int simd_width = width / (sizeof(Integer) / sizeof(int16_t)); \
   typename WriteC::WriteCSubType write_C(C); \
   const Integer *B0_col = reinterpret_cast<const Integer *>(B); \
-  for (int B0_colidx = 0; B0_colidx < B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
+  for (Index B0_colidx = 0; B0_colidx < B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
     /* Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.*/ \
-    for (int A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) { \
+    for (Index A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) { \
       const Integer *A_row = reinterpret_cast<const Integer*>(A + A_rowidx * width); \
       /* These will be packed 32-bit integers containing sums for each row of B multiplied by the row of A. \
          Iterate over shared (inner) dimension.*/ \
@@ -340,9 +340,9 @@ template <class WriteC> target static void Multiply(const int8_t *A, const int8_
   const Integer *B0_col = reinterpret_cast<const Integer*>(B); \
   typename WriteC::WriteCSubType c_writer(C); \
   /*Go over 8 columns of B at a time.*/ \
-  for (int B0_colidx = 0; B0_colidx != B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
+  for (Index B0_colidx = 0; B0_colidx != B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
     /*Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.*/ \
-    for (int A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) { \
+    for (Index A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) { \
       /*Iterate over shared (inner) dimension.*/ \
       const Integer *A_live = reinterpret_cast<const Integer *>(A + A_rowidx * width); \
       const Integer *A_end = A_live + simd_width; \

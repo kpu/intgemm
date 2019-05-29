@@ -34,8 +34,8 @@ template <class V> void SlowRearrangeTile(const V *from, V *to, int simd, int un
 }
 
 template <class V> void SlowRearrange(const V *from, V *to, int simd, int unroll, Index rows, Index cols) {
-  for (int c = 0; c < cols; c += unroll) {
-    for (int r = 0; r < rows; r += simd) {
+  for (Index c = 0; c < cols; c += unroll) {
+    for (Index r = 0; r < rows; r += simd) {
       SlowRearrangeTile(from + cols * r + c, to, simd, unroll, cols);
       to += unroll * simd;
     }
@@ -43,8 +43,8 @@ template <class V> void SlowRearrange(const V *from, V *to, int simd, int unroll
 }
 
 template <class V> void SlowTranspose(const V *from, V *to, Index rows, Index cols) {
-  for (int r = 0; r < rows; ++r) {
-    for (int c = 0; c < cols; ++c) {
+  for (Index r = 0; r < rows; ++r) {
+    for (Index c = 0; c < cols; ++c) {
       to[rows * c + r] = from[cols * r + c];
     }
   }
@@ -89,8 +89,8 @@ INTGEMM_SSSE3 TEST_CASE("Transpose 8", "[transpose]") {
 
 template <class T> std::string PrintMatrix(const T *mem, Index rows, Index cols) {
   std::ostringstream out;
-  for (int r = 0; r < rows; ++r) {
-    for (int c = 0; c < cols; ++c) {
+  for (Index r = 0; r < rows; ++r) {
+    for (Index c = 0; c < cols; ++c) {
       out << std::setw(4) << (int64_t) mem[r * cols + c] << ' ';
     }
     out << '\n';
@@ -104,7 +104,7 @@ template <class Routine> void TestPrepare(Index rows = 32, Index cols = 16) {
   std::uniform_real_distribution<float> dist(-129.0, 129.0);
   // Create array.
   AlignedVector<float> input(rows * cols);
-  for (int i = 0; i < rows * cols; ++i) {
+  for (Index i = 0; i < rows * cols; ++i) {
     input.get()[i] = dist(gen);
   }
 
@@ -158,7 +158,7 @@ template <class Routine> void TestSelectColumnsB(Index rows = 64, Index cols = 1
   // Go somewhat out of range too.
   std::uniform_real_distribution<float> dist(-129.0, 129.0);
   AlignedVector<float> input(rows * cols);
-  for (int i = 0; i < rows * cols; ++i) {
+  for (Index i = 0; i < rows * cols; ++i) {
     input.get()[i] = dist(gen);
   }
   typedef typename Routine::Integer Integer;
@@ -177,7 +177,7 @@ template <class Routine> void TestSelectColumnsB(Index rows = 64, Index cols = 1
 
   // Select columns manually in float space.
   AlignedVector<float> selected(rows * kSelectCols);
-  for (int r = 0; r < rows; ++r) {
+  for (Index r = 0; r < rows; ++r) {
     for (int c = 0; c < kSelectCols; ++c) {
       assert(c + r * kSelectCols < rows * kSelectCols);
       selected[c + r * kSelectCols] = input[select_cols[c] + r * cols];
@@ -217,7 +217,7 @@ TEST_CASE("SelectColumnsB SSE2", "[select]") {
 
 template <class Register> void TestMax() {
   Register r = set1_ps<Register>(-2.0);
-  for (int i = 0; i < sizeof(Register) / sizeof(float); ++i) {
+  for (std::size_t i = 0; i < sizeof(Register) / sizeof(float); ++i) {
     Register c = r;
     reinterpret_cast<float*>(&c)[i] = -1.0;
     CHECK_MESSAGE((MaxFloat32(c) == -1.0), "MaxFloat32 produced " << MaxFloat32(c));
@@ -294,10 +294,10 @@ TEST_CASE("MaxAbsolute AVX512F", "[max]") {
 // SOFTWARE.
 // Compute A*B slowly in floats.
 void SlowRefFloat(const float *A, const float *B, float *C, Index A_rows, Index width, Index B_cols) {
-  for (int r = 0; r < A_rows; ++r) {
-    for (int c = 0; c < B_cols; ++c) {
+  for (Index r = 0; r < A_rows; ++r) {
+    for (Index c = 0; c < B_cols; ++c) {
       float sum = 0.0f;
-      for (int k = 0; k < width; ++k) {
+      for (Index k = 0; k < width; ++k) {
         sum += A[r * width + k] * B[k * B_cols + c];
       }
       C[r * B_cols + c] = sum;
@@ -307,10 +307,10 @@ void SlowRefFloat(const float *A, const float *B, float *C, Index A_rows, Index 
 
 // Compute A*B slowly from integers.
 template <class Integer> void SlowRefInt(const Integer *A, const Integer *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {
-  for (int r = 0; r < A_rows; ++r) {
-    for (int c = 0; c < B_cols; ++c) {
+  for (Index r = 0; r < A_rows; ++r) {
+    for (Index c = 0; c < B_cols; ++c) {
       int32_t sum = 0;
-      for (int k = 0; k < width; ++k) {
+      for (Index k = 0; k < width; ++k) {
         sum += static_cast<int16_t>(A[r * width + k]) * static_cast<int16_t>(B[k * B_cols + c]);
       }
       C[r * B_cols + c] = sum * unquant_mult;
@@ -345,10 +345,10 @@ template <class Routine, class WriteC> void TestMultiply(Index A_rows, Index wid
   AlignedVector<float> B(width * B_cols);
   std::mt19937 gen;
   std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
-  for (int i = 0; i < A_rows * width; i++) {
+  for (Index i = 0; i < A_rows * width; i++) {
     A.get()[i] = dist(gen);
   }
-  for (int i = 0; i < width * B_cols; ++i) {
+  for (Index i = 0; i < width * B_cols; ++i) {
     B.get()[i] = dist(gen);
   }
   

@@ -221,8 +221,8 @@ target static inline void PrepareB(const float *input, int8_t *output_shadow, fl
   assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0); \
   Register *output = reinterpret_cast<Register*>(output_shadow); \
   assert(reinterpret_cast<uintptr_t>(output) % sizeof(Register) == 0); \
-  for (int c = 0; c < cols; c += kColStride) { \
-    for (int r = 0; r < rows; r += sizeof(Register), output += 8) { \
+  for (Index c = 0; c < cols; c += kColStride) { \
+    for (Index r = 0; r < rows; r += sizeof(Register), output += 8) { \
       /* Quantize and perform a transpose with height sizeof(Register) and width 8. \
          This isn't quite Transpose8InLane because it's half the number of columns, \
          so each register starts with two rows instead of being one row. \
@@ -254,8 +254,8 @@ target static inline void PrepareB(const float *input, int16_t *output_shadow, f
   assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0); \
   Register *output = reinterpret_cast<Register*>(output_shadow); \
   assert(reinterpret_cast<uintptr_t>(output) % sizeof(Register) == 0); \
-  for (int c = 0; c < cols; c += 8) { \
-    for (int r = 0; r < rows; r += (sizeof(Register) / sizeof(int16_t)), output += 8) { \
+  for (Index c = 0; c < cols; c += 8) { \
+    for (Index r = 0; r < rows; r += (sizeof(Register) / sizeof(int16_t)), output += 8) { \
       /* gcc unrolls this loop and uses registers for output[k]*/ \
       for (int k = 0; k < 8; ++k) { \
         output[k] = q.ForReshape(input + cols * (r + k) + c, cols); \
