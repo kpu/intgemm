@@ -114,7 +114,7 @@ class ReLU {
         __m128 zeros_;
     };
 
-    using OnSSSE2 = OnSSE2;
+    using OnSSSE3 = OnSSE2;
 
     class OnAVX2 {
       public:
