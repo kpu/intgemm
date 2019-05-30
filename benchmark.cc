@@ -9,26 +9,31 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
-#include <cstring>
 #include <cstdio>
 #include <cstdlib>
-
-#include <iostream>
+#include <cstring>
 #include <iomanip>
+#include <iostream>
+#include <random>
 
 namespace intgemm {
 namespace {
 
 float MaxAbsoluteBaseline(const float *begin, const float *end) {
-  std::pair<const float *, const float*> res = std::minmax_element(begin, end);
+  auto res = std::minmax_element(begin, end);
   return std::max(fabsf(*res.first), fabsf(*res.second));
 }
 
 void BenchmarkMaxAbsolute() {
+  std::mt19937 gen;
+  std::uniform_real_distribution<float> dist(0.f, 1.f);
+  gen.seed(45678);
+
   AlignedVector<float> v(4096 * 4096);
-  for (Index i = 0; i < v.size(); ++i) {
-    v[i] = (float)rand() / (float)RAND_MAX;
+  for (auto& it : v) {
+    it = dist(gen);
   }
+
   std::vector<uint64_t> stats;
   // Hopefully these don't get optimized out...
   float result = MaxAbsoluteBaseline(v.begin(), v.end());
@@ -47,12 +52,15 @@ struct RandomMatrices {
   RandomMatrices(Index A_rows_in, Index width_in, Index B_cols_in) :
     A_rows(A_rows_in), width(width_in), B_cols(B_cols_in),
     A(A_rows * width), B(width * B_cols) {
-    for (Index i = 0; i < A_rows * width; i++) {
-        A[i] = ((float)rand()/(float)RAND_MAX)*2.0f - 1.0f;
+    std::mt19937 gen;
+    std::uniform_real_distribution<float> dist(-1.f, 1.f);
+    gen.seed(45678);
+
+    for (auto& it : A) {
+      it = dist(gen);
     }
-    
-    for (Index i = 0; i < B_cols * width; i++) {
-        B[i] = ((float)rand()/(float)RAND_MAX)*2.0f - 1.0f;
+    for (auto& it : B) {
+      it = dist(gen);
     }
   }
 
@@ -60,7 +68,7 @@ struct RandomMatrices {
   AlignedVector<float> A, B;
 };
 
-template <class Backend, class WriteC> void Run(const RandomMatrices &m, std::vector<uint64_t> &stats) {
+template <class Backend> void Run(const RandomMatrices &m, std::vector<uint64_t> &stats) {
   typedef typename Backend::Integer Integer;
   float quant_mult = 127.0 / 2;
   float unquant_mult = 1.0 / (quant_mult * quant_mult);
@@ -70,30 +78,30 @@ template <class Backend, class WriteC> void Run(const RandomMatrices &m, std::ve
   Backend::PrepareB(m.B.begin(), B_prepared.begin(), quant_mult, m.width, m.B_cols);
   AlignedVector<float> output(m.A_rows * m.B_cols);
   // Burn in
-  Backend::Multiply(A_prepared.begin(), B_prepared.begin(), WriteC(output.begin(), unquant_mult), m.A_rows, m.width, m.B_cols);
+  Backend::Multiply(A_prepared.begin(), B_prepared.begin(), JustUnquantizeC(output.begin(), unquant_mult), m.A_rows, m.width, m.B_cols);
   {
     StopWatch w(stats);
-    Backend::Multiply(A_prepared.begin(), B_prepared.begin(), WriteC(output.begin(), unquant_mult), m.A_rows, m.width, m.B_cols);
+    Backend::Multiply(A_prepared.begin(), B_prepared.begin(), JustUnquantizeC(output.begin(), unquant_mult), m.A_rows, m.width, m.B_cols);
   }
 }
 
-template <class Backend, class WriteC> void RunAll(RandomMatrices *matrices, RandomMatrices *matrices_end, std::vector<std::vector<uint64_t> > &stats) {
+template <class Backend> void RunAll(RandomMatrices *matrices, RandomMatrices *matrices_end, std::vector<std::vector<uint64_t>> &stats) {
   if (Backend::kUses > kCPU) return;
   std::size_t size = matrices_end - matrices;
   if (stats.size() < size)
     stats.resize(size);
   for (std::size_t i = 0; i < size; ++i) {
-    Run<Backend, WriteC>(matrices[i], stats[i]);
+    Run<Backend>(matrices[i], stats[i]);
   }
 }
 
 struct BackendStats {
-  std::vector<std::vector<uint64_t> > ssse3_8bit;
-  std::vector<std::vector<uint64_t> > avx2_8bit;
-  std::vector<std::vector<uint64_t> > avx512_8bit;
-  std::vector<std::vector<uint64_t> > sse2_16bit;
-  std::vector<std::vector<uint64_t> > avx2_16bit;
-  std::vector<std::vector<uint64_t> > avx512_16bit;
+  std::vector<std::vector<uint64_t>> ssse3_8bit;
+  std::vector<std::vector<uint64_t>> avx2_8bit;
+  std::vector<std::vector<uint64_t>> avx512_8bit;
+  std::vector<std::vector<uint64_t>> sse2_16bit;
+  std::vector<std::vector<uint64_t>> avx2_16bit;
+  std::vector<std::vector<uint64_t>> avx512_16bit;
 };
 
 const float kOutlierThreshold = 0.75;
@@ -106,20 +114,16 @@ void Summarize(std::vector<uint64_t> &stats) {
     avg += *i;
   }
   avg /= (keep - stats.begin());
-  double s = 0.0;
+  double stddev = 0.0;
   for (std::vector<uint64_t>::const_iterator i = stats.begin(); i != keep; ++i) {
     double off = (double)*i - avg;
-    s += off * off;
+    stddev += off * off;
   }
-  s = sqrt(s / (keep - stats.begin() - 1));
-  std::cout << std::setw(8) << *std::min_element(stats.begin(), stats.end()) << '\t' << std::setw(8) << avg << '\t' << std::setw(8) << s;
-/*  std::cout << '\n';
-  for (std::vector<uint64_t>::const_iterator i = stats.begin(); i != stats.end(); ++i) {
-    std::cout << *i << ' ';
-  }*/
+  stddev = sqrt(stddev / (keep - stats.begin() - 1));
+  std::cout << std::setw(8) << *std::min_element(stats.begin(), stats.end()) << '\t' << std::setw(8) << avg << '\t' << std::setw(8) << stddev;
 }
 
-template <class Backend> void Print(std::vector<std::vector<uint64_t> > &stats, int index) {
+template <class Backend> void Print(std::vector<std::vector<uint64_t>> &stats, int index) {
   if (stats.empty()) return;
   std::cout << Backend::kName << '\t';
   Summarize(stats[index]);
@@ -132,7 +136,7 @@ template <class Backend> void Print(std::vector<std::vector<uint64_t> > &stats, 
 // Program takes no input
 int main(int argc, char ** argv) {
   std::cerr << "Remember to run this on a specific core:\ntaskset --cpu-list 0 " << argv[0] << std::endl;
-  std::srand(45678);
+
   using namespace intgemm;
   BenchmarkMaxAbsolute();
   RandomMatrices matrices[] = {
@@ -168,38 +172,38 @@ int main(int argc, char ** argv) {
   std::cerr << "SSSE3 8bit, 100 samples..." << std::endl;
   for (int samples = 0; samples < kSamples; ++samples) {
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
-    RunAll<SSSE3_8bit, JustUnquantizeC>(matrices, end, stats.ssse3_8bit);
+    RunAll<SSSE3_8bit>(matrices, end, stats.ssse3_8bit);
   }
 
   std::cerr << "SSE2 16bit, 100 samples..." << std::endl;
   for (int samples = 0; samples < kSamples; ++samples) {
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
-    RunAll<SSE2_16bit, JustUnquantizeC>(matrices, end, stats.sse2_16bit);
+    RunAll<SSE2_16bit>(matrices, end, stats.sse2_16bit);
   }
 
   std::cerr << "AVX2 8bit, 100 samples..." << std::endl;
   for (int samples = 0; samples < kSamples; ++samples) {
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
-    RunAll<AVX2_8bit, JustUnquantizeC>(matrices, end, stats.avx2_8bit);
+    RunAll<AVX2_8bit>(matrices, end, stats.avx2_8bit);
   }
 
   std::cerr << "AVX2 16bit, 100 samples..." << std::endl;
   for (int samples = 0; samples < kSamples; ++samples) {
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
-    RunAll<AVX2_16bit, JustUnquantizeC>(matrices, end, stats.avx2_16bit);
+    RunAll<AVX2_16bit>(matrices, end, stats.avx2_16bit);
   }
 
 #ifndef INTGEMM_NO_AVX512
   std::cerr << "AVX512 8bit, 100 samples..." << std::endl;
   for (int samples = 0; samples < kSamples; ++samples) {
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
-    RunAll<AVX512_8bit, JustUnquantizeC>(matrices, end, stats.avx512_8bit);
+    RunAll<AVX512_8bit>(matrices, end, stats.avx512_8bit);
   }
 
   std::cerr << "AVX512 16bit, 100 samples..." << std::endl;
   for (int samples = 0; samples < kSamples; ++samples) {
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
-    RunAll<AVX512_16bit, JustUnquantizeC>(matrices, end, stats.avx512_16bit);
+    RunAll<AVX512_16bit>(matrices, end, stats.avx512_16bit);
   }
 #endif
 

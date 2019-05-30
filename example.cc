@@ -4,8 +4,8 @@
 #include "aligned.h" 
 
 #include <cassert>
-#include <stdlib.h>
 #include <math.h>
+#include <random>
 
 int main() {
   using intgemm::Index;
@@ -21,12 +21,14 @@ int main() {
   AlignedVector<float> B(width * B_cols);
 
   // Fill with random values in range [-2, 2].
-  srand(1);
-  for (Index i = 0; i < A.size(); ++i) {
-    A[i] = ((float)rand()/(float)RAND_MAX)*4.0f - 2.0f;
+  std::mt19937 gen;
+  std::uniform_real_distribution<float> dist(-2.f, 2.f);
+  gen.seed(1);
+  for (auto& it : A) {
+    it = dist(gen);
   }
-  for (Index i = 0; i < B.size(); ++i) {
-    B[i] = ((float)rand()/(float)RAND_MAX)*4.0f - 2.0f;
+  for (auto& it : B) {
+    it = dist(gen);
   }
 
   // Compute the top left corner of C as a sanity check.
