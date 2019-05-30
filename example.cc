@@ -22,10 +22,10 @@ int main() {
 
   // Fill with random values in range [-2, 2].
   srand(1);
-  for (Index i = 0; i < A_rows * width; ++i) {
+  for (Index i = 0; i < A.size(); ++i) {
     A[i] = ((float)rand()/(float)RAND_MAX)*4.0f - 2.0f;
   }
-  for (Index i = 0; i < width * B_cols; ++i) {
+  for (Index i = 0; i < B.size(); ++i) {
     B[i] = ((float)rand()/(float)RAND_MAX)*4.0f - 2.0f;
   }
 
@@ -39,17 +39,17 @@ int main() {
   {
     // For 16-bit, Jacob Devlin recommends 1024 so as to not overflow in 32-bit accumulation.
     float quant_mult = 1024.0;
-    AlignedVector<int16_t> A_prepared(A_rows * width);
-    AlignedVector<int16_t> B_prepared(width * B_cols);
+    AlignedVector<int16_t> A_prepared(A.size());
+    AlignedVector<int16_t> B_prepared(B.size());
     // Quantize A.
-    intgemm::Int16::PrepareA(A.get(), A_prepared.get(), quant_mult, A_rows, width);
+    intgemm::Int16::PrepareA(A.begin(), A_prepared.begin(), quant_mult, A_rows, width);
     // Quantize and reshape B.
     // Typically you will do this once when parameters are loaded, not every time.
-    intgemm::Int16::PrepareB(B.get(), B_prepared.get(), quant_mult, width, B_cols);
+    intgemm::Int16::PrepareB(B.begin(), B_prepared.begin(), quant_mult, width, B_cols);
 
     AlignedVector<float> C(A_rows * B_cols);
     // Do the actual multiply.
-    intgemm::Int16::Multiply(A_prepared.get(), B_prepared.get(), intgemm::JustUnquantizeC(C.get(), 1.0 / (quant_mult * quant_mult)), A_rows, width, B_cols);
+    intgemm::Int16::Multiply(A_prepared.begin(), B_prepared.begin(), intgemm::JustUnquantizeC(C.begin(), 1.0 / (quant_mult * quant_mult)), A_rows, width, B_cols);
     // Sanity check.  C will be row major.
     assert(fabs(C[0] - top_left_reference) < 0.05);
   }
@@ -58,17 +58,17 @@ int main() {
   {
     // For 8-bit a good quantization multiplier is 127 / largest absolute value..
     float quant_mult = 127.0 / 2.0;
-    AlignedVector<int8_t> A_prepared(A_rows * width);
-    AlignedVector<int8_t> B_prepared(width * B_cols);
+    AlignedVector<int8_t> A_prepared(A.size());
+    AlignedVector<int8_t> B_prepared(B.size());
     // Quantize A.
-    intgemm::Int8::PrepareA(A.get(), A_prepared.get(), quant_mult, A_rows, width);
+    intgemm::Int8::PrepareA(A.begin(), A_prepared.begin(), quant_mult, A_rows, width);
     // Quantize and reshape B.
     // Typically you will do this once when parameters are loaded, not every time.
-    intgemm::Int8::PrepareB(B.get(), B_prepared.get(), quant_mult, width, B_cols);
+    intgemm::Int8::PrepareB(B.begin(), B_prepared.begin(), quant_mult, width, B_cols);
 
     AlignedVector<float> C(A_rows * B_cols);
     // Do the actual multiply.
-    intgemm::Int8::Multiply(A_prepared.get(), B_prepared.get(), intgemm::JustUnquantizeC(C.get(), 1.0 / (quant_mult * quant_mult)), A_rows, width, B_cols);
+    intgemm::Int8::Multiply(A_prepared.begin(), B_prepared.begin(), intgemm::JustUnquantizeC(C.begin(), 1.0 / (quant_mult * quant_mult)), A_rows, width, B_cols);
     // Sanity check.  C will be row major.
     assert(fabs(C[0] - top_left_reference) < 0.05);
   }

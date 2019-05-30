@@ -53,37 +53,39 @@ template <class V> void SlowTranspose(const V *from, V *to, Index rows, Index co
 
 INTGEMM_SSE2 TEST_CASE("Transpose 16", "[transpose]") {
   if (kCPU < CPU_SSE2) return;
-  AlignedVector<int16_t> input(8 * 8);
-  for (int16_t i = 0; i < 64; ++i) {
-    input.get()[i] = i;
+  const unsigned N = 8;
+  AlignedVector<int16_t> input(N * N);
+  for (int16_t i = 0; i < input.size(); ++i) {
+    input[i] = i;
   }
-  AlignedVector<int16_t> ref(8 * 8);
-  SlowTranspose(input.get(), ref.get(), 8, 8);
+  AlignedVector<int16_t> ref(N * N);
+  SlowTranspose(input.begin(), ref.begin(), N, N);
 
   // Overwrite input.
-  __m128i *t = reinterpret_cast<__m128i*>(input.get());
+  __m128i *t = reinterpret_cast<__m128i*>(input.begin());
   Transpose16InLane(t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7]);
 
-  for (int16_t i = 0; i < 64; ++i) {
-  	CHECK_MESSAGE(ref.get()[i] == input.get()[i], "16-bit transpose failure at: " << i << ": " << ref.get()[i] << " != " << input.get()[i]);
+  for (int16_t i = 0; i < input.size(); ++i) {
+  	CHECK_MESSAGE(ref[i] == input[i], "16-bit transpose failure at: " << i << ": " << ref[i] << " != " << input[i]);
   }
 }
 
 INTGEMM_SSSE3 TEST_CASE("Transpose 8", "[transpose]") {
   if (kCPU < CPU_SSSE3) return;
-  AlignedVector<int8_t> input(16 * 16);
-  for (int i = 0; i < 16 * 16; ++i) {
-    input.get()[i] = i;
+  const unsigned N = 16;
+  AlignedVector<int8_t> input(N * N);
+  for (int i = 0; i < input.size(); ++i) {
+    input[i] = i;
   }
-  AlignedVector<int8_t> ref(16 * 16);
-  SlowTranspose(input.get(), ref.get(), 16, 16);
+  AlignedVector<int8_t> ref(input.size());
+  SlowTranspose(input.begin(), ref.begin(), N, N);
 
   // Overwrite input.
-  __m128i *t = reinterpret_cast<__m128i*>(input.get());
+  __m128i *t = reinterpret_cast<__m128i*>(input.begin());
   Transpose8InLane(t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7], t[8], t[9], t[10], t[11], t[12], t[13], t[14], t[15]);
 
-  for (int i = 0; i < 16 * 16; ++i) {
-    CHECK_MESSAGE(ref.get()[i] == input.get()[i], "8-bit transpose failure at " << i << ": " << (int16_t)ref.get()[i] << " != " << (int16_t)input.get()[i]);
+  for (int i = 0; i < input.size(); ++i) {
+    CHECK_MESSAGE(ref[i] == input[i], "8-bit transpose failure at " << i << ": " << (int16_t)ref[i] << " != " << (int16_t)input[i]);
   }
 }
 
@@ -104,24 +106,24 @@ template <class Routine> void TestPrepare(Index rows = 32, Index cols = 16) {
   std::uniform_real_distribution<float> dist(-129.0, 129.0);
   // Create array.
   AlignedVector<float> input(rows * cols);
-  for (Index i = 0; i < rows * cols; ++i) {
-    input.get()[i] = dist(gen);
+  for (Index i = 0; i < input.size(); ++i) {
+    input[i] = dist(gen);
   }
 
   typedef typename Routine::Integer Integer;
   // Call Prepare
-  AlignedVector<Integer> test(rows * cols);
-  Routine::PrepareB(input.get(), test.get(), 1, rows, cols);
+  AlignedVector<Integer> test(input.size());
+  Routine::PrepareB(input.begin(), test.begin(), 1, rows, cols);
 
   // Compute reference output.
-  AlignedVector<Integer> quantized(rows * cols);
-  Routine::Quantize(input.get(), quantized.get(), 1, rows * cols);
-  AlignedVector<Integer> reference(rows * cols);
+  AlignedVector<Integer> quantized(input.size());
+  Routine::Quantize(input.begin(), quantized.begin(), 1, input.size());
+  AlignedVector<Integer> reference(input.size());
   // Note this won't work for Int8/Int16 generic routines because tile sizes vary.
-  SlowRearrange<Integer>(quantized.get(), reference.get(), Routine::kBTileRow, Routine::kBTileCol, rows, cols);
-  CHECK_MESSAGE(memcmp(reference.get(), test.get(), rows * cols * sizeof(Integer)) == 0, Routine::kName << " Mismatch:\n" <<
-  	"Quantized Input" << '\n' << PrintMatrix(quantized.get(), rows, cols) << "Reference" << '\n' <<
-  	 PrintMatrix(reference.get(), rows, cols) << "Routine" << '\n' << PrintMatrix(test.get(), rows, cols));
+  SlowRearrange<Integer>(quantized.begin(), reference.begin(), Routine::kBTileRow, Routine::kBTileCol, rows, cols);
+  CHECK_MESSAGE(memcmp(reference.begin(), test.begin(), test.size() * sizeof(Integer)) == 0, Routine::kName << " Mismatch:\n" <<
+  	"Quantized Input" << '\n' << PrintMatrix(quantized.begin(), rows, cols) << "Reference" << '\n' <<
+  	 PrintMatrix(reference.begin(), rows, cols) << "Routine" << '\n' << PrintMatrix(test.begin(), rows, cols));
 }
 
 TEST_CASE("Prepare AVX512", "[prepare]") {
@@ -158,12 +160,12 @@ template <class Routine> void TestSelectColumnsB(Index rows = 64, Index cols = 1
   // Go somewhat out of range too.
   std::uniform_real_distribution<float> dist(-129.0, 129.0);
   AlignedVector<float> input(rows * cols);
-  for (Index i = 0; i < rows * cols; ++i) {
-    input.get()[i] = dist(gen);
+  for (Index i = 0; i < input.size(); ++i) {
+    input[i] = dist(gen);
   }
   typedef typename Routine::Integer Integer;
-  AlignedVector<Integer> prepared(rows * cols);
-  Routine::PrepareB(input.get(), prepared.get(), 1, rows, cols);
+  AlignedVector<Integer> prepared(input.size());
+  Routine::PrepareB(input.begin(), prepared.begin(), 1, rows, cols);
 
   int kSelectCols = 24;
   Index select_cols[kSelectCols];
@@ -173,7 +175,7 @@ template <class Routine> void TestSelectColumnsB(Index rows = 64, Index cols = 1
   }
 
   AlignedVector<Integer> test(rows * kSelectCols);
-  Routine::SelectColumnsB(prepared.get(), test.get(), rows, select_cols, select_cols + kSelectCols);
+  Routine::SelectColumnsB(prepared.begin(), test.begin(), rows, select_cols, select_cols + kSelectCols);
 
   // Select columns manually in float space.
   AlignedVector<float> selected(rows * kSelectCols);
@@ -184,9 +186,9 @@ template <class Routine> void TestSelectColumnsB(Index rows = 64, Index cols = 1
     }
   }
   AlignedVector<Integer> ref(rows * kSelectCols);
-  Routine::PrepareB(selected.get(), ref.get(), 1, rows, kSelectCols);
-  CHECK_MESSAGE(memcmp(ref.get(), test.get(), sizeof(Integer) * rows * kSelectCols) == 0, "Reference:\n" <<
-  	PrintMatrix(ref.get(), rows, kSelectCols) << PrintMatrix(test.get(), rows, kSelectCols));
+  Routine::PrepareB(selected.begin(), ref.begin(), 1, rows, kSelectCols);
+  CHECK_MESSAGE(memcmp(ref.begin(), test.begin(), sizeof(Integer) * rows * kSelectCols) == 0, "Reference:\n" <<
+  	PrintMatrix(ref.begin(), rows, kSelectCols) << PrintMatrix(test.begin(), rows, kSelectCols));
 }
 
 TEST_CASE("SelectColumnsB AVX512", "[select]") {
@@ -238,19 +240,18 @@ void CompareMaxAbs(const float *begin, const float *end, float test) {
 template <float (*Backend) (const float *, const float *)> void TestMaxAbsolute() {
   std::mt19937 gen;
   std::uniform_real_distribution<float> dist(-8.0, 8.0);
-  const int kLength = 64;
-  AlignedVector<float> test(kLength);
+  AlignedVector<float> test(64);
   // 64 tries.
   for (int t = 0; t < 64; ++t) {
     // Fill with [-8, 8).
-    for (int i = 0; i < kLength; ++i) {
+    for (int i = 0; i < test.size(); ++i) {
       test[i] = dist(gen);
     }
-    CompareMaxAbs(test.get(), test.get() + kLength, Backend(test.get(), test.get() + kLength));
+    CompareMaxAbs(test.begin(), test.end(), Backend(test.begin(), test.end()));
     test[t] = -32.0;
-    CompareMaxAbs(test.get(), test.get() + kLength, Backend(test.get(), test.get() + kLength));
+    CompareMaxAbs(test.begin(), test.end(), Backend(test.begin(), test.end()));
     test[t] = 32.0;
-    CompareMaxAbs(test.get(), test.get() + kLength, Backend(test.get(), test.get() + kLength));
+    CompareMaxAbs(test.begin(), test.end(), Backend(test.begin(), test.end()));
   }
 }
 
@@ -353,33 +354,34 @@ template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_co
   AlignedVector<float> B(width * B_cols);
   std::mt19937 gen;
   std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
-  for (Index i = 0; i < A_rows * width; i++) {
-    A.get()[i] = dist(gen);
+  for (Index i = 0; i < A.size(); i++) {
+    A[i] = dist(gen);
   }
-  for (Index i = 0; i < width * B_cols; ++i) {
-    B.get()[i] = dist(gen);
+  for (Index i = 0; i < B.size(); ++i) {
+    B[i] = dist(gen);
   }
   
   float quant_mult = (sizeof(Integer) == 2) ? 1024 : 64;
   float unquant_mult = 1.0/(quant_mult*quant_mult);
 
-  AlignedVector<Integer> A_prep(A_rows * width), B_prep(width * B_cols);
-  Routine::PrepareA(A.get(), A_prep.get(), quant_mult, A_rows, width);
-  Routine::PrepareB(B.get(), B_prep.get(), quant_mult, width, B_cols);
+  AlignedVector<Integer> A_prep(A.size());
+  AlignedVector<Integer> B_prep(B.size());
+  Routine::PrepareA(A.begin(), A_prep.begin(), quant_mult, A_rows, width);
+  Routine::PrepareB(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
 
   AlignedVector<float> test_C(A_rows * B_cols);
-  Routine::Multiply(A_prep.get(), B_prep.get(), JustUnquantizeC(test_C.get(), unquant_mult), A_rows, width, B_cols);
+  Routine::Multiply(A_prep.begin(), B_prep.begin(), JustUnquantizeC(test_C.begin(), unquant_mult), A_rows, width, B_cols);
 
-  AlignedVector<Integer> B_quant(width * B_cols);
-  Routine::Quantize(B.get(), B_quant.get(), quant_mult, width * B_cols);
-  AlignedVector<float> slowint_C(A_rows * B_cols);
+  AlignedVector<Integer> B_quant(B.size());
+  Routine::Quantize(B.begin(), B_quant.begin(), quant_mult, B.size());
+  AlignedVector<float> slowint_C(test_C.size());
   // Assuming A is just quantization here.
-  SlowRefInt(A_prep.get(), B_quant.get(), slowint_C.get(), unquant_mult, A_rows, width, B_cols);
+  SlowRefInt(A_prep.begin(), B_quant.begin(), slowint_C.begin(), unquant_mult, A_rows, width, B_cols);
 
-  AlignedVector<float> float_C(A_rows * B_cols);
-  SlowRefFloat(A.get(), B.get(), float_C.get(), A_rows, width, B_cols);
+  AlignedVector<float> float_C(test_C.size());
+  SlowRefFloat(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols);
 
-  Compare(float_C.get(), slowint_C.get(), test_C.get(), A_rows * B_cols, info.str(),
+  Compare(float_C.begin(), slowint_C.begin(), test_C.begin(), test_C.size(), info.str(),
    int_tolerance, float_tolerance, MSE_float_tolerance, MSE_int_tolerance);
 }
 
@@ -397,38 +399,39 @@ template <class Routine> void TestMultiplyBias(Index A_rows, Index width, Index 
   AlignedVector<float> bias(B_cols);
   std::mt19937 gen;
   std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
-  for (int i = 0; i < A_rows * width; i++) {
-    A.get()[i] = dist(gen);
+  for (int i = 0; i < A.size(); i++) {
+    A[i] = dist(gen);
   }
-  for (int i = 0; i < width * B_cols; ++i) {
-    B.get()[i] = dist(gen);
+  for (int i = 0; i < B.size(); ++i) {
+    B[i] = dist(gen);
   }
   
-  for (int i = 0; i < B_cols; i++) {
-    bias.get()[i] = dist(gen);
+  for (int i = 0; i < bias.size(); i++) {
+    bias[i] = dist(gen);
   }
   
   float quant_mult = (sizeof(Integer) == 2) ? 1024 : 64;
   float unquant_mult = 1.0/(quant_mult*quant_mult);
 
-  AlignedVector<Integer> A_prep(A_rows * width), B_prep(width * B_cols);
-  Routine::PrepareA(A.get(), A_prep.get(), quant_mult, A_rows, width);
-  Routine::PrepareB(B.get(), B_prep.get(), quant_mult, width, B_cols);
+  AlignedVector<Integer> A_prep(A.size());
+  AlignedVector<Integer> B_prep(B.size());
+  Routine::PrepareA(A.begin(), A_prep.begin(), quant_mult, A_rows, width);
+  Routine::PrepareB(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
 
   AlignedVector<float> test_C(A_rows * B_cols);
 
-  Routine::Multiply(A_prep.get(), B_prep.get(), BiasAddUnquantizeC(test_C.get(), bias.get(), unquant_mult), A_rows, width, B_cols);
+  Routine::Multiply(A_prep.begin(), B_prep.begin(), BiasAddUnquantizeC(test_C.begin(), bias.begin(), unquant_mult), A_rows, width, B_cols);
 
-  AlignedVector<Integer> B_quant(width * B_cols);
-  Routine::Quantize(B.get(), B_quant.get(), quant_mult, width * B_cols);
-  AlignedVector<float> slowint_C(A_rows * B_cols);
+  AlignedVector<Integer> B_quant(B.size());
+  Routine::Quantize(B.begin(), B_quant.begin(), quant_mult, B.size());
+  AlignedVector<float> slowint_C(test_C.size());
   // Assuming A is just quantization here.
-  SlowRefInt(A_prep.get(), B_quant.get(), slowint_C.get(), unquant_mult, A_rows, width, B_cols, bias.get());
+  SlowRefInt(A_prep.begin(), B_quant.begin(), slowint_C.begin(), unquant_mult, A_rows, width, B_cols, bias.begin());
 
-  AlignedVector<float> float_C(A_rows * B_cols);
-  SlowRefFloat(A.get(), B.get(), float_C.get(), A_rows, width, B_cols, bias.get());
+  AlignedVector<float> float_C(test_C.size());
+  SlowRefFloat(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols, bias.begin());
 
-  Compare(float_C.get(), slowint_C.get(), test_C.get(), A_rows * B_cols, info.str(),
+  Compare(float_C.begin(), slowint_C.begin(), test_C.begin(), test_C.size(), info.str(),
    int_tolerance, float_tolerance, MSE_float_tolerance, MSE_int_tolerance);
 }
 
