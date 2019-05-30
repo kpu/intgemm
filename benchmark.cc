@@ -25,24 +25,22 @@ float MaxAbsoluteBaseline(const float *begin, const float *end) {
 }
 
 void BenchmarkMaxAbsolute() {
-  const Index size = 4096 * 4096;
-  AlignedVector<float> v(size);
-  for (Index i = 0; i < size; ++i) {
+  AlignedVector<float> v(4096 * 4096);
+  for (Index i = 0; i < v.size(); ++i) {
     v[i] = (float)rand() / (float)RAND_MAX;
   }
   std::vector<uint64_t> stats;
   // Hopefully these don't get optimized out...
-  float result = MaxAbsoluteBaseline(v.get(), v.get() + size);
+  float result = MaxAbsoluteBaseline(v.begin(), v.end());
   {
     StopWatch w(stats);
-    result = MaxAbsoluteBaseline(v.get(), v.get() + size);
+    result = MaxAbsoluteBaseline(v.begin(), v.end());
   }
   {
     StopWatch w(stats);
-    result = avx2::MaxAbsolute(v.get(), v.get() + size);
+    result = avx2::MaxAbsolute(v.begin(), v.end());
   }
   std::cout << "MaxAbsolute baseline = " << stats[0] << " optimized = " << stats[1] << " speedup = " << ((float)stats[0] / (float)stats[1])<< '\n';
-
 }
 
 struct RandomMatrices {
@@ -67,15 +65,15 @@ template <class Backend, class WriteC> void Run(const RandomMatrices &m, std::ve
   float quant_mult = 127.0 / 2;
   float unquant_mult = 1.0 / (quant_mult * quant_mult);
   AlignedVector<Integer> A_prepared(m.A_rows * m.width);
-  Backend::PrepareA(m.A.get(), A_prepared.get(), quant_mult, m.A_rows, m.width);
+  Backend::PrepareA(m.A.begin(), A_prepared.begin(), quant_mult, m.A_rows, m.width);
   AlignedVector<Integer> B_prepared(m.width * m.B_cols);
-  Backend::PrepareB(m.B.get(), B_prepared.get(), quant_mult, m.width, m.B_cols);
+  Backend::PrepareB(m.B.begin(), B_prepared.begin(), quant_mult, m.width, m.B_cols);
   AlignedVector<float> output(m.A_rows * m.B_cols);
   // Burn in
-  Backend::Multiply(A_prepared.get(), B_prepared.get(), WriteC(output.get(), unquant_mult), m.A_rows, m.width, m.B_cols);
+  Backend::Multiply(A_prepared.begin(), B_prepared.begin(), WriteC(output.begin(), unquant_mult), m.A_rows, m.width, m.B_cols);
   {
     StopWatch w(stats);
-    Backend::Multiply(A_prepared.get(), B_prepared.get(), WriteC(output.get(), unquant_mult), m.A_rows, m.width, m.B_cols);
+    Backend::Multiply(A_prepared.begin(), B_prepared.begin(), WriteC(output.begin(), unquant_mult), m.A_rows, m.width, m.B_cols);
   }
 }
 

@@ -46,15 +46,15 @@ template <class Backend> bool Test(const float *input_unaligned, float quant_mul
   typedef typename Backend::Integer Integer;
   bool success = true;
   AlignedVector<float> input(size);
-  std::memcpy(input.get(), input_unaligned, sizeof(float) * size);
+  std::memcpy(input.begin(), input_unaligned, sizeof(float) * size);
 
   AlignedVector<Integer> ref(size);
   AlignedVector<Integer> test(size);
-  QuantizeRef(input.get(), ref.get(), quant_mult, size);
-  Backend::Quantize(input.get(), test.get(), quant_mult, size);
+  QuantizeRef(input.begin(), ref.begin(), quant_mult, size);
+  Backend::Quantize(input.begin(), test.begin(), quant_mult, size);
   for (std::size_t i = 0; i < size; ++i) {
-    if (IsOff(input.get()[i] * quant_mult, ref.get()[i], test.get()[i])) {
-      UNSCOPED_INFO("Error at " << i << " from " << input.get()[i] << '*' << quant_mult << '=' << (input.get()[i]*quant_mult) << " ref = " <<  ref.get()[i] << " test = " << test.get()[i]);
+    if (IsOff(input[i] * quant_mult, ref[i], test[i])) {
+      UNSCOPED_INFO("Error at " << i << " from " << input[i] << '*' << quant_mult << '=' << (input[i]*quant_mult) << " ref = " <<  ref[i] << " test = " << test[i]);
       success = false;
     }
   }
