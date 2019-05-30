@@ -50,14 +50,12 @@ template <class V> void SlowTranspose(const V *from, V *to, Index rows, Index co
   }
 }
 
-
 INTGEMM_SSE2 TEST_CASE("Transpose 16", "[transpose]") {
   if (kCPU < CPU_SSE2) return;
   const unsigned N = 8;
   AlignedVector<int16_t> input(N * N);
-  for (int16_t i = 0; i < input.size(); ++i) {
-    input[i] = i;
-  }
+  std::iota(input.begin(), input.end(), 0);
+
   AlignedVector<int16_t> ref(N * N);
   SlowTranspose(input.begin(), ref.begin(), N, N);
 
@@ -74,9 +72,8 @@ INTGEMM_SSSE3 TEST_CASE("Transpose 8", "[transpose]") {
   if (kCPU < CPU_SSSE3) return;
   const unsigned N = 16;
   AlignedVector<int8_t> input(N * N);
-  for (int i = 0; i < input.size(); ++i) {
-    input[i] = i;
-  }
+  std::iota(input.begin(), input.end(), 0);
+
   AlignedVector<int8_t> ref(input.size());
   SlowTranspose(input.begin(), ref.begin(), N, N);
 
@@ -106,8 +103,8 @@ template <class Routine> void TestPrepare(Index rows = 32, Index cols = 16) {
   std::uniform_real_distribution<float> dist(-129.0, 129.0);
   // Create array.
   AlignedVector<float> input(rows * cols);
-  for (Index i = 0; i < input.size(); ++i) {
-    input[i] = dist(gen);
+  for (auto& it : input) {
+    it = dist(gen);
   }
 
   typedef typename Routine::Integer Integer;
@@ -160,8 +157,8 @@ template <class Routine> void TestSelectColumnsB(Index rows = 64, Index cols = 1
   // Go somewhat out of range too.
   std::uniform_real_distribution<float> dist(-129.0, 129.0);
   AlignedVector<float> input(rows * cols);
-  for (Index i = 0; i < input.size(); ++i) {
-    input[i] = dist(gen);
+  for (auto& it : input) {
+    it = dist(gen);
   }
   typedef typename Routine::Integer Integer;
   AlignedVector<Integer> prepared(input.size());
@@ -170,8 +167,8 @@ template <class Routine> void TestSelectColumnsB(Index rows = 64, Index cols = 1
   int kSelectCols = 24;
   Index select_cols[kSelectCols];
   std::uniform_int_distribution<Index> col_dist(0, cols - 1);
-  for (int i = 0; i < kSelectCols; ++i) {
-    select_cols[i] = col_dist(gen);
+  for (auto& it : select_cols) {
+    it = col_dist(gen);
   }
 
   AlignedVector<Integer> test(rows * kSelectCols);
@@ -244,8 +241,8 @@ template <float (*Backend) (const float *, const float *)> void TestMaxAbsolute(
   // 64 tries.
   for (int t = 0; t < 64; ++t) {
     // Fill with [-8, 8).
-    for (int i = 0; i < test.size(); ++i) {
-      test[i] = dist(gen);
+    for (auto& it : test) {
+      it = dist(gen);
     }
     CompareMaxAbs(test.begin(), test.end(), Backend(test.begin(), test.end()));
     test[t] = -32.0;
@@ -327,7 +324,6 @@ template <class Integer> void SlowRefInt(const Integer *A, const Integer *B, flo
   }
 }
 
-
 void Compare(const float *float_ref, const float *int_ref, const float *int_test, std::size_t size, std::string test_info,
  float int_tolerance, float float_tolerance, float MSE_float_tolerance, float MSE_int_tolerance) {
   float int_sum = 0.0, float_sum = 0.0;
@@ -354,11 +350,11 @@ template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_co
   AlignedVector<float> B(width * B_cols);
   std::mt19937 gen;
   std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
-  for (Index i = 0; i < A.size(); i++) {
-    A[i] = dist(gen);
+  for (auto& it : A) {
+    it = dist(gen);
   }
-  for (Index i = 0; i < B.size(); ++i) {
-    B[i] = dist(gen);
+  for (auto& it : B) {
+    it = dist(gen);
   }
   
   float quant_mult = (sizeof(Integer) == 2) ? 1024 : 64;
@@ -399,15 +395,14 @@ template <class Routine> void TestMultiplyBias(Index A_rows, Index width, Index 
   AlignedVector<float> bias(B_cols);
   std::mt19937 gen;
   std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
-  for (int i = 0; i < A.size(); i++) {
-    A[i] = dist(gen);
+  for (auto& it : A) {
+    it = dist(gen);
   }
-  for (int i = 0; i < B.size(); ++i) {
-    B[i] = dist(gen);
+  for (auto& it : B) {
+    it = dist(gen);
   }
-  
-  for (int i = 0; i < bias.size(); i++) {
-    bias[i] = dist(gen);
+  for (auto& it : bias) {
+    it = dist(gen);
   }
   
   float quant_mult = (sizeof(Integer) == 2) ? 1024 : 64;
