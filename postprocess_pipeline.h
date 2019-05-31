@@ -67,9 +67,9 @@ constexpr std::tuple<RestStages...> ShiftPostprocessPipeline(const std::tuple<Fi
   return ShiftPostprocessPipelineImpl(pipeline, make_sequence_from_one<sizeof...(RestStages) + 1>());
 }
 
-template <CPUType CpuType, typename Stage>
-constexpr std::tuple<PostprocessImpl<Stage, CpuType>> InitPostprocessPipelineImpl(std::tuple<Stage> pipeline) {
-  return std::tuple<PostprocessImpl<Stage, CpuType>>(PostprocessImpl<Stage, CpuType>(std::get<0>(pipeline)));
+template <CPUType CpuType>
+constexpr std::tuple<> InitPostprocessPipelineImpl(std::tuple<> pipeline) {
+  return std::tuple<>();
 }
 
 template <CPUType CpuType, typename FirstStage, typename... RestStages>
