@@ -1,5 +1,7 @@
 #pragma once
 
+#include <tuple>
+
 namespace intgemm {
 
 /*
@@ -35,5 +37,16 @@ struct make_sequence_impl<0> : sequence<> {};
 
 template <unsigned N>
 using make_sequence = typename make_sequence_impl<N>::type;
+
+/*
+ * Tuple utils
+ */
+template <typename Tuple, unsigned... Indices>
+using subtuple_t = typename std::tuple<typename std::tuple_element<Indices, Tuple>::type...>;
+
+template <typename Tuple, unsigned... Indices>
+constexpr subtuple_t<Tuple, Indices...> make_subtuple(const Tuple& tuple, sequence<Indices...>) {
+  return std::make_tuple(std::get<Indices>(tuple)...);
+}
 
 }

@@ -13,7 +13,7 @@ using PostprocessPipeline = std::tuple<Stages...>;
 
 template <typename... Stages>
 constexpr std::tuple<Stages...> CreatePostprocessPipeline(const Stages&... stages) {
-  return std::tuple<Stages...>(stages...);
+  return std::make_tuple(stages...);
 }
 
 template <typename Postprocess, CPUType CpuType>
@@ -21,50 +21,21 @@ class PostprocessImpl;
 
 namespace { // anonymous namespace
 
-template <unsigned N>
-using make_sequence_from_one = sequence_popfront<make_sequence<N>>;
+template <typename... Stages>
+using input_register_type = typename std::tuple_element<
+    0,
+    std::tuple<Stages...>
+  >::type::InputRegister;
 
-template <typename Stage>
-struct remove_first_stage_type_s { using type = std::tuple<>;};
+template <typename... Stages>
+using output_register_type = typename std::tuple_element<
+    std::tuple_size<std::tuple<Stages...>>::value - 1,
+    std::tuple<Stages...>
+  >::type::OutputRegister;
 
 template <typename FirstStage, typename... RestStages>
-struct remove_first_stage_type_s<std::tuple<FirstStage, RestStages...>> { using type = std::tuple<RestStages...>; };
-
-template <typename... Stages>
-using remove_first_stage_type = typename remove_first_stage_type_s<Stages...>::type;
-
-template <typename FirstStage, typename... RestStages>
-struct first_stage_type_s { using type = FirstStage; };
-
-template <typename Stage>
-struct first_stage_type_s<Stage> { using type = Stage; };
-
-template <typename... Stages>
-using first_stage_type = typename first_stage_type_s<Stages...>::type;
-
-template <typename FirstStage, typename... RestStages>
-struct last_stage_type_s { using type = typename last_stage_type_s<RestStages...>::type; };
-
-template <typename Stage>
-struct last_stage_type_s<Stage> { using type = Stage; };
-
-template <typename... Stages>
-using last_stage_type = typename last_stage_type_s<Stages...>::type;
-
-template <typename... Stages>
-using input_register_type = typename first_stage_type<Stages...>::InputRegister;
-
-template <typename... Stages>
-using output_register_type = typename last_stage_type<Stages...>::OutputRegister;
-
-template <typename Tuple, unsigned...I>
-constexpr remove_first_stage_type<Tuple> ShiftPostprocessPipelineImpl(const Tuple& pipeline, sequence<I...>) {
-  return CreatePostprocessPipeline(std::get<I>(pipeline)...);
-}
-
-template <typename FirstStage, typename... RestStages>
-constexpr std::tuple<RestStages...> ShiftPostprocessPipeline(const std::tuple<FirstStage, RestStages...>& pipeline) {
-  return ShiftPostprocessPipelineImpl(pipeline, make_sequence_from_one<sizeof...(RestStages) + 1>());
+constexpr std::tuple<RestStages...> DropFirstStage(const std::tuple<FirstStage, RestStages...>& pipeline) {
+  return make_subtuple(pipeline, sequence_popfront<make_sequence<sizeof...(RestStages) + 1>>());
 }
 
 template <CPUType CpuType>
@@ -76,14 +47,14 @@ template <CPUType CpuType, typename FirstStage, typename... RestStages>
 constexpr std::tuple<PostprocessImpl<FirstStage, CpuType>, PostprocessImpl<RestStages, CpuType>...> InitPostprocessPipelineImpl(std::tuple<FirstStage, RestStages...> pipeline) {
   return std::tuple_cat(
     std::tuple<PostprocessImpl<FirstStage, CpuType>>(PostprocessImpl<FirstStage, CpuType>(std::get<0>(pipeline))),
-    InitPostprocessPipelineImpl<CpuType, RestStages...>(ShiftPostprocessPipeline(pipeline))
+    InitPostprocessPipelineImpl<CpuType, RestStages...>(DropFirstStage(pipeline))
   );
 }
 
 template <CPUType CpuType>
 struct RunPostprocessPipelineImpl;
 
-#define RUN_POSTPROCESS_PIPELINE_IMPL_INSERT_IMPL(attribute, cpu_type) \
+#define RUN_POSTPROCESS_PIPELINE_IMPL_INSERT_IMPL(attribute, cpu_type)                          \
   template <>                                                                                   \
   struct RunPostprocessPipelineImpl<cpu_type> {                                                 \
     template <typename Stage>                                                                   \
@@ -95,7 +66,7 @@ struct RunPostprocessPipelineImpl;
     attribute static constexpr output_register_type<Stages...>                                  \
     run(std::tuple<Stages...> pipeline, input_register_type<Stages...> input, Index offset) {   \
       return run(                                                                               \
-        ShiftPostprocessPipeline(pipeline),                                                     \
+        DropFirstStage(pipeline),                                                               \
         std::get<0>(pipeline).run(input, offset), offset);                                      \
     }                                                                                           \
   };
@@ -115,7 +86,7 @@ constexpr InitedPostprocessPipeline<CpuType, Stages...> InitPostprocessPipeline(
   return InitedPostprocessPipeline<CpuType, Stages...>(pipeline);
 }
 
-#define INITED_POSTPROCESS_PIPELINE_INSERT_IMPL(attribute, cpu_type) \
+#define INITED_POSTPROCESS_PIPELINE_INSERT_IMPL(attribute, cpu_type)                       \
   template <typename... Stages>                                                            \
   class InitedPostprocessPipeline<cpu_type, Stages...> {                                   \
   public:                                                                                  \
