@@ -2,6 +2,7 @@
 
 #include "intrinsics.h"
 #include "types.h"
+#include "utils.h"
 
 #include <tuple>
 
@@ -20,17 +21,8 @@ class PostprocessImpl;
 
 namespace { // anonymous namespace
 
-template <std::size_t... I>
-struct integer_seq {};
-
-template <std::size_t N, std::size_t... I>
-struct integer_seq_from_one_s : integer_seq_from_one_s<N - 1, N - 1, I...> {};
-
-template <std::size_t... I>
-struct integer_seq_from_one_s<1, I...> : integer_seq<I...> {};
-
-template <typename... Types>
-using integer_seq_from_one = integer_seq_from_one_s<sizeof...(Types) + 1>;
+template <unsigned N>
+using make_sequence_from_one = sequence_popfront<make_sequence<N>>;
 
 template <typename Stage>
 struct remove_first_stage_type_s { using type = std::tuple<>;};
@@ -65,14 +57,14 @@ using input_register_type = typename first_stage_type<Stages...>::InputRegister;
 template <typename... Stages>
 using output_register_type = typename last_stage_type<Stages...>::OutputRegister;
 
-template <typename Tuple, typename std::size_t...I>
-constexpr remove_first_stage_type<Tuple> ShiftPostprocessPipelineImpl(const Tuple& pipeline, integer_seq<I...>) {
+template <typename Tuple, unsigned...I>
+constexpr remove_first_stage_type<Tuple> ShiftPostprocessPipelineImpl(const Tuple& pipeline, sequence<I...>) {
   return CreatePostprocessPipeline(std::get<I>(pipeline)...);
 }
 
 template <typename FirstStage, typename... RestStages>
 constexpr std::tuple<RestStages...> ShiftPostprocessPipeline(const std::tuple<FirstStage, RestStages...>& pipeline) {
-  return ShiftPostprocessPipelineImpl(pipeline, integer_seq_from_one<std::tuple<FirstStage, RestStages...>>());
+  return ShiftPostprocessPipelineImpl(pipeline, make_sequence_from_one<sizeof...(RestStages) + 1>());
 }
 
 template <CPUType CpuType, typename Stage>
