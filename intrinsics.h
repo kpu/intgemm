@@ -15,6 +15,7 @@ namespace intgemm {
  * Define a bunch of intrinstics as overloaded functions so they work with
  * templates.
  */
+template <class Register> static inline Register loadu_ps(const float* mem_addr);
 template <class Register> static inline Register set1_epi16(int16_t to);
 template <class Register> static inline Register set1_epi32(int32_t to);
 template <class Register> static inline Register set1_ps(float to);
@@ -43,6 +44,9 @@ INTGEMM_SSE2 static inline __m128 cvtepi32_ps(__m128i arg) {
 }
 INTGEMM_SSE2 static inline __m128i cvtps_epi32(__m128 arg) {
   return _mm_cvtps_epi32(arg);
+}
+template <> INTGEMM_SSE2 inline __m128 loadu_ps(const float* mem_addr) {
+  return _mm_loadu_ps(mem_addr);
 }
 INTGEMM_SSE2 static inline __m128i madd_epi16(__m128i first, __m128i second) {
   return _mm_madd_epi16(first, second);
@@ -103,6 +107,9 @@ INTGEMM_AVX2 static inline __m256 cvtepi32_ps(__m256i arg) {
 }
 INTGEMM_AVX2 static inline __m256i cvtps_epi32(__m256 arg) {
   return _mm256_cvtps_epi32(arg);
+}
+template <> INTGEMM_AVX2 inline __m256 loadu_ps(const float* mem_addr) {
+  return _mm256_loadu_ps(mem_addr);
 }
 INTGEMM_AVX2 static inline __m256i madd_epi16(__m256i first, __m256i second) {
   return _mm256_madd_epi16(first, second);
@@ -165,6 +172,9 @@ INTGEMM_AVX512BW static inline __m512 cvtepi32_ps(__m512i arg) {
 }
 INTGEMM_AVX512BW static inline __m512i cvtps_epi32(__m512 arg) {
   return _mm512_cvtps_epi32(arg);
+}
+template <> INTGEMM_AVX512BW inline __m512 loadu_ps(const float* mem_addr) {
+  return _mm512_loadu_ps(mem_addr);
 }
 INTGEMM_AVX512BW static inline __m512i madd_epi16(__m512i first, __m512i second) {
   return _mm512_madd_epi16(first, second);

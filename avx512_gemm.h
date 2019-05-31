@@ -36,7 +36,7 @@ namespace avx512f {
 // Load from memory, multiply, and convert to int32_t.
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_AVX512BW inline __m512i QuantizerGrab(const float *input, const __m512 quant_mult_reg) {
-  return quantize(*reinterpret_cast<const __m512*>(input), quant_mult_reg);
+  return quantize(loadu_ps<__m512>(input), quant_mult_reg);
 }
 
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
@@ -56,7 +56,7 @@ INTGEMM_AVX512DQ inline __m512 Concat(const __m256 first, const __m256 second) {
 // Like QuantizerGrab, but allows 32-byte halves (i.e. 8 columns) to be controlled independently.
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_AVX512BW inline __m512i QuantizerGrabHalves(const float *input0, const float *input1, const __m512 quant_mult_reg) {
-  __m512 appended = avx512f::Concat(*reinterpret_cast<const __m256*>(input0), *reinterpret_cast<const __m256*>(input1));
+  __m512 appended = avx512f::Concat(loadu_ps<__m256>(input0), loadu_ps<__m256>(input1));
   appended = _mm512_mul_ps(appended, quant_mult_reg);
   return _mm512_cvtps_epi32(appended);
 }
