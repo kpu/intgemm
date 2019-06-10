@@ -18,6 +18,7 @@ namespace intgemm {
 template <class Register> static inline Register set1_epi16(int16_t to);
 template <class Register> static inline Register set1_epi32(int32_t to);
 template <class Register> static inline Register set1_ps(float to);
+template <class Register> static inline Register load_ps(float const* from);
 template <class Register> static inline Register setzero_ps();
 
 /*
@@ -76,6 +77,9 @@ INTGEMM_SSE2 static inline void storeu_ps(float* mem_addr, __m128 a) {
 INTGEMM_SSE2 static inline __m128 add_ps (__m128 a, __m128 b) {
   return _mm_add_ps(a, b);
 }
+template <> INTGEMM_SSE2 inline __m128 load_ps<__m128>(const float* from) {
+  return _mm_load_ps(from);
+}
 
 /*
  *
@@ -133,6 +137,9 @@ INTGEMM_AVX2 static inline void storeu_ps(float* mem_addr, __m256 a) {
 INTGEMM_AVX2 static inline __m256 add_ps (__m256 a, __m256 b) {
   return _mm256_add_ps(a, b);
 }
+template <> INTGEMM_AVX2 inline __m256 load_ps<__m256>(const float* from) {
+  return _mm256_load_ps(from);
+}
 
 /*
  *
@@ -187,6 +194,9 @@ template <> inline INTGEMM_AVX512BW __m512 set1_ps<__m512>(float to) {
 }
 template <> INTGEMM_AVX512BW inline __m512 setzero_ps<__m512>() {
   return _mm512_setzero_ps();
+}
+template <> INTGEMM_AVX512BW inline __m512 load_ps<__m512>(const float* from) {
+  return _mm512_load_ps(from);
 }
 /*
  * Missing sign_epi8

@@ -35,6 +35,7 @@ add_executable(tests
   test/multiply_test.cc
   test/quantize_test.cc
   test/relu_test.cc
+  test/add127_test.cc
   intgemm.cc
 )
 

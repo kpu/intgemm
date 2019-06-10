@@ -329,6 +329,8 @@ struct AVX512_8bit {
   }
 }
 
+  INTGEMM_PREPARE_BIAS_FOR_8(INTGEMM_AVX2, __m256)
+
   constexpr static const char *const kName = "8-bit AVX512";
 
   static const CPUType kUses = CPU_AVX512BW;
