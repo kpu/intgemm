@@ -77,6 +77,9 @@ INTGEMM_SSE2 static inline void storeu_ps(float* mem_addr, __m128 a) {
 INTGEMM_SSE2 static inline __m128 add_ps (__m128 a, __m128 b) {
   return _mm_add_ps(a, b);
 }
+INTGEMM_SSE2 static inline __m128 sub_ps (__m128 a, __m128 b) {
+  return _mm_sub_ps(a, b);
+}
 template <> INTGEMM_SSE2 inline __m128 load_ps<__m128>(const float* from) {
   return _mm_load_ps(from);
 }
@@ -137,6 +140,9 @@ INTGEMM_AVX2 static inline void storeu_ps(float* mem_addr, __m256 a) {
 INTGEMM_AVX2 static inline __m256 add_ps (__m256 a, __m256 b) {
   return _mm256_add_ps(a, b);
 }
+INTGEMM_AVX2 static inline __m256 sub_ps (__m256 a, __m256 b) {
+  return _mm256_sub_ps(a, b);
+}
 template <> INTGEMM_AVX2 inline __m256 load_ps<__m256>(const float* from) {
   return _mm256_load_ps(from);
 }
@@ -175,11 +181,12 @@ INTGEMM_AVX512BW static inline __m512i maddubs_epi16(__m512i first, __m512i seco
 INTGEMM_AVX512BW static inline __m512 max_ps(__m512 first, __m512 second) {
   return _mm512_max_ps(first, second);
 }
-
 INTGEMM_AVX512BW static inline __m512 add_ps(__m512 first, __m512 second) {
   return _mm512_add_ps(first, second);
 }
-
+INTGEMM_AVX512BW static inline __m512 sub_ps(__m512 first, __m512 second) {
+  return _mm512_sub_ps(first, second);
+}
 INTGEMM_AVX512BW static inline __m512 mul_ps(__m512 a, __m512 b) {
   return _mm512_mul_ps(a, b);
 }

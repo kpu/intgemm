@@ -4,7 +4,7 @@
 
 namespace intgemm {
 
-void SlowSumB(const float * input, float * bias, float* output, Index rows, Index cols) {
+void SlowSumB(const float * input, float * bias, float* output, float alpha, Index rows, Index cols) {
 	for (Index r = 0; r<rows; r++) {
 		for (Index c = 0; c<cols; c++) {
 			output[c] += input[r * cols + c];
@@ -12,7 +12,7 @@ void SlowSumB(const float * input, float * bias, float* output, Index rows, Inde
 	}
 
 	for (Index c = 0; c<cols; c++) {
-		output[c] += bias[c];
+		output[c] = bias[c] - output[c]*alpha;
 	}
 }
 
@@ -42,9 +42,10 @@ template <class Routine> void TestPrepareBias(Index rows, Index cols) {
   for (auto& it : inputBias) {
     it = dist(gen);
   }
-  SlowSumB(inputB.begin(), inputBias.begin(), goldBias.begin(), rows, cols);
+  float alpha = dist(gen);
+  SlowSumB(inputB.begin(), inputBias.begin(), goldBias.begin(), alpha, rows, cols);
 
-  Routine::PrepareBiasFor8(inputB.begin(), inputBias.begin(), rows, cols);
+  Routine::PrepareBiasFor8(inputB.begin(), inputBias.begin(), alpha, rows, cols);
 
   CompareBiases(goldBias.begin(), inputBias.begin(), cols);
 }
