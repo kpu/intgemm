@@ -200,6 +200,33 @@ struct AVX512_8bit {
     }
   }
 
+  // Preparing A for the signed/unsigned multiplication. Using add 127
+  /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
+  INTGEMM_AVX512BW static inline void PrepareA(const float *input, uint8_t *output, float quant_mult, Index rows, Index cols) {
+    Quantize(input, output, quant_mult, rows * cols);
+  }
+
+  // Technically output can be unaligned in Quantize.
+  // But then it will need to be aligned for Multiply.
+  // Convert to 8-bit signed integers.
+  /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
+
+  INTGEMM_AVX512BW static void Quantize(const float *input, uint8_t *output, float quant_mult, Index size) {
+    assert(size % 16 == 0);
+    assert(reinterpret_cast<uintptr_t>(input) % 64 == 0);
+    const __m512i neg127 = _mm512_set1_epi32(-127);
+    const __m512i pos127 = _mm512_set1_epi32(127);
+    const __m512 quant_mult_reg = _mm512_set1_ps(quant_mult);
+    const float *end = input + size;
+    for (; input < end; input += 16, output += 16) {
+      __m512i asint = avx512f::QuantizerGrab(input, quant_mult_reg);
+      asint = _mm512_max_epi32(asint, neg127);
+      asint = add_epi32(asint, pos127); //Maybe could do +128 and remove the above line
+      // There doesn't seem to be an unmasked version.
+      _mm512_mask_cvtsepi32_storeu_epi8(output, 0xffff, asint);
+    }
+  }
+
   // Tile size for B; B must be a multiple of this block size.
   static const Index kBTileRow = 64;
   static const Index kBTileCol = 8;
