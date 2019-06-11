@@ -11,7 +11,7 @@ namespace intgemm {
  *   sequence<1, 2, 3>()
  *   sequence_pushback<4, sequence<1, 2, 3>>() = sequence<1, 2, 3, 4>()
  *   sequence_popfront<sequence<1, 2, 3>>() = sequence<2, 3, 4>()
- *   make_sequence<3>() = sequence<1, 2, 3>()
+ *   make_sequence<3>() = sequence<0, 1, 2>()
  */
 template <unsigned... Indices>
 struct sequence { using type = sequence; };
