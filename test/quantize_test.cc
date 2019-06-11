@@ -1,10 +1,4 @@
-#include "avx512_gemm.h"
-#include "avx2_gemm.h"
-#include "ssse3_gemm.h"
-#include "sse2_gemm.h"
-#include "aligned.h"
-
-#include "3rd_party/catch.hpp"
+#include "test/common.h"
 
 #include <cstring>
 #include <math.h>

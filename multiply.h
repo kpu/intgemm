@@ -89,7 +89,7 @@ INTGEMM_PACK0123(INTGEMM_AVX2, __m256i)
 INTGEMM_PACK0123(INTGEMM_AVX512BW, __m512i)
 #endif
 
-// 16-bit multiplier for INTGEMM_SSE2, INTGEMM_AVX2, and AVX512.
+// 16-bit multiplier for SSE2, AVX2, and AVX512.
 // C = A * B * unquant_mult
 //
 // This has been substantially revised from Jacob Devlin's SSE code which is:
@@ -182,7 +182,64 @@ INTGEMM_PACK0123(INTGEMM_AVX512BW, __m512i)
   } \
 } \
 
-/* 8-bit matrix multiply used by AVX and INTGEMM_AVX2.
+//An int8 version of the above code, using the add 127 technique
+#define INTGEMM_MULTIPLY8NEW(Integer, target, WriteCSubType) \
+  template <class WriteC> target static void Multiply8new(const uint8_t *A, const int8_t *B, WriteC C, Index A_rows, Index width, Index B_cols) { \
+  assert(width % (sizeof(Integer) / sizeof(int8_t)) == 0); \
+  assert(B_cols % 8 == 0); \
+  assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0); \
+  assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0); \
+  const int simd_width = width / (sizeof(Integer) / sizeof(int8_t)); \
+  typename WriteC::WriteCSubType write_C(C); \
+  const Integer *B0_col = reinterpret_cast<const Integer *>(B); \
+  for (Index B0_colidx = 0; B0_colidx < B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
+    /* Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.*/ \
+    for (Index A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) { \
+      const Integer *A_row = reinterpret_cast<const Integer*>(A + A_rowidx * width); \
+      /* These will be packed 16-bit integers containing sums for each row of B multiplied by the row of A. \
+         Iterate over shared (inner) dimension.*/ \
+      int k = 0; \
+      Integer a = *(A_row + k); \
+      Integer sum0 = maddubs_epi16(a, *(B0_col + k * 8)); \
+      Integer sum1 = maddubs_epi16(a, *(B0_col + k * 8 + 1)); \
+      Integer sum2 = maddubs_epi16(a, *(B0_col + k * 8 + 2)); \
+      Integer sum3 = maddubs_epi16(a, *(B0_col + k * 8 + 3)); \
+      Integer sum4 = maddubs_epi16(a, *(B0_col + k * 8 + 4)); \
+      Integer sum5 = maddubs_epi16(a, *(B0_col + k * 8 + 5)); \
+      Integer sum6 = maddubs_epi16(a, *(B0_col + k * 8 + 6)); \
+      Integer sum7 = maddubs_epi16(a, *(B0_col + k * 8 + 7)); \
+      for (int k = 1; k < simd_width; ++k) { \
+        Integer a = *(A_row + k); \
+        /* Multiply 8-bit, horizontally add to packed 16-bit integers.*/ \
+        Integer mult0 = maddubs_epi16(a, *(B0_col + k * 8)); \
+        Integer mult1 = maddubs_epi16(a, *(B0_col + k * 8 + 1)); \
+        Integer mult2 = maddubs_epi16(a, *(B0_col + k * 8 + 2)); \
+        Integer mult3 = maddubs_epi16(a, *(B0_col + k * 8 + 3)); \
+        Integer mult4 = maddubs_epi16(a, *(B0_col + k * 8 + 4)); \
+        Integer mult5 = maddubs_epi16(a, *(B0_col + k * 8 + 5)); \
+        Integer mult6 = maddubs_epi16(a, *(B0_col + k * 8 + 6)); \
+        Integer mult7 = maddubs_epi16(a, *(B0_col + k * 8 + 7)); \
+        /* Sum packed 16-bit integers with danger of saturation.  TODO: accumulate in 32-bit every so often.*/ \
+        sum0 = adds_epi16(sum0, mult0); \
+        sum1 = adds_epi16(sum1, mult1); \
+        sum2 = adds_epi16(sum2, mult2); \
+        sum3 = adds_epi16(sum3, mult3); \
+        sum4 = adds_epi16(sum4, mult4); \
+        sum5 = adds_epi16(sum5, mult5); \
+        sum6 = adds_epi16(sum6, mult6); \
+        sum7 = adds_epi16(sum7, mult7); \
+      } \
+      /* Reduce sums within 128-bit lanes.*/ \
+      Integer pack0123 = Pack0123(sum0, sum1, sum2, sum3); \
+      Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
+      /*The specific implementation may need to reduce further.*/ \
+      auto total = PermuteSummer(pack0123, pack4567); \
+      write_C(A_rowidx, B_cols, B0_colidx, total); \
+    } \
+  } \
+} \
+
+/* 8-bit matrix multiply used by AVX and AVX2.
  * These have two peculiar properties:
  * 1. The sign instructions don't exist in AVX512.
  * 2. 16 registers means gcc's register allocation failed so I wrote it in my
@@ -329,7 +386,7 @@ INTGEMM_SSSE3 inline static void InnerINTGEMM_SSSE3(
   sum6 = adds_epi16(sum6, maddubs_epi16(a_positive, sign_epi8(b[6], a)));
   sum7 = adds_epi16(sum7, maddubs_epi16(a_positive, sign_epi8(b[7], a)));
 }
-//INTGEMM_AVX2 or INTGEMM_SSSE3 multiply
+//AVX2 or SSSE3 multiply
 #define INTGEMM_MULTIPLY8(Integer, target, WriteCSubType) \
 template <class WriteC> target static void Multiply(const int8_t *A, const int8_t *B, WriteC C, Index A_rows, Index width, Index B_cols) { \
   assert(width % sizeof(Integer) == 0); \

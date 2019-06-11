@@ -148,6 +148,8 @@ struct SSSE3_8bit {
     Multiply8_SSE2OrAVX2__m128i<JustUnquantizeC>(A, B, JustUnquantizeC(C, unquant_mult), A_rows, width, B_cols);
   }*/
   INTGEMM_MULTIPLY8(__m128i, INTGEMM_SSSE3, OnSSE2)
+
+  INTGEMM_MULTIPLY8NEW(__m128i, INTGEMM_SSSE3, OnSSE2)
   
   INTGEMM_PREPARE_BIAS_FOR_8(INTGEMM_SSSE3, __m128)
 

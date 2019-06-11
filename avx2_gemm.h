@@ -226,6 +226,8 @@ struct AVX2_8bit {
   }*/
   INTGEMM_MULTIPLY8(__m256i, INTGEMM_AVX2, OnAVX2)
 
+  INTGEMM_MULTIPLY8NEW(__m256i, INTGEMM_AVX2, OnAVX2)
+
   INTGEMM_PREPARE_BIAS_FOR_8(INTGEMM_AVX2, __m256)
   
   constexpr static const char *const kName = "8-bit INTGEMM_AVX2";
