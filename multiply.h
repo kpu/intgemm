@@ -229,6 +229,16 @@ INTGEMM_PACK0123(INTGEMM_AVX512BW, __m512i)
         sum6 = adds_epi16(sum6, mult6); \
         sum7 = adds_epi16(sum7, mult7); \
       } \
+      /* Upcast to 32-bit and horizontally add.*/ \
+      Integer ones = set1_epi16<Integer>(1); \
+      sum0 = madd_epi16(sum0, ones); \
+      sum1 = madd_epi16(sum1, ones); \
+      sum2 = madd_epi16(sum2, ones); \
+      sum3 = madd_epi16(sum3, ones); \
+      sum4 = madd_epi16(sum4, ones); \
+      sum5 = madd_epi16(sum5, ones); \
+      sum6 = madd_epi16(sum6, ones); \
+      sum7 = madd_epi16(sum7, ones); \
       /* Reduce sums within 128-bit lanes.*/ \
       Integer pack0123 = Pack0123(sum0, sum1, sum2, sum3); \
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
