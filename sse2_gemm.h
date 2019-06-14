@@ -11,7 +11,7 @@ namespace intgemm {
 namespace sse2 {
 
 INTGEMM_SSE2 inline __m128i QuantizerGrab(const float *input, const __m128 quant_mult_reg) {
-  return quantize(*reinterpret_cast<const __m128*>(input), quant_mult_reg);
+  return quantize(loadu_ps<__m128>(input), quant_mult_reg);
 }
 
 INTGEMM_SELECT_COL_B(INTGEMM_SSE2, __m128i)

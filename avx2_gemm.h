@@ -12,7 +12,7 @@ namespace intgemm {
 namespace avx2 {
 
 INTGEMM_AVX2 inline __m256i QuantizerGrab(const float *input, const __m256 quant_mult_reg) {
-  return quantize(*reinterpret_cast<const __m256*>(input), quant_mult_reg);
+  return quantize(loadu_ps<__m256>(input), quant_mult_reg);
 }
 
 INTGEMM_SELECT_COL_B(INTGEMM_AVX2, __m256i)
