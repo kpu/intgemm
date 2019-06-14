@@ -86,19 +86,23 @@ constexpr InitedPostprocessPipeline<CpuType, Stages...> InitPostprocessPipeline(
   return InitedPostprocessPipeline<CpuType, Stages...>(pipeline);
 }
 
-#define INITED_POSTPROCESS_PIPELINE_INSERT_IMPL(attribute, cpu_type)                       \
-  template <typename... Stages>                                                            \
-  class InitedPostprocessPipeline<cpu_type, Stages...> {                                   \
-  public:                                                                                  \
-    using InputRegister = input_register_type<PostprocessImpl<Stages, cpu_type>...>;       \
-    using OutputRegister = output_register_type<PostprocessImpl<Stages, cpu_type>...>;     \
-    InitedPostprocessPipeline(std::tuple<Stages...> pipeline)                              \
-        : inited_pipeline(InitPostprocessPipelineImpl<cpu_type, Stages...>(pipeline)) {}   \
-    attribute inline OutputRegister run(InputRegister input, Index offset) {               \
-      return RunPostprocessPipelineImpl<cpu_type>::run(inited_pipeline, input, offset);    \
-    }                                                                                      \
-  private:                                                                                 \
-    const std::tuple<PostprocessImpl<Stages, cpu_type>...> inited_pipeline;                \
+#define INITED_POSTPROCESS_PIPELINE_INSERT_IMPL(attribute, cpu_type)                                                 \
+  template <typename... Stages>                                                                                      \
+  class InitedPostprocessPipeline<cpu_type, Stages...> {                                                             \
+  public:                                                                                                            \
+    using InputRegister = input_register_type<PostprocessImpl<Stages, cpu_type>...>;                                 \
+    using OutputRegister = output_register_type<PostprocessImpl<Stages, cpu_type>...>;                               \
+    InitedPostprocessPipeline(std::tuple<Stages...> pipeline)                                                        \
+        : inited_pipeline(InitPostprocessPipelineImpl<cpu_type, Stages...>(pipeline)) {}                             \
+    attribute inline OutputRegister run(InputRegister input, Index offset) {                                         \
+      return RunPostprocessPipelineImpl<cpu_type>::run(inited_pipeline, input, offset);                              \
+    }                                                                                                                \
+    attribute inline void run(const InputRegister* input, unsigned length, OutputRegister* output) {                 \
+      for (unsigned i = 0; i < length; ++i)                                                                          \
+        output[i] = RunPostprocessPipelineImpl<cpu_type>::run(inited_pipeline, input[i], i * sizeof(InputRegister)); \
+    }                                                                                                                \
+  private:                                                                                                           \
+    const std::tuple<PostprocessImpl<Stages, cpu_type>...> inited_pipeline;                                          \
   };
 
 INITED_POSTPROCESS_PIPELINE_INSERT_IMPL(INTGEMM_SSE2, CPUType::CPU_SSE2)
