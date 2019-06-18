@@ -26,9 +26,11 @@ if(NOT AVX512)
   set_source_files_properties(example.cc test/quantize_test.cc test/multiply_test.cc benchmark.cc intgemm.cc PROPERTIES COMPILE_DEFINITIONS "INTGEMM_NO_AVX512")
 endif()
 
-foreach(exe example benchmark)
-  add_executable(${exe} ${exe}.cc intgemm.cc)
+foreach(exe benchmark biasmultiply)
+  add_executable(${exe} benchmarks/${exe}.cc intgemm.cc)
 endforeach()
+
+add_executable(example example.cc intgemm.cc)
 
 include_directories(.)
 add_executable(tests
