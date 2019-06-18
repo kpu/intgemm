@@ -208,6 +208,16 @@ INTGEMM_PACK0123(INTGEMM_AVX512BW, __m512i)
       Integer sum5 = maddubs_epi16(a, *(B0_col + k * 8 + 5)); \
       Integer sum6 = maddubs_epi16(a, *(B0_col + k * 8 + 6)); \
       Integer sum7 = maddubs_epi16(a, *(B0_col + k * 8 + 7)); \
+      /* Upcast to 32-bit and horizontally add. Seems a bit faster if this is declared here.*/ \
+      Integer ones = set1_epi16<Integer>(1); \
+      sum0 = madd_epi16(sum0, ones); \
+      sum1 = madd_epi16(sum1, ones); \
+      sum2 = madd_epi16(sum2, ones); \
+      sum3 = madd_epi16(sum3, ones); \
+      sum4 = madd_epi16(sum4, ones); \
+      sum5 = madd_epi16(sum5, ones); \
+      sum6 = madd_epi16(sum6, ones); \
+      sum7 = madd_epi16(sum7, ones); \
       for (int k = 1; k < simd_width; ++k) { \
         Integer a = *(A_row + k); \
         /* Multiply 8-bit, horizontally add to packed 16-bit integers.*/ \
@@ -219,26 +229,26 @@ INTGEMM_PACK0123(INTGEMM_AVX512BW, __m512i)
         Integer mult5 = maddubs_epi16(a, *(B0_col + k * 8 + 5)); \
         Integer mult6 = maddubs_epi16(a, *(B0_col + k * 8 + 6)); \
         Integer mult7 = maddubs_epi16(a, *(B0_col + k * 8 + 7)); \
-        /* Sum packed 16-bit integers with danger of saturation.  TODO: accumulate in 32-bit every so often.*/ \
-        sum0 = adds_epi16(sum0, mult0); \
-        sum1 = adds_epi16(sum1, mult1); \
-        sum2 = adds_epi16(sum2, mult2); \
-        sum3 = adds_epi16(sum3, mult3); \
-        sum4 = adds_epi16(sum4, mult4); \
-        sum5 = adds_epi16(sum5, mult5); \
-        sum6 = adds_epi16(sum6, mult6); \
-        sum7 = adds_epi16(sum7, mult7); \
+        /* Upcast to 32-bit and horizontally add.*/ \
+        mult0 = madd_epi16(mult0, ones); \
+        mult1 = madd_epi16(mult1, ones); \
+        mult2 = madd_epi16(mult2, ones); \
+        mult3 = madd_epi16(mult3, ones); \
+        mult4 = madd_epi16(mult4, ones); \
+        mult5 = madd_epi16(mult5, ones); \
+        mult6 = madd_epi16(mult6, ones); \
+        mult7 = madd_epi16(mult7, ones); \
+        /*Add in 32bit*/ \
+        sum0 = add_epi32(sum0, mult0); \
+        sum1 = add_epi32(sum1, mult1); \
+        sum2 = add_epi32(sum2, mult2); \
+        sum3 = add_epi32(sum3, mult3); \
+        sum4 = add_epi32(sum4, mult4); \
+        sum5 = add_epi32(sum5, mult5); \
+        sum6 = add_epi32(sum6, mult6); \
+        sum7 = add_epi32(sum7, mult7); \
+         \
       } \
-      /* Upcast to 32-bit and horizontally add.*/ \
-      Integer ones = set1_epi16<Integer>(1); \
-      sum0 = madd_epi16(sum0, ones); \
-      sum1 = madd_epi16(sum1, ones); \
-      sum2 = madd_epi16(sum2, ones); \
-      sum3 = madd_epi16(sum3, ones); \
-      sum4 = madd_epi16(sum4, ones); \
-      sum5 = madd_epi16(sum5, ones); \
-      sum6 = madd_epi16(sum6, ones); \
-      sum7 = madd_epi16(sum7, ones); \
       /* Reduce sums within 128-bit lanes.*/ \
       Integer pack0123 = Pack0123(sum0, sum1, sum2, sum3); \
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
