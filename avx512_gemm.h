@@ -166,11 +166,11 @@ struct AVX512_16bit {
   }
   
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
-  INTGEMM_MULTIPLY16(__m512i, INTGEMM_AVX512BW, CPUType::CPU_AVX2)
+  INTGEMM_MULTIPLY16(__m512i, INTGEMM_AVX512BW, CPUType::AVX2)
 
   constexpr static const char *const kName = "16-bit AVX512";
 
-  static const CPUType kUses = CPU_AVX512BW;
+  static const CPUType kUses = CPUType::AVX512BW;
 };
 
 struct AVX512_8bit {
@@ -227,7 +227,7 @@ struct AVX512_8bit {
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0);
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0);
   // There's 8 results for INTGEMM_AVX2 to handle.
-  auto inited_pipeline = InitPostprocessPipeline<CPUType::CPU_AVX2>(pipeline);
+  auto inited_pipeline = InitPostprocessPipeline<CPUType::AVX2>(pipeline);
   const int simd_width = width / sizeof(Integer);
   const Integer *B0_col = reinterpret_cast<const Integer*>(B);
   // Added for AVX512.
@@ -333,7 +333,7 @@ struct AVX512_8bit {
 
   constexpr static const char *const kName = "8-bit AVX512";
 
-  static const CPUType kUses = CPU_AVX512BW;
+  static const CPUType kUses = CPUType::AVX512BW;
 };
 
 } // namespace intgemm

@@ -74,23 +74,23 @@ template <class Backend> bool TestMany() {
 }
 
 TEST_CASE ("Quantize SSE2", "[quantize]") {
-  if (kCPU < CPU_SSE2) return;
+  if (kCPU < CPUType::SSE2) return;
   CHECK(TestMany<SSE2_16bit>());
 }
 
 TEST_CASE ("Quantize SSE3", "[quantize]") {
-  if (kCPU < CPU_SSSE3) return;
+  if (kCPU < CPUType::SSSE3) return;
   CHECK(TestMany<SSSE3_8bit>());
 }
 
 TEST_CASE ("Quantize AVX2", "[quantize]") {
-  if (kCPU < CPU_AVX2) return;
+  if (kCPU < CPUType::AVX2) return;
   CHECK(TestMany<AVX2_8bit>());
   CHECK(TestMany<AVX2_16bit>());
 }
 #ifndef INTGEMM_NO_AVX512
   TEST_CASE ("Quantize AVX512", "[quantize]") {
-    if (kCPU < CPU_AVX512BW) return;
+    if (kCPU < CPUType::AVX512BW) return;
     CHECK(TestMany<AVX512_8bit>());
     CHECK(TestMany<AVX512_16bit>());
   }

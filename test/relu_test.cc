@@ -6,7 +6,7 @@
 namespace intgemm {
 
 INTGEMM_SSE2 TEST_CASE("ReLU SSE2",) {
-  if (kCPU < CPU_SSE2)
+  if (kCPU < CPUType::SSE2)
     return;
 
   float raw_input[8];
@@ -16,7 +16,7 @@ INTGEMM_SSE2 TEST_CASE("ReLU SSE2",) {
   input.pack0123 = *reinterpret_cast<__m128*>(raw_input);
   input.pack4567 = *reinterpret_cast<__m128*>(raw_input + 4);
 
-  auto postproc = PostprocessImpl<ReLU, CPUType::CPU_SSE2>(ReLU());
+  auto postproc = PostprocessImpl<ReLU, CPUType::SSE2>(ReLU());
   auto output = postproc.run(input, 0);
   auto raw_output = reinterpret_cast<float*>(&output);
 
@@ -31,14 +31,14 @@ INTGEMM_SSE2 TEST_CASE("ReLU SSE2",) {
 }
 
 INTGEMM_AVX2 TEST_CASE("ReLU AVX2",) {
-  if (kCPU < CPU_AVX2)
+  if (kCPU < CPUType::AVX2)
     return;
 
   float raw_input[8];
   std::iota(raw_input, raw_input + 8, -4);
 
   auto input = *reinterpret_cast<__m256*>(raw_input);
-  auto postproc = PostprocessImpl<ReLU, CPUType::CPU_AVX2>(ReLU());
+  auto postproc = PostprocessImpl<ReLU, CPUType::AVX2>(ReLU());
   auto output = postproc.run(input, 0);
   auto raw_output = reinterpret_cast<float*>(&output);
 
@@ -55,14 +55,14 @@ INTGEMM_AVX2 TEST_CASE("ReLU AVX2",) {
 #ifndef INTGEMM_NO_AVX512
 
 INTGEMM_AVX512BW TEST_CASE("ReLU AVX512",) {
-  if (kCPU < CPU_AVX512BW)
+  if (kCPU < CPUType::AVX512BW)
     return;
 
   float raw_input[16];
   std::iota(raw_input, raw_input + 16, -8);
 
   auto input = *reinterpret_cast<__m512*>(raw_input);
-  auto postproc = PostprocessImpl<ReLU, CPUType::CPU_AVX512BW>(ReLU());
+  auto postproc = PostprocessImpl<ReLU, CPUType::AVX512BW>(ReLU());
   auto output = postproc.run(input, 0);
   auto raw_output = reinterpret_cast<float*>(&output);
 

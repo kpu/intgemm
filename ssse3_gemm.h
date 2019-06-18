@@ -95,11 +95,11 @@ struct SSSE3_8bit {
     ssse3::SelectColumnsOfB((const __m128i*)input, (__m128i*)output, rows, cols_begin, cols_end);
   }
 
-  INTGEMM_MULTIPLY8(__m128i, INTGEMM_SSSE3, CPUType::CPU_SSE2)
+  INTGEMM_MULTIPLY8(__m128i, INTGEMM_SSSE3, CPUType::SSE2)
   
   constexpr static const char *const kName = "8-bit INTGEMM_SSSE3";
 
-  static const CPUType kUses = CPU_SSSE3;
+  static const CPUType kUses = CPUType::SSSE3;
 };
 
 } // namespace intgemm

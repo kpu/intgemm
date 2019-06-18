@@ -80,11 +80,11 @@ struct AVX2_16bit {
     avx2::SelectColumnsOfB((const __m256i*)input, (__m256i*)output, rows * 2, cols_begin, cols_end);
   }
   
-  INTGEMM_MULTIPLY16(__m256i, INTGEMM_AVX2, CPUType::CPU_AVX2)
+  INTGEMM_MULTIPLY16(__m256i, INTGEMM_AVX2, CPUType::AVX2)
 
   constexpr static const char *const kName = "16-bit INTGEMM_AVX2";
 
-  static const CPUType kUses = CPU_AVX2;
+  static const CPUType kUses = CPUType::AVX2;
 };
 
 namespace avx2 {
@@ -169,11 +169,11 @@ struct AVX2_8bit {
     avx2::SelectColumnsOfB((const __m256i*)input, (__m256i*)output, rows, cols_begin, cols_end);
   }
 
-  INTGEMM_MULTIPLY8(__m256i, INTGEMM_AVX2, CPUType::CPU_AVX2)
+  INTGEMM_MULTIPLY8(__m256i, INTGEMM_AVX2, CPUType::AVX2)
   
   constexpr static const char *const kName = "8-bit INTGEMM_AVX2";
 
-  static const CPUType kUses = CPU_AVX2;
+  static const CPUType kUses = CPUType::AVX2;
 };
 
 } // namespace intgemm

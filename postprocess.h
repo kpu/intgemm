@@ -18,7 +18,7 @@ public:
 };
 
 template <>
-class PostprocessImpl<Unquantize, CPUType::CPU_SSE2> {
+class PostprocessImpl<Unquantize, CPUType::SSE2> {
 public:
   using InputRegister = RegisterPair128i;
   using OutputRegister = RegisterPair128;
@@ -39,7 +39,7 @@ private:
 };
 
 template <>
-class PostprocessImpl<Unquantize, CPUType::CPU_AVX2> {
+class PostprocessImpl<Unquantize, CPUType::AVX2> {
 public:
   using InputRegister = __m256i;
   using OutputRegister = __m256;
@@ -57,7 +57,7 @@ private:
 };
 
 template <>
-class PostprocessImpl<Unquantize, CPUType::CPU_AVX512BW> {
+class PostprocessImpl<Unquantize, CPUType::AVX512BW> {
 public:
   using InputRegister = __m512i;
   using OutputRegister = __m512;
@@ -80,7 +80,7 @@ private:
 class Identity {};
 
 template <>
-class PostprocessImpl<Identity, CPUType::CPU_SSE2> {
+class PostprocessImpl<Identity, CPUType::SSE2> {
 public:
   using InputRegister = RegisterPair128i;
   using OutputRegister = RegisterPair128i;
@@ -93,7 +93,7 @@ public:
 };
 
 template <>
-class PostprocessImpl<Identity, CPUType::CPU_AVX2> {
+class PostprocessImpl<Identity, CPUType::AVX2> {
 public:
   using InputRegister = __m256i;
   using OutputRegister = __m256i;
@@ -106,7 +106,7 @@ public:
 };
 
 template <>
-class PostprocessImpl<Identity, CPUType::CPU_AVX512BW> {
+class PostprocessImpl<Identity, CPUType::AVX512BW> {
 public:
   using InputRegister = __m512i;
   using OutputRegister = __m512i;
@@ -130,7 +130,7 @@ public:
 };
 
 template <>
-class PostprocessImpl<AddBias, CPUType::CPU_SSE2> {
+class PostprocessImpl<AddBias, CPUType::SSE2> {
 public:
   using InputRegister = RegisterPair128;
   using OutputRegister = RegisterPair128;
@@ -151,7 +151,7 @@ private:
 };
 
 template <>
-class PostprocessImpl<AddBias, CPUType::CPU_AVX2> {
+class PostprocessImpl<AddBias, CPUType::AVX2> {
 public:
   using InputRegister = __m256;
   using OutputRegister = __m256;
@@ -173,7 +173,7 @@ private:
 class ReLU {};
 
 template <>
-class PostprocessImpl<ReLU, CPUType::CPU_SSE2> {
+class PostprocessImpl<ReLU, CPUType::SSE2> {
 public:
   using InputRegister = RegisterPair128;
   using OutputRegister = RegisterPair128;
@@ -190,10 +190,10 @@ public:
 };
 
 template <>
-class PostprocessImpl<ReLU, CPUType::CPU_SSSE3> : public PostprocessImpl<ReLU, CPUType::CPU_SSE2> {};
+class PostprocessImpl<ReLU, CPUType::SSSE3> : public PostprocessImpl<ReLU, CPUType::SSE2> {};
 
 template <>
-class PostprocessImpl<ReLU, CPUType::CPU_AVX2> {
+class PostprocessImpl<ReLU, CPUType::AVX2> {
 public:
   using InputRegister = __m256;
   using OutputRegister = __m256;
@@ -207,7 +207,7 @@ public:
 };
 
 template <>
-class PostprocessImpl<ReLU, CPUType::CPU_AVX512BW> {
+class PostprocessImpl<ReLU, CPUType::AVX512BW> {
 public:
   using InputRegister = __m512;
   using OutputRegister = __m512;

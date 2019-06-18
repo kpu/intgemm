@@ -52,7 +52,7 @@ template <class V> void SlowTranspose(const V *from, V *to, Index rows, Index co
 }
 
 INTGEMM_SSE2 TEST_CASE("Transpose 16", "[transpose]") {
-  if (kCPU < CPU_SSE2) return;
+  if (kCPU < CPUType::SSE2) return;
   const unsigned N = 8;
   AlignedVector<int16_t> input(N * N);
   std::iota(input.begin(), input.end(), 0);
@@ -70,7 +70,7 @@ INTGEMM_SSE2 TEST_CASE("Transpose 16", "[transpose]") {
 }
 
 INTGEMM_SSSE3 TEST_CASE("Transpose 8", "[transpose]") {
-  if (kCPU < CPU_SSSE3) return;
+  if (kCPU < CPUType::SSSE3) return;
   const unsigned N = 16;
   AlignedVector<int8_t> input(N * N);
   std::iota(input.begin(), input.end(), 0);
@@ -125,7 +125,7 @@ template <class Routine> void TestPrepare(Index rows = 32, Index cols = 16) {
 }
 
 TEST_CASE("Prepare AVX512", "[prepare]") {
-  if (kCPU < CPU_AVX512BW) return;
+  if (kCPU < CPUType::AVX512BW) return;
 #ifndef INTGEMM_NO_AVX512
 	TestPrepare<AVX512_8bit>(64, 8);
 	TestPrepare<AVX512_8bit>(256, 32);
@@ -135,20 +135,20 @@ TEST_CASE("Prepare AVX512", "[prepare]") {
 }
 
 TEST_CASE("Prepare AVX2", "[prepare]") {
-  if (kCPU < CPU_AVX2) return;
+  if (kCPU < CPUType::AVX2) return;
   TestPrepare<AVX2_8bit>(64, 32);
   TestPrepare<AVX2_16bit>(64, 32);
 }
 
 TEST_CASE("Prepare SSSE3", "[prepare]") {
-  if (kCPU < CPU_SSSE3) return;
+  if (kCPU < CPUType::SSSE3) return;
   TestPrepare<SSSE3_8bit>(16, 8);
   TestPrepare<SSSE3_8bit>(32, 16);
   TestPrepare<SSSE3_8bit>(32, 32);
 }
 
 TEST_CASE("Prepare SSE2", "[prepare]") {
-  if (kCPU < CPU_SSE2) return;
+  if (kCPU < CPUType::SSE2) return;
   TestPrepare<SSE2_16bit>(8, 8);
   TestPrepare<SSE2_16bit>(32, 32);
 }
@@ -190,7 +190,7 @@ template <class Routine> void TestSelectColumnsB(Index rows = 64, Index cols = 1
 }
 
 TEST_CASE("SelectColumnsB AVX512", "[select]") {
-  if (kCPU < CPU_AVX512BW) return;
+  if (kCPU < CPUType::AVX512BW) return;
 #ifndef INTGEMM_NO_AVX512
     TestSelectColumnsB<AVX512_8bit>();
     TestSelectColumnsB<AVX512_16bit>(256, 256);
@@ -198,19 +198,19 @@ TEST_CASE("SelectColumnsB AVX512", "[select]") {
 }
 
 TEST_CASE("SelectColumnsB AVX2", "[select]") {
-  if (kCPU < CPU_AVX2) return;
+  if (kCPU < CPUType::AVX2) return;
   TestSelectColumnsB<AVX2_8bit>(256, 256);
   TestSelectColumnsB<AVX2_16bit>(256, 256);
 }
 
 TEST_CASE("SelectColumnsB SSSE3", "[select]") {
-  if (kCPU < CPU_SSSE3) return;
+  if (kCPU < CPUType::SSSE3) return;
   TestSelectColumnsB<SSSE3_8bit>();
   TestSelectColumnsB<SSSE3_8bit>(256, 256);
 }
 
 TEST_CASE("SelectColumnsB SSE2", "[select]") {
-  if (kCPU < CPU_SSE2) return;
+  if (kCPU < CPUType::SSE2) return;
   TestSelectColumnsB<SSE2_16bit>();
   TestSelectColumnsB<SSE2_16bit>(256, 256);
 }
@@ -254,17 +254,17 @@ template <float (*Backend) (const float *, const float *)> void TestMaxAbsolute(
 }
 
 TEST_CASE("MaxAbsolute SSE2", "[max]") {
-  if (kCPU < CPU_SSE2) return;
+  if (kCPU < CPUType::SSE2) return;
   TestMaxAbsolute<sse2::MaxAbsolute>();
 }
 
 TEST_CASE("MaxAbsolute AVX2", "[max]") {
-  if (kCPU < CPU_AVX2) return;
+  if (kCPU < CPUType::AVX2) return;
   TestMaxAbsolute<avx2::MaxAbsolute>();
 }
 
 TEST_CASE("MaxAbsolute AVX512F", "[max]") {
-  if (kCPU < CPU_AVX512BW) return;
+  if (kCPU < CPUType::AVX512BW) return;
   #ifndef INTGEMM_NO_AVX512
   TestMaxAbsolute<avx512f::MaxAbsolute>();
   #endif
@@ -432,7 +432,7 @@ template <class Routine> void TestMultiplyBias(Index A_rows, Index width, Index 
 }
 
 TEST_CASE ("Multiply SSE2 16bit", "[multiply]") {
-  if (kCPU < CPU_SSE2) return;
+  if (kCPU < CPUType::SSE2) return;
   TestMultiply<SSE2_16bit>(8, 256, 256, .1, 1, 0.01);
   TestMultiply<SSE2_16bit>(8, 2048, 256, .1, 1, 0.02);
   TestMultiply<SSE2_16bit>(320, 256, 256, .1, 1, 0.01);
@@ -442,7 +442,7 @@ TEST_CASE ("Multiply SSE2 16bit", "[multiply]") {
 }
 
 TEST_CASE ("Multiply SSE2 16bit with bias", "[biased_multiply]") {
-  if (kCPU < CPU_SSE2) return;
+  if (kCPU < CPUType::SSE2) return;
   TestMultiplyBias<SSE2_16bit>(8, 256, 256, .1, 1, 0.01);
   TestMultiplyBias<SSE2_16bit>(8, 2048, 256, .1, 1, 0.02);
   TestMultiplyBias<SSE2_16bit>(320, 256, 256, .1, 1, 0.01);
@@ -452,7 +452,7 @@ TEST_CASE ("Multiply SSE2 16bit with bias", "[biased_multiply]") {
 }
 
 TEST_CASE ("Multiply SSSE3 8bit", "[multiply]") {
-  if (kCPU < CPU_SSSE3) return;
+  if (kCPU < CPUType::SSSE3) return;
   TestMultiply<SSSE3_8bit>(8, 256, 256, 1.2, 1.2, 0.064, 0.026);
   TestMultiply<SSSE3_8bit>(8, 2048, 256, 33, 33, 4.4, 4.4);
   TestMultiply<SSSE3_8bit>(320, 256, 256, 1.9, 1.9, 0.1, 0.01);
@@ -462,7 +462,7 @@ TEST_CASE ("Multiply SSSE3 8bit", "[multiply]") {
 }
 
 TEST_CASE ("Multiply SSSE3 8bit with bias", "[biased_multiply]") {
-  if (kCPU < CPU_SSSE3) return;
+  if (kCPU < CPUType::SSSE3) return;
   TestMultiplyBias<SSSE3_8bit>(8, 256, 256, 1.2, 1.2, 0.064, 0.026);
   TestMultiplyBias<SSSE3_8bit>(8, 2048, 256, 33, 33, 4.4, 4.4);
   TestMultiplyBias<SSSE3_8bit>(320, 256, 256, 1.9, 1.9, 0.1, 0.01);
@@ -472,7 +472,7 @@ TEST_CASE ("Multiply SSSE3 8bit with bias", "[biased_multiply]") {
 }
 
 TEST_CASE ("Multiply AVX2 8bit", "[multiply]") {
-  if (kCPU < CPU_AVX2) return;
+  if (kCPU < CPUType::AVX2) return;
   TestMultiply<AVX2_8bit>(8, 256, 256, .1, 1, 0.1);
   TestMultiply<AVX2_8bit>(8, 2048, 256, 19, 19, 1.8, 1.8);
   TestMultiply<AVX2_8bit>(320, 256, 256, .1, 1, 0.1);
@@ -482,7 +482,7 @@ TEST_CASE ("Multiply AVX2 8bit", "[multiply]") {
 }
 
 TEST_CASE ("Multiply AVX2 8bit with bias", "[biased_multiply]") {
-  if (kCPU < CPU_AVX2) return;
+  if (kCPU < CPUType::AVX2) return;
   TestMultiplyBias<AVX2_8bit>(8, 256, 256, .1, 1, 0.1);
   TestMultiplyBias<AVX2_8bit>(8, 2048, 256, 19, 19, 1.8, 1.8);
   TestMultiplyBias<AVX2_8bit>(320, 256, 256, .1, 1, 0.1);
@@ -492,7 +492,7 @@ TEST_CASE ("Multiply AVX2 8bit with bias", "[biased_multiply]") {
 }
 
 TEST_CASE ("Multiply AVX2 16bit", "[multiply]") {
-  if (kCPU < CPU_AVX2) return;
+  if (kCPU < CPUType::AVX2) return;
   TestMultiply<AVX2_16bit>(8, 256, 256, .1, 1, 0.01);
   TestMultiply<AVX2_16bit>(8, 2048, 256, .1, 1, 0.02);
   TestMultiply<AVX2_16bit>(320, 256, 256, .1, 1, 0.01);
@@ -502,7 +502,7 @@ TEST_CASE ("Multiply AVX2 16bit", "[multiply]") {
 }
 
 TEST_CASE ("Multiply AVX2 16bit with bias", "[biased_multiply]") {
-  if (kCPU < CPU_AVX2) return;
+  if (kCPU < CPUType::AVX2) return;
   TestMultiplyBias<AVX2_16bit>(8, 256, 256, .1, 1, 0.01);
   TestMultiplyBias<AVX2_16bit>(8, 2048, 256, .1, 1, 0.02);
   TestMultiplyBias<AVX2_16bit>(320, 256, 256, .1, 1, 0.01);
@@ -513,7 +513,7 @@ TEST_CASE ("Multiply AVX2 16bit with bias", "[biased_multiply]") {
 
 #ifndef INTGEMM_NO_AVX512
   TEST_CASE ("Multiply AVX512 8bit", "[multiply]") {
-    if (kCPU < CPU_AVX512BW) return;
+    if (kCPU < CPUType::AVX512BW) return;
     TestMultiply<AVX512_8bit>(8, 256, 256, .1, 1, 0.062);
     TestMultiply<AVX512_8bit>(8, 2048, 256, 4.2, 4, 0.41, 0.37);
     TestMultiply<AVX512_8bit>(320, 256, 256, .1, 1, 0.06);
@@ -523,7 +523,7 @@ TEST_CASE ("Multiply AVX2 16bit with bias", "[biased_multiply]") {
   }
 
   TEST_CASE ("Multiply AVX512 8bit with bias", "[biased_multiply]") {
-    if (kCPU < CPU_AVX512BW) return;
+    if (kCPU < CPUType::AVX512BW) return;
     TestMultiplyBias<AVX512_8bit>(8, 256, 256, .1, 1, 0.062);
     TestMultiplyBias<AVX512_8bit>(8, 2048, 256, 4.2, 4, 0.41, 0.37);
     TestMultiplyBias<AVX512_8bit>(320, 256, 256, .1, 1, 0.06);
@@ -533,7 +533,7 @@ TEST_CASE ("Multiply AVX2 16bit with bias", "[biased_multiply]") {
   }
 
   TEST_CASE ("Multiply AVX512 16bit", "[multiply]") {
-    if (kCPU < CPU_AVX512BW) return;
+    if (kCPU < CPUType::AVX512BW) return;
     TestMultiply<AVX512_16bit>(8, 256, 256, .1, 1, 0.01);
     TestMultiply<AVX512_16bit>(8, 2048, 256, .1, 1, 0.011);
     TestMultiply<AVX512_16bit>(320, 256, 256, .1, 1, 0.01);
@@ -543,7 +543,7 @@ TEST_CASE ("Multiply AVX2 16bit with bias", "[biased_multiply]") {
   }
 
   TEST_CASE ("Multiply AVX512 16bit with bias", "[biased_multiply]") {
-    if (kCPU < CPU_AVX512BW) return;
+    if (kCPU < CPUType::AVX512BW) return;
     TestMultiplyBias<AVX512_16bit>(8, 256, 256, .1, 1, 0.01);
     TestMultiplyBias<AVX512_16bit>(8, 2048, 256, .1, 1, 0.011);
     TestMultiplyBias<AVX512_16bit>(320, 256, 256, .1, 1, 0.01);

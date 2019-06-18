@@ -6,7 +6,7 @@
 namespace intgemm {
 
 INTGEMM_AVX2 TEST_CASE("PostprocessPipeline AVX2", "Unquantize-ReLU") {
-  if (kCPU < CPU_AVX2)
+  if (kCPU < CPUType::AVX2)
     return;
 
   __m256i input;
@@ -19,7 +19,7 @@ INTGEMM_AVX2 TEST_CASE("PostprocessPipeline AVX2", "Unquantize-ReLU") {
   std::fill(raw_output, raw_output + 8, 42);
 
   auto pipeline = CreatePostprocessPipeline(Unquantize(0.5f), ReLU());
-  auto inited_pipeline = InitPostprocessPipeline<CPU_AVX2>(pipeline);
+  auto inited_pipeline = InitPostprocessPipeline<CPUType::AVX2>(pipeline);
   output = inited_pipeline.run(input, 0);
 
   CHECK(raw_output[0] == 0.0f); // input = -2
@@ -33,7 +33,7 @@ INTGEMM_AVX2 TEST_CASE("PostprocessPipeline AVX2", "Unquantize-ReLU") {
 }
 
 INTGEMM_AVX2 TEST_CASE("PostprocessPipeline AVX2 on whole buffer", "Unquantize-ReLU") {
-  if (kCPU < CPU_AVX2)
+  if (kCPU < CPUType::AVX2)
     return;
 
   __m256i input[2];
@@ -46,7 +46,7 @@ INTGEMM_AVX2 TEST_CASE("PostprocessPipeline AVX2 on whole buffer", "Unquantize-R
   std::fill(raw_output, raw_output + 16, 42);
 
   auto pipeline = CreatePostprocessPipeline(Unquantize(0.5f), ReLU());
-  auto inited_pipeline = InitPostprocessPipeline<CPU_AVX2>(pipeline);
+  auto inited_pipeline = InitPostprocessPipeline<CPUType::AVX2>(pipeline);
   inited_pipeline.run(input, 2, output);
 
   CHECK(raw_output[0]  == 0.f); // input = -8
