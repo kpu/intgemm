@@ -51,7 +51,7 @@ int main() {
 
     AlignedVector<float> C(A_rows * B_cols);
     // Do the actual multiply.
-    intgemm::Int16::Multiply(A_prepared.begin(), B_prepared.begin(), intgemm::JustUnquantizeC(C.begin(), 1.0 / (quant_mult * quant_mult)), A_rows, width, B_cols);
+    intgemm::Int16::Multiply(A_prepared.begin(), B_prepared.begin(), C.begin(), intgemm::CreatePostprocessPipeline(intgemm::Unquantize(1.0 / (quant_mult * quant_mult))), A_rows, width, B_cols);
     // Sanity check.  C will be row major.
     assert(fabs(C[0] - top_left_reference) < 0.05);
   }
@@ -70,7 +70,7 @@ int main() {
 
     AlignedVector<float> C(A_rows * B_cols);
     // Do the actual multiply.
-    intgemm::Int8::Multiply(A_prepared.begin(), B_prepared.begin(), intgemm::JustUnquantizeC(C.begin(), 1.0 / (quant_mult * quant_mult)), A_rows, width, B_cols);
+    intgemm::Int8::Multiply(A_prepared.begin(), B_prepared.begin(), C.begin(), intgemm::CreatePostprocessPipeline(intgemm::Unquantize(1.0 / (quant_mult * quant_mult))), A_rows, width, B_cols);
     // Sanity check.  C will be row major.
     assert(fabs(C[0] - top_left_reference) < 0.05);
   }

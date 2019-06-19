@@ -33,6 +33,7 @@ endforeach()
 include_directories(.)
 add_executable(tests
   test/multiply_test.cc
+  test/pipeline_test.cc
   test/quantize_test.cc
   test/relu_test.cc
   intgemm.cc
