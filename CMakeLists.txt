@@ -36,6 +36,7 @@ add_executable(tests
   test/pipeline_test.cc
   test/quantize_test.cc
   test/relu_test.cc
+  test/sigmoid_test.cc
   intgemm.cc
 )
 
