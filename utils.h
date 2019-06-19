@@ -10,7 +10,7 @@ namespace intgemm {
  * Examples:
  *   sequence<1, 2, 3>()
  *   sequence_pushback<4, sequence<1, 2, 3>>() = sequence<1, 2, 3, 4>()
- *   sequence_popfront<sequence<1, 2, 3>>() = sequence<2, 3, 4>()
+ *   sequence_popfront<sequence<1, 2, 3>>() = sequence<2, 3>()
  *   make_sequence<3>() = sequence<0, 1, 2>()
  */
 template <unsigned... Indices>
@@ -39,7 +39,7 @@ template <unsigned N>
 using make_sequence = typename make_sequence_impl<N>::type;
 
 /*
- * Tuple utils
+ * Make a subtuple
  */
 template <typename Tuple, unsigned... Indices>
 using subtuple_t = typename std::tuple<typename std::tuple_element<Indices, Tuple>::type...>;
