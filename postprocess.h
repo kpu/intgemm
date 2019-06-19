@@ -250,4 +250,45 @@ public:
   }
 };
 
+/*
+ * Tanh (uses Taylor series approximation of e^x)
+ */
+class Tanh {};
+
+template <>
+class PostprocessImpl<Tanh, CPUType::AVX2> {
+public:
+  using InputRegister = __m256;
+  using OutputRegister = __m256;
+
+  PostprocessImpl(const Tanh& config) {}
+
+  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index offset) {
+    const static auto const_zero = setzero_ps<__m256>();
+
+    auto e_x = exp_approx_taylor(input);
+    auto e_minus_x = exp_approx_taylor(sub_ps(const_zero, input));
+
+    return div_ps(sub_ps(e_x, e_minus_x), add_ps(e_x, e_minus_x));
+  }
+};
+
+template <>
+class PostprocessImpl<Tanh, CPUType::AVX512BW> {
+public:
+  using InputRegister = __m512;
+  using OutputRegister = __m512;
+
+  PostprocessImpl(const Tanh& config) {}
+
+  INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index offset) {
+    const static auto const_zero = setzero_ps<__m512>();
+
+    auto e_x = exp_approx_taylor(input);
+    auto e_minus_x = exp_approx_taylor(sub_ps(const_zero, input));
+
+    return div_ps(sub_ps(e_x, e_minus_x), add_ps(e_x, e_minus_x));
+  }
+};
+
 }
