@@ -56,4 +56,17 @@ constexpr unsigned long long factorial(unsigned n) {
   return n <= 1 ? 1 : n * factorial(n - 1);
 }
 
+/*
+ * e^x
+ */
+namespace { // anonymous namespace
+constexpr double exp_nonnegative(unsigned x) {
+  return x == 0 ? 1.0 : (x == 1 ? 2.718281828459045 : exp_nonnegative(x / 2) * exp_nonnegative((x + 1) / 2));
+}
+} // anonymous namespace
+
+constexpr double exp(int x) {
+  return (x >= 0 ? exp_nonnegative(x) : 1.0 / exp_nonnegative(-x));
+}
+
 }
