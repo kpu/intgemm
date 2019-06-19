@@ -49,4 +49,11 @@ constexpr subtuple_t<Tuple, Indices...> make_subtuple(const Tuple& tuple, sequen
   return std::make_tuple(std::get<Indices>(tuple)...);
 }
 
+/*
+ * Factorial
+ */
+constexpr unsigned long long factorial(unsigned n) {
+  return n <= 1 ? 1 : n * factorial(n - 1);
+}
+
 }
