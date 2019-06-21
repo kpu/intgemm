@@ -61,7 +61,7 @@ INTGEMM_SSE2 TEST_CASE("Transpose 16", "[transpose]") {
   SlowTranspose(input.begin(), ref.begin(), N, N);
 
   // Overwrite input.
-  __m128i *t = reinterpret_cast<__m128i*>(input.begin());
+  __m128i *t = input.as<__m128i>();
   Transpose16InLane(t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7]);
 
   for (int16_t i = 0; i < input.size(); ++i) {
@@ -79,7 +79,7 @@ INTGEMM_SSSE3 TEST_CASE("Transpose 8", "[transpose]") {
   SlowTranspose(input.begin(), ref.begin(), N, N);
 
   // Overwrite input.
-  __m128i *t = reinterpret_cast<__m128i*>(input.begin());
+  __m128i *t = input.as<__m128i>();
   Transpose8InLane(t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7], t[8], t[9], t[10], t[11], t[12], t[13], t[14], t[15]);
 
   for (int i = 0; i < input.size(); ++i) {
