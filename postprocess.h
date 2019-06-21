@@ -56,6 +56,8 @@ private:
   __m256 unquantize_multiplier;
 };
 
+#ifndef INTGEMM_NO_AVX512
+
 template <>
 class PostprocessImpl<Unquantize, CPUType::AVX512BW> {
 public:
@@ -73,6 +75,8 @@ public:
 private:
   __m512 unquantize_multiplier;
 };
+
+#endif
 
 /*
  * Add a bias term
@@ -162,6 +166,8 @@ public:
   }
 };
 
+#ifndef INTGEMM_NO_AVX512
+
 template <>
 class PostprocessImpl<ReLU, CPUType::AVX512BW> {
 public:
@@ -246,5 +252,7 @@ public:
     return div_ps(sub_ps(e_x, e_minus_x), add_ps(e_x, e_minus_x));
   }
 };
+
+#endif
 
 }
