@@ -38,6 +38,7 @@ add_executable(tests
   test/postprocess/relu_test.cc
   test/postprocess/sigmoid_test.cc
   test/postprocess/tanh_test.cc
+  test/postprocess/unquantize_test.cc
   test/quantize_test.cc
   intgemm.cc
 )
