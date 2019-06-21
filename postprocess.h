@@ -127,6 +127,27 @@ private:
   const AddBias config;
 };
 
+#ifndef INTGEMM_NO_AVX512
+
+template <>
+class PostprocessImpl<AddBias, CPUType::AVX512BW> {
+public:
+  using InputRegister = __m512;
+  using OutputRegister = __m512;
+
+  PostprocessImpl(const AddBias& config) : config(config) {}
+
+  INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index offset) {
+    auto bias_term = *reinterpret_cast<const __m512*>(config.bias + (offset % config.length));
+    return add_ps(input, bias_term);
+  }
+
+private:
+  const AddBias config;
+};
+
+#endif
+
 /*
  * ReLU
  */
