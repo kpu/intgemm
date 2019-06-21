@@ -75,50 +75,6 @@ private:
 };
 
 /*
- * Identity
- */
-class Identity {};
-
-template <>
-class PostprocessImpl<Identity, CPUType::SSE2> {
-public:
-  using InputRegister = RegisterPair128i;
-  using OutputRegister = RegisterPair128i;
-
-  PostprocessImpl(const Identity& config) {}
-
-  INTGEMM_SSE2 inline OutputRegister run(InputRegister input, Index offset) {
-    return input;
-  }
-};
-
-template <>
-class PostprocessImpl<Identity, CPUType::AVX2> {
-public:
-  using InputRegister = __m256i;
-  using OutputRegister = __m256i;
-
-  PostprocessImpl(const Identity& config) {}
-
-  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index offset) {
-    return input;
-  }
-};
-
-template <>
-class PostprocessImpl<Identity, CPUType::AVX512BW> {
-public:
-  using InputRegister = __m512i;
-  using OutputRegister = __m512i;
-
-  PostprocessImpl(const Identity& config) {}
-
-  INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index offset) {
-    return input;
-  }
-};
-
-/*
  * Add a bias term
  */
 class AddBias {
