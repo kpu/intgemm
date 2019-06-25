@@ -75,13 +75,13 @@ Register exp_approx_taylor(Register x) {
   static constexpr int EXP_MIN = -20;
   static constexpr int EXP_MAX = 20;
   static constexpr float EXP_LOOKUP[EXP_MAX - EXP_MIN + 1] = {
-    exp(-20), exp(-19), exp(-18), exp(-17), exp(-16), exp(-15),
-    exp(-14), exp(-13), exp(-12), exp(-11), exp(-10), exp(-9),
-    exp(-8), exp(-7), exp(-6), exp(-5), exp(-4), exp(-3), exp(-2),
-    exp(-1), exp(0), exp(1), exp(2), exp(3), exp(4), exp(5),
-    exp(6), exp(7), exp(8), exp(9), exp(10), exp(11), exp(12),
-    exp(13), exp(14), exp(15), exp(16), exp(17), exp(18), exp(19),
-    exp(20),
+    expi(-20), expi(-19), expi(-18), expi(-17), expi(-16), expi(-15),
+    expi(-14), expi(-13), expi(-12), expi(-11), expi(-10), expi(-9),
+    expi(-8), expi(-7), expi(-6), expi(-5), expi(-4), expi(-3), expi(-2),
+    expi(-1), expi(0), expi(1), expi(2), expi(3), expi(4), expi(5),
+    expi(6), expi(7), expi(8), expi(9), expi(10), expi(11), expi(12),
+    expi(13), expi(14), expi(15), expi(16), expi(17), expi(18), expi(19),
+    expi(20),
   };
 
   static const Register dividers[] = {
