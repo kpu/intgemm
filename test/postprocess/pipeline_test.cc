@@ -1,4 +1,4 @@
-#include "3rd_party/catch.hpp"
+#include "test/test.h"
 #include "aligned.h"
 #include "postprocess.h"
 

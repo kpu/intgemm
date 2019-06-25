@@ -40,6 +40,7 @@ add_executable(tests
   test/postprocess/tanh_test.cc
   test/postprocess/unquantize_test.cc
   test/quantize_test.cc
+  test/test.cc
   test/utils_test.cc
   intgemm.cc
 )
