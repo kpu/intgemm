@@ -22,6 +22,9 @@ template <class T> class AlignedVector {
     T *end() { return mem_ + size_; }
     const T *end() const { return mem_ + size_; }
 
+    template <typename ReturnType>
+    ReturnType *as() { return reinterpret_cast<ReturnType*>(mem_); }
+
   private:
     T *mem_;
     std::size_t size_;

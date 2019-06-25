@@ -1,4 +1,5 @@
 #include "3rd_party/catch.hpp"
+#include "aligned.h"
 #include "postprocess.h"
 
 #include <numeric>
@@ -9,62 +10,54 @@ INTGEMM_AVX2 TEST_CASE("PostprocessPipeline AVX2", "Unquantize-ReLU") {
   if (kCPU < CPUType::AVX2)
     return;
 
-  __m256i input;
-  __m256 output;
+  AlignedVector<int32_t> input(8);
+  AlignedVector<float> output(8);
 
-  auto raw_input = reinterpret_cast<int*>(&input);
-  std::iota(raw_input, raw_input + 8, -2);
-
-  auto raw_output = reinterpret_cast<float*>(&output);
-  std::fill(raw_output, raw_output + 8, 42);
+  std::iota(input.begin(), input.end(), -2);
 
   auto pipeline = CreatePostprocessPipeline(Unquantize(0.5f), ReLU());
   auto inited_pipeline = InitPostprocessPipeline<CPUType::AVX2>(pipeline);
-  output = inited_pipeline.run(input, 0);
+  *output.as<__m256>() = inited_pipeline.run(*input.as<__m256i>(), 0);
 
-  CHECK(raw_output[0] == 0.0f); // input = -2
-  CHECK(raw_output[1] == 0.0f); // input = -1
-  CHECK(raw_output[2] == 0.0f); // input =  0
-  CHECK(raw_output[3] == 0.5f); // input =  1
-  CHECK(raw_output[4] == 1.0f); // input =  2
-  CHECK(raw_output[5] == 1.5f); // input =  3
-  CHECK(raw_output[6] == 2.0f); // input =  4
-  CHECK(raw_output[7] == 2.5f); // input =  5
+  CHECK(output[0] == 0.0f); // input = -2
+  CHECK(output[1] == 0.0f); // input = -1
+  CHECK(output[2] == 0.0f); // input =  0
+  CHECK(output[3] == 0.5f); // input =  1
+  CHECK(output[4] == 1.0f); // input =  2
+  CHECK(output[5] == 1.5f); // input =  3
+  CHECK(output[6] == 2.0f); // input =  4
+  CHECK(output[7] == 2.5f); // input =  5
 }
 
 INTGEMM_AVX2 TEST_CASE("PostprocessPipeline AVX2 on whole buffer", "Unquantize-ReLU") {
   if (kCPU < CPUType::AVX2)
     return;
 
-  __m256i input[2];
-  __m256 output[2];
+  AlignedVector<int32_t> input(16);
+  AlignedVector<float> output(16);
 
-  auto raw_input = reinterpret_cast<int*>(input);
-  std::iota(raw_input, raw_input + 16, -8);
-
-  auto raw_output = reinterpret_cast<float*>(output);
-  std::fill(raw_output, raw_output + 16, 42);
+  std::iota(input.begin(), input.end(), -8);
 
   auto pipeline = CreatePostprocessPipeline(Unquantize(0.5f), ReLU());
   auto inited_pipeline = InitPostprocessPipeline<CPUType::AVX2>(pipeline);
-  inited_pipeline.run(input, 2, output);
+  inited_pipeline.run(input.as<__m256i>(), 2, output.as<__m256>());
 
-  CHECK(raw_output[0]  == 0.f); // input = -8
-  CHECK(raw_output[1]  == 0.f); // input = -7
-  CHECK(raw_output[2]  == 0.f); // input = -6
-  CHECK(raw_output[3]  == 0.f); // input = -5
-  CHECK(raw_output[4]  == 0.f); // input = -4
-  CHECK(raw_output[5]  == 0.f); // input = -3
-  CHECK(raw_output[6]  == 0.f); // input = -2
-  CHECK(raw_output[7]  == 0.f); // input = -1
-  CHECK(raw_output[8]  == 0.0f); // input =  0
-  CHECK(raw_output[9]  == 0.5f); // input =  1
-  CHECK(raw_output[10] == 1.0f); // input =  2
-  CHECK(raw_output[11] == 1.5f); // input =  3
-  CHECK(raw_output[12] == 2.0f); // input =  4
-  CHECK(raw_output[13] == 2.5f); // input =  5
-  CHECK(raw_output[14] == 3.0f); // input =  6
-  CHECK(raw_output[15] == 3.5f); // input =  7
+  CHECK(output[0]  == 0.f); // input = -8
+  CHECK(output[1]  == 0.f); // input = -7
+  CHECK(output[2]  == 0.f); // input = -6
+  CHECK(output[3]  == 0.f); // input = -5
+  CHECK(output[4]  == 0.f); // input = -4
+  CHECK(output[5]  == 0.f); // input = -3
+  CHECK(output[6]  == 0.f); // input = -2
+  CHECK(output[7]  == 0.f); // input = -1
+  CHECK(output[8]  == 0.0f); // input =  0
+  CHECK(output[9]  == 0.5f); // input =  1
+  CHECK(output[10] == 1.0f); // input =  2
+  CHECK(output[11] == 1.5f); // input =  3
+  CHECK(output[12] == 2.0f); // input =  4
+  CHECK(output[13] == 2.5f); // input =  5
+  CHECK(output[14] == 3.0f); // input =  6
+  CHECK(output[15] == 3.5f); // input =  7
 }
 
 }

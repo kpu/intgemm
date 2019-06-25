@@ -220,4 +220,75 @@ public:
   }
 };
 
+/*
+ * Sigmoid (uses Taylor series approximation of e^x)
+ */
+class Sigmoid {};
+
+template <>
+class PostprocessImpl<Sigmoid, CPUType::AVX2> {
+public:
+  using InputRegister = __m256;
+  using OutputRegister = __m256;
+
+  PostprocessImpl(const Sigmoid& config) {}
+
+  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index offset) {
+    static const auto const_zero = set1_ps<__m256>(0.f);
+    static const auto const_one = set1_ps<__m256>(1.f);
+
+    auto x = input;
+    auto minus_x = sub_ps(const_zero, x);
+    auto e_x = exp_approx_taylor(x);
+    auto e_minus_x = exp_approx_taylor(minus_x);
+
+    auto sigmoid_case1 = _mm256_rcp_ps(add_ps(const_one, e_minus_x));
+    auto sigmoid_case2 = mul_ps(e_x, _mm256_rcp_ps(add_ps(const_one, e_x)));
+
+    auto nonnegative_x_mask = _mm256_cmp_ps(const_zero, x, _CMP_LT_OS);
+    return _mm256_blendv_ps(sigmoid_case1, sigmoid_case2, nonnegative_x_mask);
+  }
+};
+
+/*
+ * Tanh (uses Taylor series approximation of e^x)
+ */
+class Tanh {};
+
+template <>
+class PostprocessImpl<Tanh, CPUType::AVX2> {
+public:
+  using InputRegister = __m256;
+  using OutputRegister = __m256;
+
+  PostprocessImpl(const Tanh& config) {}
+
+  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index offset) {
+    const static auto const_zero = setzero_ps<__m256>();
+
+    auto e_x = exp_approx_taylor(input);
+    auto e_minus_x = exp_approx_taylor(sub_ps(const_zero, input));
+
+    return div_ps(sub_ps(e_x, e_minus_x), add_ps(e_x, e_minus_x));
+  }
+};
+
+template <>
+class PostprocessImpl<Tanh, CPUType::AVX512BW> {
+public:
+  using InputRegister = __m512;
+  using OutputRegister = __m512;
+
+  PostprocessImpl(const Tanh& config) {}
+
+  INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index offset) {
+    const static auto const_zero = setzero_ps<__m512>();
+
+    auto e_x = exp_approx_taylor(input);
+    auto e_minus_x = exp_approx_taylor(sub_ps(const_zero, input));
+
+    return div_ps(sub_ps(e_x, e_minus_x), add_ps(e_x, e_minus_x));
+  }
+};
+
 }
