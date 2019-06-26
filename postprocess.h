@@ -56,6 +56,8 @@ private:
   __m256 unquantize_multiplier;
 };
 
+#ifndef INTGEMM_NO_AVX512
+
 template <>
 class PostprocessImpl<Unquantize, CPUType::AVX512BW> {
 public:
@@ -74,49 +76,7 @@ private:
   __m512 unquantize_multiplier;
 };
 
-/*
- * Identity
- */
-class Identity {};
-
-template <>
-class PostprocessImpl<Identity, CPUType::SSE2> {
-public:
-  using InputRegister = RegisterPair128i;
-  using OutputRegister = RegisterPair128i;
-
-  PostprocessImpl(const Identity& config) {}
-
-  INTGEMM_SSE2 inline OutputRegister run(InputRegister input, Index offset) {
-    return input;
-  }
-};
-
-template <>
-class PostprocessImpl<Identity, CPUType::AVX2> {
-public:
-  using InputRegister = __m256i;
-  using OutputRegister = __m256i;
-
-  PostprocessImpl(const Identity& config) {}
-
-  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index offset) {
-    return input;
-  }
-};
-
-template <>
-class PostprocessImpl<Identity, CPUType::AVX512BW> {
-public:
-  using InputRegister = __m512i;
-  using OutputRegister = __m512i;
-
-  PostprocessImpl(const Identity& config) {}
-
-  INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index offset) {
-    return input;
-  }
-};
+#endif
 
 /*
  * Add a bias term
@@ -167,6 +127,27 @@ private:
   const AddBias config;
 };
 
+#ifndef INTGEMM_NO_AVX512
+
+template <>
+class PostprocessImpl<AddBias, CPUType::AVX512BW> {
+public:
+  using InputRegister = __m512;
+  using OutputRegister = __m512;
+
+  PostprocessImpl(const AddBias& config) : config(config) {}
+
+  INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index offset) {
+    auto bias_term = *reinterpret_cast<const __m512*>(config.bias + (offset % config.length));
+    return add_ps(input, bias_term);
+  }
+
+private:
+  const AddBias config;
+};
+
+#endif
+
 /*
  * ReLU
  */
@@ -205,6 +186,8 @@ public:
     return max_ps(const_zero, input);
   }
 };
+
+#ifndef INTGEMM_NO_AVX512
 
 template <>
 class PostprocessImpl<ReLU, CPUType::AVX512BW> {
@@ -290,5 +273,7 @@ public:
     return div_ps(sub_ps(e_x, e_minus_x), add_ps(e_x, e_minus_x));
   }
 };
+
+#endif
 
 }

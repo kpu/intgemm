@@ -12,8 +12,8 @@ template <typename... Stages>
 using PostprocessPipeline = std::tuple<Stages...>;
 
 template <typename... Stages>
-constexpr std::tuple<Stages...> CreatePostprocessPipeline(const Stages&... stages) {
-  return std::make_tuple(stages...);
+constexpr std::tuple<Stages...> CreatePostprocessPipeline(Stages&&... stages) {
+  return std::make_tuple(std::forward<Stages>(stages)...);
 }
 
 template <typename Postprocess, CPUType CpuType>
