@@ -119,7 +119,7 @@ Register exp_approx_taylor(Register x) {
 
   result = add_ps(result, const_one);
 
-  auto ea = i32gather_ps(EXP_LOOKUP + EXP_MAX, cvtps_epi32(a), 4);
+  auto ea = i32gather_ps<4>(EXP_LOOKUP + EXP_MAX, cvtps_epi32(a));
   return mul_ps(ea, result);
 }
 
