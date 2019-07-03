@@ -68,7 +68,6 @@ INTGEMM_AVX512BW static inline __m512 floor_ff(__m512 a) {
  * Calculate approximation of e^x using Taylor series and lookup table
  *
  */
-namespace { // anonymous namespace
 
 template <typename Register>
 Register exp_approx_taylor(Register x) {
@@ -123,7 +122,6 @@ Register exp_approx_taylor(Register x) {
   auto ea = i32gather_ps(EXP_LOOKUP + EXP_MAX, cvtps_epi32(a), 4);
   return mul_ps(ea, result);
 }
-} // anonymous namespace
 
 template INTGEMM_AVX2 static __m256 exp_approx_taylor(__m256 x);
 template INTGEMM_AVX512BW static __m512 exp_approx_taylor(__m512 x);
