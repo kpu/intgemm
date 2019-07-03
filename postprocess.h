@@ -206,6 +206,60 @@ public:
 #endif
 
 /*
+ * ReLU_int8
+ */
+class ReLU_int8 {};
+
+template <>
+class PostprocessImpl<ReLU_int8, CPUType::SSE2> {
+public:
+  using InputRegister = RegisterPair128i;
+  using OutputRegister = RegisterPair128i;
+
+  PostprocessImpl(const ReLU_int8& config) {}
+
+  INTGEMM_SSE2 inline OutputRegister run(InputRegister input, Index offset) {
+    static const auto const_zero = setzero_si<__m128i>();
+    return {
+      _mm_and_si128(_mm_cmplt_epi8(const_zero, input.pack0123), input.pack0123),
+      _mm_and_si128(_mm_cmplt_epi8(const_zero, input.pack4567), input.pack4567),
+    };
+  }
+};
+
+template <>
+class PostprocessImpl<ReLU_int8, CPUType::AVX2> {
+public:
+  using InputRegister = __m256i;
+  using OutputRegister = __m256i;
+
+  PostprocessImpl(const ReLU_int8& config) {}
+
+  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index offset) {
+    static const auto const_zero = setzero_si<__m256i>();
+    return max_epi8(const_zero, input);
+  }
+};
+
+#ifndef INTGEMM_NO_AVX512
+
+template <>
+class PostprocessImpl<ReLU_int8, CPUType::AVX512BW> {
+public:
+  using InputRegister = __m512i;
+  using OutputRegister = __m512i;
+
+  PostprocessImpl(const ReLU_int8& config) {}
+
+  INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index offset) {
+    static const auto const_zero = setzero_si<__m512i>();
+    return max_epi8(const_zero, input);
+  }
+};
+
+#endif
+
+/*
  * Sigmoid (uses Taylor series approximation of e^x)
  */
 class Sigmoid {};

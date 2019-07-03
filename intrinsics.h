@@ -66,6 +66,9 @@ INTGEMM_SSE2 static inline __m128i madd_epi16(__m128i first, __m128i second) {
 INTGEMM_SSSE3 static inline __m128i maddubs_epi16(__m128i first, __m128i second) {
   return _mm_maddubs_epi16(first, second);
 }
+/*
+ * Missing max_epi8 for SSE2
+ */
 INTGEMM_SSE2 static inline __m128 max_ps(__m128 first, __m128 second) {
   return _mm_max_ps(first, second);
 }
@@ -144,6 +147,9 @@ INTGEMM_AVX2 static inline __m256i madd_epi16(__m256i first, __m256i second) {
 }
 INTGEMM_AVX2 static inline __m256i maddubs_epi16(__m256i first, __m256i second) {
   return _mm256_maddubs_epi16(first, second);
+}
+INTGEMM_AVX2 static inline __m256i max_epi8(__m256i first, __m256i second) {
+  return _mm256_max_epi8(first, second);
 }
 INTGEMM_AVX2 static inline __m256 max_ps(__m256 first, __m256 second) {
   return _mm256_max_ps(first, second);
@@ -225,6 +231,9 @@ INTGEMM_AVX512BW static inline __m512i madd_epi16(__m512i first, __m512i second)
 }
 INTGEMM_AVX512BW static inline __m512i maddubs_epi16(__m512i first, __m512i second) {
   return _mm512_maddubs_epi16(first, second);
+}
+INTGEMM_AVX512BW static inline __m512i max_epi8(__m512i first, __m512i second) {
+  return _mm512_max_epi8(first, second);
 }
 INTGEMM_AVX512BW static inline __m512 max_ps(__m512 first, __m512 second) {
   return _mm512_max_ps(first, second);
