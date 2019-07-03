@@ -5,6 +5,10 @@
 #include "types.h"
 #include "vec_utils.h"
 
+// TODO: We support some postprocess in few variations e.g. we support ReLU for
+// float -> float, int8 -> int8, int16 -> int16. Maybe it would be a good idea
+// to pass input type and output type as a template parameter of postprocess?
+
 namespace intgemm {
 
 /*
@@ -254,6 +258,60 @@ public:
   INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index offset) {
     static const auto const_zero = setzero_si<__m512i>();
     return max_epi8(const_zero, input);
+  }
+};
+
+#endif
+
+/*
+ * ReLU_int16
+ */
+class ReLU_int16 {};
+
+template <>
+class PostprocessImpl<ReLU_int16, CPUType::SSE2> {
+public:
+  using InputRegister = RegisterPair128i;
+  using OutputRegister = RegisterPair128i;
+
+  PostprocessImpl(const ReLU_int16& config) {}
+
+  INTGEMM_SSE2 inline OutputRegister run(InputRegister input, Index offset) {
+    static const auto const_zero = setzero_si<__m128i>();
+    return {
+      max_epi16(const_zero, input.pack0123),
+      max_epi16(const_zero, input.pack4567),
+    };
+  }
+};
+
+template <>
+class PostprocessImpl<ReLU_int16, CPUType::AVX2> {
+public:
+  using InputRegister = __m256i;
+  using OutputRegister = __m256i;
+
+  PostprocessImpl(const ReLU_int16& config) {}
+
+  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index offset) {
+    static const auto const_zero = setzero_si<__m256i>();
+    return max_epi16(const_zero, input);
+  }
+};
+
+#ifndef INTGEMM_NO_AVX512
+
+template <>
+class PostprocessImpl<ReLU_int16, CPUType::AVX512BW> {
+public:
+  using InputRegister = __m512i;
+  using OutputRegister = __m512i;
+
+  PostprocessImpl(const ReLU_int16& config) {}
+
+  INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index offset) {
+    static const auto const_zero = setzero_si<__m512i>();
+    return max_epi16(const_zero, input);
   }
 };
 
