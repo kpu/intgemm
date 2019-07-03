@@ -203,6 +203,8 @@ public:
   }
 };
 
+#endif
+
 /*
  * Sigmoid (uses Taylor series approximation of e^x)
  */
@@ -255,6 +257,8 @@ public:
     return div_ps(sub_ps(e_x, e_minus_x), add_ps(e_x, e_minus_x));
   }
 };
+
+#ifndef INTGEMM_NO_AVX512
 
 template <>
 class PostprocessImpl<Tanh, CPUType::AVX512BW> {
