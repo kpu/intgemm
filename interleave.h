@@ -3,6 +3,7 @@
 #include "intrinsics.h"
 #include "types.h"
 
+#include <algorithm>
 #include <cassert>
 #include <stdint.h>
 
