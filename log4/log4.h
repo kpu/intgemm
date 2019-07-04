@@ -1,3 +1,5 @@
+#pragma once
+
 #include <immintrin.h>
 
 INTGEMM_AVX512BW static inline __m512i MultiplyLog4(__m512i first, __m512i second) {
