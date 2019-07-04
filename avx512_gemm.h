@@ -324,9 +324,8 @@ struct AVX512_8bit {
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7);
 
       auto total = PermuteSummer(pack0123, pack4567);
-      auto offset = A_rowidx * B_cols + B0_colidx;
-      auto result = inited_pipeline.run(total, offset);
-      writer(C, offset, result);
+      auto result = inited_pipeline.run(total, A_rowidx, B0_colidx);
+      writer(C, A_rowidx * B_cols + B0_colidx, result);
     }
   }
 }

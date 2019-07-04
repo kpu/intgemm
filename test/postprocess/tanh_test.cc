@@ -18,7 +18,7 @@ INTGEMM_AVX2 TEST_CASE("Tanh AVX2",) {
   std::generate(input.begin(), input.end(), [] () { static int n = -4; return n++ / 4.f; });
 
   auto postproc = PostprocessImpl<Tanh, CPUType::AVX2>(Tanh());
-  *output.as<__m256>() = postproc.run(*input.as<__m256>(), 0);
+  *output.as<__m256>() = postproc.run(*input.as<__m256>(), 0, 0);
 
   CHECK_EPS(output[0], -0.7615942f, error_tolerance); // input = -1
   CHECK_EPS(output[1], -0.6351490f, error_tolerance); // input = -0.75

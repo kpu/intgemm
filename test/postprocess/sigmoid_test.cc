@@ -18,7 +18,7 @@ INTGEMM_AVX2 TEST_CASE("Sigmoid AVX2",) {
   std::iota(input.begin(), input.end(), -4);
 
   auto postproc = PostprocessImpl<Sigmoid, CPUType::AVX2>(Sigmoid());
-  *output.as<__m256>() = postproc.run(*input.as<__m256>(), 0);
+  *output.as<__m256>() = postproc.run(*input.as<__m256>(), 0, 0);
 
   CHECK_EPS(output[0], 0.0179862f, error_tolerance); // input = -4
   CHECK_EPS(output[1], 0.0474259f, error_tolerance); // input = -3

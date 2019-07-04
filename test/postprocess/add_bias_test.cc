@@ -17,8 +17,8 @@ INTGEMM_SSE2 TEST_CASE("AddBias SSE2",) {
   std::iota(input.begin(), input.end(), -2);
   std::iota(bias.begin(), bias.end(), 0);
 
-  auto postproc = PostprocessImpl<AddBias, CPUType::SSE2>(AddBias(bias.begin(), bias.size()));
-  auto output_tmp = postproc.run({input.as<__m128>()[0], input.as<__m128>()[1]}, 0);
+  auto postproc = PostprocessImpl<AddBias, CPUType::SSE2>(AddBias(bias.begin()));
+  auto output_tmp = postproc.run({input.as<__m128>()[0], input.as<__m128>()[1]}, 0, 0);
   output.as<__m128>()[0] = output_tmp.pack0123;
   output.as<__m128>()[1] = output_tmp.pack4567;
 
@@ -43,8 +43,8 @@ INTGEMM_AVX2 TEST_CASE("AddBias AVX2",) {
   std::iota(input.begin(), input.end(), -4);
   std::iota(bias.begin(), bias.end(), 0);
 
-  auto postproc = PostprocessImpl<AddBias, CPUType::AVX2>(AddBias(bias.begin(), bias.size()));
-  *output.as<__m256>() = postproc.run(*input.as<__m256>(), 0);
+  auto postproc = PostprocessImpl<AddBias, CPUType::AVX2>(AddBias(bias.begin()));
+  *output.as<__m256>() = postproc.run(*input.as<__m256>(), 0, 0);
 
   CHECK(output[0] == -4.f); // input = -4, bias = 0
   CHECK(output[1] == -2.f); // input = -3, bias = 1
@@ -69,8 +69,8 @@ INTGEMM_AVX512BW TEST_CASE("AddBias AVX512",) {
   std::iota(input.begin(), input.end(), -8);
   std::iota(bias.begin(), bias.end(), 0);
 
-  auto postproc = PostprocessImpl<AddBias, CPUType::AVX512BW>(AddBias(bias.begin(), bias.size()));
-  *output.as<__m512>() = postproc.run(*input.as<__m512>(), 0);
+  auto postproc = PostprocessImpl<AddBias, CPUType::AVX512BW>(AddBias(bias.begin()));
+  *output.as<__m512>() = postproc.run(*input.as<__m512>(), 0, 0);
 
   CHECK(output[0]  == -8.f); // input = -8, bias = 0
   CHECK(output[1]  == -6.f); // input = -7, bias = 1

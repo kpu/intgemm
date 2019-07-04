@@ -17,7 +17,7 @@ INTGEMM_AVX2 TEST_CASE("PostprocessPipeline AVX2", "Unquantize-ReLU") {
 
   auto pipeline = CreatePostprocessPipeline(Unquantize(0.5f), ReLU());
   auto inited_pipeline = InitPostprocessPipeline<CPUType::AVX2>(pipeline);
-  *output.as<__m256>() = inited_pipeline.run(*input.as<__m256i>(), 0);
+  *output.as<__m256>() = inited_pipeline.run(*input.as<__m256i>(), 0, 0);
 
   CHECK(output[0] == 0.0f); // input = -2
   CHECK(output[1] == 0.0f); // input = -1
@@ -40,16 +40,16 @@ INTGEMM_AVX2 TEST_CASE("PostprocessPipeline AVX2 on whole buffer", "Unquantize-R
 
   auto pipeline = CreatePostprocessPipeline(Unquantize(0.5f), ReLU());
   auto inited_pipeline = InitPostprocessPipeline<CPUType::AVX2>(pipeline);
-  inited_pipeline.run(input.as<__m256i>(), 2, output.as<__m256>());
+  inited_pipeline.run(input.as<__m256i>(), 1, 2, output.as<__m256>());
 
-  CHECK(output[0]  == 0.f); // input = -8
-  CHECK(output[1]  == 0.f); // input = -7
-  CHECK(output[2]  == 0.f); // input = -6
-  CHECK(output[3]  == 0.f); // input = -5
-  CHECK(output[4]  == 0.f); // input = -4
-  CHECK(output[5]  == 0.f); // input = -3
-  CHECK(output[6]  == 0.f); // input = -2
-  CHECK(output[7]  == 0.f); // input = -1
+  CHECK(output[0]  == 0.f);  // input = -8
+  CHECK(output[1]  == 0.f);  // input = -7
+  CHECK(output[2]  == 0.f);  // input = -6
+  CHECK(output[3]  == 0.f);  // input = -5
+  CHECK(output[4]  == 0.f);  // input = -4
+  CHECK(output[5]  == 0.f);  // input = -3
+  CHECK(output[6]  == 0.f);  // input = -2
+  CHECK(output[7]  == 0.f);  // input = -1
   CHECK(output[8]  == 0.0f); // input =  0
   CHECK(output[9]  == 0.5f); // input =  1
   CHECK(output[10] == 1.0f); // input =  2

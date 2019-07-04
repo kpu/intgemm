@@ -15,7 +15,7 @@ INTGEMM_SSE2 TEST_CASE("Unquantize SSE2",) {
   std::iota(input.begin(), input.end(), -2);
 
   auto postproc = PostprocessImpl<Unquantize, CPUType::SSE2>(Unquantize(0.5f));
-  auto output_tmp = postproc.run({input.as<__m128i>()[0], input.as<__m128i>()[1]}, 0);
+  auto output_tmp = postproc.run({input.as<__m128i>()[0], input.as<__m128i>()[1]}, 0, 0);
   output.as<__m128>()[0] = output_tmp.pack0123;
   output.as<__m128>()[1] = output_tmp.pack4567;
 
@@ -39,7 +39,7 @@ INTGEMM_AVX2 TEST_CASE("Unquantize AVX2",) {
   std::iota(input.begin(), input.end(), -4);
 
   auto postproc = PostprocessImpl<Unquantize, CPUType::AVX2>(Unquantize(0.5f));
-  *output.as<__m256>() = postproc.run(*input.as<__m256i>(), 0);
+  *output.as<__m256>() = postproc.run(*input.as<__m256i>(), 0, 0);
 
   CHECK(output[0] == -2.0f); // input = -4
   CHECK(output[1] == -1.5f); // input = -3
@@ -63,7 +63,7 @@ INTGEMM_AVX512BW TEST_CASE("Unquantize AVX512",) {
   std::iota(input.begin(), input.end(), -8);
 
   auto postproc = PostprocessImpl<Unquantize, CPUType::AVX512BW>(Unquantize(0.5f));
-  *output.as<__m512>() = postproc.run(*input.as<__m512i>(), 0);
+  *output.as<__m512>() = postproc.run(*input.as<__m512i>(), 0, 0);
 
   CHECK(output[0]  == -4.0f); // input = -8
   CHECK(output[1]  == -3.5f); // input = -7

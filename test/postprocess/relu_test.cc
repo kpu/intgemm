@@ -18,7 +18,7 @@ INTGEMM_SSE2 TEST_CASE("ReLU SSE2",) {
   std::iota(input.begin(), input.end(), -2);
 
   auto postproc = PostprocessImpl<ReLU, CPUType::SSE2>(ReLU());
-  auto output_tmp = postproc.run({input.as<__m128>()[0], input.as<__m128>()[1]}, 0);
+  auto output_tmp = postproc.run({input.as<__m128>()[0], input.as<__m128>()[1]}, 0, 0);
   output.as<__m128>()[0] = output_tmp.pack0123;
   output.as<__m128>()[1] = output_tmp.pack4567;
 
@@ -42,7 +42,7 @@ INTGEMM_AVX2 TEST_CASE("ReLU AVX2",) {
   std::iota(input.begin(), input.end(), -4);
 
   auto postproc = PostprocessImpl<ReLU, CPUType::AVX2>(ReLU());
-  *output.as<__m256>() = postproc.run(*input.as<__m256>(), 0);
+  *output.as<__m256>() = postproc.run(*input.as<__m256>(), 0, 0);
 
   CHECK(output[0] == 0.f); // input = -4
   CHECK(output[1] == 0.f); // input = -3
@@ -66,7 +66,7 @@ INTGEMM_AVX512BW TEST_CASE("ReLU AVX512",) {
   std::iota(input.begin(), input.end(), -8);
 
   auto postproc = PostprocessImpl<ReLU, CPUType::AVX512BW>(ReLU());
-  *output.as<__m512>() = postproc.run(*input.as<__m512>(), 0);
+  *output.as<__m512>() = postproc.run(*input.as<__m512>(), 0, 0);
 
   CHECK(output[0]  == 0.f); // input = -8
   CHECK(output[1]  == 0.f); // input = -7
@@ -103,7 +103,7 @@ INTGEMM_SSE2 TEST_CASE("ReLU_int8 SSE2",) {
   std::iota(input.begin(), input.end(), -NEGATIVE_NUMBERS);
 
   auto postproc = PostprocessImpl<ReLU_int8, CPUType::SSE2>(ReLU_int8());
-  *output.as<__m128i>() = postproc.run(*input.as<__m128i>(), 0);
+  *output.as<__m128i>() = postproc.run(*input.as<__m128i>(), 0, 0);
 
   for (auto i = 0; i < output.size(); ++i)
     CHECK(output[i] == (i <= NEGATIVE_NUMBERS ? 0 : i - NEGATIVE_NUMBERS));
@@ -121,7 +121,7 @@ INTGEMM_AVX2 TEST_CASE("ReLU_int8 AVX2",) {
   std::iota(input.begin(), input.end(), -NEGATIVE_NUMBERS);
 
   auto postproc = PostprocessImpl<ReLU_int8, CPUType::AVX2>(ReLU_int8());
-  *output.as<__m256i>() = postproc.run(*input.as<__m256i>(), 0);
+  *output.as<__m256i>() = postproc.run(*input.as<__m256i>(), 0, 0);
 
   for (auto i = 0; i < output.size(); ++i)
     CHECK(output[i] == (i <= NEGATIVE_NUMBERS ? 0 : i - NEGATIVE_NUMBERS));
@@ -141,7 +141,7 @@ INTGEMM_AVX512BW TEST_CASE("ReLU_int8 AVX512",) {
   std::iota(input.begin(), input.end(), -NEGATIVE_NUMBERS);
 
   auto postproc = PostprocessImpl<ReLU_int8, CPUType::AVX512BW>(ReLU_int8());
-  *output.as<__m512i>() = postproc.run(*input.as<__m512i>(), 0);
+  *output.as<__m512i>() = postproc.run(*input.as<__m512i>(), 0, 0);
 
   for (auto i = 0; i < output.size(); ++i)
     CHECK(output[i] == (i <= NEGATIVE_NUMBERS ? 0 : i - NEGATIVE_NUMBERS));
@@ -164,7 +164,7 @@ INTGEMM_SSE2 TEST_CASE("ReLU_int16 SSE2",) {
   std::iota(input.begin(), input.end(), -NEGATIVE_NUMBERS);
 
   auto postproc = PostprocessImpl<ReLU_int16, CPUType::SSE2>(ReLU_int16());
-  *output.as<__m128i>() = postproc.run(*input.as<__m128i>(), 0);
+  *output.as<__m128i>() = postproc.run(*input.as<__m128i>(), 0, 0);
 
   for (auto i = 0; i < output.size(); ++i)
     CHECK(output[i] == (i <= NEGATIVE_NUMBERS ? 0 : i - NEGATIVE_NUMBERS));
@@ -182,7 +182,7 @@ INTGEMM_AVX2 TEST_CASE("ReLU_int16 AVX2",) {
   std::iota(input.begin(), input.end(), -NEGATIVE_NUMBERS);
 
   auto postproc = PostprocessImpl<ReLU_int16, CPUType::AVX2>(ReLU_int16());
-  *output.as<__m256i>() = postproc.run(*input.as<__m256i>(), 0);
+  *output.as<__m256i>() = postproc.run(*input.as<__m256i>(), 0, 0);
 
   for (auto i = 0; i < output.size(); ++i)
     CHECK(output[i] == (i <= NEGATIVE_NUMBERS ? 0 : i - NEGATIVE_NUMBERS));
@@ -202,7 +202,7 @@ INTGEMM_AVX512BW TEST_CASE("ReLU_int16 AVX512",) {
   std::iota(input.begin(), input.end(), -NEGATIVE_NUMBERS);
 
   auto postproc = PostprocessImpl<ReLU_int16, CPUType::AVX512BW>(ReLU_int16());
-  *output.as<__m512i>() = postproc.run(*input.as<__m512i>(), 0);
+  *output.as<__m512i>() = postproc.run(*input.as<__m512i>(), 0, 0);
 
   for (auto i = 0; i < output.size(); ++i)
     CHECK(output[i] == (i <= NEGATIVE_NUMBERS ? 0 : i - NEGATIVE_NUMBERS));

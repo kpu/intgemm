@@ -31,7 +31,7 @@ public:
     unquantize_multiplier = set1_ps<__m128>(config.unquantize_multiplier);
   }
 
-  INTGEMM_SSE2 inline OutputRegister run(InputRegister input, Index offset) {
+  INTGEMM_SSE2 inline OutputRegister run(InputRegister input, Index row, Index col) {
     return {
       mul_ps(cvtepi32_ps(input.pack0123), unquantize_multiplier),
       mul_ps(cvtepi32_ps(input.pack4567), unquantize_multiplier),
@@ -52,7 +52,7 @@ public:
     unquantize_multiplier = set1_ps<__m256>(config.unquantize_multiplier);
   }
 
-  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index offset) {
+  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index row, Index col) {
     return mul_ps(cvtepi32_ps(input), unquantize_multiplier);
   }
 
@@ -72,7 +72,7 @@ public:
     unquantize_multiplier = set1_ps<__m512>(config.unquantize_multiplier);
   }
 
-  INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index offset) {
+  INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index row, Index col) {
     return mul_ps(cvtepi32_ps(input), unquantize_multiplier);
   }
 
@@ -88,9 +88,8 @@ private:
 class AddBias {
 public:
   const float* bias;
-  const Index length;
 
-  AddBias(const float* bias, Index length) : bias(bias), length(length) {}
+  AddBias(const float* bias) : bias(bias) {}
 };
 
 template <>
@@ -101,9 +100,9 @@ public:
 
   PostprocessImpl(const AddBias& config) : config(config) {}
 
-  INTGEMM_SSE2 inline OutputRegister run(InputRegister input, Index offset) {
-    auto bias_term0123 = *reinterpret_cast<const __m128*>(config.bias + (offset % config.length));
-    auto bias_term4567 = *reinterpret_cast<const __m128*>(config.bias + (offset % config.length) + 4);
+  INTGEMM_SSE2 inline OutputRegister run(InputRegister input, Index row, Index col) {
+    auto bias_term0123 = *reinterpret_cast<const __m128*>(config.bias + col);
+    auto bias_term4567 = *reinterpret_cast<const __m128*>(config.bias + col + 4);
     return {
       add_ps(input.pack0123, bias_term0123),
       add_ps(input.pack4567, bias_term4567),
@@ -122,8 +121,8 @@ public:
 
   PostprocessImpl(const AddBias& config) : config(config) {}
 
-  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index offset) {
-    auto bias_term = *reinterpret_cast<const __m256*>(config.bias + (offset % config.length));
+  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index row, Index col) {
+    auto bias_term = *reinterpret_cast<const __m256*>(config.bias + col);
     return add_ps(input, bias_term);
   }
 
@@ -141,8 +140,8 @@ public:
 
   PostprocessImpl(const AddBias& config) : config(config) {}
 
-  INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index offset) {
-    auto bias_term = *reinterpret_cast<const __m512*>(config.bias + (offset % config.length));
+  INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index row, Index col) {
+    auto bias_term = *reinterpret_cast<const __m512*>(config.bias + col);
     return add_ps(input, bias_term);
   }
 
@@ -165,7 +164,7 @@ public:
 
   PostprocessImpl(const ReLU& config) {}
 
-  INTGEMM_SSE2 inline OutputRegister run(InputRegister input, Index offset) {
+  INTGEMM_SSE2 inline OutputRegister run(InputRegister input, Index row, Index col) {
     static const auto const_zero = set1_ps<__m128>(0.f);
     return {
       max_ps(const_zero, input.pack0123),
@@ -185,7 +184,7 @@ public:
 
   PostprocessImpl(const ReLU& config) {}
 
-  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index offset) {
+  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index row, Index col) {
     static const auto const_zero = set1_ps<__m256>(0.f);
     return max_ps(const_zero, input);
   }
@@ -201,7 +200,7 @@ public:
 
   PostprocessImpl(const ReLU& config) {}
 
-  INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index offset) {
+  INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index row, Index col) {
     static const auto const_zero = set1_ps<__m512>(0.f);
     return max_ps(const_zero, input);
   }
@@ -222,7 +221,7 @@ public:
 
   PostprocessImpl(const ReLU_int8& config) {}
 
-  INTGEMM_SSE2 inline OutputRegister run(InputRegister input, Index offset) {
+  INTGEMM_SSE2 inline OutputRegister run(InputRegister input, Index row, Index col) {
     static const auto const_zero = setzero_si<__m128i>();
     return  _mm_and_si128(_mm_cmplt_epi8(const_zero, input), input);
   }
@@ -236,7 +235,7 @@ public:
 
   PostprocessImpl(const ReLU_int8& config) {}
 
-  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index offset) {
+  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index row, Index col) {
     static const auto const_zero = setzero_si<__m256i>();
     return max_epi8(const_zero, input);
   }
@@ -252,7 +251,7 @@ public:
 
   PostprocessImpl(const ReLU_int8& config) {}
 
-  INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index offset) {
+  INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index row, Index col) {
     static const auto const_zero = setzero_si<__m512i>();
     return max_epi8(const_zero, input);
   }
@@ -273,7 +272,7 @@ public:
 
   PostprocessImpl(const ReLU_int16& config) {}
 
-  INTGEMM_SSE2 inline OutputRegister run(InputRegister input, Index offset) {
+  INTGEMM_SSE2 inline OutputRegister run(InputRegister input, Index row, Index col) {
     static const auto const_zero = setzero_si<__m128i>();
     return max_epi16(const_zero, input);
   }
@@ -287,7 +286,7 @@ public:
 
   PostprocessImpl(const ReLU_int16& config) {}
 
-  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index offset) {
+  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index row, Index col) {
     static const auto const_zero = setzero_si<__m256i>();
     return max_epi16(const_zero, input);
   }
@@ -303,7 +302,7 @@ public:
 
   PostprocessImpl(const ReLU_int16& config) {}
 
-  INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index offset) {
+  INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index row, Index col) {
     static const auto const_zero = setzero_si<__m512i>();
     return max_epi16(const_zero, input);
   }
@@ -324,7 +323,7 @@ public:
 
   PostprocessImpl(const Sigmoid& config) {}
 
-  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index offset) {
+  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index row, Index col) {
     static const auto const_zero = set1_ps<__m256>(0.f);
     static const auto const_one = set1_ps<__m256>(1.f);
 
@@ -354,7 +353,7 @@ public:
 
   PostprocessImpl(const Tanh& config) {}
 
-  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index offset) {
+  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index row, Index col) {
     const static auto const_zero = setzero_ps<__m256>();
 
     auto e_x = exp_approx_taylor(input);
@@ -374,7 +373,7 @@ public:
 
   PostprocessImpl(const Tanh& config) {}
 
-  INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index offset) {
+  INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index row, Index col) {
     const static auto const_zero = setzero_ps<__m512>();
 
     auto e_x = exp_approx_taylor(input);
