@@ -5,6 +5,10 @@
 #include "types.h"
 #include "vec_utils.h"
 
+// TODO: We support some postprocess in few variations e.g. we support ReLU for
+// float -> float, int8 -> int8, int16 -> int16. Maybe it would be a good idea
+// to pass input type and output type as a template parameter of postprocess?
+
 namespace intgemm {
 
 /*
@@ -203,6 +207,110 @@ public:
   }
 };
 
+#endif
+
+/*
+ * ReLU_int8
+ */
+class ReLU_int8 {};
+
+template <>
+class PostprocessImpl<ReLU_int8, CPUType::SSE2> {
+public:
+  using InputRegister = __m128i;
+  using OutputRegister = __m128i;
+
+  PostprocessImpl(const ReLU_int8& config) {}
+
+  INTGEMM_SSE2 inline OutputRegister run(InputRegister input, Index offset) {
+    static const auto const_zero = setzero_si<__m128i>();
+    return  _mm_and_si128(_mm_cmplt_epi8(const_zero, input), input);
+  }
+};
+
+template <>
+class PostprocessImpl<ReLU_int8, CPUType::AVX2> {
+public:
+  using InputRegister = __m256i;
+  using OutputRegister = __m256i;
+
+  PostprocessImpl(const ReLU_int8& config) {}
+
+  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index offset) {
+    static const auto const_zero = setzero_si<__m256i>();
+    return max_epi8(const_zero, input);
+  }
+};
+
+#ifndef INTGEMM_NO_AVX512
+
+template <>
+class PostprocessImpl<ReLU_int8, CPUType::AVX512BW> {
+public:
+  using InputRegister = __m512i;
+  using OutputRegister = __m512i;
+
+  PostprocessImpl(const ReLU_int8& config) {}
+
+  INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index offset) {
+    static const auto const_zero = setzero_si<__m512i>();
+    return max_epi8(const_zero, input);
+  }
+};
+
+#endif
+
+/*
+ * ReLU_int16
+ */
+class ReLU_int16 {};
+
+template <>
+class PostprocessImpl<ReLU_int16, CPUType::SSE2> {
+public:
+  using InputRegister = __m128i;
+  using OutputRegister = __m128i;
+
+  PostprocessImpl(const ReLU_int16& config) {}
+
+  INTGEMM_SSE2 inline OutputRegister run(InputRegister input, Index offset) {
+    static const auto const_zero = setzero_si<__m128i>();
+    return max_epi16(const_zero, input);
+  }
+};
+
+template <>
+class PostprocessImpl<ReLU_int16, CPUType::AVX2> {
+public:
+  using InputRegister = __m256i;
+  using OutputRegister = __m256i;
+
+  PostprocessImpl(const ReLU_int16& config) {}
+
+  INTGEMM_AVX2 inline OutputRegister run(InputRegister input, Index offset) {
+    static const auto const_zero = setzero_si<__m256i>();
+    return max_epi16(const_zero, input);
+  }
+};
+
+#ifndef INTGEMM_NO_AVX512
+
+template <>
+class PostprocessImpl<ReLU_int16, CPUType::AVX512BW> {
+public:
+  using InputRegister = __m512i;
+  using OutputRegister = __m512i;
+
+  PostprocessImpl(const ReLU_int16& config) {}
+
+  INTGEMM_AVX512BW inline OutputRegister run(InputRegister input, Index offset) {
+    static const auto const_zero = setzero_si<__m512i>();
+    return max_epi16(const_zero, input);
+  }
+};
+
+#endif
+
 /*
  * Sigmoid (uses Taylor series approximation of e^x)
  */
@@ -255,6 +363,8 @@ public:
     return div_ps(sub_ps(e_x, e_minus_x), add_ps(e_x, e_minus_x));
   }
 };
+
+#ifndef INTGEMM_NO_AVX512
 
 template <>
 class PostprocessImpl<Tanh, CPUType::AVX512BW> {
