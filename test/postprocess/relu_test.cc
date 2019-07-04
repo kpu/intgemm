@@ -97,15 +97,13 @@ INTGEMM_SSE2 TEST_CASE("ReLU_int8 SSE2",) {
 
   const unsigned NEGATIVE_NUMBERS = 10;
 
-  AlignedVector<int8_t> input(32);
-  AlignedVector<int8_t> output(32);
+  AlignedVector<int8_t> input(16);
+  AlignedVector<int8_t> output(16);
 
   std::iota(input.begin(), input.end(), -NEGATIVE_NUMBERS);
 
   auto postproc = PostprocessImpl<ReLU_int8, CPUType::SSE2>(ReLU_int8());
-  auto output_tmp = postproc.run({input.as<__m128i>()[0], input.as<__m128i>()[1]}, 0);
-  output.as<__m128i>()[0] = output_tmp.pack0123;
-  output.as<__m128i>()[1] = output_tmp.pack4567;
+  *output.as<__m128i>() = postproc.run(*input.as<__m128i>(), 0);
 
   for (auto i = 0; i < output.size(); ++i)
     CHECK(output[i] == (i <= NEGATIVE_NUMBERS ? 0 : i - NEGATIVE_NUMBERS));
@@ -158,17 +156,15 @@ INTGEMM_SSE2 TEST_CASE("ReLU_int16 SSE2",) {
   if (kCPU < CPUType::SSE2)
     return;
 
-  const unsigned NEGATIVE_NUMBERS = 10;
+  const unsigned NEGATIVE_NUMBERS = 5;
 
-  AlignedVector<int16_t> input(16);
-  AlignedVector<int16_t> output(16);
+  AlignedVector<int16_t> input(8);
+  AlignedVector<int16_t> output(8);
 
   std::iota(input.begin(), input.end(), -NEGATIVE_NUMBERS);
 
   auto postproc = PostprocessImpl<ReLU_int16, CPUType::SSE2>(ReLU_int16());
-  auto output_tmp = postproc.run({input.as<__m128i>()[0], input.as<__m128i>()[1]}, 0);
-  output.as<__m128i>()[0] = output_tmp.pack0123;
-  output.as<__m128i>()[1] = output_tmp.pack4567;
+  *output.as<__m128i>() = postproc.run(*input.as<__m128i>(), 0);
 
   for (auto i = 0; i < output.size(); ++i)
     CHECK(output[i] == (i <= NEGATIVE_NUMBERS ? 0 : i - NEGATIVE_NUMBERS));

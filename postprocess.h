@@ -217,17 +217,14 @@ class ReLU_int8 {};
 template <>
 class PostprocessImpl<ReLU_int8, CPUType::SSE2> {
 public:
-  using InputRegister = RegisterPair128i;
-  using OutputRegister = RegisterPair128i;
+  using InputRegister = __m128i;
+  using OutputRegister = __m128i;
 
   PostprocessImpl(const ReLU_int8& config) {}
 
   INTGEMM_SSE2 inline OutputRegister run(InputRegister input, Index offset) {
     static const auto const_zero = setzero_si<__m128i>();
-    return {
-      _mm_and_si128(_mm_cmplt_epi8(const_zero, input.pack0123), input.pack0123),
-      _mm_and_si128(_mm_cmplt_epi8(const_zero, input.pack4567), input.pack4567),
-    };
+    return  _mm_and_si128(_mm_cmplt_epi8(const_zero, input), input);
   }
 };
 
@@ -271,17 +268,14 @@ class ReLU_int16 {};
 template <>
 class PostprocessImpl<ReLU_int16, CPUType::SSE2> {
 public:
-  using InputRegister = RegisterPair128i;
-  using OutputRegister = RegisterPair128i;
+  using InputRegister = __m128i;
+  using OutputRegister = __m128i;
 
   PostprocessImpl(const ReLU_int16& config) {}
 
   INTGEMM_SSE2 inline OutputRegister run(InputRegister input, Index offset) {
     static const auto const_zero = setzero_si<__m128i>();
-    return {
-      max_epi16(const_zero, input.pack0123),
-      max_epi16(const_zero, input.pack4567),
-    };
+    return max_epi16(const_zero, input);
   }
 };
 
