@@ -1,4 +1,5 @@
 #pragma once
+#include "types.h"
 
 #include <immintrin.h>
 
@@ -21,12 +22,13 @@ INTGEMM_AVX512BW static inline __m512i MultiplyLog4(__m512i first, __m512i secon
   const __m512i kBottom4 = _mm512_set1_epi16(0xf);
   // Take 2^each block of 4 bit added values.
   // Take bottom 4 bits [3:0] of each block of 16.  Use that to exponentiate 1.
-  __m512i accum0 = _mm512_sllv_epi16(kOnes, _mm512_and_epi8(kBottom4, added));
+  __m512i accum0 = _mm512_sllv_epi16(kOnes, _mm512_and_si512(kBottom4, added));
   // Take bits [7:4] of each block of 16.
-  __m512i accum1 = _mm512_sllv_epi16(kOnes, _mm512_and_epi8(kBottom4, _mm512_srli_epi16(added, 4)));
+  __m512i accum1 = _mm512_sllv_epi16(kOnes, _mm512_and_si512(kBottom4, _mm512_srli_epi16(added, 4)));
   // Take bits [11:8] of each block of 16.
-  __m512i accum2 = _mm512_sllv_epi16(kOnes, _mm512_and_epi8(kBottom4, _mm512_srli_epi16(added, 8)));
+  __m512i accum2 = _mm512_sllv_epi16(kOnes, _mm512_and_si512(kBottom4, _mm512_srli_epi16(added, 8)));
   // Take bits [15:12] of each block of 16.
   __m512i accum3 = _mm512_sllv_epi16(kOnes, _mm512_srli_epi16(added, 12));
   // TODO apply sign bits to accum0 etc then accum0 + accum1 + accum2 + accum3.
+  return accum0;
 }
