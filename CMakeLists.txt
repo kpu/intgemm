@@ -33,9 +33,15 @@ endforeach()
 include_directories(.)
 add_executable(tests
   test/multiply_test.cc
-  test/pipeline_test.cc
+  test/postprocess/add_bias_test.cc
+  test/postprocess/pipeline_test.cc
+  test/postprocess/relu_test.cc
+  test/postprocess/sigmoid_test.cc
+  test/postprocess/tanh_test.cc
+  test/postprocess/unquantize_test.cc
   test/quantize_test.cc
-  test/relu_test.cc
+  test/test.cc
+  test/utils_test.cc
   test/log4_test.cc
   intgemm.cc
 )

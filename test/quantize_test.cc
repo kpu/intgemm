@@ -1,15 +1,13 @@
-#include "avx512_gemm.h"
-#include "avx2_gemm.h"
-#include "ssse3_gemm.h"
-#include "sse2_gemm.h"
+#include "test/test.h"
 #include "aligned.h"
-
-#include "3rd_party/catch.hpp"
+#include "avx2_gemm.h"
+#include "avx512_gemm.h"
+#include "sse2_gemm.h"
+#include "ssse3_gemm.h"
 
 #include <cstring>
-#include <math.h>
-
 #include <iostream>
+#include <math.h>
 
 namespace intgemm {
 namespace {
