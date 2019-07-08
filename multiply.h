@@ -2,9 +2,9 @@
 
 #include "interleave.h"
 #include "intrinsics.h"
-#include "postprocess_pipeline.h"
 #include "vec_utils.h"
 #include "vec_traits.h"
+#include "callbacks.h"
 
 namespace intgemm {
 
@@ -144,13 +144,13 @@ INTGEMM_PACK0123(INTGEMM_AVX512BW, __m512i)
 // B_cols must be a multiple of 8.
 // Multiply16
 #define INTGEMM_MULTIPLY16(Integer, target, cpu_type) \
-template <typename PostprocessPipeline> target static void Multiply(const int16_t *A, const int16_t *B, float* C, PostprocessPipeline pipeline, Index A_rows, Index width, Index B_cols) { \
+template <typename Callback> target static void Multiply(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback) { \
   assert(width % (sizeof(Integer) / sizeof(int16_t)) == 0); \
   assert(B_cols % 8 == 0); \
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0); \
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0); \
   const int simd_width = width / (sizeof(Integer) / sizeof(int16_t)); \
-  auto inited_pipeline = InitPostprocessPipeline<cpu_type>(pipeline); \
+  auto callback_impl = callbacks::CallbackImpl<Callback, cpu_type>(callback); \
   const Integer *B0_col = reinterpret_cast<const Integer *>(B); \
   for (Index B0_colidx = 0; B0_colidx < B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
     /* Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.*/ \
@@ -194,9 +194,7 @@ template <typename PostprocessPipeline> target static void Multiply(const int16_
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
       /*The specific implementation may need to reduce further.*/ \
       auto total = PermuteSummer(pack0123, pack4567); \
-      auto offset = A_rowidx * B_cols + B0_colidx; \
-      auto result = inited_pipeline.run(total, offset); \
-      writer(C, offset, result); \
+      callback_impl(total, A_rowidx, B0_colidx, A_rows, width, B_cols); \
     } \
   } \
 } \
@@ -350,14 +348,14 @@ INTGEMM_SSSE3 inline static void InnerINTGEMM_SSSE3(
 }
 //INTGEMM_AVX2 or INTGEMM_SSSE3 multiply
 #define INTGEMM_MULTIPLY8(Integer, target, cpu_type) \
-  template <typename PostprocessPipeline> target static void Multiply(const int8_t *A, const int8_t *B, float* C, PostprocessPipeline pipeline, Index A_rows, Index width, Index B_cols) { \
+  template <typename Callback> target static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) { \
   assert(width % sizeof(Integer) == 0); \
   assert(B_cols % 8 == 0); \
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0); \
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0); \
   const int simd_width = width / sizeof(Integer); \
+  auto callback_impl = callbacks::CallbackImpl<Callback, cpu_type>(callback); \
   const Integer *B0_col = reinterpret_cast<const Integer*>(B); \
-  auto inited_pipeline = InitPostprocessPipeline<cpu_type>(pipeline); \
   /*Go over 8 columns of B at a time.*/ \
   for (Index B0_colidx = 0; B0_colidx != B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
     /*Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.*/ \
@@ -412,9 +410,7 @@ INTGEMM_SSSE3 inline static void InnerINTGEMM_SSSE3(
       Integer pack0123 = Pack0123(sum0, sum1, sum2, sum3); \
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
       auto total = PermuteSummer(pack0123, pack4567); \
-      auto offset = A_rowidx * B_cols + B0_colidx; \
-      auto result = inited_pipeline.run(total, offset); \
-      writer(C, offset, result); \
+      callback_impl(total, A_rowidx, B0_colidx, A_rows, width, B_cols); \
     } \
   } \
 } \

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "intrinsics.h"
+#include "utils.h"
 
 namespace intgemm {
 

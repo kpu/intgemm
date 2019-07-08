@@ -2,6 +2,7 @@
 // This is just for AlignedVector, which helps managed 64-byte aligned memory.
 // Feel free to manage memory yourself.
 #include "aligned.h" 
+#include "callbacks.h"
 
 #include <cassert>
 #include <math.h>
@@ -51,7 +52,7 @@ int main() {
 
     AlignedVector<float> C(A_rows * B_cols);
     // Do the actual multiply.
-    intgemm::Int16::Multiply(A_prepared.begin(), B_prepared.begin(), C.begin(), intgemm::CreatePostprocessPipeline(intgemm::Unquantize(1.0 / (quant_mult * quant_mult))), A_rows, width, B_cols);
+    intgemm::Int16::Multiply(A_prepared.begin(), B_prepared.begin(), A_rows, width, B_cols, intgemm::callbacks::Dummy());
     // Sanity check.  C will be row major.
     assert(fabs(C[0] - top_left_reference) < 0.05);
   }
@@ -70,7 +71,7 @@ int main() {
 
     AlignedVector<float> C(A_rows * B_cols);
     // Do the actual multiply.
-    intgemm::Int8::Multiply(A_prepared.begin(), B_prepared.begin(), C.begin(), intgemm::CreatePostprocessPipeline(intgemm::Unquantize(1.0 / (quant_mult * quant_mult))), A_rows, width, B_cols);
+    intgemm::Int8::Multiply(A_prepared.begin(), B_prepared.begin(), A_rows, width, B_cols, intgemm::callbacks::Dummy());
     // Sanity check.  C will be row major.
     assert(fabs(C[0] - top_left_reference) < 0.05);
   }
