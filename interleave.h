@@ -48,6 +48,19 @@ INTGEMM_INTERLEAVE(INTGEMM_AVX2, __m256i, 256)
 #ifndef INTGEMM_NO_AVX512
 INTGEMM_INTERLEAVE(INTGEMM_AVX512BW, __m512i, 512)
 #endif
+#define INTGEMM_SWAP(target, Register) \
+target static inline void Swap(Register &a, Register &b) { \
+  Register tmp = a; \
+  a = b; \
+  b = tmp; \
+} \
+
+INTGEMM_SWAP(INTGEMM_SSE2, __m128i)
+INTGEMM_SWAP(INTGEMM_AVX2, __m256i)
+#ifndef INTGEMM_NO_AVX512
+/* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
+INTGEMM_SWAP(INTGEMM_AVX512BW, __m512i)
+#endif
 
 /* Transpose registers containing 8 packed 16-bit integers.
  * Each 128-bit lane is handled independently.
@@ -91,8 +104,8 @@ target static inline void Transpose16InLane(Register &r0, Register &r1, Register
      r4: columns 1 1 1 1 1 1 1 1 from rows 0 through 7
      r5: columns 5 5 5 5 5 5 5 5 from rows 0 through 7*/ \
   /* Empirically gcc is able to remove these movs and just rename the outputs of Interleave64. */ \
-  std::swap(r1, r4); \
-  std::swap(r3, r6); \
+  Swap(r1, r4); \
+  Swap(r3, r6); \
 } \
 
 INTGEMM_TRANSPOSE16(INTGEMM_SSE2, __m128i)
