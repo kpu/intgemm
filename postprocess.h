@@ -4,6 +4,7 @@
 #include "postprocess_pipeline.h"
 #include "types.h"
 #include "vec_utils.h"
+#include "vec_traits.h"
 
 // TODO: We support some postprocess in few variations e.g. we support ReLU for
 // float -> float, int8 -> int8, int16 -> int16. Maybe it would be a good idea
@@ -24,8 +25,8 @@ public:
 template <>
 class PostprocessImpl<Unquantize, CPUType::SSE2> {
 public:
-  using InputRegister = RegisterPair128i;
-  using OutputRegister = RegisterPair128;
+  using InputRegister = dvector_t<CPUType::SSE2, int>;
+  using OutputRegister = dvector_t<CPUType::SSE2, float>;
 
   INTGEMM_SSE2 PostprocessImpl(const Unquantize& config) {
     unquantize_multiplier = set1_ps<__m128>(config.unquantize_multiplier);
@@ -33,8 +34,8 @@ public:
 
   INTGEMM_SSE2 inline OutputRegister run(InputRegister input, Index offset) {
     return {
-      mul_ps(cvtepi32_ps(input.pack0123), unquantize_multiplier),
-      mul_ps(cvtepi32_ps(input.pack4567), unquantize_multiplier),
+      mul_ps(cvtepi32_ps(input.first), unquantize_multiplier),
+      mul_ps(cvtepi32_ps(input.second), unquantize_multiplier),
     };
   }
 
@@ -96,8 +97,8 @@ public:
 template <>
 class PostprocessImpl<AddBias, CPUType::SSE2> {
 public:
-  using InputRegister = RegisterPair128;
-  using OutputRegister = RegisterPair128;
+  using InputRegister = dvector_t<CPUType::SSE2, float>;
+  using OutputRegister = dvector_t<CPUType::SSE2, float>;
 
   PostprocessImpl(const AddBias& config) : config(config) {}
 
@@ -105,8 +106,8 @@ public:
     auto bias_term0123 = *reinterpret_cast<const __m128*>(config.bias + (offset % config.length));
     auto bias_term4567 = *reinterpret_cast<const __m128*>(config.bias + (offset % config.length) + 4);
     return {
-      add_ps(input.pack0123, bias_term0123),
-      add_ps(input.pack4567, bias_term4567),
+      add_ps(input.first, bias_term0123),
+      add_ps(input.second, bias_term4567),
     };
   }
 
@@ -160,16 +161,16 @@ class ReLU {};
 template <>
 class PostprocessImpl<ReLU, CPUType::SSE2> {
 public:
-  using InputRegister = RegisterPair128;
-  using OutputRegister = RegisterPair128;
+  using InputRegister = dvector_t<CPUType::SSE2, float>;
+  using OutputRegister = dvector_t<CPUType::SSE2, float>;
 
   PostprocessImpl(const ReLU& config) {}
 
   INTGEMM_SSE2 inline OutputRegister run(InputRegister input, Index offset) {
     static const auto const_zero = set1_ps<__m128>(0.f);
     return {
-      max_ps(const_zero, input.pack0123),
-      max_ps(const_zero, input.pack4567),
+      max_ps(const_zero, input.first),
+      max_ps(const_zero, input.second),
     };
   }
 };

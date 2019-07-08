@@ -19,8 +19,8 @@ INTGEMM_SSE2 TEST_CASE("AddBias SSE2",) {
 
   auto postproc = PostprocessImpl<AddBias, CPUType::SSE2>(AddBias(bias.begin(), bias.size()));
   auto output_tmp = postproc.run({input.as<__m128>()[0], input.as<__m128>()[1]}, 0);
-  output.as<__m128>()[0] = output_tmp.pack0123;
-  output.as<__m128>()[1] = output_tmp.pack4567;
+  output.as<__m128>()[0] = output_tmp.first;
+  output.as<__m128>()[1] = output_tmp.second;
 
   CHECK(output[0] == -2.f); // input = -2, bias = 0
   CHECK(output[1] ==  0.f); // input = -1, bias = 1

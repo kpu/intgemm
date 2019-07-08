@@ -4,12 +4,13 @@
 #include "intrinsics.h"
 #include "postprocess_pipeline.h"
 #include "vec_utils.h"
+#include "vec_traits.h"
 
 namespace intgemm {
 
-INTGEMM_SSE2 static inline void writer(float* C, Index offset, RegisterPair128 result) {
-  *reinterpret_cast<__m128*>(C + offset) = result.pack0123;
-  *reinterpret_cast<__m128*>(C + offset + 4) = result.pack4567;
+INTGEMM_SSE2 static inline void writer(float* C, Index offset, dvector_t<CPUType::SSE2, float> result) {
+  *reinterpret_cast<__m128*>(C + offset) = result.first;
+  *reinterpret_cast<__m128*>(C + offset + 4) = result.second;
 }
 
 INTGEMM_AVX2 static inline void writer(float* C, Index offset, __m256 result) {
@@ -33,11 +34,11 @@ INTGEMM_SSE2 static inline float MaxFloat32(__m128 a) {
   return *reinterpret_cast<float*>(&a);
 }
 
-INTGEMM_SSE2 static inline RegisterPair128i PermuteSummer(__m128i pack0123, __m128i pack4567) {
+INTGEMM_SSE2 static inline dvector_t<CPUType::SSE2, int> PermuteSummer(__m128i pack0123, __m128i pack4567) {
   // No op for 128 bits: already reduced fully.
-  RegisterPair128i ret;
-  ret.pack0123 = pack0123;
-  ret.pack4567 = pack4567;
+  dvector_t<CPUType::SSE2, int> ret;
+  ret.first = pack0123;
+  ret.second = pack4567;
   return ret;
 }
 

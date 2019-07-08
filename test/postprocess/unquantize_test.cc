@@ -16,8 +16,8 @@ INTGEMM_SSE2 TEST_CASE("Unquantize SSE2",) {
 
   auto postproc = PostprocessImpl<Unquantize, CPUType::SSE2>(Unquantize(0.5f));
   auto output_tmp = postproc.run({input.as<__m128i>()[0], input.as<__m128i>()[1]}, 0);
-  output.as<__m128>()[0] = output_tmp.pack0123;
-  output.as<__m128>()[1] = output_tmp.pack4567;
+  output.as<__m128>()[0] = output_tmp.first;
+  output.as<__m128>()[1] = output_tmp.second;
 
   CHECK(output[0] == -1.0f); // input = -2
   CHECK(output[1] == -0.5f); // input = -1

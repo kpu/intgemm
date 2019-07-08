@@ -4,14 +4,6 @@
 
 namespace intgemm {
 
-struct RegisterPair128i {
-  __m128i pack0123, pack4567;
-};
-
-struct RegisterPair128 {
-  __m128 pack0123, pack4567;
-};
-
 /*
  *
  * Quantize
