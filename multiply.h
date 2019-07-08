@@ -2,26 +2,10 @@
 
 #include "interleave.h"
 #include "intrinsics.h"
-#include "vec_utils.h"
 #include "vec_traits.h"
 #include "callbacks.h"
 
 namespace intgemm {
-
-INTGEMM_SSE2 static inline void writer(float* C, Index offset, dvector_t<CPUType::SSE2, float> result) {
-  *reinterpret_cast<__m128*>(C + offset) = result.first;
-  *reinterpret_cast<__m128*>(C + offset + 4) = result.second;
-}
-
-INTGEMM_AVX2 static inline void writer(float* C, Index offset, __m256 result) {
-  *reinterpret_cast<__m256*>(C + offset) = result;
-}
-
-#ifndef INTGEMM_NO_AVX512
-INTGEMM_AVX512BW static inline void writer(float* C, Index offset, __m512 result) {
-  *reinterpret_cast<__m512*>(C + offset) = result;
-}
-#endif
 
 INTGEMM_SSE2 static inline float MaxFloat32(__m128 a) {
   // Fold to just using the first 64 bits.

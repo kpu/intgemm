@@ -1,11 +1,12 @@
 #pragma once
 
+#include "interleave.h"
+#include "kernels.h"
+#include "multiply.h"
 #include "types.h"
+
 #include <cstdint>
 #include <stdint.h>
-
-#include "interleave.h"
-#include "multiply.h"
 
 // 16-bit is in sse2_gemm.h
 
@@ -14,7 +15,7 @@ namespace intgemm {
 namespace ssse3 {
 
 INTGEMM_SSSE3 inline __m128i QuantizerGrab(const float *input, const __m128 quant_mult_reg) {
-  return quantize(loadu_ps<__m128>(input), quant_mult_reg);
+  return kernels::quantize(loadu_ps<__m128>(input), quant_mult_reg);
 }
 
 INTGEMM_SELECT_COL_B(INTGEMM_SSSE3, __m128i)

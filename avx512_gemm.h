@@ -1,17 +1,17 @@
 #pragma once
 
-#include <stdint.h>
-#include <cstdint>
+#include "interleave.h"
+#include "kernels.h"
+#include "multiply.h"
+#include "types.h"
+
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "interleave.h"
-#include "multiply.h"
-
-#include "types.h"
 
 /* AVX512 implementation.
  * This uses INTGEMM_AVX512BW, INTGEMM_AVX512DQ, and might use AVX512VL
@@ -36,7 +36,7 @@ namespace avx512f {
 // Load from memory, multiply, and convert to int32_t.
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_AVX512BW inline __m512i QuantizerGrab(const float *input, const __m512 quant_mult_reg) {
-  return quantize(loadu_ps<__m512>(input), quant_mult_reg);
+  return kernels::quantize(loadu_ps<__m512>(input), quant_mult_reg);
 }
 
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
