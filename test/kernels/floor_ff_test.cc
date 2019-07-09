@@ -21,7 +21,7 @@ void kernel_floor_ff_test() {
 
   *output.template as<vec_t>() = kernels::floor_ff(*input.template as<vec_t>());
   for (auto i = 0; i < output.size(); ++i)
-    CHECK(output[i] == i - 2);
+    CHECK(output[i] == std::floor(input[i]));
 }
 
 template INTGEMM_SSE2 void kernel_floor_ff_test<CPUType::SSE2>();
@@ -30,9 +30,9 @@ KERNEL_TEST_CASE("floor_ff SSE2") { return kernel_floor_ff_test<CPUType::SSE2>()
 template INTGEMM_AVX2 void kernel_floor_ff_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("floor_ff AVX2") { return kernel_floor_ff_test<CPUType::AVX2>(); }
 
-#ifndef INTGEMM_NO_AVX512
-template INTGEMM_AVX512BW void kernel_floor_ff_test<CPUType::AVX512BW>();
-KERNEL_TEST_CASE("floor_ff AVX512BW") { return kernel_floor_ff_test<CPUType::AVX512BW>(); }
-#endif
+// #ifndef INTGEMM_NO_AVX512
+// template INTGEMM_AVX512BW void kernel_floor_ff_test<CPUType::AVX512BW>();
+// KERNEL_TEST_CASE("floor_ff AVX512BW") { return kernel_floor_ff_test<CPUType::AVX512BW>(); }
+// #endif
 
 }

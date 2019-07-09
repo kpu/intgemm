@@ -152,11 +152,20 @@ CPU_ATTR static inline dvd relu(dvd input) {
 /*
  * Calculate floor: float -> float
  */
-CPU_ATTR static inline vf floor_ff(vf a) {
-#if defined(THIS_IS_AVX2)
-  return _mm256_floor_ps(a);
+CPU_ATTR static inline vf floor_ff(vf input) {
+#if defined(THIS_IS_SSE2)
+  static const auto vconst_zero = setzero_ps<vf>();
+  static const auto vconst_one = set1_ps<vf>(1.f);
+
+  auto result = cvtepi32_ps(cvttps_epi32(input));
+  auto negatives = _mm_cmplt_ps(input, vconst_zero);
+  auto nonintegers = _mm_cmpneq_ps(input, result);
+
+  return sub_ps(result, and_ps(vconst_one, and_ps(negatives, nonintegers)));
+#elif defined(THIS_IS_AVX2)
+  return _mm256_floor_ps(input);
 #else
-  return cvtepi32_ps(cvttps_epi32(a)); // TODO: Doesn't work for negative numbers
+  assert(false && "AVX512BW is not supported");
 #endif
 }
 
