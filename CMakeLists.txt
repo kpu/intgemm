@@ -32,10 +32,21 @@ endforeach()
 
 include_directories(.)
 add_executable(tests
+  # General tests
   test/multiply_test.cc
   test/quantize_test.cc
   test/test.cc
   test/utils_test.cc
+
+  # Kernels tests
+  test/kernels/add_bias_test.cc
+  test/kernels/exp_test.cc
+  test/kernels/floor_ff_test.cc
+  test/kernels/quantize_test.cc
+  test/kernels/unquantize_test.cc
+  test/kernels/write_test.cc
+
+  # Definitions
   intgemm.cc
 )
 

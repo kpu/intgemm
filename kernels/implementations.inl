@@ -111,7 +111,7 @@ CPU_ATTR static inline vf floor_ff(vf a) {
 #if defined(THIS_IS_AVX2)
   return _mm256_floor_ps(a);
 #else
-  return cvtepi32_ps(cvttps_epi32(a));
+  return cvtepi32_ps(cvttps_epi32(a)); // TODO: Doesn't work for negative numbers
 #endif
 }
 
