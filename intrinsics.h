@@ -18,6 +18,7 @@ namespace intgemm {
 template <class Register> static inline Register loadu_ps(const float* mem_addr);
 template <class Register> static inline Register set1_epi16(int16_t to);
 template <class Register> static inline Register set1_epi32(int32_t to);
+template <class Register> static inline Register set1_pd(double to);
 template <class Register> static inline Register set1_ps(float to);
 template <class Register> static inline Register setzero_ps();
 template <class Register> static inline Register setzero_si();
@@ -72,6 +73,9 @@ INTGEMM_SSSE3 static inline __m128i maddubs_epi16(__m128i first, __m128i second)
 INTGEMM_SSE2 static inline __m128i max_epi16(__m128i first, __m128i second) {
   return _mm_max_epi16(first, second);
 }
+INTGEMM_SSE2 static inline __m128d max_pd(__m128d first, __m128d second) {
+  return _mm_max_pd(first, second);
+}
 INTGEMM_SSE2 static inline __m128 max_ps(__m128 first, __m128 second) {
   return _mm_max_ps(first, second);
 }
@@ -86,6 +90,9 @@ template <> INTGEMM_SSE2 inline __m128i set1_epi16<__m128i>(int16_t to) {
 }
 template <> INTGEMM_SSE2 inline __m128i set1_epi32<__m128i>(int32_t to) {
   return _mm_set1_epi32(to);
+}
+template <> INTGEMM_SSE2 inline __m128d set1_pd<__m128d>(double to) {
+  return _mm_set1_pd(to);
 }
 template <> INTGEMM_SSE2 inline __m128 set1_ps<__m128>(float to) {
   return _mm_set1_ps(to);
@@ -157,6 +164,9 @@ INTGEMM_AVX2 static inline __m256i max_epi8(__m256i first, __m256i second) {
 INTGEMM_AVX2 static inline __m256i max_epi16(__m256i first, __m256i second) {
   return _mm256_max_epi16(first, second);
 }
+INTGEMM_AVX2 static inline __m256d max_pd(__m256d first, __m256d second) {
+  return _mm256_max_pd(first, second);
+}
 INTGEMM_AVX2 static inline __m256 max_ps(__m256 first, __m256 second) {
   return _mm256_max_ps(first, second);
 }
@@ -171,6 +181,9 @@ template <> INTGEMM_AVX2 inline __m256i set1_epi16<__m256i>(int16_t to) {
 }
 template <> INTGEMM_AVX2 inline __m256i set1_epi32<__m256i>(int32_t to) {
   return _mm256_set1_epi32(to);
+}
+template <> INTGEMM_AVX2 inline __m256d set1_pd<__m256d>(double to) {
+  return _mm256_set1_pd(to);
 }
 template <> INTGEMM_AVX2 inline __m256 set1_ps<__m256>(float to) {
   return _mm256_set1_ps(to);
@@ -244,6 +257,9 @@ INTGEMM_AVX512BW static inline __m512i max_epi8(__m512i first, __m512i second) {
 INTGEMM_AVX512BW static inline __m512i max_epi16(__m512i first, __m512i second) {
   return _mm512_max_epi16(first, second);
 }
+INTGEMM_AVX512BW static inline __m512d max_pd(__m512d first, __m512d second) {
+  return _mm512_max_pd(first, second);
+}
 INTGEMM_AVX512BW static inline __m512 max_ps(__m512 first, __m512 second) {
   return _mm512_max_ps(first, second);
 }
@@ -258,6 +274,9 @@ template <> inline INTGEMM_AVX512BW __m512i set1_epi16<__m512i>(int16_t to) {
 }
 template <> inline INTGEMM_AVX512BW __m512i set1_epi32<__m512i>(int32_t to) {
   return _mm512_set1_epi32(to);
+}
+template <> inline INTGEMM_AVX512BW __m512d set1_pd<__m512d>(double to) {
+  return _mm512_set1_pd(to);
 }
 template <> inline INTGEMM_AVX512BW __m512 set1_ps<__m512>(float to) {
   return _mm512_set1_ps(to);

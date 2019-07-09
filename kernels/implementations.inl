@@ -105,6 +105,51 @@ CPU_ATTR static inline dvf add_bias(dvf input, const float* bias_addr, Index bia
 }
 
 /*
+ * ReLU
+ */
+CPU_ATTR static inline vi relu(vi input) {
+  static const auto vconst_zero = set1_epi32<vi>(0);
+#if defined(THIS_IS_SSE2)
+  return _mm_and_si128(input, _mm_cmplt_epi32(vconst_zero, input));
+#elif defined(THIS_IS_AVX2)
+  return _mm256_max_epi32(input, vconst_zero);
+#else
+  return _mm512_max_epi32(input, vconst_zero);
+#endif
+}
+
+CPU_ATTR static inline dvi relu(dvi input) {
+  return {
+    relu(input.first),
+    relu(input.second),
+  };
+}
+
+CPU_ATTR static inline vf relu(vf input) {
+  static const auto vconst_zero = set1_ps<vf>(0);
+  return max_ps(input, vconst_zero);
+}
+
+CPU_ATTR static inline dvf relu(dvf input) {
+  return {
+    relu(input.first),
+    relu(input.second),
+  };
+}
+
+CPU_ATTR static inline vd relu(vd input) {
+  static const auto vconst_zero = set1_pd<vd>(0);
+  return max_pd(input, vconst_zero);
+}
+
+CPU_ATTR static inline dvd relu(dvd input) {
+  return {
+    relu(input.first),
+    relu(input.second),
+  };
+}
+
+/*
  * Calculate floor: float -> float
  */
 CPU_ATTR static inline vf floor_ff(vf a) {
