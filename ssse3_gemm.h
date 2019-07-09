@@ -116,10 +116,10 @@ struct SSSE3_8bit {
   // Version with unsigned int + 127
   // Currently A is prepared by quantization but this could theoretically change.
   INTGEMM_SSSE3 static inline void PrepareA(const float *input, uint8_t *output, float quant_mult, Index rows, Index cols) {
-    Quantize(input, output, quant_mult, rows * cols);
+    QuantizeU(input, output, quant_mult, rows * cols);
   }
 
-  INTGEMM_SSSE3 static void Quantize(const float *input, uint8_t *output, float quant_mult, Index size) {
+  INTGEMM_SSSE3 static void QuantizeU(const float *input, uint8_t *output, float quant_mult, Index size) {
     assert(size % 16 == 0);
     assert(reinterpret_cast<uintptr_t>(input) % 16 == 0);
     assert(reinterpret_cast<uintptr_t>(output) % 16 == 0);

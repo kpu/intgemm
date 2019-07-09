@@ -191,11 +191,11 @@ struct AVX2_8bit {
 
   // Currently A is prepared by quantization but this could theoretically change.
   INTGEMM_AVX2 static inline void PrepareA(const float *input, uint8_t *output, float quant_mult, Index rows, Index cols) {
-    Quantize(input, output, quant_mult, rows * cols);
+    QuantizeU(input, output, quant_mult, rows * cols);
   }
 
   // Just quantize everything in order.
-  INTGEMM_AVX2 static void Quantize(const float *input, uint8_t *output, float quant_mult, Index size) {
+  INTGEMM_AVX2 static void QuantizeU(const float *input, uint8_t *output, float quant_mult, Index size) {
     assert(size % 32 == 0);
     assert(reinterpret_cast<uintptr_t>(input) % 32 == 0);
     avx2::QuantizeTile8 q(quant_mult);

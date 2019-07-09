@@ -203,7 +203,7 @@ struct AVX512_8bit {
   // Preparing A for the signed/unsigned multiplication. Using add 127
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
   INTGEMM_AVX512BW static inline void PrepareA(const float *input, uint8_t *output, float quant_mult, Index rows, Index cols) {
-    Quantize(input, output, quant_mult, rows * cols);
+    QuantizeU(input, output, quant_mult, rows * cols);
   }
 
   // Technically output can be unaligned in Quantize.
@@ -211,7 +211,7 @@ struct AVX512_8bit {
   // Convert to 8-bit signed integers.
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 
-  INTGEMM_AVX512BW static void Quantize(const float *input, uint8_t *output, float quant_mult, Index size) {
+  INTGEMM_AVX512BW static void QuantizeU(const float *input, uint8_t *output, float quant_mult, Index size) {
     assert(size % 16 == 0);
     assert(reinterpret_cast<uintptr_t>(input) % 64 == 0);
     const __m512i neg127 = _mm512_set1_epi32(-127);

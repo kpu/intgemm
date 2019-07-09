@@ -78,7 +78,13 @@ struct Unsupported_8bit {
   static void Quantize(const float *, int8_t *, float, Index) {
     throw UnsupportedCPU();
   }
+  static void QuantizeU(const float *, uint8_t *, float, Index) {
+    throw UnsupportedCPU();
+  }
   static void PrepareB(const float *, int8_t *, float, Index, Index) {
+    throw UnsupportedCPU();
+  }
+  static void PrepareBiasFor8(const float *input, float *bias, float alpha, Index rows, Index cols) {
     throw UnsupportedCPU();
   }
   static void SelectColumnsB(const int8_t *, int8_t *, Index, const Index *, const Index *) {
@@ -208,8 +214,18 @@ struct Int8 {
     Quantize(input, output, quant_mult, rows * cols);
   }
 
+  static inline void PrepareANew(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
+    QuantizeU(input, reinterpret_cast<uint8_t *>(output), quant_mult, rows * cols);
+  }
+
   // Multiply floats by quant_mult then convert to 8-bit integers with saturation.
   static void (*Quantize)(const float *input, int8_t *output, float quant_mult, Index size);
+
+  // Multiply floats by quant_mult then convert to 8-bit integers with saturation.
+  static void (*QuantizeU)(const float *input, uint8_t *output, float quant_mult, Index size);
+
+  // PrepareB
+  static void (*PrepareBiasFor8)(const float *input, float *bias, float alpha, Index rows, Index cols);
   
   // Warning: the output of PrepareB depends on the CPU.
   // It will match the Multiply function on the same CPU though.
