@@ -34,6 +34,15 @@ namespace kernels {
 /*
  * Write
  */
+CPU_ATTR static inline void write(vi input, int* output, Index offset) {
+  *reinterpret_cast<vi*>(output + offset) = input;
+}
+
+CPU_ATTR static inline void write(dvi input, int* output, Index offset) {
+  write(input.first, output, offset);
+  write(input.second, output, offset + sizeof(dvi::type) / 4);
+}
+
 CPU_ATTR static inline void write(vf input, float* output, Index offset) {
   *reinterpret_cast<vf*>(output + offset) = input;
 }
@@ -41,6 +50,15 @@ CPU_ATTR static inline void write(vf input, float* output, Index offset) {
 CPU_ATTR static inline void write(dvf input, float* output, Index offset) {
   write(input.first, output, offset);
   write(input.second, output, offset + sizeof(dvf::type) / 4);
+}
+
+CPU_ATTR static inline void write(vd input, double* output, Index offset) {
+  *reinterpret_cast<vd*>(output + offset) = input;
+}
+
+CPU_ATTR static inline void write(dvd input, double* output, Index offset) {
+  write(input.first, output, offset);
+  write(input.second, output, offset + sizeof(dvd::type) / 8);
 }
 
 /*
