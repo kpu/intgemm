@@ -10,3 +10,5 @@
     if (fabs((actual) - (expected)) < epsilon) { SUCCEED(); } \
     else { CHECK((actual) == (expected)); } \
   } while(0)
+
+#define KERNEL_TEST_CASE(name) TEST_CASE("Kernel: " name, "[kernel_test]")

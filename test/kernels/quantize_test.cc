@@ -26,14 +26,14 @@ void kernel_quantize_test() {
 }
 
 template INTGEMM_SSE2 void kernel_quantize_test<CPUType::SSE2>();
-TEST_CASE("Kernel: quantize SSE2",) { return kernel_quantize_test<CPUType::SSE2>(); }
+KERNEL_TEST_CASE("quantize SSE2") { return kernel_quantize_test<CPUType::SSE2>(); }
 
 template INTGEMM_AVX2 void kernel_quantize_test<CPUType::AVX2>();
-TEST_CASE("Kernel: quantize AVX2",) { return kernel_quantize_test<CPUType::AVX2>(); }
+KERNEL_TEST_CASE("quantize AVX2") { return kernel_quantize_test<CPUType::AVX2>(); }
 
 #ifndef INTGEMM_NO_AVX512
 template INTGEMM_AVX512BW void kernel_quantize_test<CPUType::AVX512BW>();
-TEST_CASE("Kernel: quantize AVX512BW",) { return kernel_quantize_test<CPUType::AVX512BW>(); }
+KERNEL_TEST_CASE("quantize AVX512BW") { return kernel_quantize_test<CPUType::AVX512BW>(); }
 #endif
 
 }

@@ -26,14 +26,14 @@ void kernel_unquantize_test() {
 }
 
 template INTGEMM_SSE2 void kernel_unquantize_test<CPUType::SSE2>();
-TEST_CASE("Kernel: unquantize SSE2",) { return kernel_unquantize_test<CPUType::SSE2>(); }
+KERNEL_TEST_CASE("unquantize SSE2") { return kernel_unquantize_test<CPUType::SSE2>(); }
 
 template INTGEMM_AVX2 void kernel_unquantize_test<CPUType::AVX2>();
-TEST_CASE("Kernel: unquantize AVX2",) { return kernel_unquantize_test<CPUType::AVX2>(); }
+KERNEL_TEST_CASE("unquantize AVX2") { return kernel_unquantize_test<CPUType::AVX2>(); }
 
 #ifndef INTGEMM_NO_AVX512
 template INTGEMM_AVX512BW void kernel_unquantize_test<CPUType::AVX512BW>();
-TEST_CASE("Kernel: unquantize AVX512BW",) { return kernel_unquantize_test<CPUType::AVX512BW>(); }
+KERNEL_TEST_CASE("unquantize AVX512BW") { return kernel_unquantize_test<CPUType::AVX512BW>(); }
 #endif
 
 }

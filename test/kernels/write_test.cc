@@ -27,24 +27,24 @@ void kernel_write_test() {
 template INTGEMM_SSE2 void kernel_write_test<CPUType::SSE2, int>();
 template INTGEMM_SSE2 void kernel_write_test<CPUType::SSE2, float>();
 template INTGEMM_SSE2 void kernel_write_test<CPUType::SSE2, double>();
-TEST_CASE("Kernel: write/int SSE2",) { return kernel_write_test<CPUType::SSE2, int>(); }
-TEST_CASE("Kernel: write/float SSE2",) { return kernel_write_test<CPUType::SSE2, float>(); }
-TEST_CASE("Kernel: write/double SSE2",) { return kernel_write_test<CPUType::SSE2, double>(); }
+KERNEL_TEST_CASE("write/int SSE2") { return kernel_write_test<CPUType::SSE2, int>(); }
+KERNEL_TEST_CASE("write/float SSE2") { return kernel_write_test<CPUType::SSE2, float>(); }
+KERNEL_TEST_CASE("write/double SSE2") { return kernel_write_test<CPUType::SSE2, double>(); }
 
 template INTGEMM_AVX2 void kernel_write_test<CPUType::AVX2, int>();
 template INTGEMM_AVX2 void kernel_write_test<CPUType::AVX2, float>();
 template INTGEMM_AVX2 void kernel_write_test<CPUType::AVX2, double>();
-TEST_CASE("Kernel: write/int AVX2",) { return kernel_write_test<CPUType::AVX2, int>(); }
-TEST_CASE("Kernel: write/float AVX2",) { return kernel_write_test<CPUType::AVX2, float>(); }
-TEST_CASE("Kernel: write/double AVX2",) { return kernel_write_test<CPUType::AVX2, double>(); }
+KERNEL_TEST_CASE("write/int AVX2") { return kernel_write_test<CPUType::AVX2, int>(); }
+KERNEL_TEST_CASE("write/float AVX2") { return kernel_write_test<CPUType::AVX2, float>(); }
+KERNEL_TEST_CASE("write/double AVX2") { return kernel_write_test<CPUType::AVX2, double>(); }
 
 #ifndef INTGEMM_NO_AVX512
 template INTGEMM_AVX512BW void kernel_write_test<CPUType::AVX512BW, int>();
 template INTGEMM_AVX512BW void kernel_write_test<CPUType::AVX512BW, float>();
 template INTGEMM_AVX512BW void kernel_write_test<CPUType::AVX512BW, double>();
-TEST_CASE("Kernel: write/int AVX512BW",) { return kernel_write_test<CPUType::AVX512BW, int>(); }
-TEST_CASE("Kernel: write/float AVX512BW",) { return kernel_write_test<CPUType::AVX512BW, float>(); }
-TEST_CASE("Kernel: write/double AVX512BW",) { return kernel_write_test<CPUType::AVX512BW, double>(); }
+KERNEL_TEST_CASE("write/int AVX512BW") { return kernel_write_test<CPUType::AVX512BW, int>(); }
+KERNEL_TEST_CASE("write/float AVX512BW") { return kernel_write_test<CPUType::AVX512BW, float>(); }
+KERNEL_TEST_CASE("write/double AVX512BW") { return kernel_write_test<CPUType::AVX512BW, double>(); }
 #endif
 
 }

@@ -27,24 +27,24 @@ void kernel_relu_test() {
 template INTGEMM_SSE2 void kernel_relu_test<CPUType::SSE2, int>();
 template INTGEMM_SSE2 void kernel_relu_test<CPUType::SSE2, float>();
 template INTGEMM_SSE2 void kernel_relu_test<CPUType::SSE2, double>();
-TEST_CASE("Kernel: relu/int SSE2",) { return kernel_relu_test<CPUType::SSE2, int>(); }
-TEST_CASE("Kernel: relu/float SSE2",) { return kernel_relu_test<CPUType::SSE2, float>(); }
-TEST_CASE("Kernel: relu/double SSE2",) { return kernel_relu_test<CPUType::SSE2, double>(); }
+KERNEL_TEST_CASE("relu/int SSE2") { return kernel_relu_test<CPUType::SSE2, int>(); }
+KERNEL_TEST_CASE("relu/float SSE2") { return kernel_relu_test<CPUType::SSE2, float>(); }
+KERNEL_TEST_CASE("relu/double SSE2") { return kernel_relu_test<CPUType::SSE2, double>(); }
 
 template INTGEMM_AVX2 void kernel_relu_test<CPUType::AVX2, int>();
 template INTGEMM_AVX2 void kernel_relu_test<CPUType::AVX2, float>();
 template INTGEMM_AVX2 void kernel_relu_test<CPUType::AVX2, double>();
-TEST_CASE("Kernel: relu/int AVX2",) { return kernel_relu_test<CPUType::AVX2, int>(); }
-TEST_CASE("Kernel: relu/float AVX2",) { return kernel_relu_test<CPUType::AVX2, float>(); }
-TEST_CASE("Kernel: relu/double AVX2",) { return kernel_relu_test<CPUType::AVX2, double>(); }
+KERNEL_TEST_CASE("relu/int AVX2") { return kernel_relu_test<CPUType::AVX2, int>(); }
+KERNEL_TEST_CASE("relu/float AVX2") { return kernel_relu_test<CPUType::AVX2, float>(); }
+KERNEL_TEST_CASE("relu/double AVX2") { return kernel_relu_test<CPUType::AVX2, double>(); }
 
 #ifndef INTGEMM_NO_AVX512
 template INTGEMM_AVX512BW void kernel_relu_test<CPUType::AVX512BW, int>();
 template INTGEMM_AVX512BW void kernel_relu_test<CPUType::AVX512BW, float>();
 template INTGEMM_AVX512BW void kernel_relu_test<CPUType::AVX512BW, double>();
-TEST_CASE("Kernel: relu/int AVX512BW",) { return kernel_relu_test<CPUType::AVX512BW, int>(); }
-TEST_CASE("Kernel: relu/float AVX512BW",) { return kernel_relu_test<CPUType::AVX512BW, float>(); }
-TEST_CASE("Kernel: relu/double AVX512BW",) { return kernel_relu_test<CPUType::AVX512BW, double>(); }
+KERNEL_TEST_CASE("relu/int AVX512BW") { return kernel_relu_test<CPUType::AVX512BW, int>(); }
+KERNEL_TEST_CASE("relu/float AVX512BW") { return kernel_relu_test<CPUType::AVX512BW, float>(); }
+KERNEL_TEST_CASE("relu/double AVX512BW") { return kernel_relu_test<CPUType::AVX512BW, double>(); }
 #endif
 
 }

@@ -27,14 +27,14 @@ void kernel_add_bias_test() {
 }
 
 template INTGEMM_SSE2 void kernel_add_bias_test<CPUType::SSE2, float>();
-TEST_CASE("Kernel: add_bias/float SSE2",) { return kernel_add_bias_test<CPUType::SSE2, float>(); }
+KERNEL_TEST_CASE("add_bias/float SSE2") { return kernel_add_bias_test<CPUType::SSE2, float>(); }
 
 template INTGEMM_AVX2 void kernel_add_bias_test<CPUType::AVX2, float>();
-TEST_CASE("Kernel: add_bias/float AVX2",) { return kernel_add_bias_test<CPUType::AVX2, float>(); }
+KERNEL_TEST_CASE("add_bias/float AVX2") { return kernel_add_bias_test<CPUType::AVX2, float>(); }
 
 #ifndef INTGEMM_NO_AVX512
 template INTGEMM_AVX512BW void kernel_add_bias_test<CPUType::AVX512BW, float>();
-TEST_CASE("Kernel: add_bias/float AVX512BW",) { return kernel_add_bias_test<CPUType::AVX512BW, float>(); }
+KERNEL_TEST_CASE("add_bias/float AVX512BW") { return kernel_add_bias_test<CPUType::AVX512BW, float>(); }
 #endif
 
 }

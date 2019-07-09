@@ -32,6 +32,6 @@ void kernel_sigmoid_test() {
 }
 
 template INTGEMM_AVX2 void kernel_sigmoid_test<CPUType::AVX2>();
-TEST_CASE("Kernel: sigmoid AVX2",) { return kernel_sigmoid_test<CPUType::AVX2>(); }
+KERNEL_TEST_CASE("sigmoid AVX2") { return kernel_sigmoid_test<CPUType::AVX2>(); }
 
 }
