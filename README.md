@@ -28,11 +28,11 @@ Both A and B should be prepared before multiplication.
  * B is width x B_cols.
  */
 /* Prepare A for multiplication.  This might be offline or on the fly. */
-intgemm::Int16::PrepareA(A, A_prepared, quant_mult, A_rows, width);
+intgemm::Int16::PrepareA(A.begin(), A_prepared.begin(), quant_mult, A_rows, width);
 /* Prepare B for multiplication.  This is typically done offline. */
-intgemm::Int16::PrepareB(B, B_prepared, quant_mult, width, B_cols);
+intgemm::Int16::PrepareB(B.begin(), B_prepared.begin(), quant_mult, width, B_cols);
 /* Multiply and produce results in C */
-intgemm::Int16::Multiply(A_prepared.begin(), B_prepared.begin(), C.begin(), intgemm::CreatePostprocessPipeline(intgemm::Unquantize(1.0 / (quant_mult * quant_mult))), A_rows, width, B_cols);
+intgemm::Int16::Multiply(A_prepared.begin(), B_prepared.begin(), A_rows, width, B_cols, intgemm::callbacks::UnquantizeAndWrite(1.0 / (quant_mult * quant_mult), C.begin()));
 ```
 For 8-bit, use `Int8` instead of `Int16`.
 
