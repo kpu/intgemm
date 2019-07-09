@@ -1,6 +1,7 @@
 #include "callbacks/configs.h"
 
 #include "intrinsics.h"
+#include "kernels.h"
 #include "types.h"
 #include "vec_traits.h"
 
@@ -25,9 +26,15 @@
 #define dvd dvector_t<CPUType::CPU_NAME, double>
 
 #if defined(THIS_IS_SSE2)
-#define vinput dvector_t<CPUType::SSE2, int>
+  #define vinput dvector_t<CPUType::SSE2, int>
+  #define vinput_i vector_t<CPUType::SSE2, int>
+  #define vinput_f vector_t<CPUType::SSE2, float>
+  #define vinput_d vector_t<CPUType::SSE2, double>
 #else
-#define vinput vector_t<CPUType::AVX2, int>
+  #define vinput vector_t<CPUType::AVX2, int>
+  #define vinput_i vector_t<CPUType::AVX2, int>
+  #define vinput_f vector_t<CPUType::AVX2, float>
+  #define vinput_d vector_t<CPUType::AVX2, double>
 #endif
 
 namespace intgemm {
@@ -53,6 +60,23 @@ public:
   CPU_ATTR void operator()(vinput, Index, Index, Index, Index, Index) {}
 };
 
+/*
+ * UnquantizeAndWrite
+ */
+template <> class CallbackImpl<UnquantizeAndWrite, CPUType::CPU_NAME> {
+public:
+  CPU_ATTR CallbackImpl(const UnquantizeAndWrite& config) : config(config) {
+    unquant_mult = set1_ps<vinput_f>(config.unquant_mult);
+  }
+  CPU_ATTR void operator()(vinput input, Index A_rowidx, Index B_colidx, Index A_rows, Index width, Index B_cols) {
+    auto result = kernels::unquantize(input, unquant_mult);
+    kernels::write(result, config.addr, A_rowidx * B_cols + B_colidx);
+  }
+private:
+  UnquantizeAndWrite config;
+  vinput_f unquant_mult;
+};
+
 }
 }
 
@@ -65,3 +89,6 @@ public:
 #undef dvf
 #undef dvd
 #undef vinput
+#undef vinput_i
+#undef vinput_f
+#undef vinput_d

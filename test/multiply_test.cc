@@ -361,7 +361,7 @@ template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_co
   Routine::PrepareB(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
 
   AlignedVector<float> test_C(A_rows * B_cols);
-  Routine::Multiply(A_prep.begin(), B_prep.begin(), A_rows, width, B_cols, callbacks::Dummy());
+  Routine::Multiply(A_prep.begin(), B_prep.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndWrite(unquant_mult, test_C.begin()));
 
   AlignedVector<Integer> B_quant(B.size());
   Routine::Quantize(B.begin(), B_quant.begin(), quant_mult, B.size());
