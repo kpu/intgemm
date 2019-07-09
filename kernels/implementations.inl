@@ -245,6 +245,22 @@ CPU_ATTR static inline vf sigmoid(vf input) {
 #endif
 }
 
+/*
+ * Tanh
+ */
+CPU_ATTR static inline vf tanh(vf input) {
+#if defined(THIS_IS_SSE2)
+  assert(false && "SSE2 is not supported");
+#else
+  const static auto vconst_zero = setzero_ps<vf>();
+
+  auto e_x = exp_approx_taylor(input);
+  auto e_minus_x = exp_approx_taylor(sub_ps(vconst_zero, input));
+
+  return div_ps(sub_ps(e_x, e_minus_x), add_ps(e_x, e_minus_x));
+#endif
+}
+
 }
 }
 
