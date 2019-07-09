@@ -77,6 +77,24 @@ private:
   vinput_f unquant_mult;
 };
 
+/*
+ * UnquantizeAndAddBiasAndWrite
+ */
+template <> class CallbackImpl<UnquantizeAndAddBiasAndWrite, CPUType::CPU_NAME> {
+public:
+  CPU_ATTR CallbackImpl(const UnquantizeAndAddBiasAndWrite& config) : config(config) {
+    unquant_mult = set1_ps<vinput_f>(config.unquant_mult);
+  }
+  CPU_ATTR void operator()(vinput input, Index A_rowidx, Index B_colidx, Index A_rows, Index width, Index B_cols) {
+    auto result = kernels::unquantize(input, unquant_mult);
+    result = kernels::add_bias(result, config.bias_addr, B_colidx);
+    kernels::write(result, config.output_addr, A_rowidx * B_cols + B_colidx);
+  }
+private:
+  UnquantizeAndAddBiasAndWrite config;
+  vinput_f unquant_mult;
+};
+
 }
 }
 

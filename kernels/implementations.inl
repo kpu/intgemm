@@ -72,6 +72,21 @@ CPU_ATTR static inline dvf unquantize(dvi input, vf quant_mult) {
 }
 
 /*
+ * Add a bias term
+ */
+CPU_ATTR static inline vf add_bias(vf input, const float* bias_addr, Index bias_offset) {
+  auto bias_term = *reinterpret_cast<const vf*>(bias_addr + bias_offset);
+  return add_ps(input, bias_term);
+}
+
+CPU_ATTR static inline dvf add_bias(dvf input, const float* bias_addr, Index bias_offset) {
+  return {
+    add_bias(input.first, bias_addr, bias_offset),
+    add_bias(input.second, bias_addr, bias_offset + sizeof(dvf::type) / 4),
+  };
+}
+
+/*
  * Calculate floor: float -> float
  */
 CPU_ATTR static inline vf floor_ff(vf a) {
