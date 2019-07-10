@@ -178,7 +178,7 @@ template <typename Callback> target static void Multiply(const int16_t *A, const
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
       /*The specific implementation may need to reduce further.*/ \
       auto total = PermuteSummer(pack0123, pack4567); \
-      callback_impl(total, A_rowidx, B0_colidx, A_rows, width, B_cols); \
+      callback_impl(total, callbacks::OutputBufferInfo(A_rowidx, B0_colidx, A_rows, B_cols)); \
     } \
   } \
 } \
@@ -394,7 +394,7 @@ INTGEMM_SSSE3 inline static void InnerINTGEMM_SSSE3(
       Integer pack0123 = Pack0123(sum0, sum1, sum2, sum3); \
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
       auto total = PermuteSummer(pack0123, pack4567); \
-      callback_impl(total, A_rowidx, B0_colidx, A_rows, width, B_cols); \
+      callback_impl(total, callbacks::OutputBufferInfo(A_rowidx, B0_colidx, A_rows, B_cols)); \
     } \
   } \
 } \

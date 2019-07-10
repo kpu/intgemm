@@ -324,7 +324,7 @@ struct AVX512_8bit {
         Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7);
 
         auto total = PermuteSummer(pack0123, pack4567);
-        callback_impl(total, A_rowidx, B0_colidx, A_rows, width, B_cols);
+        callback_impl(total, callbacks::OutputBufferInfo(A_rowidx, B0_colidx, A_rows, B_cols));
       }
     }
   }

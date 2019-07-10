@@ -1,4 +1,5 @@
 #include "callbacks/configs.h"
+#include "callbacks/output_buffer_info.h"
 
 #include "intrinsics.h"
 #include "kernels.h"
@@ -57,7 +58,7 @@ namespace callbacks {
 template <> class CallbackImpl<CPUType::CPU_NAME, Dummy> {
 public:
   CPU_ATTR CallbackImpl(const Dummy&) {}
-  CPU_ATTR void operator()(vinput, Index, Index, Index, Index, Index) {}
+  CPU_ATTR void operator()(vinput, const OutputBufferInfo&) {}
 };
 
 /*
@@ -68,9 +69,9 @@ public:
   CPU_ATTR CallbackImpl(const UnquantizeAndWrite& config) : config(config) {
     unquant_mult = set1_ps<vinput_f>(config.unquant_mult);
   }
-  CPU_ATTR void operator()(vinput input, Index A_rowidx, Index B_colidx, Index A_rows, Index width, Index B_cols) {
+  CPU_ATTR void operator()(vinput input, const OutputBufferInfo& info) {
     auto result = kernels::unquantize(input, unquant_mult);
-    kernels::write(result, config.addr, A_rowidx * B_cols + B_colidx);
+    kernels::write(result, config.addr, info.row_idx * info.cols + info.col_idx);
   }
 private:
   UnquantizeAndWrite config;
@@ -85,10 +86,10 @@ public:
   CPU_ATTR CallbackImpl(const UnquantizeAndAddBiasAndWrite& config) : config(config) {
     unquant_mult = set1_ps<vinput_f>(config.unquant_mult);
   }
-  CPU_ATTR void operator()(vinput input, Index A_rowidx, Index B_colidx, Index A_rows, Index width, Index B_cols) {
+  CPU_ATTR void operator()(vinput input, const OutputBufferInfo& info) {
     auto result = kernels::unquantize(input, unquant_mult);
-    result = kernels::add_bias(result, config.bias_addr, B_colidx);
-    kernels::write(result, config.output_addr, A_rowidx * B_cols + B_colidx);
+    result = kernels::add_bias(result, config.bias_addr, info.col_idx);
+    kernels::write(result, config.output_addr, info.row_idx * info.cols + info.col_idx);
   }
 private:
   UnquantizeAndAddBiasAndWrite config;
