@@ -40,7 +40,7 @@
 namespace intgemm {
 namespace callbacks {
 
-template <typename CallbackConfig, CPUType CpuType>
+template <CPUType CpuType, typename CallbackConfig>
 class CallbackImpl;
 
 }}
@@ -54,7 +54,7 @@ namespace callbacks {
 /*
  * Dummy
  */
-template <> class CallbackImpl<Dummy, CPUType::CPU_NAME> {
+template <> class CallbackImpl<CPUType::CPU_NAME, Dummy> {
 public:
   CPU_ATTR CallbackImpl(const Dummy&) {}
   CPU_ATTR void operator()(vinput, Index, Index, Index, Index, Index) {}
@@ -63,7 +63,7 @@ public:
 /*
  * UnquantizeAndWrite
  */
-template <> class CallbackImpl<UnquantizeAndWrite, CPUType::CPU_NAME> {
+template <> class CallbackImpl<CPUType::CPU_NAME, UnquantizeAndWrite> {
 public:
   CPU_ATTR CallbackImpl(const UnquantizeAndWrite& config) : config(config) {
     unquant_mult = set1_ps<vinput_f>(config.unquant_mult);
@@ -80,7 +80,7 @@ private:
 /*
  * UnquantizeAndAddBiasAndWrite
  */
-template <> class CallbackImpl<UnquantizeAndAddBiasAndWrite, CPUType::CPU_NAME> {
+template <> class CallbackImpl<CPUType::CPU_NAME, UnquantizeAndAddBiasAndWrite> {
 public:
   CPU_ATTR CallbackImpl(const UnquantizeAndAddBiasAndWrite& config) : config(config) {
     unquant_mult = set1_ps<vinput_f>(config.unquant_mult);

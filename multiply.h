@@ -134,7 +134,7 @@ template <typename Callback> target static void Multiply(const int16_t *A, const
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0); \
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0); \
   const int simd_width = width / (sizeof(Integer) / sizeof(int16_t)); \
-  auto callback_impl = callbacks::CallbackImpl<Callback, cpu_type>(callback); \
+  auto callback_impl = callbacks::CallbackImpl<cpu_type, Callback>(callback); \
   const Integer *B0_col = reinterpret_cast<const Integer *>(B); \
   for (Index B0_colidx = 0; B0_colidx < B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
     /* Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.*/ \
@@ -338,7 +338,7 @@ INTGEMM_SSSE3 inline static void InnerINTGEMM_SSSE3(
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0); \
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0); \
   const int simd_width = width / sizeof(Integer); \
-  auto callback_impl = callbacks::CallbackImpl<Callback, cpu_type>(callback); \
+  auto callback_impl = callbacks::CallbackImpl<cpu_type, Callback>(callback); \
   const Integer *B0_col = reinterpret_cast<const Integer*>(B); \
   /*Go over 8 columns of B at a time.*/ \
   for (Index B0_colidx = 0; B0_colidx != B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \

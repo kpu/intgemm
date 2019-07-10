@@ -227,7 +227,7 @@ struct AVX512_8bit {
     assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0);
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0);
     // There's 8 results for INTGEMM_AVX2 to handle.
-    auto callback_impl = callbacks::CallbackImpl<Callback, CPUType::AVX2>(callback);
+    auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
     const int simd_width = width / sizeof(Integer);
     const Integer *B0_col = reinterpret_cast<const Integer*>(B);
     // Added for AVX512.
