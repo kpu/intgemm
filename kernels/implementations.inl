@@ -175,7 +175,7 @@ CPU_ATTR static inline vf floor_ff(vf input) {
 CPU_ATTR static inline vf exp_approx_taylor(vf x) {
 #if defined(THIS_IS_SSE2)
   assert(false && "SSE2 is not supported");
-#else
+#elif defined(THIS_IS_AVX2)
   static constexpr int EXP_MIN = -20;
   static constexpr int EXP_MAX = 20;
   static constexpr float EXP_LOOKUP[EXP_MAX - EXP_MIN + 1] = {
@@ -226,6 +226,8 @@ CPU_ATTR static inline vf exp_approx_taylor(vf x) {
 
   auto ea = i32gather_ps<4>(EXP_LOOKUP + EXP_MAX, cvtps_epi32(a));
   return mul_ps(ea, result);
+#else
+  assert(false && "AVX512 is not supported"); // missing floor_ff for AVX512BW
 #endif
 }
 
