@@ -150,6 +150,35 @@ CPU_ATTR static inline dvd relu(dvd input) {
 }
 
 /*
+ * Highway: weight * input1 + ([1] - weight) * input2,  [0] <= weight <= [1]
+ */
+CPU_ATTR static inline vf highway(vf input1, vf input2, vf weight) {
+  static const auto vconst_one = set1_ps<vf>(1.f);
+  return add_ps(mul_ps(input1, weight), mul_ps(input2, sub_ps(vconst_one, weight)));
+}
+
+CPU_ATTR static inline dvf highway(dvf input1, dvf input2, dvf weight) {
+  static const auto vconst_one = set1_ps<vf>(1.f);
+  return {
+    highway(input1.first, input2.first, weight.first),
+    highway(input1.second, input2.second, weight.second),
+  };
+}
+
+CPU_ATTR static inline vd highway(vd input1, vd input2, vd weight) {
+  static const auto vconst_one = set1_pd<vd>(1.f);
+  return add_pd(mul_pd(input1, weight), mul_pd(input2, sub_pd(vconst_one, weight)));
+}
+
+CPU_ATTR static inline dvd highway(dvd input1, dvd input2, dvd weight) {
+  static const auto vconst_one = set1_pd<vd>(1.f);
+  return {
+    highway(input1.first, input2.first, weight.first),
+    highway(input1.second, input2.second, weight.second),
+  };
+}
+
+/*
  * Calculate floor: float -> float
  */
 CPU_ATTR static inline vf floor_ff(vf input) {

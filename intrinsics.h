@@ -37,6 +37,9 @@ INTGEMM_SSE2 static inline __m128i add_epi32(__m128i first, __m128i second) {
 INTGEMM_SSE2 static inline __m128i adds_epi16(__m128i first, __m128i second) {
   return _mm_adds_epi16(first, second);
 }
+INTGEMM_SSE2 static inline __m128d add_pd(__m128d a, __m128d b) {
+  return _mm_add_pd(a, b);
+}
 INTGEMM_SSE2 static inline __m128 add_ps(__m128 a, __m128 b) {
   return _mm_add_ps(a, b);
 }
@@ -82,6 +85,9 @@ INTGEMM_SSE2 static inline __m128 max_ps(__m128 first, __m128 second) {
 INTGEMM_SSE2 static inline __m128 min_ps(__m128 a, __m128 b) {
   return _mm_min_ps(a, b);
 }
+INTGEMM_SSE2 static inline __m128d mul_pd(__m128d a, __m128d b) {
+  return _mm_mul_pd(a, b);
+}
 INTGEMM_SSE2 static inline __m128 mul_ps(__m128 a, __m128 b) {
   return _mm_mul_ps(a, b);
 }
@@ -109,6 +115,9 @@ INTGEMM_SSSE3 static inline __m128i sign_epi8(__m128i first, __m128i second) {
 INTGEMM_SSE2 static inline void storeu_ps(float* mem_addr, __m128 a) {
   _mm_storeu_ps(mem_addr, a);
 }
+INTGEMM_SSE2 static inline __m128d sub_pd(__m128d a, __m128d b) {
+  return _mm_sub_pd(a, b);
+}
 INTGEMM_SSE2 static inline __m128 sub_ps(__m128 a, __m128 b) {
   return _mm_sub_ps(a, b);
 }
@@ -126,6 +135,9 @@ INTGEMM_AVX2 static inline __m256i add_epi32(__m256i first, __m256i second) {
 }
 INTGEMM_AVX2 static inline __m256i adds_epi16(__m256i first, __m256i second) {
   return _mm256_adds_epi16(first, second);
+}
+INTGEMM_AVX2 static inline __m256d add_pd(__m256d a, __m256d b) {
+  return _mm256_add_pd(a, b);
 }
 INTGEMM_AVX2 static inline __m256 add_ps(__m256 a, __m256 b) {
   return _mm256_add_ps(a, b);
@@ -173,6 +185,9 @@ INTGEMM_AVX2 static inline __m256 max_ps(__m256 first, __m256 second) {
 INTGEMM_AVX2 static inline __m256 min_ps(__m256 a, __m256 b) {
   return _mm256_min_ps(a, b);
 }
+INTGEMM_AVX2 static inline __m256d mul_pd(__m256d a, __m256d b) {
+  return _mm256_mul_pd(a, b);
+}
 INTGEMM_AVX2 static inline __m256 mul_ps(__m256 a, __m256 b) {
   return _mm256_mul_ps(a, b);
 }
@@ -200,6 +215,9 @@ INTGEMM_AVX2 static inline __m256i sign_epi8(__m256i first, __m256i second) {
 INTGEMM_AVX2 static inline void storeu_ps(float* mem_addr, __m256 a) {
   _mm256_storeu_ps(mem_addr, a);
 }
+INTGEMM_AVX2 static inline __m256d sub_pd(__m256d a, __m256d b) {
+  return _mm256_sub_pd(a, b);
+}
 INTGEMM_AVX2 static inline __m256 sub_ps(__m256 a, __m256 b) {
   return _mm256_sub_ps(a, b);
 }
@@ -219,6 +237,9 @@ INTGEMM_AVX512BW static inline __m512i add_epi32(__m512i first, __m512i second) 
 }
 INTGEMM_AVX512BW static inline __m512i adds_epi16(__m512i first, __m512i second) {
   return _mm512_adds_epi16(first, second);
+}
+INTGEMM_AVX512BW static inline __m512d add_pd(__m512d a, __m512d b) {
+  return _mm512_add_pd(a, b);
 }
 INTGEMM_AVX512BW static inline __m512 add_ps(__m512 a, __m512 b) {
   return _mm512_add_ps(a, b);
@@ -266,6 +287,9 @@ INTGEMM_AVX512BW static inline __m512 max_ps(__m512 first, __m512 second) {
 INTGEMM_AVX512BW static inline __m512 min_ps(__m512 a, __m512 b) {
   return _mm512_min_ps(a, b);
 }
+INTGEMM_AVX512BW static inline __m512d mul_pd(__m512d a, __m512d b) {
+  return _mm512_mul_pd(a, b);
+}
 INTGEMM_AVX512BW static inline __m512 mul_ps(__m512 a, __m512 b) {
   return _mm512_mul_ps(a, b);
 }
@@ -292,6 +316,9 @@ template <> INTGEMM_AVX512BW inline __m512i setzero_si<__m512i>() {
  */
 INTGEMM_AVX512BW static inline void storeu_ps(float* mem_addr, __m512 a) {
   _mm512_storeu_ps(mem_addr, a);
+}
+INTGEMM_AVX512BW static inline __m512d sub_pd(__m512d a, __m512d b) {
+  return _mm512_sub_pd(a, b);
 }
 INTGEMM_AVX512BW static inline __m512 sub_ps(__m512 a, __m512 b) {
   return _mm512_sub_ps(a, b);
