@@ -118,7 +118,17 @@ CPU_ATTR static inline vf floor_ff(vf input) {
 #elif defined(THIS_IS_AVX2)
   return _mm256_floor_ps(input);
 #else
-  assert(false && "AVX512BW is not supported");
+  // TODO: It should work but compiler throw the error "incorrect rounding operand"
+  // return _mm512_roundscale_round_ps(input, 0, _MM_FROUND_FLOOR);
+
+  static const auto vconst_zero = setzero_ps<vf>();
+  static const auto vconst_one = set1_ps<vf>(1.f);
+
+  auto result = cvtepi32_ps(cvttps_epi32(input));
+  auto negatives = _mm512_cmp_ps_mask(input, vconst_zero, _CMP_LT_OQ);
+  auto nonintegers = _mm512_cmp_ps_mask(input, result, _CMP_NEQ_OQ);
+
+  return _mm512_mask_blend_ps(_mm512_kand(negatives, nonintegers), result, sub_ps(result, vconst_one));
 #endif
 }
 
@@ -128,7 +138,7 @@ CPU_ATTR static inline vf floor_ff(vf input) {
 CPU_ATTR static inline vf exp_approx_taylor(vf x) {
 #if defined(THIS_IS_SSE2)
   assert(false && "SSE2 is not supported");
-#elif defined(THIS_IS_AVX2)
+#else
   static constexpr int EXP_MIN = -20;
   static constexpr int EXP_MAX = 20;
   static constexpr float EXP_LOOKUP[EXP_MAX - EXP_MIN + 1] = {
@@ -179,8 +189,6 @@ CPU_ATTR static inline vf exp_approx_taylor(vf x) {
 
   auto ea = i32gather_ps<4>(EXP_LOOKUP + EXP_MAX, cvtps_epi32(a));
   return mul_ps(ea, result);
-#else
-  assert(false && "AVX512 is not supported"); // missing floor_ff for AVX512BW
 #endif
 }
 
@@ -189,7 +197,7 @@ CPU_ATTR static inline vf exp_approx_taylor(vf x) {
  */
 CPU_ATTR static inline vf sigmoid(vf input) {
 #if defined(THIS_IS_SSE2)
-  assert(false && "SSE2 is not supported");
+  assert(false && "SSE2 is not supported"); // TODO: missing exp_approx_taylor for SSE2
 #elif defined(THIS_IS_AVX2)
   static const auto vconst_zero = setzero_ps<vf>();
   static const auto vconst_one = set1_ps<vf>(1.f);
@@ -214,16 +222,14 @@ CPU_ATTR static inline vf sigmoid(vf input) {
  */
 CPU_ATTR static inline vf tanh(vf input) {
 #if defined(THIS_IS_SSE2)
-  assert(false && "SSE2 is not supported");
-#elif defined(THIS_IS_AVX2)
+  assert(false && "SSE2 is not supported"); // TODO: missing exp_approx_taylor for SSE2
+#else
   const static auto vconst_zero = setzero_ps<vf>();
 
   auto e_x = exp_approx_taylor(input);
   auto e_minus_x = exp_approx_taylor(sub_ps(vconst_zero, input));
 
   return div_ps(sub_ps(e_x, e_minus_x), add_ps(e_x, e_minus_x));
-#else
-  assert(false && "AVX512BW is not supported"); // TODO: missing exp_approx_taylor for AVX512BW
 #endif
 }
 

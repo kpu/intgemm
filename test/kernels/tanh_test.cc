@@ -17,7 +17,7 @@ void kernel_tanh_test() {
   AlignedVector<float> input(VECTOR_LENGTH);
   AlignedVector<float> output(VECTOR_LENGTH);
 
-  std::generate(input.begin(), input.end(), [] () { static int n = -4; return n++ / 4.f; });
+  std::generate(input.begin(), input.end(), [] () { static int n = -int(VECTOR_LENGTH / 2); return n++ / float(VECTOR_LENGTH / 2); });
 
   *output.template as<vec_t>() = kernels::tanh(*input.template as<vec_t>());
   for (auto i = 0; i < output.size(); ++i)
@@ -26,5 +26,10 @@ void kernel_tanh_test() {
 
 template INTGEMM_AVX2 void kernel_tanh_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("tanh AVX2") { return kernel_tanh_test<CPUType::AVX2>(); }
+
+#ifndef INTGEMM_NO_AVX512
+template INTGEMM_AVX512BW void kernel_tanh_test<CPUType::AVX512BW>();
+KERNEL_TEST_CASE("tanh AVX512BW") { return kernel_tanh_test<CPUType::AVX512BW>(); }
+#endif
 
 }
