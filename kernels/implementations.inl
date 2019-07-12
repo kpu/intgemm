@@ -21,9 +21,6 @@
 #define vi vector_t<CPUType::CPU_NAME, int>
 #define vf vector_t<CPUType::CPU_NAME, float>
 #define vd vector_t<CPUType::CPU_NAME, double>
-#define dvi dvector_t<CPUType::CPU_NAME, int>
-#define dvf dvector_t<CPUType::CPU_NAME, float>
-#define dvd dvector_t<CPUType::CPU_NAME, double>
 
 /*
  * Kernels implementations....
@@ -38,27 +35,12 @@ CPU_ATTR static inline void write(vi input, int* output, Index offset) {
   *reinterpret_cast<vi*>(output + offset) = input;
 }
 
-CPU_ATTR static inline void write(dvi input, int* output, Index offset) {
-  write(input.first, output, offset);
-  write(input.second, output, offset + sizeof(dvi::type) / 4);
-}
-
 CPU_ATTR static inline void write(vf input, float* output, Index offset) {
   *reinterpret_cast<vf*>(output + offset) = input;
 }
 
-CPU_ATTR static inline void write(dvf input, float* output, Index offset) {
-  write(input.first, output, offset);
-  write(input.second, output, offset + sizeof(dvf::type) / 4);
-}
-
 CPU_ATTR static inline void write(vd input, double* output, Index offset) {
   *reinterpret_cast<vd*>(output + offset) = input;
-}
-
-CPU_ATTR static inline void write(dvd input, double* output, Index offset) {
-  write(input.first, output, offset);
-  write(input.second, output, offset + sizeof(dvd::type) / 8);
 }
 
 /*
@@ -68,25 +50,11 @@ CPU_ATTR static inline vi quantize(vf input, vf quant_mult) {
   return cvtps_epi32(mul_ps(input, quant_mult));
 }
 
-CPU_ATTR static inline dvi quantize(dvf input, vf quant_mult) {
-  return {
-    quantize(input.first, quant_mult),
-    quantize(input.second, quant_mult),
-  };
-}
-
 /*
  * Unquantize
  */
 CPU_ATTR static inline vf unquantize(vi input, vf unquant_mult) {
   return mul_ps(cvtepi32_ps(input), unquant_mult);
-}
-
-CPU_ATTR static inline dvf unquantize(dvi input, vf quant_mult) {
-  return {
-    unquantize(input.first, quant_mult),
-    unquantize(input.second, quant_mult),
-  };
 }
 
 /*
@@ -95,13 +63,6 @@ CPU_ATTR static inline dvf unquantize(dvi input, vf quant_mult) {
 CPU_ATTR static inline vf add_bias(vf input, const float* bias_addr, Index bias_offset) {
   auto bias_term = *reinterpret_cast<const vf*>(bias_addr + bias_offset);
   return add_ps(input, bias_term);
-}
-
-CPU_ATTR static inline dvf add_bias(dvf input, const float* bias_addr, Index bias_offset) {
-  return {
-    add_bias(input.first, bias_addr, bias_offset),
-    add_bias(input.second, bias_addr, bias_offset + sizeof(dvf::type) / 4),
-  };
 }
 
 /*
@@ -118,35 +79,14 @@ CPU_ATTR static inline vi relu(vi input) {
 #endif
 }
 
-CPU_ATTR static inline dvi relu(dvi input) {
-  return {
-    relu(input.first),
-    relu(input.second),
-  };
-}
-
 CPU_ATTR static inline vf relu(vf input) {
   static const auto vconst_zero = set1_ps<vf>(0);
   return max_ps(input, vconst_zero);
 }
 
-CPU_ATTR static inline dvf relu(dvf input) {
-  return {
-    relu(input.first),
-    relu(input.second),
-  };
-}
-
 CPU_ATTR static inline vd relu(vd input) {
   static const auto vconst_zero = set1_pd<vd>(0);
   return max_pd(input, vconst_zero);
-}
-
-CPU_ATTR static inline dvd relu(dvd input) {
-  return {
-    relu(input.first),
-    relu(input.second),
-  };
 }
 
 /*
@@ -157,25 +97,9 @@ CPU_ATTR static inline vf highway(vf input1, vf input2, vf weight) {
   return add_ps(mul_ps(input1, weight), mul_ps(input2, sub_ps(vconst_one, weight)));
 }
 
-CPU_ATTR static inline dvf highway(dvf input1, dvf input2, dvf weight) {
-  static const auto vconst_one = set1_ps<vf>(1.f);
-  return {
-    highway(input1.first, input2.first, weight.first),
-    highway(input1.second, input2.second, weight.second),
-  };
-}
-
 CPU_ATTR static inline vd highway(vd input1, vd input2, vd weight) {
   static const auto vconst_one = set1_pd<vd>(1.f);
   return add_pd(mul_pd(input1, weight), mul_pd(input2, sub_pd(vconst_one, weight)));
-}
-
-CPU_ATTR static inline dvd highway(dvd input1, dvd input2, dvd weight) {
-  static const auto vconst_one = set1_pd<vd>(1.f);
-  return {
-    highway(input1.first, input2.first, weight.first),
-    highway(input1.second, input2.second, weight.second),
-  };
 }
 
 /*
@@ -311,6 +235,3 @@ CPU_ATTR static inline vf tanh(vf input) {
 #undef vi
 #undef vf
 #undef vd
-#undef dvi
-#undef dvf
-#undef dvd

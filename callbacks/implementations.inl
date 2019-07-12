@@ -19,23 +19,14 @@
   #error "Only SSE2, AVX2 and AVX512BW are supported"
 #endif
 
-#define vi vector_t<CPUType::CPU_NAME, int>
-#define vf vector_t<CPUType::CPU_NAME, float>
-#define vd vector_t<CPUType::CPU_NAME, double>
-#define dvi dvector_t<CPUType::CPU_NAME, int>
-#define dvf dvector_t<CPUType::CPU_NAME, float>
-#define dvd dvector_t<CPUType::CPU_NAME, double>
-
 #if defined(THIS_IS_SSE2)
-  #define vinput dvector_t<CPUType::SSE2, int>
-  #define vinput_i vector_t<CPUType::SSE2, int>
-  #define vinput_f vector_t<CPUType::SSE2, float>
-  #define vinput_d vector_t<CPUType::SSE2, double>
+  #define vi vector_t<CPUType::SSE2, int>
+  #define vf vector_t<CPUType::SSE2, float>
+  #define vd vector_t<CPUType::SSE2, double>
 #else
-  #define vinput vector_t<CPUType::AVX2, int>
-  #define vinput_i vector_t<CPUType::AVX2, int>
-  #define vinput_f vector_t<CPUType::AVX2, float>
-  #define vinput_d vector_t<CPUType::AVX2, double>
+  #define vi vector_t<CPUType::AVX2, int>
+  #define vf vector_t<CPUType::AVX2, float>
+  #define vd vector_t<CPUType::AVX2, double>
 #endif
 
 namespace intgemm {
@@ -58,7 +49,7 @@ namespace callbacks {
 template <> class CallbackImpl<CPUType::CPU_NAME, Dummy> {
 public:
   CPU_ATTR CallbackImpl(const Dummy&) {}
-  CPU_ATTR void operator()(vinput, const OutputBufferInfo&) {}
+  CPU_ATTR void operator()(vi, const OutputBufferInfo&) {}
 };
 
 /*
@@ -67,15 +58,15 @@ public:
 template <> class CallbackImpl<CPUType::CPU_NAME, UnquantizeAndWrite> {
 public:
   CPU_ATTR CallbackImpl(const UnquantizeAndWrite& config) : config(config) {
-    unquant_mult = set1_ps<vinput_f>(config.unquant_mult);
+    unquant_mult = set1_ps<vf>(config.unquant_mult);
   }
-  CPU_ATTR void operator()(vinput input, const OutputBufferInfo& info) {
+  CPU_ATTR void operator()(vi input, const OutputBufferInfo& info) {
     auto result = kernels::unquantize(input, unquant_mult);
     kernels::write(result, config.addr, info.row_idx * info.cols + info.col_idx);
   }
 private:
   UnquantizeAndWrite config;
-  vinput_f unquant_mult;
+  vf unquant_mult;
 };
 
 /*
@@ -84,16 +75,16 @@ private:
 template <> class CallbackImpl<CPUType::CPU_NAME, UnquantizeAndAddBiasAndWrite> {
 public:
   CPU_ATTR CallbackImpl(const UnquantizeAndAddBiasAndWrite& config) : config(config) {
-    unquant_mult = set1_ps<vinput_f>(config.unquant_mult);
+    unquant_mult = set1_ps<vf>(config.unquant_mult);
   }
-  CPU_ATTR void operator()(vinput input, const OutputBufferInfo& info) {
+  CPU_ATTR void operator()(vi input, const OutputBufferInfo& info) {
     auto result = kernels::unquantize(input, unquant_mult);
     result = kernels::add_bias(result, config.bias_addr, info.col_idx);
     kernels::write(result, config.output_addr, info.row_idx * info.cols + info.col_idx);
   }
 private:
   UnquantizeAndAddBiasAndWrite config;
-  vinput_f unquant_mult;
+  vf unquant_mult;
 };
 
 }
@@ -104,10 +95,3 @@ private:
 #undef vi
 #undef vf
 #undef vd
-#undef dvi
-#undef dvf
-#undef dvd
-#undef vinput
-#undef vinput_i
-#undef vinput_f
-#undef vinput_d

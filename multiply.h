@@ -20,10 +20,7 @@ INTGEMM_SSE2 static inline float MaxFloat32(__m128 a) {
 
 INTGEMM_SSE2 static inline dvector_t<CPUType::SSE2, int> PermuteSummer(__m128i pack0123, __m128i pack4567) {
   // No op for 128 bits: already reduced fully.
-  dvector_t<CPUType::SSE2, int> ret;
-  ret.first = pack0123;
-  ret.second = pack4567;
-  return ret;
+  return { pack0123, pack4567 };
 }
 
 INTGEMM_AVX2 static inline float MaxFloat32(__m256 a) {
@@ -89,6 +86,17 @@ INTGEMM_PACK0123(INTGEMM_AVX2, __m256i)
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_PACK0123(INTGEMM_AVX512BW, __m512i)
 #endif
+
+template <typename Callback>
+INTGEMM_SSE2 static inline void RunCallback(Callback callback_impl, dvector_t<CPUType::SSE2, int> total, Index row_idx, Index col_idx, Index rows, Index cols) {
+  callback_impl(total.first, callbacks::OutputBufferInfo(row_idx, col_idx, rows, cols));
+  callback_impl(total.second, callbacks::OutputBufferInfo(row_idx, col_idx + 4, rows, cols));
+}
+
+template <typename Callback>
+INTGEMM_AVX2 static inline void RunCallback(Callback callback_impl, vector_t<CPUType::AVX2, int> total, Index row_idx, Index col_idx, Index rows, Index cols) {
+  callback_impl(total, callbacks::OutputBufferInfo(row_idx, col_idx, rows, cols));
+}
 
 // 16-bit multiplier for INTGEMM_SSE2, INTGEMM_AVX2, and AVX512.
 // C = A * B * unquant_mult
@@ -178,7 +186,7 @@ template <typename Callback> target static void Multiply(const int16_t *A, const
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
       /*The specific implementation may need to reduce further.*/ \
       auto total = PermuteSummer(pack0123, pack4567); \
-      callback_impl(total, callbacks::OutputBufferInfo(A_rowidx, B0_colidx, A_rows, B_cols)); \
+      RunCallback(callback_impl, total, A_rowidx, B0_colidx, A_rows, B_cols); \
     } \
   } \
 } \
@@ -394,7 +402,7 @@ INTGEMM_SSSE3 inline static void InnerINTGEMM_SSSE3(
       Integer pack0123 = Pack0123(sum0, sum1, sum2, sum3); \
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
       auto total = PermuteSummer(pack0123, pack4567); \
-      callback_impl(total, callbacks::OutputBufferInfo(A_rowidx, B0_colidx, A_rows, B_cols)); \
+      RunCallback(callback_impl, total, A_rowidx, B0_colidx, A_rows, B_cols); \
     } \
   } \
 } \
