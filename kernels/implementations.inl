@@ -281,7 +281,7 @@ CPU_ATTR static inline vf sigmoid(vf input) {
   auto nonnegative_x_mask = _mm256_cmp_ps(vconst_zero, x, _CMP_LT_OS);
   return _mm256_blendv_ps(sigmoid_case1, sigmoid_case2, nonnegative_x_mask);
 #else
-  assert(false && "AVX512BW is not supported");
+  assert(false && "AVX512BW is not supported");  // TODO: missing exp_approx_taylor for AVX512BW
 #endif
 }
 
@@ -291,13 +291,15 @@ CPU_ATTR static inline vf sigmoid(vf input) {
 CPU_ATTR static inline vf tanh(vf input) {
 #if defined(THIS_IS_SSE2)
   assert(false && "SSE2 is not supported");
-#else
+#elif defined(THIS_IS_AVX2)
   const static auto vconst_zero = setzero_ps<vf>();
 
   auto e_x = exp_approx_taylor(input);
   auto e_minus_x = exp_approx_taylor(sub_ps(vconst_zero, input));
 
   return div_ps(sub_ps(e_x, e_minus_x), add_ps(e_x, e_minus_x));
+#else
+  assert(false && "AVX512BW is not supported"); // TODO: missing exp_approx_taylor for AVX512BW
 #endif
 }
 
