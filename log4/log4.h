@@ -2,6 +2,8 @@
 #include "types.h"
 
 #include <immintrin.h>
+#include <cstdint>
+#include <stdint.h>
 
 /* Take the dot product of packed 4-bit log-encoded values.  The values are
  * represented as a 1-bit sign and a 3-bit log_2(magnitude).  Currently two of
@@ -20,6 +22,7 @@
  *    a.high * b.low + a.low * b.high
  * Then at multiply time we apply this to blend arguments:
  *    https://graphics.stanford.edu/~seander/bithacks.html#MaskedMerge
+ * Or use ternary logic with 11110000 to accomplish the bitwise blend.
  * The blend yields [a.high, b.low] consecutively and [b.high, a.low]
  * consecutively.  Use _mm512_permutex2var_epi8 to implement a lookup table.
  * The problem is that instruction is VBMI which Skylake doesn't support.  So
@@ -61,14 +64,18 @@
  * 4. Multiply?!
  */
 
-/* Return packed -1 << magnitude or 1 << magnitude depending on sign. */
+namespace intgemm {
+
+/* FIRST IMPLEMENTATION:
+ * Shift 16-bit +/- 1 using a variable shift with _mm512_sllv_epi16.
+ */
+/* Helper for Shift implementation: return packed -1 << magnitude or 1 << magnitude depending on sign. */
 INTGEMM_AVX512BW static inline __m512i Power2AndSign(__mmask32 signs, __m512i magnitude) {
   const __m512i kOnes = _mm512_set1_epi16(1);
   __m512i signed1 = _mm512_mask_set1_epi16(kOnes, signs, -1);
-  return _mm512_sllv_epi16(signed1, extracted);
+  return _mm512_sllv_epi16(signed1, magnitude);
 }
-
-INTGEMM_AVX512BW static inline __m512i MultiplyLog4(__m512i first, __m512i second) {
+INTGEMM_AVX512BW static inline __m512i DotLog4_Shift(__m512i first, __m512i second) {
   const __m512i kValueBits = _mm512_set1_epi8(0x77);
   /* Strip the sign bits then sum.  Since the sign bits are stripped, there's 4 bits of space for 3-bit values to sum in.
    *   0 3-bit log2(a.high) 0 3-bit log2(a.low)
@@ -96,3 +103,81 @@ INTGEMM_AVX512BW static inline __m512i MultiplyLog4(__m512i first, __m512i secon
   accum = _mm512_adds_epi16(accum, Power2AndSign(signs, _mm512_srli_epi16(added, 12)));
   return accum;
 }
+
+
+/* SECOND IMPLEMENTATION:
+ * Use _mm512_shuffle_epi8 as a 4-bit lookup table to retrieve 2^value (since
+ * there isn't an 8-bit variable shift on Skylake.)
+ * Since that's actually a 15-bit result, we do two _mm512_shuffle_epi8, one to
+ * get high 8 bits (of which one is wasted) and one to get low 8 bits.
+ * Sum 8 bytes at a time using _mm512_sad_epu8 to compute sum of absolute value
+ * of differences.  It's |255-v| for negative values + |v-0| for positive.
+ * Because 255 was added, we need to subtract it off for each negative value.
+ * The values to subtract are counted using popcnt.  Because both high and low
+ * bytes of 16-bit results are impacted, the value to subtract is 255*256+255 =
+ * 65535 for each negative value.
+ */
+
+/* This is a helper function for the second implementation. Given log magnitudes
+ * in the lower 4 of each byte and their signs, it looks them up, 2^magnitude
+ * by lookup table, and accumulates into packed 64-bit values.
+ * The negative values are off by 65535 each in the count returned.
+ */
+INTGEMM_AVX512BW static inline __m512i SumSad(__m512i lower4, __mmask64 signs) {
+  /* Low-order values of 16 bits for 1 << value, in reverse order, in blocks of 128 bits. */
+  /* Fun fact: _mm512_set_epi8 isn't defined in older gcc. https://www.mail-archive.com/gcc-patches@gcc.gnu.org/msg188664.html */
+  const __m512i kLookupLower = _mm512_set_epi64(0, 0x8040201008040201, 0, 0x8040201008040201, 0, 0x8040201008040201, 0, 0x8040201008040201);
+  // High-order values of 16 bits for 1 << value, in reverse order, in blocks of 128 bits
+  const __m512i kLookupHigher = _mm512_set_epi64(0x8040201008040201, 0, 0x8040201008040201, 0, 0x8040201008040201, 0, 0x8040201008040201, 0);
+
+  // Bit shifting 4 bits to 16 bits by lookup table.  I feel dirty.
+  // Retrieve absolute values of the lower 8 bits of what we want to sum.
+  __m512i abs_sum_lower = _mm512_shuffle_epi8(kLookupLower, lower4); // latency 1 throughput 1
+  // Retrieve absolute values of the higher 8 bits of what we want to sum.
+  __m512i abs_sum_higher = _mm512_shuffle_epi8(kLookupHigher, lower4); // latency 1 throughput 1
+  // Now each [abs_sum_higher abs_sum_lower] is 1 << lower4.
+
+  // 255 for negative values (so we do 255-value) or 0 for positive values (so we do value - 0)
+  // TODO: replace this with a blend of two registers which has latency 1 throughput 0.5?
+  __m512i sign255 = _mm512_maskz_set1_epi8(signs, 255); // latency 3 throughput 1
+  __m512i sum_higher = _mm512_sad_epu8(sign255, abs_sum_higher); // latency 3 throughput 1
+  __m512i sum_lower = _mm512_sad_epu8(sign255, abs_sum_lower); // latency 3 throughput 1
+  // Now we have 64-bit sums of higher and lower parts.
+  return _mm512_add_epi64(_mm512_slli_epi64(sum_higher, 8), sum_lower);
+}
+
+/* Returns packed 64-bit values that should be summed. To finish, sum the 64-bit values - 65535 * subtract65535.
+ * Initialize subtract65535 with 0 then call each time to accumulate more.
+ */
+INTGEMM_AVX512BW static inline __m512i DotLog4_Lookup(__m512i a, __m512i b, int64_t &subtract65535) {
+  const __m512i kValueBits = _mm512_set1_epi8(0x77);
+  __m512i a_value = _mm512_and_si512(a, kValueBits);
+  __m512i b_value = _mm512_and_si512(b, kValueBits);
+  __m512i added = _mm512_add_epi8(a_value, b_value);
+  // xor the arguments for the sign bits.  We only care about the sign bits 0x88.
+  __m512i xored = _mm512_xor_si512(a, b);
+  __mmask64 signs_lower4 = _mm512_test_epi8_mask(xored, _mm512_set1_epi8(0x8));
+  __mmask64 signs_higher4 = _mm512_test_epi8_mask(xored, _mm512_set1_epi8(0x80));
+
+  // The shuffle instruction leaves zeros if the top bit is 1. Mask this off. 
+  // Only care that top bit is 0 and the lower 4 are present so e.g. 0xf 0x1f
+  // 0x2f would also be fine.
+  const __m512i kLower4 = _mm512_set1_epi8(0xf);
+  __m512i lower4 = _mm512_and_si512(added, kLower4); // latency 1 throughput 0.5
+  __m512i sum = SumSad(lower4, signs_lower4);
+  // Shift right by 4 bits, but there isn't an 8-bit shift instruction on Skylake-X.
+  // So use 16-bit (or anything for that matter) then mask away the top bit again.
+  __m512i upper4 = _mm512_srli_epi16(added, 4);
+  upper4 = _mm512_and_si512(upper4, kLower4);
+
+  __m512i sum2 = SumSad(upper4, signs_higher4);
+  // Sum from the upper 4 bits of each byte and the lower 4 bits of each byte.
+  sum = _mm512_add_epi64(sum, sum2);
+  // We added 255 for every negative value.  Count the negative values.
+  // Moreover, we added it for both the high parts of the shift table (256*255) and low parts (255).
+  // 255*256+255 = 65535
+  subtract65535 += __builtin_popcountll(signs_lower4) + __builtin_popcountll(signs_higher4);
+  return sum;
+}
+
+} // namespace intgemm
