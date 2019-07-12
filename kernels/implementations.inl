@@ -213,7 +213,19 @@ CPU_ATTR static inline vf sigmoid(vf input) {
   auto nonnegative_x_mask = _mm256_cmp_ps(vconst_zero, x, _CMP_LT_OS);
   return _mm256_blendv_ps(sigmoid_case1, sigmoid_case2, nonnegative_x_mask);
 #else
-  assert(false && "AVX512BW is not supported");  // TODO: missing exp_approx_taylor for AVX512BW
+  static const auto vconst_zero = setzero_ps<vf>();
+  static const auto vconst_one = set1_ps<vf>(1.f);
+
+  auto x = input;
+  auto minus_x = sub_ps(vconst_zero, x);
+  auto e_x = exp_approx_taylor(x);
+  auto e_minus_x = exp_approx_taylor(minus_x);
+
+  auto sigmoid_case1 = _mm512_rcp14_ps(add_ps(vconst_one, e_minus_x));
+  auto sigmoid_case2 = mul_ps(e_x, _mm512_rcp14_ps(add_ps(vconst_one, e_x)));
+
+  auto nonnegative_x_mask = _mm512_cmp_ps_mask(vconst_zero, x, _CMP_LT_OS);
+  return _mm512_mask_blend_ps(nonnegative_x_mask, sigmoid_case1, sigmoid_case2);
 #endif
 }
 
