@@ -9,8 +9,10 @@
 
 #include <algorithm>
 #include <limits>
-#include <iostream>
 #include <random>
+
+#include "3rd_party/catch.hpp"
+#define CHECK_MESSAGE(cond, msg) do { INFO(msg); CHECK(cond); } while((void)0, 0)
 
 namespace intgemm {
 namespace {
@@ -67,9 +69,7 @@ INTGEMM_AVX512BW void CompareShift(const uint8_t *a, const uint8_t *b) {
   SlowSaturateDotLog4(a, a + sizeof(__m512i), b, ref.begin());
   const int16_t *imp = reinterpret_cast<const int16_t*>(&impl);
   for (unsigned int i = 0; i < sizeof(__m512i) / sizeof(uint16_t); ++i) {
-    if (ref[i] != imp[i]) {
-      std::cerr << ref[i] << ' ' << imp[i] << std::endl;
-    }
+    CHECK_MESSAGE(ref[i] == imp[i], "Shift method expected " << ref[i] << " got " << imp[i] << " at offset " << i);
   }
 }
 
@@ -80,9 +80,7 @@ INTGEMM_AVX512BW void CompareLookup(const uint8_t *a, const uint8_t *b) {
   std::memcpy(impl_copy, &impl, sizeof(__m512i));
   int64_t sum = std::accumulate(impl_copy, impl_copy + sizeof(__m512i) / sizeof(int64_t), -65535 * subtract65535);
   int64_t reference = ReferenceDotLog4(a, a + sizeof(__m512i), b);
-  if (sum != reference) {
-    std::cerr << sum << " != " << reference << std::endl;
-  }
+  CHECK_MESSAGE(reference == sum, "Lookup method expected " << reference << " got " << sum);
 }
 
 INTGEMM_AVX512BW void CompareAll(const AlignedVector<uint8_t> &a, const AlignedVector<uint8_t> &b) {
@@ -92,7 +90,7 @@ INTGEMM_AVX512BW void CompareAll(const AlignedVector<uint8_t> &a, const AlignedV
   }
 }
 
-INTGEMM_AVX512BW void TestPattern() {
+INTGEMM_AVX512BW TEST_CASE("Log 4 Pattern", "Pattern") {
   if (kCPU < CPUType::CPU_AVX512BW) return;
   // Generate all possible combinations of 4-bit pairs. Note this isn't an
   // exhaustive test case because they should be in each position of the 16-bit
@@ -109,7 +107,8 @@ INTGEMM_AVX512BW void TestPattern() {
   CompareAll(a, b);
 }
 
-INTGEMM_AVX512BW void TestRandom() {
+INTGEMM_AVX512BW TEST_CASE("Log 4 Random", "Random") {
+  if (kCPU < CPUType::CPU_AVX512BW) return;
   const std::size_t size = 16384;
   std::mt19937 gen;
   std::uniform_int_distribution<uint8_t> d(0, 255);
@@ -124,8 +123,3 @@ INTGEMM_AVX512BW void TestRandom() {
 #endif
 } // namespace
 } // namespace intgemm
-
-int main() {
-  intgemm::TestPattern();
-  intgemm::TestRandom();
-}
