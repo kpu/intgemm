@@ -1,0 +1,3 @@
+#pragma once
+
+#cmakedefine INTGEMM_COMPILER_SUPPORTS_AVX512

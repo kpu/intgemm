@@ -38,7 +38,7 @@ template INTGEMM_AVX2 void kernel_highway_test<CPUType::AVX2, double>();
 KERNEL_TEST_CASE("highway/float AVX2") { return kernel_highway_test<CPUType::AVX2, float>(); }
 KERNEL_TEST_CASE("highway/double AVX2") { return kernel_highway_test<CPUType::AVX2, double>(); }
 
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 template INTGEMM_AVX512BW void kernel_highway_test<CPUType::AVX512BW, float>();
 template INTGEMM_AVX512BW void kernel_highway_test<CPUType::AVX512BW, double>();
 KERNEL_TEST_CASE("highway/float AVX512BW") { return kernel_highway_test<CPUType::AVX512BW, float>(); }

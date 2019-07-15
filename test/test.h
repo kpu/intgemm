@@ -1,5 +1,7 @@
 #include "3rd_party/catch.hpp"
 
+#include "config.h"
+
 #define CHECK_MESSAGE(cond, msg) do { INFO(msg); CHECK(cond); } while(0)
 #define CHECK_FALSE_MESSAGE(cond, msg) do { INFO(msg); CHECK_FALSE(cond); } while(0)
 #define REQUIRE_MESSAGE(cond, msg) do { INFO(msg); REQUIRE(cond); } while(0)

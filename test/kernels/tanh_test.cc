@@ -27,7 +27,7 @@ void kernel_tanh_test() {
 template INTGEMM_AVX2 void kernel_tanh_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("tanh AVX2") { return kernel_tanh_test<CPUType::AVX2>(); }
 
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 template INTGEMM_AVX512BW void kernel_tanh_test<CPUType::AVX512BW>();
 KERNEL_TEST_CASE("tanh AVX512BW") { return kernel_tanh_test<CPUType::AVX512BW>(); }
 #endif

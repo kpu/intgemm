@@ -86,7 +86,7 @@ TEST_CASE ("Quantize AVX2", "[quantize]") {
   CHECK(TestMany<AVX2_8bit>());
   CHECK(TestMany<AVX2_16bit>());
 }
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
   TEST_CASE ("Quantize AVX512", "[quantize]") {
     if (kCPU < CPUType::AVX512BW) return;
     CHECK(TestMany<AVX512_8bit>());

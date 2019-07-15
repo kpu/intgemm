@@ -44,13 +44,12 @@
 #include <cstdint>
 #include <stdint.h>
 
+#include "config.h"
 #include "types.h"
 #include "sse2_gemm.h"
 #include "ssse3_gemm.h"
 #include "avx2_gemm.h"
-#ifndef INTGEMM_NO_AVX512
 #include "avx512_gemm.h"
-#endif
 
 /* Dispatch to functions based on runtime CPUID.  This adds one call-by-variable to each call. */
 
@@ -90,12 +89,12 @@ struct Unsupported_8bit {
   constexpr static const char *const kName = "8-bit Unsupported";
 };
 
-#ifdef INTGEMM_NO_AVX512
+#ifndef INTGEMM_COMPILER_SUPPORTS_AVX512
 // These won't ever be called in this capacity, but it does let the code below compile.
 typedef Unsupported_16bit AVX512_16bit;
 typedef Unsupported_8bit AVX512_8bit;
 namespace avx512f {
-float MaxAbsolute(const float *begin, const float *end) {
+static inline float MaxAbsolute(const float *begin, const float *end) {
   throw UnsupportedCPU();
 }
 } //namespace
@@ -115,7 +114,7 @@ float MaxAbsolute(const float *begin, const float *end) {
  */
 template <class T> T ChooseCPU(T avx512, T avx2, T ssse3, T sse2, T unsupported) {
   // TODO: don't catch Knights processors here!
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
   if (__builtin_cpu_supports("avx512f")) {
     return avx512;
   }

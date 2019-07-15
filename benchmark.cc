@@ -1,8 +1,9 @@
 #include "aligned.h"
+#include "config.h"
 #include "avx512_gemm.h"
+#include "sse2_gemm.h"
 #include "avx2_gemm.h"
 #include "ssse3_gemm.h"
-#include "sse2_gemm.h"
 #include "intgemm.h"
 #include "stop_watch.h"
 #include "callbacks.h"
@@ -194,7 +195,7 @@ int main(int argc, char ** argv) {
     RunAll<AVX2_16bit>(matrices, end, stats.avx2_16bit);
   }
 
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
   std::cerr << "AVX512 8bit, 100 samples..." << std::endl;
   for (int samples = 0; samples < kSamples; ++samples) {
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
@@ -216,12 +217,12 @@ int main(int argc, char ** argv) {
     std::cout << "Multiply\t" << matrices[i].A_rows << '\t' << matrices[i].width << '\t' << matrices[i].B_cols << '\t' << "Samples=" << (kOutlierThreshold * stats.sse2_16bit[i].size()) << '\n';
     Print<SSSE3_8bit>(stats.ssse3_8bit, i);
     Print<AVX2_8bit>(stats.avx2_8bit, i);
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
     Print<AVX512_8bit>(stats.avx512_8bit, i);
 #endif
     Print<SSE2_16bit>(stats.sse2_16bit, i);
     Print<AVX2_16bit>(stats.avx2_16bit, i);
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
     Print<AVX512_16bit>(stats.avx512_16bit, i);
 #endif
   }

@@ -1,5 +1,9 @@
 #pragma once
 
+#include "config.h"
+
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+
 #include "interleave.h"
 #include "kernels.h"
 #include "multiply.h"
@@ -335,3 +339,5 @@ struct AVX512_8bit {
 };
 
 } // namespace intgemm
+
+#endif

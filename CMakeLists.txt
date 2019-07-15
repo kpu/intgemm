@@ -10,27 +10,32 @@ endif()
 
 set(CMAKE_CXX_STANDARD 11)
 
-try_compile(AVX512 "${CMAKE_BINARY_DIR}/compile_tests" "${CMAKE_SOURCE_DIR}/compile_test_avx512.cc"
+# Check if compiler supports AVX512
+try_compile(INTGEMM_COMPILER_SUPPORTS_AVX512 "${CMAKE_BINARY_DIR}/compile_tests" "${CMAKE_SOURCE_DIR}/compile_test_avx512.cc"
   #Hack: pass compiler arguments as definitions because the test code overrides CXX_FLAGS :'(
   COMPILE_DEFINITIONS -mavx512f -mavx512bw -mavx512dq)
 
+if(NOT INTGEMM_COMPILER_SUPPORTS_AVX512)
+  message("${Orange}Not building AVX512-based multiplication because your compiler is too old.\nFor details rerun cmake with --debug-trycompile then try to build in compile_tests/CMakeFiles/CMakeTmp.${ColourReset}")
+endif()
+
+# Working around https://bugs.llvm.org/show_bug.cgi?id=41482
+# Anything compiled with clang might not work properly in SSE2/SSSE3 world
 if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-  # Working around https://bugs.llvm.org/show_bug.cgi?id=41482
-  # Anything compiled with clang might not work properly in SSE2/SSSE3 world
   message("${Orange}Compiling with Clang and using -mavx2 due to https://bugs.llvm.org/show_bug.cgi?id=41482. Support for SSE2/SSSE3 is likely broken.${ColourReset}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2")
 endif()
 
-if(NOT AVX512)
-  message("${Orange}Not building AVX512-based multiplication because your compiler is too old.\nFor details rerun cmake with --debug-trycompile then try to build in compile_tests/CMakeFiles/CMakeTmp.${ColourReset}")
-  set_source_files_properties(example.cc test/quantize_test.cc test/multiply_test.cc benchmark.cc intgemm.cc PROPERTIES COMPILE_DEFINITIONS "INTGEMM_NO_AVX512")
-endif()
+# Generate configure file
+configure_file(config.h.in config.h)
+
+include_directories(${CMAKE_SOURCE_DIR})
+include_directories(${CMAKE_BINARY_DIR})
 
 foreach(exe example benchmark)
   add_executable(${exe} ${exe}.cc intgemm.cc)
 endforeach()
 
-include_directories(.)
 add_executable(tests
   # General tests
   test/multiply_test.cc

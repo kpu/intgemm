@@ -1,5 +1,6 @@
 #pragma once
 
+#include "config.h"
 #include "types.h"
 
 #include <emmintrin.h>
@@ -227,7 +228,7 @@ INTGEMM_AVX2 static inline __m256 sub_ps(__m256 a, __m256 b) {
  * AVX512
  *
  */
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 
 INTGEMM_AVX512BW static inline __m512i abs_epi8(__m512i arg) {
   return _mm512_abs_epi8(arg);

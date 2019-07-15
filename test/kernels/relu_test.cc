@@ -38,7 +38,7 @@ KERNEL_TEST_CASE("relu/int AVX2") { return kernel_relu_test<CPUType::AVX2, int>(
 KERNEL_TEST_CASE("relu/float AVX2") { return kernel_relu_test<CPUType::AVX2, float>(); }
 KERNEL_TEST_CASE("relu/double AVX2") { return kernel_relu_test<CPUType::AVX2, double>(); }
 
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 template INTGEMM_AVX512BW void kernel_relu_test<CPUType::AVX512BW, int>();
 template INTGEMM_AVX512BW void kernel_relu_test<CPUType::AVX512BW, float>();
 template INTGEMM_AVX512BW void kernel_relu_test<CPUType::AVX512BW, double>();
