@@ -46,7 +46,11 @@
  * and decrement based on sign.  Or just count both and reconcile periodically.
  *
  * 1.a Histogram with _mm512_conflict_epi32?  But 32-bit width is annoying.
- * 1.b Use scatter instructions somehow?  Maybe increment a different counter.
+ * Latency 67 and throughput 17.5 (and having to run 8 times) means this won't
+ * be fast.
+ * 1.b Use scatter instructions somehow?  Maybe increment a different counter
+ * for each lane.  But scatter instructions have a 32-bit minimum -> 8
+ * scatters.
  * 1.c Some shuffle magic?
  *
  * 2. Power with 1 << magnitude then sum. Use _mm512_sllv_epi16 to do the
@@ -58,7 +62,8 @@
  * SIGN BIT IDEAS
  * Since the sign bit ends up detached, we need a way to apply it to the powered
  * version.
- * 1. Broadcast -1 with mask.
+ * 1. Broadcast -1 with mask. Latency 3 throughput 1 means it's actually better
+ * to blend if we can afford the register.s
  * 2. Subtract from zero with mask.
  * 3. Shift the sign bit down to 2, then subtract from 1 (before shifting).
  * 4. Multiply?!
@@ -149,7 +154,7 @@ INTGEMM_AVX512BW static inline __m512i SumSad(__m512i lower4, __mmask64 signs) {
 /* Returns packed 64-bit values that should be summed. To finish, sum the 64-bit values - 65535 * subtract65535.
  * Initialize subtract65535 with 0 then call each time to accumulate more.
  */
-INTGEMM_AVX512BW static inline __m512i DotLog4_Lookup(__m512i a, __m512i b, int64_t &subtract65535) {
+INTGEMM_AVX512BW static inline __m512i DotLog4_Lookup16(__m512i a, __m512i b, int64_t &subtract65535) {
   const __m512i kValueBits = _mm512_set1_epi8(0x77);
   __m512i a_value = _mm512_and_si512(a, kValueBits);
   __m512i b_value = _mm512_and_si512(b, kValueBits);
@@ -164,12 +169,12 @@ INTGEMM_AVX512BW static inline __m512i DotLog4_Lookup(__m512i a, __m512i b, int6
   // 0x2f would also be fine.
   const __m512i kLower4 = _mm512_set1_epi8(0xf);
   __m512i lower4 = _mm512_and_si512(added, kLower4); // latency 1 throughput 0.5
-  __m512i sum = SumSad(lower4, signs_lower4);
   // Shift right by 4 bits, but there isn't an 8-bit shift instruction on Skylake-X.
   // So use 16-bit (or anything for that matter) then mask away the top bit again.
   __m512i upper4 = _mm512_srli_epi16(added, 4);
-  upper4 = _mm512_and_si512(upper4, kLower4);
+  __m512i sum = SumSad(lower4, signs_lower4);
 
+  upper4 = _mm512_and_si512(upper4, kLower4);
   __m512i sum2 = SumSad(upper4, signs_higher4);
   // Sum from the upper 4 bits of each byte and the lower 4 bits of each byte.
   sum = _mm512_add_epi64(sum, sum2);
@@ -178,6 +183,57 @@ INTGEMM_AVX512BW static inline __m512i DotLog4_Lookup(__m512i a, __m512i b, int6
   // 255*256+255 = 65535
   subtract65535 += __builtin_popcountll(signs_lower4) + __builtin_popcountll(signs_higher4);
   return sum;
+}
+
+
+/* THIRD IMPLEMENTATION:
+ * Like the Lookup16 strategy except we're only allowed to unpack 4-bit sums to
+ * 8 bits instead of 16.  The 4-bit sums come from two 3-bit values added
+ * together so they range [0, 14] for 15 possible values.  Hence the widest log
+ * is 256^(1/14) \approx 1.447269 and we can use all [0,255] values to just be
+ * off by 1 for everything.  Another option is to use a larger base but scale
+ * values down.  That has the effect of clamping small sums to 0.
+ *
+ * One option for the lookup table is:
+ * Lookup from $i \in [0,14]$ to $\round(b^i) - 1$ where $b = 256^(1/14)$
+ * Note this means that 1 should be added for each value multiplied.  This
+ * can be folded into the bias term.
+ * b=pow(256.0,1.0/14)
+ * ''.join(reversed([hex(round(math.pow(b, i)-1)).split('x')[1].zfill(2) for i in range(0,15)]))
+ * The lookup table is repeated for each 128-bit part of the register.
+ * const __m512i kLookup = _mm512_set_epi64(0xffab734d342217, 0x0f0a060402010000, 0xffab734d342217, 0x0f0a060402010000, 0xffab734d342217, 0x0f0a060402010000, 0xffab734d342217, 0x0f0a060402010000);
+ */
+INTGEMM_AVX512BW static inline __m512i DotLog4_Lookup8(__m512i a, __m512i b, const __m512i lookup, uint64_t &subtract255) {
+  const __m512i kValueBits = _mm512_set1_epi8(0x77);
+  __m512i a_value = _mm512_and_si512(a, kValueBits);
+  __m512i b_value = _mm512_and_si512(b, kValueBits);
+  __m512i added = _mm512_add_epi8(a_value, b_value);
+  // xor the arguments for the sign bits.  We only care about the sign bits 0x88.
+  __m512i xored = _mm512_xor_si512(a, b);
+  __mmask64 signs_lower = _mm512_test_epi8_mask(xored, _mm512_set1_epi8(0x8));
+  __mmask64 signs_upper = _mm512_test_epi8_mask(xored, _mm512_set1_epi8(0x80));
+
+  const __m512i kLower4 = _mm512_set1_epi8(0xf);
+  __m512i upper = _mm512_srli_epi16(added, 4);
+  __m512i lower = _mm512_and_si512(added, kLower4); // latency 1 throughput 0.5
+  upper = _mm512_and_si512(upper, kLower4);
+
+  // Do the lookup.
+  lower = _mm512_shuffle_epi8(lookup, lower);
+  upper = _mm512_shuffle_epi8(lookup, upper);
+
+  const __m512i kZeros = _mm512_setzero_si512();
+  const __m512i k255 = _mm512_set1_epi8(0xff);
+
+  // 255 for negative, 0 for positive.
+  __m512i sign255_lower = _mm512_mask_blend_epi8(signs_lower, kZeros, k255);
+  __m512i sign255_upper = _mm512_mask_blend_epi8(signs_upper, kZeros, k255);
+
+  lower = _mm512_sad_epu8(sign255_lower, lower);
+  upper = _mm512_sad_epu8(sign255_upper, upper);
+
+  subtract255 += __builtin_popcountll(signs_lower) + __builtin_popcountll(signs_upper);
+  return _mm512_add_epi64(lower, upper);
 }
 
 } // namespace intgemm

@@ -73,20 +73,28 @@ INTGEMM_AVX512BW void CompareShift(const uint8_t *a, const uint8_t *b) {
   }
 }
 
-INTGEMM_AVX512BW void CompareLookup(const uint8_t *a, const uint8_t *b) {
+INTGEMM_AVX512BW void CompareLookup16(const uint8_t *a, const uint8_t *b) {
   int64_t subtract65535 = 0;
-  __m512i impl = DotLog4_Lookup(*(const __m512i*)a, *(const __m512i*)b, subtract65535);
+  __m512i impl = DotLog4_Lookup16(*(const __m512i*)a, *(const __m512i*)b, subtract65535);
   int64_t impl_copy[8];
   std::memcpy(impl_copy, &impl, sizeof(__m512i));
   int64_t sum = std::accumulate(impl_copy, impl_copy + sizeof(__m512i) / sizeof(int64_t), -65535 * subtract65535);
   int64_t reference = ReferenceDotLog4(a, a + sizeof(__m512i), b);
-  CHECK_MESSAGE(reference == sum, "Lookup method expected " << reference << " got " << sum);
+  CHECK_MESSAGE(reference == sum, "Lookup16 method expected " << reference << " got " << sum);
+}
+
+// TODO
+INTGEMM_AVX512BW void CompareLookup8(const uint8_t *a, const uint8_t *b) {
+  int64_t subtract255 = 0;
+
+  const __m512i kLookup = _mm512_set_epi64(0xffab734d342217, 0x0f0a060402010000, 0xffab734d342217, 0x0f0a060402010000, 0xffab734d342217, 0x0f0a060402010000, 0xffab734d342217, 0x0f0a060402010000);
+
 }
 
 INTGEMM_AVX512BW void CompareAll(const AlignedVector<uint8_t> &a, const AlignedVector<uint8_t> &b) {
   for (const uint8_t *ai = a.begin(), *bi = b.begin(); ai != a.end(); ai += sizeof(__m512i)) {
     CompareShift(ai, bi);
-    CompareLookup(ai, bi);
+    CompareLookup16(ai, bi);
   }
 }
 
