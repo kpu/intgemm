@@ -74,7 +74,7 @@ INTGEMM_AVX512BW void CompareShift(const uint8_t *a, const uint8_t *b) {
 }
 
 INTGEMM_AVX512BW void CompareLookup16(const uint8_t *a, const uint8_t *b) {
-  int64_t subtract65535 = 0;
+  uint64_t subtract65535 = 0;
   __m512i impl = DotLog4_Lookup16(*(const __m512i*)a, *(const __m512i*)b, subtract65535);
   int64_t impl_copy[8];
   std::memcpy(impl_copy, &impl, sizeof(__m512i));

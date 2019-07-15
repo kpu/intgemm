@@ -154,7 +154,7 @@ INTGEMM_AVX512BW static inline __m512i SumSad(__m512i lower4, __mmask64 signs) {
 /* Returns packed 64-bit values that should be summed. To finish, sum the 64-bit values - 65535 * subtract65535.
  * Initialize subtract65535 with 0 then call each time to accumulate more.
  */
-INTGEMM_AVX512BW static inline __m512i DotLog4_Lookup16(__m512i a, __m512i b, int64_t &subtract65535) {
+INTGEMM_AVX512BW static inline __m512i DotLog4_Lookup16(__m512i a, __m512i b, uint64_t &subtract65535) {
   const __m512i kValueBits = _mm512_set1_epi8(0x77);
   __m512i a_value = _mm512_and_si512(a, kValueBits);
   __m512i b_value = _mm512_and_si512(b, kValueBits);
