@@ -11,7 +11,9 @@ endif()
 set(CMAKE_CXX_STANDARD 11)
 
 # Check if compiler supports AVX512
-try_compile(INTGEMM_COMPILER_SUPPORTS_AVX512 "${CMAKE_BINARY_DIR}/compile_tests" "${CMAKE_SOURCE_DIR}/compile_test_avx512.cc"
+try_compile(INTGEMM_COMPILER_SUPPORTS_AVX512
+  ${CMAKE_CURRENT_BINARY_DIR}/compile_tests
+  ${CMAKE_CURRENT_SOURCE_DIR}/compile_test_avx512.cc
   #Hack: pass compiler arguments as definitions because the test code overrides CXX_FLAGS :'(
   COMPILE_DEFINITIONS -mavx512f -mavx512bw -mavx512dq)
 
@@ -27,10 +29,10 @@ if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 endif()
 
 # Generate configure file
-configure_file(config.h.in config.h)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
-include_directories(${CMAKE_SOURCE_DIR})
-include_directories(${CMAKE_BINARY_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 foreach(exe example benchmark)
   add_executable(${exe} ${exe}.cc intgemm.cc)
@@ -60,6 +62,6 @@ add_executable(tests
 )
 
 #CTest integration with Catch2
-include(CMake/Catch.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/CMake/Catch.cmake)
 include(CTest)
 catch_discover_tests(tests)
