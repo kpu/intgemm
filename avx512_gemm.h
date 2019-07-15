@@ -1,17 +1,21 @@
 #pragma once
 
-#include <stdint.h>
-#include <cstdint>
+#include "config.h"
+
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+
+#include "interleave.h"
+#include "kernels.h"
+#include "multiply.h"
+#include "types.h"
+
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "interleave.h"
-#include "multiply.h"
-
-#include "types.h"
 
 /* AVX512 implementation.
  * This uses INTGEMM_AVX512BW, INTGEMM_AVX512DQ, and might use AVX512VL
@@ -36,7 +40,7 @@ namespace avx512f {
 // Load from memory, multiply, and convert to int32_t.
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_AVX512BW inline __m512i QuantizerGrab(const float *input, const __m512 quant_mult_reg) {
-  return quantize(loadu_ps<__m512>(input), quant_mult_reg);
+  return kernels::quantize(loadu_ps<__m512>(input), quant_mult_reg);
 }
 
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
@@ -217,8 +221,8 @@ struct AVX512_8bit {
 
   // Special AVX512 implementation due to having 32 registers (so I don't have to
   // allocate registers manually) and no sign instruction.
-  template <typename PostprocessPipeline>
-  INTGEMM_AVX512BW static void Multiply(const int8_t *A, const int8_t *B, float *C, PostprocessPipeline pipeline, Index A_rows, Index width, Index B_cols) {
+  template <typename Callback>
+  INTGEMM_AVX512BW static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
     typedef __m512i Integer;
     //typedef __m256 Float; // For quantization we only do 8 at a time.
     // This is copy-paste from Multiply8_SSE2OrAVX2.
@@ -227,7 +231,7 @@ struct AVX512_8bit {
     assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0);
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0);
     // There's 8 results for INTGEMM_AVX2 to handle.
-    auto inited_pipeline = InitPostprocessPipeline<CPUType::AVX2>(pipeline);
+    auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
     const int simd_width = width / sizeof(Integer);
     const Integer *B0_col = reinterpret_cast<const Integer*>(B);
     // Added for AVX512.
@@ -324,9 +328,7 @@ struct AVX512_8bit {
         Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7);
 
         auto total = PermuteSummer(pack0123, pack4567);
-        auto offset = A_rowidx * B_cols + B0_colidx;
-        auto result = inited_pipeline.run(total, offset);
-        writer(C, offset, result);
+        callback_impl(total, callbacks::OutputBufferInfo(A_rowidx, B0_colidx, A_rows, B_cols));
       }
     }
   }
@@ -337,3 +339,5 @@ struct AVX512_8bit {
 };
 
 } // namespace intgemm
+
+#endif

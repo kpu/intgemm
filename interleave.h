@@ -1,5 +1,6 @@
 #pragma once
 
+#include "config.h"
 #include "intrinsics.h"
 #include "types.h"
 
@@ -45,7 +46,7 @@ target static inline void Interleave64(type &first, type &second) { \
 
 INTGEMM_INTERLEAVE(INTGEMM_SSE2, __m128i, )
 INTGEMM_INTERLEAVE(INTGEMM_AVX2, __m256i, 256)
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 INTGEMM_INTERLEAVE(INTGEMM_AVX512BW, __m512i, 512)
 #endif
 #define INTGEMM_SWAP(target, Register) \
@@ -57,7 +58,7 @@ target static inline void Swap(Register &a, Register &b) { \
 
 INTGEMM_SWAP(INTGEMM_SSE2, __m128i)
 INTGEMM_SWAP(INTGEMM_AVX2, __m256i)
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_SWAP(INTGEMM_AVX512BW, __m512i)
 #endif
@@ -110,7 +111,7 @@ target static inline void Transpose16InLane(Register &r0, Register &r1, Register
 
 INTGEMM_TRANSPOSE16(INTGEMM_SSE2, __m128i)
 INTGEMM_TRANSPOSE16(INTGEMM_AVX2, __m256i)
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_TRANSPOSE16(INTGEMM_AVX512BW, __m512i)
 #endif

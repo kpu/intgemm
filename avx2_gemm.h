@@ -1,18 +1,19 @@
 #pragma once
 
+#include "interleave.h"
+#include "kernels.h"
+#include "multiply.h"
 #include "types.h"
+
 #include <cstdint>
 #include <stdint.h>
-
-#include "interleave.h"
-#include "multiply.h"
 
 namespace intgemm {
 
 namespace avx2 {
 
 INTGEMM_AVX2 inline __m256i QuantizerGrab(const float *input, const __m256 quant_mult_reg) {
-  return quantize(loadu_ps<__m256>(input), quant_mult_reg);
+  return kernels::quantize(loadu_ps<__m256>(input), quant_mult_reg);
 }
 
 INTGEMM_SELECT_COL_B(INTGEMM_AVX2, __m256i)

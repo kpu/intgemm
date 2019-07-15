@@ -1,26 +1,12 @@
 #pragma once
 
+#include "config.h"
 #include "interleave.h"
 #include "intrinsics.h"
-#include "postprocess_pipeline.h"
-#include "vec_utils.h"
+#include "vec_traits.h"
+#include "callbacks.h"
 
 namespace intgemm {
-
-INTGEMM_SSE2 static inline void writer(float* C, Index offset, RegisterPair128 result) {
-  *reinterpret_cast<__m128*>(C + offset) = result.pack0123;
-  *reinterpret_cast<__m128*>(C + offset + 4) = result.pack4567;
-}
-
-INTGEMM_AVX2 static inline void writer(float* C, Index offset, __m256 result) {
-  *reinterpret_cast<__m256*>(C + offset) = result;
-}
-
-#ifndef INTGEMM_NO_AVX512
-INTGEMM_AVX512BW static inline void writer(float* C, Index offset, __m512 result) {
-  *reinterpret_cast<__m512*>(C + offset) = result;
-}
-#endif
 
 INTGEMM_SSE2 static inline float MaxFloat32(__m128 a) {
   // Fold to just using the first 64 bits.
@@ -33,12 +19,9 @@ INTGEMM_SSE2 static inline float MaxFloat32(__m128 a) {
   return *reinterpret_cast<float*>(&a);
 }
 
-INTGEMM_SSE2 static inline RegisterPair128i PermuteSummer(__m128i pack0123, __m128i pack4567) {
+INTGEMM_SSE2 static inline dvector_t<CPUType::SSE2, int> PermuteSummer(__m128i pack0123, __m128i pack4567) {
   // No op for 128 bits: already reduced fully.
-  RegisterPair128i ret;
-  ret.pack0123 = pack0123;
-  ret.pack4567 = pack4567;
-  return ret;
+  return { pack0123, pack4567 };
 }
 
 INTGEMM_AVX2 static inline float MaxFloat32(__m256 a) {
@@ -53,7 +36,7 @@ INTGEMM_AVX2 static inline __m256i PermuteSummer(__m256i pack0123, __m256i pack4
   return _mm256_add_epi32(rev, blended);
 }
 
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_AVX512BW static inline __m256i PermuteSummer(__m512i pack0123, __m512i pack4567) {
   // Form [0th 128-bit register of pack0123, 0st 128-bit register of pack4567, 2nd 128-bit register of pack0123, 2nd 128-bit register of pack4567]
@@ -100,10 +83,21 @@ target inline Register Pack0123(Register sum0, Register sum1, Register sum2, Reg
 
 INTGEMM_PACK0123(INTGEMM_SSE2, __m128i)
 INTGEMM_PACK0123(INTGEMM_AVX2, __m256i)
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_PACK0123(INTGEMM_AVX512BW, __m512i)
 #endif
+
+template <typename Callback>
+INTGEMM_SSE2 static inline void RunCallback(Callback callback_impl, dvector_t<CPUType::SSE2, int> total, Index row_idx, Index col_idx, Index rows, Index cols) {
+  callback_impl(total.first, callbacks::OutputBufferInfo(row_idx, col_idx, rows, cols));
+  callback_impl(total.second, callbacks::OutputBufferInfo(row_idx, col_idx + 4, rows, cols));
+}
+
+template <typename Callback>
+INTGEMM_AVX2 static inline void RunCallback(Callback callback_impl, vector_t<CPUType::AVX2, int> total, Index row_idx, Index col_idx, Index rows, Index cols) {
+  callback_impl(total, callbacks::OutputBufferInfo(row_idx, col_idx, rows, cols));
+}
 
 // 16-bit multiplier for INTGEMM_SSE2, INTGEMM_AVX2, and AVX512.
 // C = A * B * unquant_mult
@@ -143,13 +137,13 @@ INTGEMM_PACK0123(INTGEMM_AVX512BW, __m512i)
 // B_cols must be a multiple of 8.
 // Multiply16
 #define INTGEMM_MULTIPLY16(Integer, target, cpu_type) \
-template <typename PostprocessPipeline> target static void Multiply(const int16_t *A, const int16_t *B, float* C, PostprocessPipeline pipeline, Index A_rows, Index width, Index B_cols) { \
+template <typename Callback> target static void Multiply(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback) { \
   assert(width % (sizeof(Integer) / sizeof(int16_t)) == 0); \
   assert(B_cols % 8 == 0); \
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0); \
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0); \
   const int simd_width = width / (sizeof(Integer) / sizeof(int16_t)); \
-  auto inited_pipeline = InitPostprocessPipeline<cpu_type>(pipeline); \
+  auto callback_impl = callbacks::CallbackImpl<cpu_type, Callback>(callback); \
   const Integer *B0_col = reinterpret_cast<const Integer *>(B); \
   for (Index B0_colidx = 0; B0_colidx < B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
     /* Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.*/ \
@@ -193,9 +187,7 @@ template <typename PostprocessPipeline> target static void Multiply(const int16_
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
       /*The specific implementation may need to reduce further.*/ \
       auto total = PermuteSummer(pack0123, pack4567); \
-      auto offset = A_rowidx * B_cols + B0_colidx; \
-      auto result = inited_pipeline.run(total, offset); \
-      writer(C, offset, result); \
+      RunCallback(callback_impl, total, A_rowidx, B0_colidx, A_rows, B_cols); \
     } \
   } \
 } \
@@ -349,14 +341,14 @@ INTGEMM_SSSE3 inline static void InnerINTGEMM_SSSE3(
 }
 //INTGEMM_AVX2 or INTGEMM_SSSE3 multiply
 #define INTGEMM_MULTIPLY8(Integer, target, cpu_type) \
-  template <typename PostprocessPipeline> target static void Multiply(const int8_t *A, const int8_t *B, float* C, PostprocessPipeline pipeline, Index A_rows, Index width, Index B_cols) { \
+  template <typename Callback> target static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) { \
   assert(width % sizeof(Integer) == 0); \
   assert(B_cols % 8 == 0); \
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0); \
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0); \
   const int simd_width = width / sizeof(Integer); \
+  auto callback_impl = callbacks::CallbackImpl<cpu_type, Callback>(callback); \
   const Integer *B0_col = reinterpret_cast<const Integer*>(B); \
-  auto inited_pipeline = InitPostprocessPipeline<cpu_type>(pipeline); \
   /*Go over 8 columns of B at a time.*/ \
   for (Index B0_colidx = 0; B0_colidx != B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
     /*Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.*/ \
@@ -411,9 +403,7 @@ INTGEMM_SSSE3 inline static void InnerINTGEMM_SSSE3(
       Integer pack0123 = Pack0123(sum0, sum1, sum2, sum3); \
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
       auto total = PermuteSummer(pack0123, pack4567); \
-      auto offset = A_rowidx * B_cols + B0_colidx; \
-      auto result = inited_pipeline.run(total, offset); \
-      writer(C, offset, result); \
+      RunCallback(callback_impl, total, A_rowidx, B0_colidx, A_rows, B_cols); \
     } \
   } \
 } \

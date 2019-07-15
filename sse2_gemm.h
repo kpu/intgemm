@@ -1,9 +1,12 @@
 #pragma once
 
+#include "kernels.h"
+#include "multiply.h"
 #include "types.h"
+
 #include <cstdint>
 #include <stdint.h>
-#include "multiply.h"
+
 // 8 bit is in ssse3_gemm.h
 
 namespace intgemm {
@@ -11,7 +14,7 @@ namespace intgemm {
 namespace sse2 {
 
 INTGEMM_SSE2 inline __m128i QuantizerGrab(const float *input, const __m128 quant_mult_reg) {
-  return quantize(loadu_ps<__m128>(input), quant_mult_reg);
+  return kernels::quantize(loadu_ps<__m128>(input), quant_mult_reg);
 }
 
 INTGEMM_SELECT_COL_B(INTGEMM_SSE2, __m128i)
