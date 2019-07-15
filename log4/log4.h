@@ -143,8 +143,8 @@ INTGEMM_AVX512BW static inline __m512i SumSad(__m512i lower4, __mmask64 signs) {
   // Now each [abs_sum_higher abs_sum_lower] is 1 << lower4.
 
   // 255 for negative values (so we do 255-value) or 0 for positive values (so we do value - 0)
-  // TODO: replace this with a blend of two registers which has latency 1 throughput 0.5?
-  __m512i sign255 = _mm512_maskz_set1_epi8(signs, 255); // latency 3 throughput 1
+  const __m512i k255 = _mm512_set1_epi8(0xff);
+  __m512i sign255 = _mm512_maskz_mov_epi8(signs, k255); // latency 1 througput 0.5
   __m512i sum_higher = _mm512_sad_epu8(sign255, abs_sum_higher); // latency 3 throughput 1
   __m512i sum_lower = _mm512_sad_epu8(sign255, abs_sum_lower); // latency 3 throughput 1
   // Now we have 64-bit sums of higher and lower parts.
@@ -222,12 +222,10 @@ INTGEMM_AVX512BW static inline __m512i DotLog4_Lookup8(__m512i a, __m512i b, con
   lower = _mm512_shuffle_epi8(lookup, lower);
   upper = _mm512_shuffle_epi8(lookup, upper);
 
-  const __m512i kZeros = _mm512_setzero_si512();
   const __m512i k255 = _mm512_set1_epi8(0xff);
-
   // 255 for negative, 0 for positive.
-  __m512i sign255_lower = _mm512_mask_blend_epi8(signs_lower, kZeros, k255);
-  __m512i sign255_upper = _mm512_mask_blend_epi8(signs_upper, kZeros, k255);
+  __m512i sign255_lower = _mm512_maskz_mov_epi8(signs_lower, k255);
+  __m512i sign255_upper = _mm512_maskz_mov_epi8(signs_upper, k255);
 
   lower = _mm512_sad_epu8(sign255_lower, lower);
   upper = _mm512_sad_epu8(sign255_upper, upper);
