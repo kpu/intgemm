@@ -130,8 +130,8 @@ template <class Backend> void Print(std::vector<std::vector<uint64_t>> &stats, i
   std::cout << '\n';
 }
 
-} // namespace intgemm
 } // namespace
+} // namespace intgemm
 
 // Program takes no input
 int main(int argc, char ** argv) {
