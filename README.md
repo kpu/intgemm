@@ -1,3 +1,7 @@
+[![Build SSE](https://img.shields.io/jenkins/s/http/vali.inf.ed.ac.uk/jenkins/view/intgemm/job/intgemm-SSE.svg?label=SSE)](http://vali.inf.ed.ac.uk/jenkins/job/intgemm-SSE/)
+[![Build AVX2](https://img.shields.io/jenkins/s/http/vali.inf.ed.ac.uk/jenkins/view/intgemm/job/intgemm-AVX2.svg?label=AVX2)](http://vali.inf.ed.ac.uk/jenkins/job/intgemm-AVX2/)
+[![Build AVX512BW](https://img.shields.io/jenkins/s/http/vali.inf.ed.ac.uk/jenkins/view/intgemm/job/intgemm-AVX512BW.svg?label=AVX512BW)](http://vali.inf.ed.ac.uk/jenkins/job/intgemm-AVX512BW/)
+
 # Integer Matrix Multiplication
 
 This repository implements 8-bit and 16-bit matrix multiplication:
