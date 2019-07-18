@@ -94,6 +94,10 @@ struct Unsupported_8bit {
   static void Multiply(const int8_t *, const int8_t *, WriteC, Index, Index, Index) {
     throw UnsupportedCPU();
   }
+  template<class WriteC>
+  static void Multiply8new(const uint8_t *, const int8_t *, WriteC, Index, Index, Index) {
+    throw UnsupportedCPU();
+  }
   constexpr static const char *const kName = "8-bit Unsupported";
 };
 
@@ -192,10 +196,15 @@ class Int8Mult {
 public:
   // Multiply C = A * B, presuming A and B have been prepared.
   static void (*Multiply)(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols);
+  static void (*Multiply8new)(const uint8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols);
 };
 
 template <class WriteC>
 void (*Int8Mult<WriteC>::Multiply)(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) = ChooseCPU(AVX512_8bit::Multiply<WriteC>, AVX2_8bit::Multiply<WriteC>, SSSE3_8bit::Multiply<WriteC>, SSSE3_8bit::Multiply<WriteC>, Unsupported_8bit::Multiply);
+
+template <class WriteC>
+void (*Int8Mult<WriteC>::Multiply8new)(const uint8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) = ChooseCPU(AVX512_8bit::Multiply8new<WriteC>, AVX2_8bit::Multiply8new<WriteC>, SSSE3_8bit::Multiply8new<WriteC>, SSSE3_8bit::Multiply8new<WriteC>, Unsupported_8bit::Multiply8new);
+
 
 struct Int8 {
   typedef int8_t Integer;
@@ -238,6 +247,11 @@ struct Int8 {
   template<class WriteC>
   static void Multiply(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) {
     Int8Mult<WriteC>::Multiply(A, B, functor, A_rows, width, B_cols);
+  }
+
+  template<class WriteC>
+  static void Multiply8new(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) {
+    Int8Mult<WriteC>::Multiply8new((const uint8_t *)A, B, functor, A_rows, width, B_cols);
   }
   
   static const char *const kName;
