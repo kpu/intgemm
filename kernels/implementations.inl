@@ -31,6 +31,14 @@ namespace kernels {
 /*
  * Write
  */
+CPU_ATTR static inline void write(vi input, int8_t* output, Index offset) {
+  *reinterpret_cast<vi*>(output + offset) = input;
+}
+
+CPU_ATTR static inline void write(vi input, int16_t* output, Index offset) {
+  *reinterpret_cast<vi*>(output + offset) = input;
+}
+
 CPU_ATTR static inline void write(vi input, int* output, Index offset) {
   *reinterpret_cast<vi*>(output + offset) = input;
 }
@@ -60,18 +68,60 @@ CPU_ATTR static inline vf unquantize(vi input, vf unquant_mult) {
 /*
  * Add a bias term
  */
+CPU_ATTR static inline vi add_bias(vi input, const int8_t* bias_addr, Index bias_offset) {
+  auto bias_term = *reinterpret_cast<const vi*>(bias_addr + bias_offset);
+  return add_epi8(input, bias_term);
+}
+
+CPU_ATTR static inline vi add_bias(vi input, const int16_t* bias_addr, Index bias_offset) {
+  auto bias_term = *reinterpret_cast<const vi*>(bias_addr + bias_offset);
+  return add_epi16(input, bias_term);
+}
+
+CPU_ATTR static inline vi add_bias(vi input, const int* bias_addr, Index bias_offset) {
+  auto bias_term = *reinterpret_cast<const vi*>(bias_addr + bias_offset);
+  return add_epi32(input, bias_term);
+}
+
 CPU_ATTR static inline vf add_bias(vf input, const float* bias_addr, Index bias_offset) {
   auto bias_term = *reinterpret_cast<const vf*>(bias_addr + bias_offset);
   return add_ps(input, bias_term);
 }
 
+CPU_ATTR static inline vd add_bias(vd input, const double* bias_addr, Index bias_offset) {
+  auto bias_term = *reinterpret_cast<const vd*>(bias_addr + bias_offset);
+  return add_pd(input, bias_term);
+}
+
 /*
  * ReLU
  */
-CPU_ATTR static inline vi relu(vi input) {
+template <typename Type>
+CPU_ATTR static inline vector_t<CPUType::CPU_NAME, Type> relu(vector_t<CPUType::CPU_NAME, Type> input);
+
+template <>
+CPU_ATTR inline vi relu<int8_t>(vi input) {
+  static const auto vconst_zero = set1_epi8<vi>(0);
+#if defined(THIS_IS_SSE2)
+  return and_si(input, _mm_cmplt_epi8(vconst_zero, input));
+#elif defined(THIS_IS_AVX2)
+  return _mm256_max_epi8(input, vconst_zero);
+#else
+  return _mm512_max_epi8(input, vconst_zero);
+#endif
+}
+
+template <>
+CPU_ATTR inline vi relu<int16_t>(vi input) {
+  static const auto vconst_zero = set1_epi16<vi>(0);
+  return max_epi16(input, vconst_zero);
+}
+
+template <>
+CPU_ATTR inline vi relu<int>(vi input) {
   static const auto vconst_zero = set1_epi32<vi>(0);
 #if defined(THIS_IS_SSE2)
-  return _mm_and_si128(input, _mm_cmplt_epi32(vconst_zero, input));
+  return and_si(input, _mm_cmplt_epi32(vconst_zero, input));
 #elif defined(THIS_IS_AVX2)
   return _mm256_max_epi32(input, vconst_zero);
 #else
@@ -79,33 +129,22 @@ CPU_ATTR static inline vi relu(vi input) {
 #endif
 }
 
-CPU_ATTR static inline vf relu(vf input) {
-  static const auto vconst_zero = set1_ps<vf>(0);
+template <>
+CPU_ATTR inline vf relu<float>(vf input) {
+  static const auto vconst_zero = setzero_ps<vf>();
   return max_ps(input, vconst_zero);
 }
 
-CPU_ATTR static inline vd relu(vd input) {
-  static const auto vconst_zero = set1_pd<vd>(0);
+template <>
+CPU_ATTR inline vd relu<double>(vd input) {
+  static const auto vconst_zero = setzero_pd<vd>();
   return max_pd(input, vconst_zero);
 }
 
 /*
- * Highway: weight * input1 + ([1] - weight) * input2,  [0] <= weight <= [1]
+ * Floor
  */
-CPU_ATTR static inline vf highway(vf input1, vf input2, vf weight) {
-  static const auto vconst_one = set1_ps<vf>(1.f);
-  return add_ps(mul_ps(input1, weight), mul_ps(input2, sub_ps(vconst_one, weight)));
-}
-
-CPU_ATTR static inline vd highway(vd input1, vd input2, vd weight) {
-  static const auto vconst_one = set1_pd<vd>(1.f);
-  return add_pd(mul_pd(input1, weight), mul_pd(input2, sub_pd(vconst_one, weight)));
-}
-
-/*
- * Calculate floor: float -> float
- */
-CPU_ATTR static inline vf floor_ff(vf input) {
+CPU_ATTR static inline vf floor(vf input) {
 #if defined(THIS_IS_SSE2)
   static const auto vconst_zero = setzero_ps<vf>();
   static const auto vconst_one = set1_ps<vf>(1.f);
@@ -167,7 +206,7 @@ CPU_ATTR static inline vf exp_approx_taylor(vf x) {
   x = max_ps(x, const_min_x);
   x = min_ps(x, const_max_x);
 
-  auto a = floor_ff(x);
+  auto a = floor(x);
   auto xa = sub_ps(x, a);
 
   auto result = mul_ps(dividers[0], xa);
