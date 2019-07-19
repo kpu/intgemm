@@ -80,9 +80,26 @@ public:
     auto result = kernels::unquantize(input, unquant_mult);
     kernels::write(result, config.addr, info.row_idx * info.cols + info.col_idx);
   }
+
 private:
   UnquantizeAndWrite config;
   vf unquant_mult;
+};
+
+/*
+ * AddBiasAndWrite
+ */
+template <> class CallbackImpl<CPUType::CPU_NAME, AddBiasAndWrite> {
+public:
+  CPU_ATTR CallbackImpl(const AddBiasAndWrite& config) : config(config) {}
+
+  CPU_ATTR void operator()(vi input, const OutputBufferInfo& info) {
+    auto result = kernels::add_bias(input, config.bias_addr, info.col_idx);
+    kernels::write(result, config.output_addr, info.row_idx * info.cols + info.col_idx);
+  }
+
+private:
+  AddBiasAndWrite config;
 };
 
 /*
