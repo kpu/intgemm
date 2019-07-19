@@ -6,6 +6,13 @@ namespace callbacks {
 struct Dummy {
 };
 
+template <typename OutputBufferType>
+struct Write {
+  OutputBufferType* addr;
+
+  Write(OutputBufferType* addr) : addr(addr) {}
+};
+
 struct UnquantizeAndWrite {
   float unquant_mult;
   float* addr;

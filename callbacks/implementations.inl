@@ -53,6 +53,22 @@ public:
 };
 
 /*
+ * Write
+ */
+template <typename OutputBufferType>
+class CallbackImpl<CPUType::CPU_NAME, Write<OutputBufferType>> {
+public:
+  CPU_ATTR CallbackImpl(const Write<OutputBufferType>& config) : config(config) {}
+
+  CPU_ATTR void operator()(vi input, const OutputBufferInfo& info) {
+    kernels::write(input, config.addr, info.row_idx * info.cols + info.col_idx);
+  }
+
+private:
+  Write<OutputBufferType> config;
+};
+
+/*
  * UnquantizeAndWrite
  */
 template <> class CallbackImpl<CPUType::CPU_NAME, UnquantizeAndWrite> {
