@@ -112,6 +112,12 @@ INTGEMM_SSE2 static inline __m128i mullo_epi16(__m128i a, __m128i b) {
 INTGEMM_SSE2 static inline __m128i or_si(__m128i a, __m128i b) {
   return _mm_or_si128(a, b);
 }
+INTGEMM_SSE2 static inline __m128i packs_epi16(__m128i a, __m128i b) {
+  return _mm_packs_epi16(a, b);
+}
+INTGEMM_SSE2 static inline __m128i packs_epi32(__m128i a, __m128i b) {
+  return _mm_packs_epi32(a, b);
+}
 template <> INTGEMM_SSE2 inline __m128i set1_epi8<__m128i>(int8_t to) {
   return _mm_set1_epi8(to);
 }
@@ -247,6 +253,12 @@ INTGEMM_AVX2 static inline __m256i mullo_epi16(__m256i a, __m256i b) {
 }
 INTGEMM_AVX2 static inline __m256i or_si(__m256i a, __m256i b) {
   return _mm256_or_si256(a, b);
+}
+INTGEMM_AVX2 static inline __m256i packs_epi16(__m256i a, __m256i b) {
+  return _mm256_packs_epi16(a, b);
+}
+INTGEMM_AVX2 static inline __m256i packs_epi32(__m256i a, __m256i b) {
+  return _mm256_packs_epi32(a, b);
 }
 template <> INTGEMM_AVX2 inline __m256i set1_epi8<__m256i>(int8_t to) {
   return _mm256_set1_epi8(to);
@@ -385,6 +397,12 @@ INTGEMM_AVX512BW static inline __m512i mullo_epi16(__m512i a, __m512i b) {
 }
 INTGEMM_AVX512BW static inline __m512i or_si(__m512i a, __m512i b) {
   return _mm512_or_si512(a, b);
+}
+INTGEMM_AVX512BW static inline __m512i packs_epi16(__m512i a, __m512i b) {
+  return _mm512_packs_epi16(a, b);
+}
+INTGEMM_AVX512BW static inline __m512i packs_epi32(__m512i a, __m512i b) {
+  return _mm512_packs_epi32(a, b);
 }
 template <> inline INTGEMM_AVX512BW __m512i set1_epi8<__m512i>(int8_t to) {
   return _mm512_set1_epi8(to);

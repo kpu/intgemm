@@ -183,6 +183,48 @@ CPU_ATTR inline vd multiply<double>(vd a, vd b) {
 }
 
 /*
+ * Downcast
+ */
+CPU_ATTR static inline vi downcast32to8(vi input1, vi input2, vi input3, vi input4) {
+  auto result = packs_epi16(packs_epi32(input1, input2), packs_epi32(input3, input4));
+
+#if defined(THIS_IS_SSE2)
+  return result;
+#elif defined(THIS_IS_AVX2)
+  return _mm256_shuffle_epi32(_mm256_permute4x64_epi64(result, 0xd8 /* = 0 2 1 3 */), 0xd8 /* = 0 2 1 3 */);
+#else
+  static const auto permutation_indices = _mm512_set_epi32(15, 11, 7, 3, 14, 10, 6, 2, 13, 9, 5, 1, 12, 8, 4, 0);
+  return _mm512_castps_si512(_mm512_permutexvar_ps(permutation_indices, _mm512_castsi512_ps(result)));
+#endif
+}
+
+CPU_ATTR static inline vi downcast32to16(vi input1, vi input2) {
+  auto result = packs_epi32(input1, input2);
+
+#if defined(THIS_IS_SSE2)
+  return result;
+#elif defined(THIS_IS_AVX2)
+  return _mm256_permute4x64_epi64(result, 0xd8 /* = 0 2 1 3 */);
+#else
+  static const auto permutation_indices = _mm512_set_epi64(7, 5, 3, 1, 6, 4, 2, 0);
+  return _mm512_castpd_si512(_mm512_permutexvar_pd(permutation_indices, _mm512_castsi512_pd(result)));
+#endif
+}
+
+CPU_ATTR static inline vi downcast16to8(vi input1, vi input2) {
+  auto result = packs_epi16(input1, input2);
+
+#if defined(THIS_IS_SSE2)
+  return result;
+#elif defined(THIS_IS_AVX2)
+  return _mm256_permute4x64_epi64(result, 0xd8 /* = 0 2 1 3 */);
+#else
+  static const auto permutation_indices = _mm512_set_epi64(7, 5, 3, 1, 6, 4, 2, 0);
+  return _mm512_castpd_si512(_mm512_permutexvar_pd(permutation_indices, _mm512_castsi512_pd(result)));
+#endif
+}
+
+/*
  * Floor
  */
 CPU_ATTR static inline vf floor(vf input) {
