@@ -97,11 +97,20 @@ INTGEMM_SSE2 static inline __m128 max_ps(__m128 first, __m128 second) {
 INTGEMM_SSE2 static inline __m128 min_ps(__m128 a, __m128 b) {
   return _mm_min_ps(a, b);
 }
+INTGEMM_SSE2 static inline __m128i mul_epu32(__m128i a, __m128i b) {
+  return _mm_mul_epu32(a, b);
+}
 INTGEMM_SSE2 static inline __m128d mul_pd(__m128d a, __m128d b) {
   return _mm_mul_pd(a, b);
 }
 INTGEMM_SSE2 static inline __m128 mul_ps(__m128 a, __m128 b) {
   return _mm_mul_ps(a, b);
+}
+INTGEMM_SSE2 static inline __m128i mullo_epi16(__m128i a, __m128i b) {
+  return _mm_mullo_epi16(a, b);
+}
+INTGEMM_SSE2 static inline __m128i or_si(__m128i a, __m128i b) {
+  return _mm_or_si128(a, b);
 }
 template <> INTGEMM_SSE2 inline __m128i set1_epi8<__m128i>(int8_t to) {
   return _mm_set1_epi8(to);
@@ -127,8 +136,17 @@ template <> INTGEMM_SSE2 inline __m128 setzero_ps<__m128>() {
 template <> INTGEMM_SSE2 inline __m128i setzero_si<__m128i>() {
   return _mm_setzero_si128();
 }
+INTGEMM_SSE2 static inline __m128i shuffle_epi32(__m128i a, int imm8) {
+  return _mm_shuffle_epi32(a, imm8);
+}
 INTGEMM_SSSE3 static inline __m128i sign_epi8(__m128i first, __m128i second) {
   return _mm_sign_epi8(first, second);
+}
+INTGEMM_SSE2 static inline __m128i slli_epi16(__m128i a, int8_t b) {
+  return _mm_slli_epi16(a, b);
+}
+INTGEMM_SSE2 static inline __m128i srli_epi16(__m128i a, int8_t b) {
+  return _mm_srli_epi16(a, b);
 }
 INTGEMM_SSE2 static inline void storeu_ps(float* mem_addr, __m128 a) {
   _mm_storeu_ps(mem_addr, a);
@@ -138,6 +156,9 @@ INTGEMM_SSE2 static inline __m128d sub_pd(__m128d a, __m128d b) {
 }
 INTGEMM_SSE2 static inline __m128 sub_ps(__m128 a, __m128 b) {
   return _mm_sub_ps(a, b);
+}
+INTGEMM_SSE2 static inline __m128i unpacklo_epi32(__m128i a, __m128i b) {
+  return _mm_unpacklo_epi32(a, b);
 }
 
 /*
@@ -212,11 +233,20 @@ INTGEMM_AVX2 static inline __m256 max_ps(__m256 first, __m256 second) {
 INTGEMM_AVX2 static inline __m256 min_ps(__m256 a, __m256 b) {
   return _mm256_min_ps(a, b);
 }
+INTGEMM_AVX2 static inline __m256i mul_epu32(__m256i a, __m256i b) {
+  return _mm256_mul_epu32(a, b);
+}
 INTGEMM_AVX2 static inline __m256d mul_pd(__m256d a, __m256d b) {
   return _mm256_mul_pd(a, b);
 }
 INTGEMM_AVX2 static inline __m256 mul_ps(__m256 a, __m256 b) {
   return _mm256_mul_ps(a, b);
+}
+INTGEMM_AVX2 static inline __m256i mullo_epi16(__m256i a, __m256i b) {
+  return _mm256_mullo_epi16(a, b);
+}
+INTGEMM_AVX2 static inline __m256i or_si(__m256i a, __m256i b) {
+  return _mm256_or_si256(a, b);
 }
 template <> INTGEMM_AVX2 inline __m256i set1_epi8<__m256i>(int8_t to) {
   return _mm256_set1_epi8(to);
@@ -242,8 +272,17 @@ template <> INTGEMM_AVX2 inline __m256 setzero_ps<__m256>() {
 template <> INTGEMM_AVX2 inline __m256i setzero_si<__m256i>() {
   return _mm256_setzero_si256();
 }
+INTGEMM_AVX2 static inline __m256i shuffle_epi32(__m256i a, int imm8) {
+  return _mm256_shuffle_epi32(a, imm8);
+}
 INTGEMM_AVX2 static inline __m256i sign_epi8(__m256i first, __m256i second) {
   return _mm256_sign_epi8(first, second);
+}
+INTGEMM_AVX2 static inline __m256i slli_epi16(__m256i a, int8_t b) {
+  return _mm256_slli_epi16(a, b);
+}
+INTGEMM_AVX2 static inline __m256i srli_epi16(__m256i a, int8_t b) {
+  return _mm256_srli_epi16(a, b);
 }
 INTGEMM_AVX2 static inline void storeu_ps(float* mem_addr, __m256 a) {
   _mm256_storeu_ps(mem_addr, a);
@@ -253,6 +292,9 @@ INTGEMM_AVX2 static inline __m256d sub_pd(__m256d a, __m256d b) {
 }
 INTGEMM_AVX2 static inline __m256 sub_ps(__m256 a, __m256 b) {
   return _mm256_sub_ps(a, b);
+}
+INTGEMM_AVX2 static inline __m256i unpacklo_epi32(__m256i a, __m256i b) {
+  return _mm256_unpacklo_epi32(a, b);
 }
 
 /*
@@ -329,11 +371,20 @@ INTGEMM_AVX512BW static inline __m512 max_ps(__m512 first, __m512 second) {
 INTGEMM_AVX512BW static inline __m512 min_ps(__m512 a, __m512 b) {
   return _mm512_min_ps(a, b);
 }
+INTGEMM_AVX512BW static inline __m512i mul_epu32(__m512i a, __m512i b) {
+  return _mm512_mul_epu32(a, b);
+}
 INTGEMM_AVX512BW static inline __m512d mul_pd(__m512d a, __m512d b) {
   return _mm512_mul_pd(a, b);
 }
 INTGEMM_AVX512BW static inline __m512 mul_ps(__m512 a, __m512 b) {
   return _mm512_mul_ps(a, b);
+}
+INTGEMM_AVX512BW static inline __m512i mullo_epi16(__m512i a, __m512i b) {
+  return _mm512_mullo_epi16(a, b);
+}
+INTGEMM_AVX512BW static inline __m512i or_si(__m512i a, __m512i b) {
+  return _mm512_or_si512(a, b);
 }
 template <> inline INTGEMM_AVX512BW __m512i set1_epi8<__m512i>(int8_t to) {
   return _mm512_set1_epi8(to);
@@ -362,6 +413,15 @@ template <> INTGEMM_AVX512BW inline __m512i setzero_si<__m512i>() {
 /*
  * Missing sign_epi8
  */
+INTGEMM_AVX512BW static inline __m512i shuffle_epi32(__m512i a, _MM_PERM_ENUM imm8) {
+  return _mm512_shuffle_epi32(a, imm8);
+}
+INTGEMM_AVX512BW static inline __m512i slli_epi16(__m512i a, int8_t b) {
+  return _mm512_slli_epi16(a, b);
+}
+INTGEMM_AVX512BW static inline __m512i srli_epi16(__m512i a, int8_t b) {
+  return _mm512_srli_epi16(a, b);
+}
 INTGEMM_AVX512BW static inline void storeu_ps(float* mem_addr, __m512 a) {
   _mm512_storeu_ps(mem_addr, a);
 }
@@ -370,6 +430,9 @@ INTGEMM_AVX512BW static inline __m512d sub_pd(__m512d a, __m512d b) {
 }
 INTGEMM_AVX512BW static inline __m512 sub_ps(__m512 a, __m512 b) {
   return _mm512_sub_ps(a, b);
+}
+INTGEMM_AVX512BW static inline __m512i unpacklo_epi32(__m512i a, __m512i b) {
+  return _mm512_unpacklo_epi32(a, b);
 }
 
 #endif
