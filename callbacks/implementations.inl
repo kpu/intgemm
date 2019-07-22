@@ -110,14 +110,115 @@ public:
   CPU_ATTR CallbackImpl(const UnquantizeAndAddBiasAndWrite& config) : config(config) {
     unquant_mult = set1_ps<vf>(config.unquant_mult);
   }
+
   CPU_ATTR void operator()(vi input, const OutputBufferInfo& info) {
     auto result = kernels::unquantize(input, unquant_mult);
     result = kernels::add_bias(result, config.bias_addr, info.col_idx);
     kernels::write(result, config.output_addr, info.row_idx * info.cols + info.col_idx);
   }
+
 private:
   UnquantizeAndAddBiasAndWrite config;
   vf unquant_mult;
+};
+
+/*
+ * SSRUSigmoidF
+ *
+ * output = sigmoid_lut(scale(input + bias), scale))
+ */
+template <> class CallbackImpl<CPUType::CPU_NAME, SSRUSigmoidF<int8_t>> {
+public:
+  CPU_ATTR CallbackImpl(const SSRUSigmoidF<int8_t>& config) : config(config), buffered_inputs_n(0), buffered_info(0, 0, 0, 0) {
+    scale = set1_ps<vf>(config.quant_mult_bf / config.quant_mult_f);
+    scale2 = set1_ps<vf>((127.0f / config.sigmoid_lut_range) / config.quant_mult_bf);
+  }
+
+  // Workaround. If the buffer size is not aligned to 4xsizeof(vec) then there'll be a problem with tails.
+  CPU_ATTR void operator()(vi input, const OutputBufferInfo& info) {
+    buffered_inputs[buffered_inputs_n++] = input;
+    if (buffered_inputs_n == 1)
+      buffered_info = info;
+    else if (buffered_inputs_n == 4) {
+      callback(buffered_inputs[0], buffered_inputs[1], buffered_inputs[2], buffered_inputs[3], buffered_info);
+      buffered_inputs_n = 0;
+    }
+  }
+
+private:
+  SSRUSigmoidF<int8_t> config;
+  vf scale;
+  vf scale2;
+
+  int buffered_inputs_n;
+  vi buffered_inputs[4];
+  OutputBufferInfo buffered_info;
+
+  CPU_ATTR void callback(vi input1, vi input2, vi input3, vi input4, const OutputBufferInfo& info) {
+    auto result = kernels::downcast32to8(
+      kernels::rescale(input1, scale),
+      kernels::rescale(input2, scale),
+      kernels::rescale(input3, scale),
+      kernels::rescale(input4, scale));
+    result = kernels::add_bias(result, config.bias_addr, info.col_idx);
+
+    auto tmp = kernels::upcast8to32(result);
+    result = kernels::downcast32to8(
+      kernels::rescale(tmp.first, scale2),
+      kernels::rescale(tmp.second, scale2),
+      kernels::rescale(tmp.third, scale2),
+      kernels::rescale(tmp.fourth, scale2));
+
+    result = kernels::lookup_8b(result, config.sigmoid_lut);
+    kernels::write(result, config.output_addr, info.row_idx * info.cols + info.col_idx);
+  }
+};
+
+/*
+ * SSRUPrecomputedPartOfHighway
+ *
+ * output = (1 - sigmoid) * input
+ */
+template <> class CallbackImpl<CPUType::CPU_NAME, SSRUPrecomputedPartOfHighway<int8_t>> {
+public:
+  CPU_ATTR CallbackImpl(const SSRUPrecomputedPartOfHighway<int8_t>& config) : config(config), buffered_inputs_n(0), buffered_info(0, 0, 0, 0) {
+    scale = set1_ps<vf>(config.scale);
+  }
+
+  // Workaround. If the buffer size is not aligned to 4xsizeof(vec) then there'll be a problem with tails.
+  CPU_ATTR void operator()(vi input, const OutputBufferInfo& info) {
+    buffered_inputs[buffered_inputs_n++] = input;
+    if (buffered_inputs_n == 1)
+      buffered_info = info;
+    else if (buffered_inputs_n == 4) {
+      callback(buffered_inputs[0], buffered_inputs[1], buffered_inputs[2], buffered_inputs[3], buffered_info);
+      buffered_inputs_n = 0;
+    }
+  }
+
+private:
+  SSRUPrecomputedPartOfHighway<int8_t> config;
+  vf scale;
+
+  int buffered_inputs_n;
+  vi buffered_inputs[4];
+  OutputBufferInfo buffered_info;
+
+  CPU_ATTR void callback(vi input1, vi input2, vi input3, vi input4, const OutputBufferInfo& info) {
+    // TODO: Use 255 for better resolution (it needs u8 intrinsics)
+    static const auto vconst_int8_max = set1_epi8<vi>(127);
+
+    const auto offset = info.row_idx * info.cols + info.col_idx;
+    const auto sigmoid = *reinterpret_cast<const vi*>(config.sigmoid_f_addr + offset);
+
+    auto result = kernels::downcast32to8(
+      kernels::rescale(input1, scale),
+      kernels::rescale(input2, scale),
+      kernels::rescale(input3, scale),
+      kernels::rescale(input4, scale));
+    result = kernels::multiply_sat<int8_t>(sub_epi8(vconst_int8_max, sigmoid), result, 7);
+    kernels::write(result, config.output_addr, offset);
+  }
 };
 
 }
