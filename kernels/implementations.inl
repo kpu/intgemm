@@ -287,6 +287,13 @@ CPU_ATTR static inline qvector_t<CPUType::CPU_NAME, int> upcast8to32(vi input) {
 }
 
 /*
+ * Rescale int32
+ */
+CPU_ATTR static inline vi rescale(vi input, vf scale) {
+  return cvtps_epi32(mul_ps(cvtepi32_ps(input), scale));
+}
+
+/*
  * Floor
  */
 CPU_ATTR static inline vf floor(vf input) {
