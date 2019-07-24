@@ -163,6 +163,18 @@ INTGEMM_SSE2 static inline __m128d sub_pd(__m128d a, __m128d b) {
 INTGEMM_SSE2 static inline __m128 sub_ps(__m128 a, __m128 b) {
   return _mm_sub_ps(a, b);
 }
+INTGEMM_SSE2 static inline __m128i unpacklo_epi8(__m128i a, __m128i b) {
+  return _mm_unpacklo_epi8(a, b);
+}
+INTGEMM_SSE2 static inline __m128i unpackhi_epi8(__m128i a, __m128i b) {
+  return _mm_unpackhi_epi8(a, b);
+}
+INTGEMM_SSE2 static inline __m128i unpacklo_epi16(__m128i a, __m128i b) {
+  return _mm_unpacklo_epi16(a, b);
+}
+INTGEMM_SSE2 static inline __m128i unpackhi_epi16(__m128i a, __m128i b) {
+  return _mm_unpackhi_epi16(a, b);
+}
 INTGEMM_SSE2 static inline __m128i unpacklo_epi32(__m128i a, __m128i b) {
   return _mm_unpacklo_epi32(a, b);
 }
@@ -304,6 +316,18 @@ INTGEMM_AVX2 static inline __m256d sub_pd(__m256d a, __m256d b) {
 }
 INTGEMM_AVX2 static inline __m256 sub_ps(__m256 a, __m256 b) {
   return _mm256_sub_ps(a, b);
+}
+INTGEMM_AVX2 static inline __m256i unpacklo_epi8(__m256i a, __m256i b) {
+  return _mm256_unpacklo_epi8(a, b);
+}
+INTGEMM_AVX2 static inline __m256i unpackhi_epi8(__m256i a, __m256i b) {
+  return _mm256_unpackhi_epi8(a, b);
+}
+INTGEMM_AVX2 static inline __m256i unpacklo_epi16(__m256i a, __m256i b) {
+  return _mm256_unpacklo_epi16(a, b);
+}
+INTGEMM_AVX2 static inline __m256i unpackhi_epi16(__m256i a, __m256i b) {
+  return _mm256_unpackhi_epi16(a, b);
 }
 INTGEMM_AVX2 static inline __m256i unpacklo_epi32(__m256i a, __m256i b) {
   return _mm256_unpacklo_epi32(a, b);
@@ -448,6 +472,18 @@ INTGEMM_AVX512BW static inline __m512d sub_pd(__m512d a, __m512d b) {
 }
 INTGEMM_AVX512BW static inline __m512 sub_ps(__m512 a, __m512 b) {
   return _mm512_sub_ps(a, b);
+}
+INTGEMM_AVX512BW static inline __m512i unpacklo_epi8(__m512i a, __m512i b) {
+  return _mm512_unpacklo_epi8(a, b);
+}
+INTGEMM_AVX512BW static inline __m512i unpackhi_epi8(__m512i a, __m512i b) {
+  return _mm512_unpackhi_epi8(a, b);
+}
+INTGEMM_AVX512BW static inline __m512i unpacklo_epi16(__m512i a, __m512i b) {
+  return _mm512_unpacklo_epi16(a, b);
+}
+INTGEMM_AVX512BW static inline __m512i unpackhi_epi16(__m512i a, __m512i b) {
+  return _mm512_unpackhi_epi16(a, b);
 }
 INTGEMM_AVX512BW static inline __m512i unpacklo_epi32(__m512i a, __m512i b) {
   return _mm512_unpacklo_epi32(a, b);

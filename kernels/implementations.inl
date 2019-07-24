@@ -225,6 +225,68 @@ CPU_ATTR static inline vi downcast16to8(vi input1, vi input2) {
 }
 
 /*
+ * Upcast
+ */
+CPU_ATTR static inline dvector_t<CPUType::CPU_NAME, int16_t> upcast8to16(vi input) {
+  static const auto vzero = set1_epi8<vi>(0);
+
+#if defined(THIS_IS_SSE2)
+  auto higher_byte = _mm_cmpgt_epi8(vzero, input);
+#elif defined(THIS_IS_AVX2)
+  input = _mm256_permute4x64_epi64(input, 0xd8 /* = 0 2 1 3 */);
+  auto higher_byte = _mm256_cmpgt_epi8(vzero, input);
+#else
+  static const auto vmax_negative = set1_epi8<vi>(0xff);
+  static const auto permutation_indices = _mm512_set_epi64(7, 3, 6, 2, 5, 1, 4, 0);
+
+  input = _mm512_castpd_si512(_mm512_permutexvar_pd(permutation_indices, _mm512_castsi512_pd(input)));
+  auto negatives = _mm512_cmp_epi8_mask(input, vzero, _MM_CMPINT_LT);
+  auto higher_byte = _mm512_mask_blend_epi8(negatives, vzero, vmax_negative);
+#endif
+
+  return {
+    unpacklo_epi8(input, higher_byte),
+    unpackhi_epi8(input, higher_byte),
+  };
+}
+
+CPU_ATTR static inline dvector_t<CPUType::CPU_NAME, int> upcast16to32(vi input) {
+  static const auto vzero = set1_epi16<vi>(0);
+
+#if defined(THIS_IS_SSE2)
+  auto higher_byte = _mm_cmpgt_epi16(vzero, input);
+#elif defined(THIS_IS_AVX2)
+  input = _mm256_permute4x64_epi64(input, 0xd8 /* = 0 2 1 3 */);
+  auto higher_byte = _mm256_cmpgt_epi16(vzero, input);
+#else
+  static const auto vmax_negative = set1_epi16<vi>(0xffff);
+  static const auto permutation_indices = _mm512_set_epi64(7, 3, 6, 2, 5, 1, 4, 0);
+
+  input = _mm512_castpd_si512(_mm512_permutexvar_pd(permutation_indices, _mm512_castsi512_pd(input)));
+  auto negatives = _mm512_cmp_epi16_mask(input, vzero, _MM_CMPINT_LT);
+  auto higher_byte = _mm512_mask_blend_epi16(negatives, vzero, vmax_negative);
+#endif
+
+  return {
+    unpacklo_epi16(input, higher_byte),
+    unpackhi_epi16(input, higher_byte),
+  };
+}
+
+CPU_ATTR static inline qvector_t<CPUType::CPU_NAME, int> upcast8to32(vi input) {
+  auto result16 = upcast8to16(input);
+  auto result32a = upcast16to32(result16.first);
+  auto result32b = upcast16to32(result16.second);
+
+  return {
+    result32a.first,
+    result32a.second,
+    result32b.first,
+    result32b.second,
+  };
+}
+
+/*
  * Floor
  */
 CPU_ATTR static inline vf floor(vf input) {

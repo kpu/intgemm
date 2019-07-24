@@ -35,4 +35,14 @@ struct dvector_t {
   type second;
 };
 
+template <CPUType CPUType_, typename ElemType_>
+struct qvector_t {
+  using type = vector_t<CPUType_, ElemType_>;
+
+  type first;
+  type second;
+  type third;
+  type fourth;
+};
+
 }

@@ -54,6 +54,7 @@ add_executable(tests
   test/kernels/quantize_test.cc
   test/kernels/relu_test.cc
   test/kernels/sigmoid_test.cc
+  test/kernels/upcast_test.cc
   test/kernels/tanh_test.cc
   test/kernels/unquantize_test.cc
   test/kernels/write_test.cc
