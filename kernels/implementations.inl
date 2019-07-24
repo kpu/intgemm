@@ -31,6 +31,14 @@ namespace kernels {
 /*
  * Write
  */
+CPU_ATTR static inline void write(vi input, int8_t* output, Index offset) {
+  *reinterpret_cast<vi*>(output + offset) = input;
+}
+
+CPU_ATTR static inline void write(vi input, int16_t* output, Index offset) {
+  *reinterpret_cast<vi*>(output + offset) = input;
+}
+
 CPU_ATTR static inline void write(vi input, int* output, Index offset) {
   *reinterpret_cast<vi*>(output + offset) = input;
 }
@@ -60,18 +68,60 @@ CPU_ATTR static inline vf unquantize(vi input, vf unquant_mult) {
 /*
  * Add a bias term
  */
+CPU_ATTR static inline vi add_bias(vi input, const int8_t* bias_addr, Index bias_offset) {
+  auto bias_term = *reinterpret_cast<const vi*>(bias_addr + bias_offset);
+  return add_epi8(input, bias_term);
+}
+
+CPU_ATTR static inline vi add_bias(vi input, const int16_t* bias_addr, Index bias_offset) {
+  auto bias_term = *reinterpret_cast<const vi*>(bias_addr + bias_offset);
+  return add_epi16(input, bias_term);
+}
+
+CPU_ATTR static inline vi add_bias(vi input, const int* bias_addr, Index bias_offset) {
+  auto bias_term = *reinterpret_cast<const vi*>(bias_addr + bias_offset);
+  return add_epi32(input, bias_term);
+}
+
 CPU_ATTR static inline vf add_bias(vf input, const float* bias_addr, Index bias_offset) {
   auto bias_term = *reinterpret_cast<const vf*>(bias_addr + bias_offset);
   return add_ps(input, bias_term);
 }
 
+CPU_ATTR static inline vd add_bias(vd input, const double* bias_addr, Index bias_offset) {
+  auto bias_term = *reinterpret_cast<const vd*>(bias_addr + bias_offset);
+  return add_pd(input, bias_term);
+}
+
 /*
  * ReLU
  */
-CPU_ATTR static inline vi relu(vi input) {
+template <typename Type>
+CPU_ATTR static inline vector_t<CPUType::CPU_NAME, Type> relu(vector_t<CPUType::CPU_NAME, Type> input);
+
+template <>
+CPU_ATTR inline vi relu<int8_t>(vi input) {
+  static const auto vconst_zero = set1_epi8<vi>(0);
+#if defined(THIS_IS_SSE2)
+  return and_si(input, _mm_cmplt_epi8(vconst_zero, input));
+#elif defined(THIS_IS_AVX2)
+  return _mm256_max_epi8(input, vconst_zero);
+#else
+  return _mm512_max_epi8(input, vconst_zero);
+#endif
+}
+
+template <>
+CPU_ATTR inline vi relu<int16_t>(vi input) {
+  static const auto vconst_zero = set1_epi16<vi>(0);
+  return max_epi16(input, vconst_zero);
+}
+
+template <>
+CPU_ATTR inline vi relu<int>(vi input) {
   static const auto vconst_zero = set1_epi32<vi>(0);
 #if defined(THIS_IS_SSE2)
-  return _mm_and_si128(input, _mm_cmplt_epi32(vconst_zero, input));
+  return and_si(input, _mm_cmplt_epi32(vconst_zero, input));
 #elif defined(THIS_IS_AVX2)
   return _mm256_max_epi32(input, vconst_zero);
 #else
@@ -79,33 +129,167 @@ CPU_ATTR static inline vi relu(vi input) {
 #endif
 }
 
-CPU_ATTR static inline vf relu(vf input) {
-  static const auto vconst_zero = set1_ps<vf>(0);
+template <>
+CPU_ATTR inline vf relu<float>(vf input) {
+  static const auto vconst_zero = setzero_ps<vf>();
   return max_ps(input, vconst_zero);
 }
 
-CPU_ATTR static inline vd relu(vd input) {
-  static const auto vconst_zero = set1_pd<vd>(0);
+template <>
+CPU_ATTR inline vd relu<double>(vd input) {
+  static const auto vconst_zero = setzero_pd<vd>();
   return max_pd(input, vconst_zero);
 }
 
 /*
- * Highway: weight * input1 + ([1] - weight) * input2,  [0] <= weight <= [1]
+ * Multiply (elemwise)
  */
-CPU_ATTR static inline vf highway(vf input1, vf input2, vf weight) {
-  static const auto vconst_one = set1_ps<vf>(1.f);
-  return add_ps(mul_ps(input1, weight), mul_ps(input2, sub_ps(vconst_one, weight)));
+template <typename Type>
+CPU_ATTR static inline vector_t<CPUType::CPU_NAME, Type> multiply(vector_t<CPUType::CPU_NAME, Type> a, vector_t<CPUType::CPU_NAME, Type> b);
+
+template <>
+CPU_ATTR inline vi multiply<int8_t>(vi a, vi b) {
+  auto even = mullo_epi16(a, b);
+  auto odd = mullo_epi16(srli_epi16(a, 8), srli_epi16(b, 8));
+  return or_si(slli_epi16(odd, 8), srli_epi16(slli_epi16(even, 8), 8));
 }
 
-CPU_ATTR static inline vd highway(vd input1, vd input2, vd weight) {
-  static const auto vconst_one = set1_pd<vd>(1.f);
-  return add_pd(mul_pd(input1, weight), mul_pd(input2, sub_pd(vconst_one, weight)));
+template <>
+CPU_ATTR inline vi multiply<int16_t>(vi a, vi b) {
+  return mullo_epi16(a, b);
+}
+
+template <>
+CPU_ATTR inline vi multiply<int>(vi a, vi b) {
+#if defined(THIS_IS_SSE2)
+  auto even = mul_epu32(a, b);
+  auto odd = mul_epu32(_mm_srli_si128(a, 4), _mm_srli_si128(b, 4));
+  return unpacklo_epi32(shuffle_epi32(even, 0x8 /* = 0 0 2 0 */), shuffle_epi32(odd, 0x8 /* = 0 0 2 0 */));
+#elif defined(THIS_IS_AVX2)
+  return _mm256_mullo_epi32(a, b);
+#else
+  return _mm512_mullo_epi32(a, b);
+#endif
+}
+
+template <>
+CPU_ATTR inline vf multiply<float>(vf a, vf b) {
+  return mul_ps(a, b);
+}
+
+template <>
+CPU_ATTR inline vd multiply<double>(vd a, vd b) {
+  return mul_pd(a, b);
 }
 
 /*
- * Calculate floor: float -> float
+ * Downcast
  */
-CPU_ATTR static inline vf floor_ff(vf input) {
+CPU_ATTR static inline vi downcast32to8(vi input1, vi input2, vi input3, vi input4) {
+  auto result = packs_epi16(packs_epi32(input1, input2), packs_epi32(input3, input4));
+
+#if defined(THIS_IS_SSE2)
+  return result;
+#elif defined(THIS_IS_AVX2)
+  return _mm256_shuffle_epi32(_mm256_permute4x64_epi64(result, 0xd8 /* = 0 2 1 3 */), 0xd8 /* = 0 2 1 3 */);
+#else
+  static const auto permutation_indices = _mm512_set_epi32(15, 11, 7, 3, 14, 10, 6, 2, 13, 9, 5, 1, 12, 8, 4, 0);
+  return _mm512_castps_si512(_mm512_permutexvar_ps(permutation_indices, _mm512_castsi512_ps(result)));
+#endif
+}
+
+CPU_ATTR static inline vi downcast32to16(vi input1, vi input2) {
+  auto result = packs_epi32(input1, input2);
+
+#if defined(THIS_IS_SSE2)
+  return result;
+#elif defined(THIS_IS_AVX2)
+  return _mm256_permute4x64_epi64(result, 0xd8 /* = 0 2 1 3 */);
+#else
+  static const auto permutation_indices = _mm512_set_epi64(7, 5, 3, 1, 6, 4, 2, 0);
+  return _mm512_castpd_si512(_mm512_permutexvar_pd(permutation_indices, _mm512_castsi512_pd(result)));
+#endif
+}
+
+CPU_ATTR static inline vi downcast16to8(vi input1, vi input2) {
+  auto result = packs_epi16(input1, input2);
+
+#if defined(THIS_IS_SSE2)
+  return result;
+#elif defined(THIS_IS_AVX2)
+  return _mm256_permute4x64_epi64(result, 0xd8 /* = 0 2 1 3 */);
+#else
+  static const auto permutation_indices = _mm512_set_epi64(7, 5, 3, 1, 6, 4, 2, 0);
+  return _mm512_castpd_si512(_mm512_permutexvar_pd(permutation_indices, _mm512_castsi512_pd(result)));
+#endif
+}
+
+/*
+ * Upcast
+ */
+CPU_ATTR static inline dvector_t<CPUType::CPU_NAME, int16_t> upcast8to16(vi input) {
+  static const auto vzero = set1_epi8<vi>(0);
+
+#if defined(THIS_IS_SSE2)
+  auto higher_byte = _mm_cmpgt_epi8(vzero, input);
+#elif defined(THIS_IS_AVX2)
+  input = _mm256_permute4x64_epi64(input, 0xd8 /* = 0 2 1 3 */);
+  auto higher_byte = _mm256_cmpgt_epi8(vzero, input);
+#else
+  static const auto vmax_negative = set1_epi8<vi>(0xff);
+  static const auto permutation_indices = _mm512_set_epi64(7, 3, 6, 2, 5, 1, 4, 0);
+
+  input = _mm512_castpd_si512(_mm512_permutexvar_pd(permutation_indices, _mm512_castsi512_pd(input)));
+  auto negatives = _mm512_cmp_epi8_mask(input, vzero, _MM_CMPINT_LT);
+  auto higher_byte = _mm512_mask_blend_epi8(negatives, vzero, vmax_negative);
+#endif
+
+  return {
+    unpacklo_epi8(input, higher_byte),
+    unpackhi_epi8(input, higher_byte),
+  };
+}
+
+CPU_ATTR static inline dvector_t<CPUType::CPU_NAME, int> upcast16to32(vi input) {
+  static const auto vzero = set1_epi16<vi>(0);
+
+#if defined(THIS_IS_SSE2)
+  auto higher_byte = _mm_cmpgt_epi16(vzero, input);
+#elif defined(THIS_IS_AVX2)
+  input = _mm256_permute4x64_epi64(input, 0xd8 /* = 0 2 1 3 */);
+  auto higher_byte = _mm256_cmpgt_epi16(vzero, input);
+#else
+  static const auto vmax_negative = set1_epi16<vi>(0xffff);
+  static const auto permutation_indices = _mm512_set_epi64(7, 3, 6, 2, 5, 1, 4, 0);
+
+  input = _mm512_castpd_si512(_mm512_permutexvar_pd(permutation_indices, _mm512_castsi512_pd(input)));
+  auto negatives = _mm512_cmp_epi16_mask(input, vzero, _MM_CMPINT_LT);
+  auto higher_byte = _mm512_mask_blend_epi16(negatives, vzero, vmax_negative);
+#endif
+
+  return {
+    unpacklo_epi16(input, higher_byte),
+    unpackhi_epi16(input, higher_byte),
+  };
+}
+
+CPU_ATTR static inline qvector_t<CPUType::CPU_NAME, int> upcast8to32(vi input) {
+  auto result16 = upcast8to16(input);
+  auto result32a = upcast16to32(result16.first);
+  auto result32b = upcast16to32(result16.second);
+
+  return {
+    result32a.first,
+    result32a.second,
+    result32b.first,
+    result32b.second,
+  };
+}
+
+/*
+ * Floor
+ */
+CPU_ATTR static inline vf floor(vf input) {
 #if defined(THIS_IS_SSE2)
   static const auto vconst_zero = setzero_ps<vf>();
   static const auto vconst_one = set1_ps<vf>(1.f);
@@ -167,7 +351,7 @@ CPU_ATTR static inline vf exp_approx_taylor(vf x) {
   x = max_ps(x, const_min_x);
   x = min_ps(x, const_max_x);
 
-  auto a = floor_ff(x);
+  auto a = floor(x);
   auto xa = sub_ps(x, a);
 
   auto result = mul_ps(dividers[0], xa);
