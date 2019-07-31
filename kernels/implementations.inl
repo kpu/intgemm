@@ -327,6 +327,21 @@ CPU_ATTR inline vi multiply_sat<int16_t>(vi a, vi b, uint8_t right_shift) {
 }
 
 /*
+ * Lookup
+ */
+CPU_ATTR static inline vi lookup_8b(vi indices, const int8_t* lut) {
+  // TODO: Vectorize it!
+  vi output;
+
+  auto indices_it = reinterpret_cast<const uint8_t*>(&indices);
+  auto output_it = reinterpret_cast<int8_t*>(&output);
+  for (int i = 0; i < sizeof(indices); ++i)
+    *output_it++ = lut[*indices_it++];
+
+  return output;
+}
+
+/*
  * Floor
  */
 CPU_ATTR static inline vf floor(vf input) {
