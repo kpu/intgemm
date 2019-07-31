@@ -1,0 +1,173 @@
+#include "intgemm.cc"
+#include "aligned.h"
+#include <iostream>
+#include <random>
+
+using namespace intgemm;
+template<class T>
+void printMatrix(T* data, Index rows, Index cols) {
+	std::cout << "[";
+	for (int i = 0; i<rows; i++) {
+		std::cout << "[";
+		for (int j =0; j<cols; j++) {
+			std::cout << (float)data[i*cols + j];
+			if (j != cols - 1) {
+				std::cout << ", ";
+			}
+		}
+		std::cout << "]";
+		if (i != rows -1) {
+			std::cout << ',' << std::endl;
+		}
+	}
+	std::cout << "]" << std::endl;
+}
+
+void SlowRefFloat(const float *A, const float *B, float *C, Index A_rows, Index width, Index B_cols, const float *bias) {
+  for (Index r = 0; r < A_rows; ++r) {
+    for (Index c = 0; c < B_cols; ++c) {
+      float sum = 0.0f;
+      for (Index k = 0; k < width; ++k) {
+        sum += A[r * width + k] * B[k * B_cols + c];
+      }
+      if (bias) {
+        C[r * B_cols + c] = sum + bias[c];
+      } else {
+        C[r * B_cols + c] = sum;
+      }
+    }
+  }
+}
+
+// Compute A*B slowly from integers.
+template <class Integer> 
+void SlowRefInt(const Integer *A, const Integer *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols, const float *bias) {
+  for (Index r = 0; r < A_rows; ++r) {
+    for (Index c = 0; c < B_cols; ++c) {
+      int32_t sum = 0;
+      for (Index k = 0; k < width; ++k) {
+        sum += static_cast<int16_t>(A[r * width + k]) * static_cast<int16_t>(B[k * B_cols + c]);
+      }
+      if (bias) {
+        C[r * B_cols + c] = sum * unquant_mult + bias[c];
+      } else {
+        C[r * B_cols + c] = sum * unquant_mult;
+      }
+    }
+  }
+}
+
+int main() {
+
+	const Index A_rows = 1;
+	const Index width = 2048;
+	const Index B_cols = 8;
+
+	AlignedVector<float> A(A_rows * width);
+    AlignedVector<float> B(width * B_cols);
+    AlignedVector<float> bias(B_cols);
+
+    float alpha = 30.0f;
+    float quant_mult = 127/alpha;
+    float unquant_mult = 1.0 / (quant_mult * quant_mult);
+
+	std::mt19937 gen;
+	std::uniform_real_distribution<float> dist(-15.0f, 15.0f);
+	
+	for (auto& it : A) {
+		it = dist(gen);
+	}
+	for (auto& it : B) {
+		it = dist(gen);
+	}
+	for (auto& it : bias) {
+		it = dist(gen);
+	}
+
+	AlignedVector<float> bias_orig(B_cols);
+	for (int i = 0; i < bias.size(); i++) {
+		bias_orig[i] = bias[i];
+	}
+
+    AlignedVector<int8_t> A_prep(A.size());
+    AlignedVector<int8_t> B_prep(B.size());
+
+    AVX2_8bit::PrepareA(A.begin(), A_prep.begin(), quant_mult, A_rows, width);
+    AVX2_8bit::PrepareB(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
+/*
+    std::cout << "A:" << std::endl;
+    printMatrix(A.begin(), A_rows, width);
+    std::cout << "B:" << std::endl;
+    printMatrix(B.begin(), width, B_cols);
+    std::cout << "bias:" << std::endl;
+    printMatrix(bias.begin(), 1, B_cols);*/
+
+
+    AlignedVector<float> test_C(A_rows * B_cols);
+
+    AVX2_8bit::Multiply(A_prep.begin(), B_prep.begin(), BiasAddUnquantizeC(test_C.begin(), bias.begin(), unquant_mult), A_rows, width, B_cols);
+    //AVX2_8bit::Multiply(A_prep.begin(), B_prep.begin(), JustUnquantizeC(test_C.begin(), unquant_mult), A_rows, width, B_cols);
+    std::cout << "Old multiply:" << std::endl;
+    printMatrix(test_C.begin(), A_rows, B_cols);
+
+    //NEEEXT
+    AlignedVector<uint8_t> A_prep2(A.size());
+    AVX2_8bit::PrepareA(A.begin(), A_prep2.begin(), quant_mult, A_rows, width);
+
+    AVX2_8bit::PrepareBiasFor8(B.begin(), bias.begin(), alpha, width, B_cols);
+
+    //printMatrix(bias.begin(), 1, B_cols); //Print bias
+
+    AVX2_8bit::Multiply8new(reinterpret_cast<uint8_t*>(A_prep2.begin()), B_prep.begin(), BiasAddUnquantizeC(test_C.begin(), bias.begin(), unquant_mult), A_rows, width, B_cols);
+    //AVX2_8bit::Multiply8new(reinterpret_cast<uint8_t*>(A_prep.begin()), B_prep.begin(), JustUnquantizeC(test_C.begin(), unquant_mult), A_rows, width, B_cols);
+    
+    AlignedVector<int16_t> A_prep3(A.size());
+    AlignedVector<int16_t> B_prep3(B.size());
+    std::cout << "New multiply:" << std::endl;
+    printMatrix(test_C.begin(), A_rows, B_cols);
+    for (int i = 0; i < A_prep2.size(); i++) {
+        A_prep3[i] = A_prep2[i];
+    }
+    AVX2_16bit::PrepareB(B.begin(), B_prep3.begin(), quant_mult, width, B_cols);
+    AVX2_16bit::Multiply(A_prep3.begin(), B_prep3.begin(), BiasAddUnquantizeC(test_C.begin(), bias.begin(), unquant_mult), A_rows, width, B_cols);
+    
+    std::cout << "New multiply, 16 bit:" << std::endl;
+    printMatrix(test_C.begin(), A_rows, B_cols);
+
+    //FULL INTS
+    AlignedVector<float> C_slowint(A_rows * B_cols);
+    AlignedVector<int8_t> B_quant(width * B_cols);
+    AVX2_8bit::Quantize(B.begin(), B_quant.begin(), quant_mult, B.size());
+
+    SlowRefInt(A_prep.begin(), B_quant.begin(), C_slowint.begin(),
+     unquant_mult, A_rows, width, B_cols, bias_orig.begin());
+
+
+    std::cout << "Reference int8:" << std::endl;
+    printMatrix(C_slowint.begin(), A_rows, B_cols);
+
+    //FULL INT16
+    AlignedVector<int16_t> A_prep4(A.size());
+    for (int i = 0; i < A_prep2.size(); i++) {
+        A_prep4[i] = A_prep[i];
+    }
+
+    AlignedVector<float> C_slowint2(A_rows * B_cols);
+    AlignedVector<int16_t> B_quant2(width * B_cols);
+    AVX2_16bit::Quantize(B.begin(), B_quant2.begin(), quant_mult, B.size());
+
+    SlowRefInt(A_prep4.begin(), B_quant2.begin(), C_slowint2.begin(),
+     unquant_mult, A_rows, width, B_cols, bias_orig.begin());
+
+
+    std::cout << "Reference int16:" << std::endl;
+    printMatrix(C_slowint2.begin(), A_rows, B_cols);
+
+    //FLOATS
+    AlignedVector<float> C(A_rows * B_cols);
+
+	SlowRefFloat(A.begin(), B.begin(), C.begin(), A_rows, width, B_cols, bias_orig.begin());
+	std::cout << "Reference float:" << std::endl;
+	printMatrix(C.begin(), A_rows, B_cols);
+
+}
