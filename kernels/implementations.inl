@@ -301,6 +301,32 @@ CPU_ATTR static inline vi bitwise_not(vi v) {
 }
 
 /*
+ * Multiply with saturation (elemwise)
+ */
+template <typename Type>
+CPU_ATTR static inline vector_t<CPUType::CPU_NAME, Type> multiply_sat(vector_t<CPUType::CPU_NAME, Type> a, vector_t<CPUType::CPU_NAME, Type> b, uint8_t right_shift);
+
+template <>
+CPU_ATTR inline vi multiply_sat<int8_t>(vi a, vi b, uint8_t right_shift) {
+  auto upcasted_a = upcast8to16(a);
+  auto upcasted_b = upcast8to16(b);
+  auto low = srai_epi16(multiply<int16_t>(upcasted_a.first, upcasted_b.first), right_shift);
+  auto hi = srai_epi16(multiply<int16_t>(upcasted_a.second, upcasted_b.second), right_shift);
+
+  return downcast16to8(low, hi);
+}
+
+template <>
+CPU_ATTR inline vi multiply_sat<int16_t>(vi a, vi b, uint8_t right_shift) {
+  auto upcasted_a = upcast16to32(a);
+  auto upcasted_b = upcast16to32(b);
+  auto low = srai_epi32(multiply<int32_t>(upcasted_a.first, upcasted_b.first), right_shift);
+  auto hi = srai_epi32(multiply<int32_t>(upcasted_a.second, upcasted_b.second), right_shift);
+
+  return downcast32to16(low, hi);
+}
+
+/*
  * Floor
  */
 CPU_ATTR static inline vf floor(vf input) {

@@ -106,6 +106,9 @@ INTGEMM_SSE2 static inline __m128d mul_pd(__m128d a, __m128d b) {
 INTGEMM_SSE2 static inline __m128 mul_ps(__m128 a, __m128 b) {
   return _mm_mul_ps(a, b);
 }
+INTGEMM_SSE2 static inline __m128i mulhi_epi16(__m128i a, __m128i b) {
+  return _mm_mulhi_epi16(a, b);
+}
 INTGEMM_SSE2 static inline __m128i mullo_epi16(__m128i a, __m128i b) {
   return _mm_mullo_epi16(a, b);
 }
@@ -150,6 +153,12 @@ INTGEMM_SSSE3 static inline __m128i sign_epi8(__m128i first, __m128i second) {
 }
 INTGEMM_SSE2 static inline __m128i slli_epi16(__m128i a, int8_t b) {
   return _mm_slli_epi16(a, b);
+}
+INTGEMM_SSE2 static inline __m128i srai_epi16(__m128i a, int8_t b) {
+  return _mm_srai_epi16(a, b);
+}
+INTGEMM_SSE2 static inline __m128i srai_epi32(__m128i a, int8_t b) {
+  return _mm_srai_epi32(a, b);
 }
 INTGEMM_SSE2 static inline __m128i srli_epi16(__m128i a, int8_t b) {
   return _mm_srli_epi16(a, b);
@@ -263,6 +272,9 @@ INTGEMM_AVX2 static inline __m256d mul_pd(__m256d a, __m256d b) {
 INTGEMM_AVX2 static inline __m256 mul_ps(__m256 a, __m256 b) {
   return _mm256_mul_ps(a, b);
 }
+INTGEMM_AVX2 static inline __m256i mulhi_epi16(__m256i a, __m256i b) {
+  return _mm256_mulhi_epi16(a, b);
+}
 INTGEMM_AVX2 static inline __m256i mullo_epi16(__m256i a, __m256i b) {
   return _mm256_mullo_epi16(a, b);
 }
@@ -307,6 +319,12 @@ INTGEMM_AVX2 static inline __m256i sign_epi8(__m256i first, __m256i second) {
 }
 INTGEMM_AVX2 static inline __m256i slli_epi16(__m256i a, int8_t b) {
   return _mm256_slli_epi16(a, b);
+}
+INTGEMM_AVX2 static inline __m256i srai_epi16(__m256i a, int8_t b) {
+  return _mm256_srai_epi16(a, b);
+}
+INTGEMM_AVX2 static inline __m256i srai_epi32(__m256i a, int8_t b) {
+  return _mm256_srai_epi32(a, b);
 }
 INTGEMM_AVX2 static inline __m256i srli_epi16(__m256i a, int8_t b) {
   return _mm256_srli_epi16(a, b);
@@ -422,6 +440,9 @@ INTGEMM_AVX512BW static inline __m512d mul_pd(__m512d a, __m512d b) {
 INTGEMM_AVX512BW static inline __m512 mul_ps(__m512 a, __m512 b) {
   return _mm512_mul_ps(a, b);
 }
+INTGEMM_AVX512BW static inline __m512i mulhi_epi16(__m512i a, __m512i b) {
+  return _mm512_mulhi_epi16(a, b);
+}
 INTGEMM_AVX512BW static inline __m512i mullo_epi16(__m512i a, __m512i b) {
   return _mm512_mullo_epi16(a, b);
 }
@@ -466,6 +487,12 @@ INTGEMM_AVX512BW static inline __m512i shuffle_epi32(__m512i a, _MM_PERM_ENUM im
 }
 INTGEMM_AVX512BW static inline __m512i slli_epi16(__m512i a, int8_t b) {
   return _mm512_slli_epi16(a, b);
+}
+INTGEMM_AVX512BW static inline __m512i srai_epi16(__m512i a, int8_t b) {
+  return _mm512_srai_epi16(a, b);
+}
+INTGEMM_AVX512BW static inline __m512i srai_epi32(__m512i a, int8_t b) {
+  return _mm512_srai_epi32(a, b);
 }
 INTGEMM_AVX512BW static inline __m512i srli_epi16(__m512i a, int8_t b) {
   return _mm512_srli_epi16(a, b);
