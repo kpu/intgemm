@@ -294,6 +294,13 @@ CPU_ATTR static inline vi rescale(vi input, vf scale) {
 }
 
 /*
+ * Bitwise not
+ */
+CPU_ATTR static inline vi bitwise_not(vi v) {
+  return xor_si(v, set1_epi32<vi>(0xffffffff));
+}
+
+/*
  * Floor
  */
 CPU_ATTR static inline vf floor(vf input) {

@@ -47,6 +47,7 @@ add_executable(tests
 
   # Kernels tests
   test/kernels/add_bias_test.cc
+  test/kernels/bitwise_not_test.cc
   test/kernels/downcast_test.cc
   test/kernels/exp_test.cc
   test/kernels/floor_test.cc
