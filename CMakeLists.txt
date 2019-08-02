@@ -47,12 +47,15 @@ add_executable(tests
 
   # Kernels tests
   test/kernels/add_bias_test.cc
+  test/kernels/bitwise_not_test.cc
   test/kernels/downcast_test.cc
   test/kernels/exp_test.cc
   test/kernels/floor_test.cc
+  test/kernels/multiply_sat_test.cc
   test/kernels/multiply_test.cc
   test/kernels/quantize_test.cc
   test/kernels/relu_test.cc
+  test/kernels/rescale_test.cc
   test/kernels/sigmoid_test.cc
   test/kernels/upcast_test.cc
   test/kernels/tanh_test.cc
