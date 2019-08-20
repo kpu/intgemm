@@ -182,6 +182,82 @@ INTGEMM_PACK0123(INTGEMM_AVX512BW, __m512i)
   } \
 } \
 
+//An int8_prepbias version of the above code, using the add 127 technique
+#define INTGEMM_PREPAREBIASFOR8(Integer, target, WriteCSubType) \
+  template <class WriteC> target static void PrepareBiasFor8(const int8_t A, const int8_t *B, WriteC C, Index A_rows, Index width, Index B_cols) { \
+  assert(width % (sizeof(Integer) / sizeof(int8_t)) == 0); \
+  assert(B_cols % 8 == 0); \
+  assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0); \
+  const int simd_width = width / (sizeof(Integer) / sizeof(int8_t)); \
+  typename WriteC::WriteCSubType write_C(C); \
+  const Integer *B0_col = reinterpret_cast<const Integer *>(B); \
+  const Integer a = set1_epi8<Integer>(A); \
+  for (Index B0_colidx = 0; B0_colidx < B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
+    /* Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.*/ \
+    for (Index A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) { \
+      /*const Integer *A_row = reinterpret_cast<const Integer*>(A + A_rowidx * width);*/ \
+      /* These will be packed 16-bit integers containing sums for each row of B multiplied by the row of A. \
+         Iterate over shared (inner) dimension.*/ \
+      int k = 0; \
+      Integer sum0 = maddubs_epi16(a, *(B0_col + k * 8)); \
+      Integer sum1 = maddubs_epi16(a, *(B0_col + k * 8 + 1)); \
+      Integer sum2 = maddubs_epi16(a, *(B0_col + k * 8 + 2)); \
+      Integer sum3 = maddubs_epi16(a, *(B0_col + k * 8 + 3)); \
+      Integer sum4 = maddubs_epi16(a, *(B0_col + k * 8 + 4)); \
+      Integer sum5 = maddubs_epi16(a, *(B0_col + k * 8 + 5)); \
+      Integer sum6 = maddubs_epi16(a, *(B0_col + k * 8 + 6)); \
+      Integer sum7 = maddubs_epi16(a, *(B0_col + k * 8 + 7)); \
+      /* Upcast to 32-bit and horizontally add. Seems a bit faster if this is declared here.*/ \
+      Integer ones = set1_epi16<Integer>(1); \
+      sum0 = madd_epi16(sum0, ones); \
+      sum1 = madd_epi16(sum1, ones); \
+      sum2 = madd_epi16(sum2, ones); \
+      sum3 = madd_epi16(sum3, ones); \
+      sum4 = madd_epi16(sum4, ones); \
+      sum5 = madd_epi16(sum5, ones); \
+      sum6 = madd_epi16(sum6, ones); \
+      sum7 = madd_epi16(sum7, ones); \
+      for (int k = 1; k < simd_width; ++k) { \
+        /*Integer a = *(A_row + k);*/ \
+        /* Multiply 8-bit, horizontally add to packed 16-bit integers.*/ \
+        Integer mult0 = maddubs_epi16(a, *(B0_col + k * 8)); \
+        Integer mult1 = maddubs_epi16(a, *(B0_col + k * 8 + 1)); \
+        Integer mult2 = maddubs_epi16(a, *(B0_col + k * 8 + 2)); \
+        Integer mult3 = maddubs_epi16(a, *(B0_col + k * 8 + 3)); \
+        Integer mult4 = maddubs_epi16(a, *(B0_col + k * 8 + 4)); \
+        Integer mult5 = maddubs_epi16(a, *(B0_col + k * 8 + 5)); \
+        Integer mult6 = maddubs_epi16(a, *(B0_col + k * 8 + 6)); \
+        Integer mult7 = maddubs_epi16(a, *(B0_col + k * 8 + 7)); \
+        /* Upcast to 32-bit and horizontally add.*/ \
+        mult0 = madd_epi16(mult0, ones); \
+        mult1 = madd_epi16(mult1, ones); \
+        mult2 = madd_epi16(mult2, ones); \
+        mult3 = madd_epi16(mult3, ones); \
+        mult4 = madd_epi16(mult4, ones); \
+        mult5 = madd_epi16(mult5, ones); \
+        mult6 = madd_epi16(mult6, ones); \
+        mult7 = madd_epi16(mult7, ones); \
+        /*Add in 32bit*/ \
+        sum0 = add_epi32(sum0, mult0); \
+        sum1 = add_epi32(sum1, mult1); \
+        sum2 = add_epi32(sum2, mult2); \
+        sum3 = add_epi32(sum3, mult3); \
+        sum4 = add_epi32(sum4, mult4); \
+        sum5 = add_epi32(sum5, mult5); \
+        sum6 = add_epi32(sum6, mult6); \
+        sum7 = add_epi32(sum7, mult7); \
+         \
+      } \
+      /* Reduce sums within 128-bit lanes.*/ \
+      Integer pack0123 = Pack0123(sum0, sum1, sum2, sum3); \
+      Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
+      /*The specific implementation may need to reduce further.*/ \
+      auto total = PermuteSummer(pack0123, pack4567); \
+      write_C(A_rowidx, B_cols, B0_colidx, total); \
+    } \
+  } \
+} \
+
 //An int8 version of the above code, using the add 127 technique
 #define INTGEMM_MULTIPLY8NEW(Integer, target, WriteCSubType) \
   template <class WriteC> target static void Multiply8new(const uint8_t *A, const int8_t *B, WriteC C, Index A_rows, Index width, Index B_cols) { \

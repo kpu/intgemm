@@ -15,6 +15,7 @@ namespace intgemm {
  * Define a bunch of intrinstics as overloaded functions so they work with
  * templates.
  */
+template <class Register> static inline Register set1_epi8(int8_t to);
 template <class Register> static inline Register set1_epi16(int16_t to);
 template <class Register> static inline Register set1_epi32(int32_t to);
 template <class Register> static inline Register set1_ps(float to);
@@ -55,6 +56,9 @@ INTGEMM_SSE2 static inline __m128 max_ps(__m128 first, __m128 second) {
 }
 INTGEMM_SSE2 static inline __m128 mul_ps(__m128 a, __m128 b) {
   return _mm_mul_ps(a, b);
+}
+template <> INTGEMM_SSE2 inline __m128i set1_epi8<__m128i>(int8_t to) {
+  return _mm_set1_epi8(to);
 }
 template <> INTGEMM_SSE2 inline __m128i set1_epi16<__m128i>(int16_t to) {
   return _mm_set1_epi16(to);
@@ -118,6 +122,9 @@ INTGEMM_AVX2 static inline __m256 max_ps(__m256 first, __m256 second) {
 }
 INTGEMM_AVX2 static inline __m256 mul_ps(__m256 a, __m256 b) {
   return _mm256_mul_ps(a, b);
+}
+template <> INTGEMM_AVX2 inline __m256i set1_epi8<__m256i>(int8_t to) {
+  return _mm256_set1_epi8(to);
 }
 template <> INTGEMM_AVX2 inline __m256i set1_epi16<__m256i>(int16_t to) {
   return _mm256_set1_epi16(to);
@@ -189,6 +196,9 @@ INTGEMM_AVX512BW static inline __m512 sub_ps(__m512 first, __m512 second) {
 }
 INTGEMM_AVX512BW static inline __m512 mul_ps(__m512 a, __m512 b) {
   return _mm512_mul_ps(a, b);
+}
+template <> inline INTGEMM_AVX512BW __m512i set1_epi8<__m512i>(int8_t to) {
+  return _mm512_set1_epi8(to);
 }
 template <> inline INTGEMM_AVX512BW __m512i set1_epi16<__m512i>(int16_t to) {
   return _mm512_set1_epi16(to);

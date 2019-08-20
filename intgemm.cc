@@ -22,7 +22,7 @@ void (*Int8::PrepareB)(const float *input, int8_t *output, float quant_mult, Ind
 
 void (*Int8::SelectColumnsB)(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) = ChooseCPU(AVX512_8bit::SelectColumnsB, AVX2_8bit::SelectColumnsB, SSSE3_8bit::SelectColumnsB, Unsupported_8bit::SelectColumnsB, Unsupported_8bit::SelectColumnsB);
 
-void (*Int8::PrepareBiasFor8)(const float *input, float *bias, float alpha, Index rows, Index cols) = ChooseCPU(AVX512_8bit::PrepareBiasFor8, AVX2_8bit::PrepareBiasFor8, SSSE3_8bit::PrepareBiasFor8, Unsupported_8bit::PrepareBiasFor8, Unsupported_8bit::PrepareBiasFor8);
+//void (*Int8::PrepareBiasFor8)(const float *input, float *bias, float alpha, Index rows, Index cols) = ChooseCPU(AVX512_8bit::PrepareBiasFor8, AVX2_8bit::PrepareBiasFor8, SSSE3_8bit::PrepareBiasFor8, Unsupported_8bit::PrepareBiasFor8, Unsupported_8bit::PrepareBiasFor8);
 
 const char *const Int8::kName = ChooseCPU(AVX512_8bit::kName, AVX2_8bit::kName, SSSE3_8bit::kName, Unsupported_8bit::kName, Unsupported_8bit::kName);
 

@@ -84,7 +84,8 @@ struct Unsupported_8bit {
   static void PrepareB(const float *, int8_t *, float, Index, Index) {
     throw UnsupportedCPU();
   }
-  static void PrepareBiasFor8(const float *input, float *bias, float alpha, Index rows, Index cols) {
+  template<class WriteC>
+  static void PrepareBiasFor8(const int8_t, const int8_t *, WriteC, Index, Index, Index) {
     throw UnsupportedCPU();
   }
   static void SelectColumnsB(const int8_t *, int8_t *, Index, const Index *, const Index *) {
@@ -197,6 +198,7 @@ public:
   // Multiply C = A * B, presuming A and B have been prepared.
   static void (*Multiply)(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols);
   static void (*Multiply8new)(const uint8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols);
+  static void (*PrepareBiasFor8)(const int8_t A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols);
 };
 
 template <class WriteC>
@@ -204,6 +206,9 @@ void (*Int8Mult<WriteC>::Multiply)(const int8_t *A, const int8_t *B, WriteC func
 
 template <class WriteC>
 void (*Int8Mult<WriteC>::Multiply8new)(const uint8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) = ChooseCPU(AVX512_8bit::Multiply8new<WriteC>, AVX2_8bit::Multiply8new<WriteC>, SSSE3_8bit::Multiply8new<WriteC>, SSSE3_8bit::Multiply8new<WriteC>, Unsupported_8bit::Multiply8new);
+
+template <class WriteC>
+void (*Int8Mult<WriteC>::PrepareBiasFor8)(const int8_t A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) = ChooseCPU(AVX512_8bit::PrepareBiasFor8<WriteC>, AVX2_8bit::PrepareBiasFor8<WriteC>, SSSE3_8bit::PrepareBiasFor8<WriteC>, SSSE3_8bit::PrepareBiasFor8<WriteC>, Unsupported_8bit::PrepareBiasFor8);
 
 
 struct Int8 {
@@ -234,7 +239,7 @@ struct Int8 {
   static void (*QuantizeU)(const float *input, uint8_t *output, float quant_mult, Index size);
 
   // PrepareB
-  static void (*PrepareBiasFor8)(const float *input, float *bias, float alpha, Index rows, Index cols);
+  //static void (*PrepareBiasFor8)(const float *input, float *bias, float alpha, Index rows, Index cols);
   
   // Warning: the output of PrepareB depends on the CPU.
   // It will match the Multiply function on the same CPU though.
@@ -252,6 +257,11 @@ struct Int8 {
   template<class WriteC>
   static void Multiply8new(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) {
     Int8Mult<WriteC>::Multiply8new((const uint8_t *)A, B, functor, A_rows, width, B_cols);
+  }
+
+  template<class WriteC>
+  static void PrepareBiasFor8(const int8_t A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) {
+    Int8Mult<WriteC>::PrepareBiasFor8(A, B, functor, A_rows, width, B_cols);
   }
   
   static const char *const kName;
