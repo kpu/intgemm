@@ -20,7 +20,7 @@ void newBias(const float * input, float * bias, float* output, float alpha, Inde
 
 }
 
-void SlowSumB(const float * input, float * bias, float* output, float alpha, Index rows, Index cols) {
+void SlowSumB(const int8_t * input, float * bias, float* output, float alpha, Index rows, Index cols) {
 	for (Index r = 0; r<rows; r++) {
 		for (Index c = 0; c<cols; c++) {
 			output[c] += input[r * cols + c];
@@ -28,7 +28,7 @@ void SlowSumB(const float * input, float * bias, float* output, float alpha, Ind
 	}
 
 	for (Index c = 0; c<cols; c++) {
-		output[c] = bias[c] - output[c]*alpha;
+		output[c] = bias[c] + output[c]*alpha;
 	}
 }
 
@@ -67,33 +67,44 @@ template <class Routine> void TestPrepareA(Index rows, Index cols) {
   Routine::PrepareA(inputA.begin(), newA.begin(), quant_mult, rows, cols);
   CompareAs(oldA.begin(), newA.begin(), rows, cols);
 }
-/*
+
 template <class Routine> void TestPrepareBias(Index rows, Index cols) {
   std::mt19937 gen;
   // Go somewhat out of range too.
-  std::uniform_real_distribution<float> dist(-1000.0, 1000.0);
+  std::uniform_real_distribution<float> dist(-30.0, 30.0);
   // Create array.
   AlignedVector<float> inputB(rows * cols);
   for (auto& it : inputB) {
     it = dist(gen);
   }
 
+  float alpha = 25;
+  float quant_mult = 127/alpha;
+
+  AlignedVector<int8_t> B_prep(inputB.size());
+  AlignedVector<int8_t> B_quant(inputB.size());
+  Routine::PrepareB(inputB.begin(), B_prep.begin(), quant_mult, rows, cols);
+  Routine::Quantize(inputB.begin(), B_quant.begin(), quant_mult, inputB.size());
+
+
   AlignedVector<float> inputBias(cols);
   AlignedVector<float> goldBias(cols);
-  //goldBias.begin()[0] = 25;
+
   for (auto& it : goldBias) {
   	it = 0;
   }
   for (auto& it : inputBias) {
     it = dist(gen);
   }
-  float alpha = dist(gen);
-  SlowSumB(inputB.begin(), inputBias.begin(), goldBias.begin(), alpha, rows, cols);
 
-  Routine::PrepareBiasFor8(inputB.begin(), inputBias.begin(), alpha, rows, cols);
+  float unquant_mult_forprep = (-1)*(alpha)*(alpha)/(127.0f);
+  
+  SlowSumB(B_quant.begin(), inputBias.begin(), goldBias.begin(), alpha, rows, cols);
+
+  Routine::PrepareBiasFor8(1, B_prep.begin(), BiasAddUnquantizeC(inputBias.begin(), inputBias.begin(), unquant_mult_forprep), 1, rows, cols);
 
   CompareBiases(goldBias.begin(), inputBias.begin(), cols);
-}*/
+}
 
 template <class Routine> void TestMultiplyBiasNew(Index A_rows, Index width, Index B_cols,
  float int_tolerance=.1, float float_tolerance=1, float MSE_float_tolerance=0, float MSE_int_tolerance=0) {
@@ -185,32 +196,32 @@ TEST_CASE("PrepareBias AVX512F", "[Add127]") {
 //A
 TEST_CASE("PrepareA SSSE3", "[Add127]") {
 	if (kCPU < CPU_SSSE3) return;
-	TestPrepareA<SSSE3_8bit>(8,8);
+	TestPrepareA<SSSE3_8bit>(64,64);
 	TestPrepareA<SSSE3_8bit>(256,256);
-	TestPrepareA<SSSE3_8bit>(2048,256);
 	TestPrepareA<SSSE3_8bit>(512,512);
+  TestPrepareA<SSSE3_8bit>(2048,256);
 }
 
 TEST_CASE("PrepareA AVX2", "[Add127]") {
 	if (kCPU < CPU_AVX2) return;
-	TestPrepareA<AVX2_8bit>(8,8);
+	TestPrepareA<AVX2_8bit>(64,64);
 	TestPrepareA<AVX2_8bit>(256,256);
-	TestPrepareA<AVX2_8bit>(2048,256);
 	TestPrepareA<AVX2_8bit>(512,512);
+  TestPrepareA<AVX2_8bit>(2048,256);
 }
 
 TEST_CASE("PrepareA AVX512F", "[Add127]") {
 	if (kCPU < CPU_AVX512BW) return;
 	#ifndef INTGEMM_NO_AVX512
-	TestPrepareA<AVX512_8bit>(8,8);
+	TestPrepareA<AVX512_8bit>(64,64);
 	TestPrepareA<AVX512_8bit>(256,256);
-	TestPrepareA<AVX512_8bit>(2048,256);
 	TestPrepareA<AVX512_8bit>(512,512);
+  TestPrepareA<AVX512_8bit>(2048,256);
 	#endif
 }
 
 // Multiply
-/*
+
 TEST_CASE ("Multiply SSSE3 8bit with new bias", "[Add127]") {
   if (kCPU < CPU_SSSE3) return;
   TestMultiplyBiasNew<SSSE3_8bit>(1, 64, 8, 0.11, 0.1, 0.06, 0.05);
@@ -220,7 +231,7 @@ TEST_CASE ("Multiply SSSE3 8bit with new bias", "[Add127]") {
   TestMultiplyBiasNew<SSSE3_8bit>(472, 256, 256, 0.46, 0.62, 0.17, 0.16); // 0.1, 0.011);
   TestMultiplyBiasNew<SSSE3_8bit>(248, 256, 256, 0.48, 0.64, 0.16, 0.15); // 0.1, 0.012);
   TestMultiplyBiasNew<SSSE3_8bit>(200, 256, 256, 0.55, 0.74, 0.17, 0.16); // 0.1, 0.011);
-}*/
+}
 
 TEST_CASE ("Multiply AVX2 8bit with new bias", "[Add127]") {
   if (kCPU < CPU_AVX2) return;
