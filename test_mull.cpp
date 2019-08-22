@@ -2,6 +2,161 @@
 #include "aligned.h"
 #include <iostream>
 #include <random>
+#include <string>
+#include <algorithm>
+#include <fstream>
+#include <sstream>
+
+
+/*Adapted from https://www.bfilipek.com/2018/07/string-view-perf-followup.html . We should probably go string_view way
+inline void tokenizeLine(std::string& str, std::vector<std::string>& output,
+ std::string delimeter = " ") {
+    auto first = std::begin(str);
+
+    while (first != str.end()) {
+        const auto second = std::find_first_of(first, std::end(str), std::begin(delimeter), std::end(delimeter));
+
+        if (first != second) {
+            output.emplace_back(str.substr(std::distance(std::begin(str), first), std::distance(first, second)));
+        }
+
+        if (second == str.end())
+            break;
+
+        first = std::next(second);
+    }
+}
+
+//This is a different parsing method, without stringStream
+template<class StringType>
+void ReadInFile(StringType infile) {
+	std::ifstream in(infile);
+	std::string line;
+
+	//First line, Info about the matrix
+	std::getline(in, line);
+    std::istringstream iss(line);
+    std::string temp1, temp2, temp3, temp4;
+    int RowsA, ColsA, RowsB, ColsB;
+    if (!(iss >> temp1 >> RowsA >> temp2 >> ColsA >> temp3 >> RowsB >> temp4 >> ColsB)) {
+    	std::cerr << "Error parsing line 1 " << std::endl;
+    	exit(1);
+    }
+
+    //Second line, get QuantMult
+    std::getline(in, line);
+    std::istringstream iss2(line);
+    float quantMultA, quantMultB;
+    if (!(iss2 >> temp1 >> quantMultA >> temp2 >> quantMultA)) { 
+    	std::cerr << "Error parsing line 2 " << std::endl;
+    	exit(1);
+    }
+    std::getline(in, line); //Just some text
+    //Fourth line, AQuant
+    std::vector<int> AQuant;
+    std::getline(in, line);
+    std::vector<std::string> tmp_container;
+    tokenizeLine(line, tmp_container);
+    if (tmp_container.size() != RowsA*ColsA) {
+    	std::cerr << "Error parsing matrix A. Size mismatch. Expected " <<  RowsA*ColsA << " got " << tmp_container.size() << std::endl;
+    }
+    for (auto&& num : tmp_container) {
+    	AQuant.push_back(std::stoi(num));
+    }
+    tmp_container.resize(0);
+
+    std::getline(in, line); //Just some text
+    //Sixth line, B_raw
+    std::vector<float> B_raw;
+    std::getline(in, line);
+    tokenizeLine(line, tmp_container);
+    if (tmp_container.size() != RowsB*ColsB) {
+    	std::cerr << "Error parsing matrix B. Size mismatch. Expected " <<  RowsB*ColsB << " got " << tmp_container.size() << std::endl;
+    }
+    for (auto&& num : tmp_container) {
+    	B_raw.push_back(std::stof(num));
+    }
+    tmp_container.resize(0);
+
+    std::getline(in, line); //Just some text
+    //Eight line, Bias
+    std::vector<float> Bias;
+    std::getline(in, line);
+    tokenizeLine(line, tmp_container);
+    if (tmp_container.size() != ColsB) {
+    	std::cerr << "Error parsing bias. Size mismatch. Expected " <<  ColsB << " got " << tmp_container.size() << std::endl;
+    }
+    for (auto&& num : tmp_container) {
+    	Bias.push_back(std::stof(num));
+    }
+    tmp_container.resize(0);
+
+}
+
+*/
+template<class StringType>
+void ReadInFile(StringType infile) {
+	std::ifstream in(infile);
+	std::string line;
+
+	//First line, Info about the matrix
+	std::getline(in, line);
+    std::istringstream iss(line);
+    std::string temp1, temp2, temp3, temp4;
+    int RowsA, ColsA, RowsB, ColsB;
+    if (!(iss >> temp1 >> RowsA >> temp2 >> ColsA >> temp3 >> RowsB >> temp4 >> ColsB)) {
+    	std::cerr << "Error parsing line 1 " << std::endl;
+    	exit(1);
+    }
+
+    //Second line, get QuantMult
+    std::getline(in, line);
+    std::istringstream iss2(line);
+    float quantMultA, quantMultB;
+    if (!(iss2 >> temp1 >> quantMultA >> temp2 >> quantMultA)) { 
+    	std::cerr << "Error parsing line 2 " << std::endl;
+    	exit(1);
+    }
+    std::getline(in, line); //Just some text for human readability
+
+    //4th line, AQuant
+    std::vector<int> AQuant;
+    std::getline(in, line);
+    std::istringstream iss3(line);
+    for (int i = 0; i < RowsA*ColsA; i++) {
+    	int num;
+    	if (!(iss3 >> num)) {
+    		std::cerr << "Error parsing matrix A at " << i << std::endl;;
+    	}
+    	AQuant.push_back(num);
+    }
+
+    std::getline(in, line); //Just some text for human readability
+    //6th line, B_raw
+    std::vector<float> B_raw;
+    std::getline(in, line);
+    std::istringstream iss4(line);
+    for (int i = 0; i < RowsB*ColsB; i++) {
+    	float num;
+    	if (!(iss4 >> num)) {
+    		std::cerr << "Error parsing matrix B " << std::endl;
+    	}
+    	B_raw.push_back(num);
+    }
+
+    std::getline(in, line); //Just some text for human readability
+    //8th line, Bias
+    std::vector<float> Bias;
+    std::getline(in, line);
+    std::istringstream iss5(line);
+    for (int i = 0; i < ColsB; i++) {
+    	float num;
+    	if (!(iss5 >> num)) {
+    		std::cerr << "Error parsing matrix bias " << std::endl;
+    	}
+    	Bias.push_back(num);
+    }
+}
 
 using namespace intgemm;
 template<class T>
@@ -67,12 +222,12 @@ int main() {
     AlignedVector<float> B(width * B_cols);
     AlignedVector<float> bias(B_cols);
 
-    float alpha = 30.0f;
+    float alpha = 2.0f;
     float quant_mult = 127/alpha;
     float unquant_mult = 1.0 / (quant_mult * quant_mult);
 
 	std::mt19937 gen;
-	std::uniform_real_distribution<float> dist(-15.0f, 15.0f);
+	std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
 	
 	for (auto& it : A) {
 		it = dist(gen);

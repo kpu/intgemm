@@ -39,7 +39,8 @@ std::chrono::duration<double> testNew(Index A_rows, Index width, Index B_cols) {
 
   AlignedVector<float> test_C(A_rows * B_cols);
 
-  Routine::PrepareBiasFor8(B.begin(), bias.begin(), alpha, width, B_cols);
+  float unquant_mult_forprep = (-1)*(alpha)*(alpha)/(127.0f); //Minus one to invert add_ps later on
+  Routine::PrepareBiasFor8(1, B_prep.begin(), BiasAddUnquantizeC(bias.begin(), bias.begin(), unquant_mult_forprep), 1, width, B_cols);
   auto start = std::chrono::system_clock::now();
   Routine::Multiply8new(A_prep.begin(), B_prep.begin(), BiasAddUnquantizeC(test_C.begin(), bias.begin(), unquant_mult), A_rows, width, B_cols);
   auto end = std::chrono::system_clock::now();
