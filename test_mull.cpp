@@ -260,7 +260,7 @@ int main() {
 
     AlignedVector<float> test_C(A_rows * B_cols);
 
-    AVX2_8bit::Multiply(A_prep.begin(), B_prep.begin(), BiasAddUnquantizeC(test_C.begin(), bias.begin(), unquant_mult), A_rows, width, B_cols);
+    AVX2_8bit::Multiply(A_prep.begin(), B_prep.begin(), A_rows, width, B_cols, UnquantizeAndAddBiasAndWrite(unquant_mult, bias.begin(), test_C.begin()));
     //AVX2_8bit::Multiply(A_prep.begin(), B_prep.begin(), JustUnquantizeC(test_C.begin(), unquant_mult), A_rows, width, B_cols);
     std::cout << "Old multiply:" << std::endl;
     printMatrix(test_C.begin(), A_rows, B_cols);
@@ -273,7 +273,7 @@ int main() {
 
     //printMatrix(bias.begin(), 1, B_cols); //Print bias
 
-    AVX2_8bit::Multiply8new(reinterpret_cast<uint8_t*>(A_prep2.begin()), B_prep.begin(), BiasAddUnquantizeC(test_C.begin(), bias.begin(), unquant_mult), A_rows, width, B_cols);
+    AVX2_8bit::Multiply8new(reinterpret_cast<uint8_t*>(A_prep2.begin()), B_prep.begin(), A_rows, width, B_cols, UnquantizeAndAddBiasAndWrite(unquant_mult, bias.begin(), test_C.begin()));
     //AVX2_8bit::Multiply8new(reinterpret_cast<uint8_t*>(A_prep.begin()), B_prep.begin(), JustUnquantizeC(test_C.begin(), unquant_mult), A_rows, width, B_cols);
     
     AlignedVector<int16_t> A_prep3(A.size());
@@ -284,7 +284,7 @@ int main() {
         A_prep3[i] = A_prep2[i];
     }
     AVX2_16bit::PrepareB(B.begin(), B_prep3.begin(), quant_mult, width, B_cols);
-    AVX2_16bit::Multiply(A_prep3.begin(), B_prep3.begin(), BiasAddUnquantizeC(test_C.begin(), bias.begin(), unquant_mult), A_rows, width, B_cols);
+    AVX2_16bit::Multiply(A_prep3.begin(), B_prep3.begin(), A_rows, width, B_cols, UnquantizeAndAddBiasAndWrite(unquant_mult, bias.begin(), test_C.begin()));
     
     std::cout << "New multiply, 16 bit:" << std::endl;
     printMatrix(test_C.begin(), A_rows, B_cols);

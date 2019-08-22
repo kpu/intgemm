@@ -1,4 +1,9 @@
-#include "common.h"
+#define CATCH_CONFIG_RUNNER
+#include "test/test.h"
+
+int main(int argc, char ** argv) {
+  return Catch::Session().run(argc, argv);
+}
 
 namespace intgemm {
 
@@ -38,8 +43,6 @@ template <class Integer> void SlowRefInt(const Integer *A, const Integer *B, flo
 template void SlowRefInt<int8_t>(const int8_t *A, const int8_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols, const float *bias);
 template void SlowRefInt<int16_t>(const int16_t *A, const int16_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols, const float *bias);
 template void SlowRefInt<int32_t>(const int32_t *A, const int32_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols, const float *bias);
-
-
 
 void Compare(const float *float_ref, const float *int_ref, const float *int_test, std::size_t size, std::string test_info,
  float int_tolerance, float float_tolerance, float MSE_float_tolerance, float MSE_int_tolerance) {

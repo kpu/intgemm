@@ -1,16 +1,27 @@
 #pragma once
+
 #include "3rd_party/catch.hpp"
-#define CHECK_MESSAGE(cond, msg) do { INFO(msg); CHECK(cond); } while((void)0, 0)
-#define CHECK_FALSE_MESSAGE(cond, msg) do { INFO(msg); CHECK_FALSE(cond); } while((void)0, 0)
-#define REQUIRE_MESSAGE(cond, msg) do { INFO(msg); REQUIRE(cond); } while((void)0, 0)
-#define REQUIRE_FALSE_MESSAGE(cond, msg) do { INFO(msg); REQUIRE_FALSE(cond); } while((void)0, 0)
 #include <sstream>
 #include "intgemm.h"
 #include "aligned.h"
 
+#include "config.h"
+
+#define CHECK_MESSAGE(cond, msg) do { INFO(msg); CHECK(cond); } while(0)
+#define CHECK_FALSE_MESSAGE(cond, msg) do { INFO(msg); CHECK_FALSE(cond); } while(0)
+#define REQUIRE_MESSAGE(cond, msg) do { INFO(msg); REQUIRE(cond); } while(0)
+#define REQUIRE_FALSE_MESSAGE(cond, msg) do { INFO(msg); REQUIRE_FALSE(cond); } while(0)
+
+#define CHECK_EPS(actual, expected, epsilon) \
+  do { \
+    if (fabs((actual) - (expected)) < epsilon) { SUCCEED(); } \
+    else { CHECK((actual) == (expected)); } \
+  } while(0)
+
+#define KERNEL_TEST_CASE(name) TEST_CASE("Kernel: " name, "[kernel_test]")
+
 namespace intgemm {
 void SlowRefFloat(const float *A, const float *B, float *C, Index A_rows, Index width, Index B_cols, const float *bias=nullptr);
-
 
 // Compute A*B slowly from integers.
 template <class Integer> void SlowRefInt(const Integer *A, const Integer *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols, const float *bias=nullptr);

@@ -40,9 +40,9 @@ std::chrono::duration<double> testNew(Index A_rows, Index width, Index B_cols) {
   AlignedVector<float> test_C(A_rows * B_cols);
 
   float unquant_mult_forprep = (-1)*(alpha)*(alpha)/(127.0f); //Minus one to invert add_ps later on
-  Routine::PrepareBiasFor8(1, B_prep.begin(), BiasAddUnquantizeC(bias.begin(), bias.begin(), unquant_mult_forprep), 1, width, B_cols);
+  Routine::PrepareBiasFor8(1, B_prep.begin(), 1, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, bias.begin(), bias.begin()));
   auto start = std::chrono::system_clock::now();
-  Routine::Multiply8new(A_prep.begin(), B_prep.begin(), BiasAddUnquantizeC(test_C.begin(), bias.begin(), unquant_mult), A_rows, width, B_cols);
+  Routine::Multiply8new(A_prep.begin(), B_prep.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult, bias.begin(), test_C.begin()));
   auto end = std::chrono::system_clock::now();
 
   std::chrono::duration<double> elapsed_seconds = end-start;
@@ -79,7 +79,7 @@ std::chrono::duration<double> testOld(Index A_rows, Index width, Index B_cols) {
   AlignedVector<float> test_C(A_rows * B_cols);
 
   auto start = std::chrono::system_clock::now();
-  Routine::Multiply(A_prep.begin(), B_prep.begin(), BiasAddUnquantizeC(test_C.begin(), bias.begin(), unquant_mult), A_rows, width, B_cols);
+  Routine::Multiply(A_prep.begin(), B_prep.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult, bias.begin(), test_C.begin()));
   auto end = std::chrono::system_clock::now();
 
   std::chrono::duration<double> elapsed_seconds = end-start;
@@ -93,7 +93,6 @@ int main(int argc, char ** argv) {
 		repeat = atoi(argv[1]);
 	}
 	
-
 	std::chrono::duration<double> oldSSSE3 = testOld<SSSE3_8bit>(1, 64, 8);
 	for (int i = 0; i<repeat; i++) {
 		oldSSSE3 += testOld<SSSE3_8bit>(8, 256, 256);
@@ -142,7 +141,7 @@ int main(int argc, char ** argv) {
 
 	std::cout << repeat << " iterations of New AVX2 took: " << newTimeAVX2.count() << " seconds." << std::endl;
 
-	if (kCPU < CPU_AVX512BW) return 0;
+	if (kCPU < CPUType::AVX512BW) return 0;
 	std::chrono::duration<double> oldAVX512 = testOld<AVX512_8bit>(1, 64, 8);
 	for (int i = 0; i<repeat; i++) {
 		oldAVX512 += testOld<AVX512_8bit>(8, 256, 256);

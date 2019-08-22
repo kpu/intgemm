@@ -1,11 +1,12 @@
 #pragma once
 
+#include "interleave.h"
+#include "kernels.h"
+#include "multiply.h"
 #include "types.h"
+
 #include <cstdint>
 #include <stdint.h>
-
-#include "interleave.h"
-#include "multiply.h"
 
 // 16-bit is in sse2_gemm.h
 
@@ -14,7 +15,7 @@ namespace intgemm {
 namespace ssse3 {
 
 INTGEMM_SSSE3 inline __m128i QuantizerGrab(const float *input, const __m128 quant_mult_reg) {
-  return quantize(*reinterpret_cast<const __m128*>(input), quant_mult_reg);
+  return kernels::quantize(loadu_ps<__m128>(input), quant_mult_reg);
 }
 
 INTGEMM_SELECT_COL_B(INTGEMM_SSSE3, __m128i)
@@ -133,31 +134,24 @@ struct SSSE3_8bit {
   // Tile size for B; B must be a multiple of this block size.
   static const Index kBTileRow = 16;
   static const Index kBTileCol = 8;
-/*
-  INTGEMM_SSSE3 static void PrepareB(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
-    PrepareBFor8(input, output, ssse3::QuantizeTile8(quant_mult), rows, cols);
-  }*/
+
   INTGEMM_PREPARE_B_8(INTGEMM_SSSE3, ssse3::QuantizeTile8)
 
   INTGEMM_SSSE3 static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     ssse3::SelectColumnsOfB((const __m128i*)input, (__m128i*)output, rows, cols_begin, cols_end);
   }
-/*
-  INTGEMM_SSSE3 static void Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {
-    //Multiply8_SSE2OrAVX2<Multiply8_C, __m128i, __m128>(A, B, C, unquant_mult, A_rows, width, B_cols);
-    Multiply8_SSE2OrAVX2__m128i<JustUnquantizeC>(A, B, JustUnquantizeC(C, unquant_mult), A_rows, width, B_cols);
-  }*/
-  INTGEMM_MULTIPLY8(__m128i, INTGEMM_SSSE3, OnSSE2)
 
-  INTGEMM_MULTIPLY8NEW(__m128i, INTGEMM_SSSE3, OnSSE2)
+  INTGEMM_MULTIPLY8(__m128i, INTGEMM_SSSE3, CPUType::SSE2)
+
+  INTGEMM_MULTIPLY8NEW(__m128i, INTGEMM_SSSE3, CPUType::SSE2)
   
   //INTGEMM_PREPARE_BIAS_FOR_8(INTGEMM_SSSE3, __m128)
 
-  INTGEMM_PREPAREBIASFOR8(__m128i, INTGEMM_SSSE3, OnSSE2)
+  INTGEMM_PREPAREBIASFOR8(__m128i, INTGEMM_SSSE3, CPUType::SSE2)
 
   constexpr static const char *const kName = "8-bit INTGEMM_SSSE3";
 
-  static const CPUType kUses = CPU_SSSE3;
+  static const CPUType kUses = CPUType::SSSE3;
 };
 
 } // namespace intgemm

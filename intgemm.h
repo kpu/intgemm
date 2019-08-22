@@ -44,14 +44,12 @@
 #include <cstdint>
 #include <stdint.h>
 
+#include "config.h"
 #include "types.h"
 #include "sse2_gemm.h"
 #include "ssse3_gemm.h"
 #include "avx2_gemm.h"
-#include "cops.h"
-#ifndef INTGEMM_NO_AVX512
 #include "avx512_gemm.h"
-#endif
 
 /* Dispatch to functions based on runtime CPUID.  This adds one call-by-variable to each call. */
 
@@ -67,8 +65,8 @@ struct Unsupported_16bit {
   static void SelectColumnsB(const int16_t *, int16_t *, Index, const Index *, const Index *) {
     throw UnsupportedCPU();
   }
-  template<class WriteC>
-  static void Multiply(const int16_t *, const int16_t *, WriteC, Index, Index, Index) {
+  template <typename Callback>
+  static void Multiply(const int16_t *, const int16_t *, Index, Index, Index, Callback) {
     throw UnsupportedCPU();
   }
   constexpr static const char *const kName = "16-bit Unsupported";
@@ -84,30 +82,30 @@ struct Unsupported_8bit {
   static void PrepareB(const float *, int8_t *, float, Index, Index) {
     throw UnsupportedCPU();
   }
-  template<class WriteC>
-  static void PrepareBiasFor8(const int8_t, const int8_t *, WriteC, Index, Index, Index) {
+  template<class Callback>
+  static void PrepareBiasFor8(const int8_t, const int8_t *, Index, Index, Index, Callback) {
     throw UnsupportedCPU();
   }
   static void SelectColumnsB(const int8_t *, int8_t *, Index, const Index *, const Index *) {
     throw UnsupportedCPU();
   }
-  template<class WriteC>
-  static void Multiply(const int8_t *, const int8_t *, WriteC, Index, Index, Index) {
+  template <typename Callback>
+  static void Multiply(const int8_t *, const int8_t *, Index, Index, Index, Callback) {
     throw UnsupportedCPU();
   }
-  template<class WriteC>
-  static void Multiply8new(const uint8_t *, const int8_t *, WriteC, Index, Index, Index) {
+  template<class Callback>
+  static void Multiply8new(const uint8_t *, const int8_t *, Index, Index, Index, Callback) {
     throw UnsupportedCPU();
   }
   constexpr static const char *const kName = "8-bit Unsupported";
 };
 
-#ifdef INTGEMM_NO_AVX512
+#ifndef INTGEMM_COMPILER_SUPPORTS_AVX512
 // These won't ever be called in this capacity, but it does let the code below compile.
 typedef Unsupported_16bit AVX512_16bit;
 typedef Unsupported_8bit AVX512_8bit;
 namespace avx512f {
-float MaxAbsolute(const float *begin, const float *end) {
+static inline float MaxAbsolute(const float *begin, const float *end) {
   throw UnsupportedCPU();
 }
 } //namespace
@@ -127,7 +125,7 @@ float MaxAbsolute(const float *begin, const float *end) {
  */
 template <class T> T ChooseCPU(T avx512, T avx2, T ssse3, T sse2, T unsupported) {
   // TODO: don't catch Knights processors here!
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
   if (__builtin_cpu_supports("avx512f")) {
     return avx512;
   }
@@ -144,15 +142,15 @@ template <class T> T ChooseCPU(T avx512, T avx2, T ssse3, T sse2, T unsupported)
 }
 
 /* 16-bit matrix multiplication. */
-template<class WriteC>
+template <typename Callback>
 class Int16Mult {
 public:
   // Multiply C = A * B, presuming A and B have been prepared.
-  static void (*Multiply)(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols);
+  static void (*Multiply)(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
 };
 
-template <class WriteC>
-void (*Int16Mult<WriteC>::Multiply)(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) = ChooseCPU(AVX512_16bit::Multiply<WriteC>, AVX2_16bit::Multiply<WriteC>, SSE2_16bit::Multiply<WriteC>, SSE2_16bit::Multiply<WriteC>, Unsupported_16bit::Multiply);
+template <typename Callback>
+void (*Int16Mult<Callback>::Multiply)(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512_16bit::Multiply<Callback>, AVX2_16bit::Multiply<Callback>, SSE2_16bit::Multiply<Callback>, SSE2_16bit::Multiply<Callback>, Unsupported_16bit::Multiply);
 
 struct Int16 {
   typedef int16_t Integer;
@@ -183,32 +181,32 @@ struct Int16 {
   static void (*SelectColumnsB)(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
 
   // Multiply C = A * B, presuming A and B have been prepared.
-  template<class WriteC>
-  static void Multiply(const int16_t *A, const int16_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) {
-    Int16Mult<WriteC>::Multiply(A, B, functor, A_rows, width, B_cols);
+  template <typename Callback>
+  static void Multiply(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
+    Int16Mult<Callback>::Multiply(A, B, A_rows, width, B_cols, callback);
   }
 
   static const char *const kName;
 };
 
 /* 8-bit matrix multiplication */
-template<class WriteC>
+template <typename Callback>
 class Int8Mult {
 public:
   // Multiply C = A * B, presuming A and B have been prepared.
-  static void (*Multiply)(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols);
-  static void (*Multiply8new)(const uint8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols);
-  static void (*PrepareBiasFor8)(const int8_t A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols);
+  static void (*Multiply)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
+  static void (*Multiply8new)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
+  static void (*PrepareBiasFor8)(const int8_t A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
 };
 
-template <class WriteC>
-void (*Int8Mult<WriteC>::Multiply)(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) = ChooseCPU(AVX512_8bit::Multiply<WriteC>, AVX2_8bit::Multiply<WriteC>, SSSE3_8bit::Multiply<WriteC>, SSSE3_8bit::Multiply<WriteC>, Unsupported_8bit::Multiply);
+template <typename Callback>
+void (*Int8Mult<Callback>::Multiply)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512_8bit::Multiply<Callback>, AVX2_8bit::Multiply<Callback>, SSSE3_8bit::Multiply<Callback>, SSSE3_8bit::Multiply<Callback>, Unsupported_8bit::Multiply);
 
-template <class WriteC>
-void (*Int8Mult<WriteC>::Multiply8new)(const uint8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) = ChooseCPU(AVX512_8bit::Multiply8new<WriteC>, AVX2_8bit::Multiply8new<WriteC>, SSSE3_8bit::Multiply8new<WriteC>, SSSE3_8bit::Multiply8new<WriteC>, Unsupported_8bit::Multiply8new);
+template <class Callback>
+void (*Int8Mult<Callback>::Multiply8new)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512_8bit::Multiply8new<Callback>, AVX2_8bit::Multiply8new<Callback>, SSSE3_8bit::Multiply8new<Callback>, SSSE3_8bit::Multiply8new<Callback>, Unsupported_8bit::Multiply8new);
 
-template <class WriteC>
-void (*Int8Mult<WriteC>::PrepareBiasFor8)(const int8_t A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) = ChooseCPU(AVX512_8bit::PrepareBiasFor8<WriteC>, AVX2_8bit::PrepareBiasFor8<WriteC>, SSSE3_8bit::PrepareBiasFor8<WriteC>, SSSE3_8bit::PrepareBiasFor8<WriteC>, Unsupported_8bit::PrepareBiasFor8);
+template <class Callback>
+void (*Int8Mult<Callback>::PrepareBiasFor8)(const int8_t A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512_8bit::PrepareBiasFor8<Callback>, AVX2_8bit::PrepareBiasFor8<Callback>, SSSE3_8bit::PrepareBiasFor8<Callback>, SSSE3_8bit::PrepareBiasFor8<Callback>, Unsupported_8bit::PrepareBiasFor8);
 
 
 struct Int8 {
@@ -249,19 +247,19 @@ struct Int8 {
   static void (*SelectColumnsB)(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
 
   // Multiply C = A * B, presuming A and B have been prepared.
-  template<class WriteC>
-  static void Multiply(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) {
-    Int8Mult<WriteC>::Multiply(A, B, functor, A_rows, width, B_cols);
+  template <typename Callback>
+  static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
+    Int8Mult<Callback>::Multiply(A, B, A_rows, width, B_cols, callback);
   }
 
-  template<class WriteC>
-  static void Multiply8new(const int8_t *A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) {
-    Int8Mult<WriteC>::Multiply8new((const uint8_t *)A, B, functor, A_rows, width, B_cols);
+  template<class Callback>
+  static void Multiply8new(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
+    Int8Mult<Callback>::Multiply8new((const uint8_t *)A, B, A_rows, width, B_cols, callback);
   }
 
-  template<class WriteC>
-  static void PrepareBiasFor8(const int8_t A, const int8_t *B, WriteC functor, Index A_rows, Index width, Index B_cols) {
-    Int8Mult<WriteC>::PrepareBiasFor8(A, B, functor, A_rows, width, B_cols);
+  template<class Callback>
+  static void PrepareBiasFor8(const int8_t A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
+    Int8Mult<Callback>::PrepareBiasFor8(A, B, A_rows, width, B_cols, callback);
   }
   
   static const char *const kName;

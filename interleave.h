@@ -1,12 +1,10 @@
 #pragma once
 
+#include "config.h"
+#include "intrinsics.h"
 #include "types.h"
 
-#include <emmintrin.h>
-#include <immintrin.h>
-#include <tmmintrin.h>
-#include <xmmintrin.h>
-
+#include <algorithm>
 #include <cassert>
 #include <stdint.h>
 
@@ -46,26 +44,11 @@ target static inline void Interleave64(type &first, type &second) { \
   first = temp; \
 }
 
-
-template <class Register> static inline Register setzero_si() __attribute__((always_inline));;
-
 INTGEMM_INTERLEAVE(INTGEMM_SSE2, __m128i, )
-template <> INTGEMM_SSE2 inline __m128i setzero_si<__m128i>() {
-  return _mm_setzero_si128();
-}
-
 INTGEMM_INTERLEAVE(INTGEMM_AVX2, __m256i, 256)
-template <> INTGEMM_AVX2 inline __m256i setzero_si<__m256i>() {
-  return _mm256_setzero_si256();
-}
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 INTGEMM_INTERLEAVE(INTGEMM_AVX512BW, __m512i, 512)
-/* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
-template <> INTGEMM_AVX512BW inline __m512i setzero_si<__m512i>() {
-  return _mm512_setzero_si512();
-}
 #endif
-
 #define INTGEMM_SWAP(target, Register) \
 target static inline void Swap(Register &a, Register &b) { \
   Register tmp = a; \
@@ -75,7 +58,7 @@ target static inline void Swap(Register &a, Register &b) { \
 
 INTGEMM_SWAP(INTGEMM_SSE2, __m128i)
 INTGEMM_SWAP(INTGEMM_AVX2, __m256i)
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_SWAP(INTGEMM_AVX512BW, __m512i)
 #endif
@@ -128,7 +111,7 @@ target static inline void Transpose16InLane(Register &r0, Register &r1, Register
 
 INTGEMM_TRANSPOSE16(INTGEMM_SSE2, __m128i)
 INTGEMM_TRANSPOSE16(INTGEMM_AVX2, __m256i)
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_TRANSPOSE16(INTGEMM_AVX512BW, __m512i)
 #endif
