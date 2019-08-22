@@ -199,6 +199,18 @@ int main(int argc, char ** argv) {
 	std::cout << repeat << " iterations of New AVX2 took: " << newTimeAVX2.count() << " seconds." << std::endl;
 
 	if (kCPU < CPUType::AVX512BW) return 0;
+	std::chrono::duration<double> oldAVX512_nobias = testOld_nobias<AVX512_8bit>(1, 64, 8);
+	for (int i = 0; i<repeat; i++) {
+		oldAVX512_nobias += testOld_nobias<AVX512_8bit>(8, 256, 256);
+		oldAVX512_nobias += testOld_nobias<AVX512_8bit>(8, 2048, 256);
+		oldAVX512_nobias += testOld_nobias<AVX512_8bit>(320, 256, 256);
+		oldAVX512_nobias += testOld_nobias<AVX512_8bit>(472, 256, 256);
+		oldAVX512_nobias += testOld_nobias<AVX512_8bit>(248, 256, 256);
+		oldAVX512_nobias += testOld_nobias<AVX512_8bit>(200, 256, 256);
+	}
+
+	std::cout << repeat << " iterations of Old AVX512 without bias took: " << oldAVX512_nobias.count() << " seconds." << std::endl;
+
 	std::chrono::duration<double> oldAVX512 = testOld<AVX512_8bit>(1, 64, 8);
 	for (int i = 0; i<repeat; i++) {
 		oldAVX512 += testOld<AVX512_8bit>(8, 256, 256);
