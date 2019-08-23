@@ -16,10 +16,11 @@ namespace intgemm {
  * Define a bunch of intrinstics as overloaded functions so they work with
  * templates.
  */
+template <class Register> static inline Register load_ps(float const* from);
 template <class Register> static inline Register loadu_ps(const float* mem_addr);
-template <class Register> static inline Register set1_epi8(int8_t to);
 template <class Register> static inline Register set1_epi16(int16_t to);
 template <class Register> static inline Register set1_epi32(int32_t to);
+template <class Register> static inline Register set1_epi8(int8_t to);
 template <class Register> static inline Register set1_pd(double to);
 template <class Register> static inline Register set1_ps(float to);
 template <class Register> static inline Register setzero_pd();
@@ -73,6 +74,9 @@ INTGEMM_SSE2 static inline __m128 div_ps(__m128 a, __m128 b) {
 /*
  * Missing i32gather_ps for SSE2
  */
+template <> INTGEMM_SSE2 inline __m128 load_ps<__m128>(const float* from) {
+  return _mm_load_ps(from);
+}
 template <> INTGEMM_SSE2 inline __m128 loadu_ps(const float* mem_addr) {
   return _mm_loadu_ps(mem_addr);
 }
@@ -241,6 +245,9 @@ INTGEMM_AVX2 static inline __m256 i32gather_ps(float const *base_addr, __m256i v
 }
 template <> INTGEMM_AVX2 inline __m256 loadu_ps(const float* mem_addr) {
   return _mm256_loadu_ps(mem_addr);
+}
+template <> INTGEMM_AVX2 inline __m256 load_ps<__m256>(const float* from) {
+  return _mm256_load_ps(from);
 }
 INTGEMM_AVX2 static inline __m256i madd_epi16(__m256i first, __m256i second) {
   return _mm256_madd_epi16(first, second);
@@ -478,6 +485,9 @@ template <> INTGEMM_AVX512BW inline __m512 setzero_ps<__m512>() {
 }
 template <> INTGEMM_AVX512BW inline __m512i setzero_si<__m512i>() {
   return _mm512_setzero_si512();
+}
+template <> INTGEMM_AVX512BW inline __m512 load_ps<__m512>(const float* from) {
+  return _mm512_load_ps(from);
 }
 /*
  * Missing sign_epi8

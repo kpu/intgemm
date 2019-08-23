@@ -76,7 +76,14 @@ struct Unsupported_8bit {
   static void Quantize(const float *, int8_t *, float, Index) {
     throw UnsupportedCPU();
   }
+  static void QuantizeU(const float *, uint8_t *, float, Index) {
+    throw UnsupportedCPU();
+  }
   static void PrepareB(const float *, int8_t *, float, Index, Index) {
+    throw UnsupportedCPU();
+  }
+  template<class Callback>
+  static void PrepareBiasFor8(const int8_t, const int8_t *, Index, Index, Index, Callback) {
     throw UnsupportedCPU();
   }
   static void SelectColumnsB(const int8_t *, int8_t *, Index, const Index *, const Index *) {
@@ -84,6 +91,10 @@ struct Unsupported_8bit {
   }
   template <typename Callback>
   static void Multiply(const int8_t *, const int8_t *, Index, Index, Index, Callback) {
+    throw UnsupportedCPU();
+  }
+  template<class Callback>
+  static void Multiply8new(const uint8_t *, const int8_t *, Index, Index, Index, Callback) {
     throw UnsupportedCPU();
   }
   constexpr static const char *const kName = "8-bit Unsupported";
@@ -184,10 +195,19 @@ class Int8Mult {
 public:
   // Multiply C = A * B, presuming A and B have been prepared.
   static void (*Multiply)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
+  static void (*Multiply8new)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
+  static void (*PrepareBiasFor8)(const int8_t A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
 };
 
 template <typename Callback>
 void (*Int8Mult<Callback>::Multiply)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512_8bit::Multiply<Callback>, AVX2_8bit::Multiply<Callback>, SSSE3_8bit::Multiply<Callback>, SSSE3_8bit::Multiply<Callback>, Unsupported_8bit::Multiply);
+
+template <class Callback>
+void (*Int8Mult<Callback>::Multiply8new)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512_8bit::Multiply8new<Callback>, AVX2_8bit::Multiply8new<Callback>, SSSE3_8bit::Multiply8new<Callback>, SSSE3_8bit::Multiply8new<Callback>, Unsupported_8bit::Multiply8new);
+
+template <class Callback>
+void (*Int8Mult<Callback>::PrepareBiasFor8)(const int8_t A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512_8bit::PrepareBiasFor8<Callback>, AVX2_8bit::PrepareBiasFor8<Callback>, SSSE3_8bit::PrepareBiasFor8<Callback>, SSSE3_8bit::PrepareBiasFor8<Callback>, Unsupported_8bit::PrepareBiasFor8);
+
 
 struct Int8 {
   typedef int8_t Integer;
@@ -206,8 +226,18 @@ struct Int8 {
     Quantize(input, output, quant_mult, rows * cols);
   }
 
+  static inline void PrepareANew(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
+    QuantizeU(input, reinterpret_cast<uint8_t *>(output), quant_mult, rows * cols);
+  }
+
   // Multiply floats by quant_mult then convert to 8-bit integers with saturation.
   static void (*Quantize)(const float *input, int8_t *output, float quant_mult, Index size);
+
+  // Multiply floats by quant_mult then convert to 8-bit integers with saturation.
+  static void (*QuantizeU)(const float *input, uint8_t *output, float quant_mult, Index size);
+
+  // PrepareB
+  //static void (*PrepareBiasFor8)(const float *input, float *bias, float alpha, Index rows, Index cols);
   
   // Warning: the output of PrepareB depends on the CPU.
   // It will match the Multiply function on the same CPU though.
@@ -220,6 +250,16 @@ struct Int8 {
   template <typename Callback>
   static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
     Int8Mult<Callback>::Multiply(A, B, A_rows, width, B_cols, callback);
+  }
+
+  template<class Callback>
+  static void Multiply8new(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
+    Int8Mult<Callback>::Multiply8new((const uint8_t *)A, B, A_rows, width, B_cols, callback);
+  }
+
+  template<class Callback>
+  static void PrepareBiasFor8(const int8_t A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
+    Int8Mult<Callback>::PrepareBiasFor8(A, B, A_rows, width, B_cols, callback);
   }
   
   static const char *const kName;

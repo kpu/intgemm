@@ -16,9 +16,13 @@ const char *const Int16::kName = ChooseCPU(AVX512_16bit::kName, AVX2_16bit::kNam
 
 void (*Int8::Quantize)(const float *input, int8_t *output, float quant_mult, Index size) = ChooseCPU(AVX512_8bit::Quantize, AVX2_8bit::Quantize, SSSE3_8bit::Quantize, Unsupported_8bit::Quantize, Unsupported_8bit::Quantize);
 
+void (*Int8::QuantizeU)(const float *input, uint8_t *output, float quant_mult, Index size) = ChooseCPU(AVX512_8bit::QuantizeU, AVX2_8bit::QuantizeU, SSSE3_8bit::QuantizeU, Unsupported_8bit::QuantizeU, Unsupported_8bit::QuantizeU);
+
 void (*Int8::PrepareB)(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) = ChooseCPU(AVX512_8bit::PrepareB, AVX2_8bit::PrepareB, SSSE3_8bit::PrepareB, Unsupported_8bit::PrepareB, Unsupported_8bit::PrepareB);
 
 void (*Int8::SelectColumnsB)(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) = ChooseCPU(AVX512_8bit::SelectColumnsB, AVX2_8bit::SelectColumnsB, SSSE3_8bit::SelectColumnsB, Unsupported_8bit::SelectColumnsB, Unsupported_8bit::SelectColumnsB);
+
+//void (*Int8::PrepareBiasFor8)(const float *input, float *bias, float alpha, Index rows, Index cols) = ChooseCPU(AVX512_8bit::PrepareBiasFor8, AVX2_8bit::PrepareBiasFor8, SSSE3_8bit::PrepareBiasFor8, Unsupported_8bit::PrepareBiasFor8, Unsupported_8bit::PrepareBiasFor8);
 
 const char *const Int8::kName = ChooseCPU(AVX512_8bit::kName, AVX2_8bit::kName, SSSE3_8bit::kName, Unsupported_8bit::kName, Unsupported_8bit::kName);
 

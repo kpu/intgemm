@@ -270,4 +270,21 @@ target static inline void SelectColumnsOfB(const Register *input, Register *outp
   } \
 } \
 
+#define INTGEMM_PREPARE_BIAS_FOR_8(target, Register) \
+target static inline void PrepareBiasFor8(const float *input, float *bias, float alpha, Index rows, Index cols) { \
+  assert(cols*sizeof(float) % sizeof(Register) == 0); \
+  constexpr int stride = sizeof(Register) / sizeof(float); \
+  Register alpha_reg = set1_ps<Register>(alpha); \
+  for (Index c = 0; c<cols; c+=stride) { \
+    Register vectorsum = set1_ps<Register>(0.0f); \
+    for (Index r = 0; r < rows; r++) { \
+      Register column_stride = load_ps<Register>(input + r*cols + c); \
+      vectorsum = add_ps(vectorsum, column_stride); \
+    } \
+    Register *towrite = reinterpret_cast<Register *>(bias + c); \
+    vectorsum = mul_ps(vectorsum, alpha_reg); \
+    *towrite = sub_ps(*towrite, vectorsum); \
+  } \
+} \
+
 } // namespace intgemm

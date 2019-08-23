@@ -34,16 +34,20 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DI
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-foreach(exe example benchmark)
-  add_executable(${exe} ${exe}.cc intgemm.cc)
+foreach(exe benchmark biasmultiply)
+  add_executable(${exe} benchmarks/${exe}.cc intgemm.cc)
 endforeach()
 
+add_executable(example example.cc intgemm.cc)
+
 add_executable(tests
+  test/test.cc
+
   # General tests
   test/multiply_test.cc
   test/quantize_test.cc
-  test/test.cc
   test/utils_test.cc
+  test/add127_test.cc
 
   # Kernels tests
   test/kernels/add_bias_test.cc
