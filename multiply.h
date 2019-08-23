@@ -1,6 +1,6 @@
 #pragma once
 
-#include "config.h"
+#include "intgemm_config.h"
 #include "interleave.h"
 #include "intrinsics.h"
 #include "vec_traits.h"

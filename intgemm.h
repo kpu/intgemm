@@ -44,7 +44,7 @@
 #include <cstdint>
 #include <stdint.h>
 
-#include "config.h"
+#include "intgemm_config.h"
 #include "types.h"
 #include "sse2_gemm.h"
 #include "ssse3_gemm.h"

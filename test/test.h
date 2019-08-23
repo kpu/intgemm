@@ -5,7 +5,7 @@
 #include "intgemm.h"
 #include "aligned.h"
 
-#include "config.h"
+#include "intgemm_config.h"
 
 #define CHECK_MESSAGE(cond, msg) do { INFO(msg); CHECK(cond); } while(0)
 #define CHECK_FALSE_MESSAGE(cond, msg) do { INFO(msg); CHECK_FALSE(cond); } while(0)

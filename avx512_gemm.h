@@ -1,6 +1,6 @@
 #pragma once
 
-#include "config.h"
+#include "intgemm_config.h"
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 
