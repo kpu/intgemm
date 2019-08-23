@@ -1,6 +1,6 @@
 #pragma once
 
-#include "config.h"
+#include "intgemm_config.h"
 #include "types.h"
 
 #include <emmintrin.h>
