@@ -164,7 +164,7 @@ CPU_ATTR inline vi multiply<int>(vi a, vi b) {
 #if defined(THIS_IS_SSE2)
   auto even = mul_epu32(a, b);
   auto odd = mul_epu32(_mm_srli_si128(a, 4), _mm_srli_si128(b, 4));
-  return unpacklo_epi32(shuffle_epi32(even, 0x8 /* = 0 0 2 0 */), shuffle_epi32(odd, 0x8 /* = 0 0 2 0 */));
+  return unpacklo_epi32(_mm_shuffle_epi32(even, 0x8 /* = 0 0 2 0 */), _mm_shuffle_epi32(odd, 0x8 /* = 0 0 2 0 */));
 #elif defined(THIS_IS_AVX2)
   return _mm256_mullo_epi32(a, b);
 #else
