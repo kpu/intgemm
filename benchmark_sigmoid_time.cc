@@ -36,7 +36,7 @@ float sigmoid_reference(float x) {
     return exp(x) / (1.f + exp(x));
 }
 
-int main() {
+INTGEMM_AVX2 int main() {
   const unsigned long long TESTCASES = 100 * 1000000;
 
   float output[8];
@@ -61,7 +61,7 @@ int main() {
     {
       TestCase testcase = generate_testcase(-2, 2, 0.01f);
       auto input = *reinterpret_cast<const __m256i*>(testcase.raw_input);
-      auto sigmoid = SigmoidTaylor::OnAVX2(SigmoidTaylor(output, testcase.quantization_mult));
+      SigmoidTaylor::OnAVX2(SigmoidTaylor(output, testcase.quantization_mult))(0, 1, 0, input);
     }
     clock_t end = clock();
     double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
@@ -75,7 +75,7 @@ int main() {
     {
       TestCase testcase = generate_testcase(-2, 2, 0.01f);
       auto input = *reinterpret_cast<const __m256i*>(testcase.raw_input);
-      auto sigmoid = SigmoidReyoung::OnAVX2(SigmoidReyoung(output, testcase.quantization_mult));
+      SigmoidReyoung::OnAVX2(SigmoidReyoung(output, testcase.quantization_mult))(0, 1, 0, input);
     }
     clock_t end = clock();
     double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
@@ -89,7 +89,7 @@ int main() {
     {
       TestCase testcase = generate_testcase(-2, 2, 0.01f);
       auto input = *reinterpret_cast<const __m256i*>(testcase.raw_input);
-      auto sigmoid = SigmoidExpTaylor::OnAVX2(SigmoidExpTaylor(output, testcase.quantization_mult));
+      SigmoidExpTaylor::OnAVX2(SigmoidExpTaylor(output, testcase.quantization_mult))(0, 1, 0, input);
     }
     clock_t end = clock();
     double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
