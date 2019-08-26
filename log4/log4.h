@@ -203,20 +203,22 @@ INTGEMM_AVX512BW static inline __m512i DotLog4_Lookup16(__m512i a, __m512i b, ui
  * The lookup table is repeated for each 128-bit part of the register.
  * const __m512i kLookup = _mm512_set_epi64(0xffab734d342217, 0x0f0a060402010000, 0xffab734d342217, 0x0f0a060402010000, 0xffab734d342217, 0x0f0a060402010000, 0xffab734d342217, 0x0f0a060402010000);
  */
-INTGEMM_AVX512BW static inline __m512i DotLog4_Lookup8(__m512i a, __m512i b, const __m512i lookup, uint64_t &subtract255) {
+INTGEMM_AVX512BW static inline __m512i DotLog4_Lookup8(__m512i a, __m512i b, const __m512i lookup, __m512i &subtract) {
   const __m512i kValueBits = _mm512_set1_epi8(0x77);
   __m512i a_value = _mm512_and_si512(a, kValueBits);
   __m512i b_value = _mm512_and_si512(b, kValueBits);
   __m512i added = _mm512_add_epi8(a_value, b_value);
   // xor the arguments for the sign bits.  We only care about the sign bits 0x88.
-  __m512i xored = _mm512_xor_si512(a, b);
-  __mmask64 signs_lower = _mm512_test_epi8_mask(xored, _mm512_set1_epi8(0x8));
-  __mmask64 signs_upper = _mm512_test_epi8_mask(xored, _mm512_set1_epi8(0x80));
+  // Anything with top bit (kValueBits = 1) -> 0.  xor the top bits otherwise.
+  __m512i xored = _mm512_ternarylogic_epi64(kValueBits, a, b, 0x6);
+  //__m512i xored = _mm512_xor_si512(a, b);
 
   const __m512i kLower4 = _mm512_set1_epi8(0xf);
   __m512i upper = _mm512_srli_epi16(added, 4);
   __m512i lower = _mm512_and_si512(added, kLower4); // latency 1 throughput 0.5
   upper = _mm512_and_si512(upper, kLower4);
+
+  __mmask64 signs_lower = _mm512_test_epi8_mask(xored, _mm512_set1_epi8(0x8));
 
   // Do the lookup.
   lower = _mm512_shuffle_epi8(lookup, lower);
@@ -224,13 +226,18 @@ INTGEMM_AVX512BW static inline __m512i DotLog4_Lookup8(__m512i a, __m512i b, con
 
   const __m512i k255 = _mm512_set1_epi8(0xff);
   // 255 for negative, 0 for positive.
-  __m512i sign255_lower = _mm512_maskz_mov_epi8(signs_lower, k255);
-  __m512i sign255_upper = _mm512_maskz_mov_epi8(signs_upper, k255);
+  //__m512i shifted_sign = _mm512_slli_epi16(xored, 4);
+  //__m512i sign255_lower = _mm512_shuffle_epi8(k255, shifted_sign);
+   __m512i sign255_lower = _mm512_maskz_mov_epi8(signs_lower, k255);
+  __m512i sign255_upper = _mm512_shuffle_epi8(k255, xored);
 
   lower = _mm512_sad_epu8(sign255_lower, lower);
   upper = _mm512_sad_epu8(sign255_upper, upper);
 
-  subtract255 += __builtin_popcountll(signs_lower) + __builtin_popcountll(signs_upper);
+  subtract = _mm512_add_epi8(subtract, xored);
+
+
+  //subtract255 += __builtin_popcountll(signs_lower) + __builtin_popcountll(signs_upper);
   return _mm512_add_epi64(lower, upper);
 }
 

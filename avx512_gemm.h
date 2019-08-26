@@ -243,7 +243,7 @@ struct AVX512_8bit {
 
       // Do the first iteration to initialize the sums.
       __m512i a = *A_live;
-      __mmask64 neg_mask = _mm512_test_epi8_mask(a, _mm512_set1_epi8(-128));
+      __mmask64 neg_mask = _mm512_movepi8_mask(a);
       __m512i a_positive = _mm512_abs_epi8(a);
       // These will be packed 16-bit integers containing sums for each column of B multiplied by the row of A.
       Integer sum0 = maddubs_epi16(a_positive, _mm512_mask_sub_epi8(B_live[0], neg_mask, zeros, B_live[0]));
