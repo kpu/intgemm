@@ -36,7 +36,7 @@ static inline uint64_t rdtsc_end(uint32_t &processor) {
 
 class StopWatch {
   public:
-    StopWatch(std::vector<uint64_t> &stats)
+    explicit StopWatch(std::vector<uint64_t> &stats)
       : stats_(stats), start_(rdtsc_begin(processor_)) {}
 
     ~StopWatch() {

@@ -19,8 +19,8 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
   # Working around https://bugs.llvm.org/show_bug.cgi?id=41482
   # Anything compiled with clang might not work properly in SSE2/SSSE3 world
   message("${Orange}Compiling with Clang and using -mavx2 due to https://bugs.llvm.org/show_bug.cgi?id=41482. Support for SSE2/SSSE3 is likely broken.${ColourReset}")
-  SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -mavx2")
 endif()
+SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -march=native ")
 
 
 if (NOT AVX512)
@@ -28,7 +28,7 @@ if (NOT AVX512)
   set_source_files_properties(example.cc test/quantize_test.cc test/multiply_test.cc benchmark.cc PROPERTIES COMPILE_DEFINITIONS "INTGEMM_NO_AVX512")
 endif()
 
-foreach(exe example benchmark benchmark_sigmoid_accuracy benchmark_sigmoid_time)
+foreach(exe benchmark_sigmoid)
   add_executable(${exe} ${exe}.cc)
 endforeach()
 
