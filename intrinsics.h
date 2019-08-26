@@ -49,9 +49,9 @@ INTGEMM_SSE2 static inline __m128i cvtps_epi32(__m128 a) {
 INTGEMM_SSE2 static inline __m128i cvttps_epi32(__m128 a) {
   return _mm_cvttps_epi32(a);
 }
-INTGEMM_SSE2 static inline __m128 i32gather_ps(float const *base_addr, __m128i vindex, const int scale) {
-  return _mm_i32gather_ps(base_addr, vindex, scale);
-}
+/*
+ * Missing i32gather_ps for SSE2
+ */
 INTGEMM_SSE2 static inline __m128i madd_epi16(__m128i first, __m128i second) {
   return _mm_madd_epi16(first, second);
 }
@@ -118,8 +118,9 @@ INTGEMM_AVX2 static inline __m256i cvtps_epi32(__m256 a) {
 INTGEMM_AVX2 static inline __m256i cvttps_epi32(__m256 a) {
   return _mm256_cvttps_epi32(a);
 }
-INTGEMM_AVX2 static inline __m256 i32gather_ps(float const *base_addr, __m256i vindex, const int scale) {
-  return _mm256_i32gather_ps(base_addr, vindex, scale);
+template <unsigned Scale>
+INTGEMM_AVX2 static inline __m256 i32gather_ps(float const *base_addr, __m256i vindex) {
+  return _mm256_i32gather_ps(base_addr, vindex, Scale);
 }
 INTGEMM_AVX2 static inline __m256i madd_epi16(__m256i first, __m256i second) {
   return _mm256_madd_epi16(first, second);
@@ -189,8 +190,9 @@ INTGEMM_AVX512BW static inline __m512i cvtps_epi32(__m512 a) {
 INTGEMM_AVX512BW static inline __m512i cvttps_epi32(__m512 a) {
   return _mm512_cvttps_epi32(a);
 }
-INTGEMM_AVX512BW static inline __m512 i32gather_ps(float const *base_addr, __m512i vindex, const int scale) {
-  return _mm512_i32gather_ps(vindex, base_addr, scale);
+template <unsigned Scale>
+INTGEMM_AVX512BW static inline __m512 i32gather_ps(float const *base_addr, __m512i vindex) {
+  return _mm512_i32gather_ps(vindex, base_addr, Scale);
 }
 INTGEMM_AVX512BW static inline __m512i madd_epi16(__m512i first, __m512i second) {
   return _mm512_madd_epi16(first, second);

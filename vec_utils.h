@@ -170,8 +170,6 @@ INTGEMM_AVX2 static inline __m256 exp_approx_reyoung(__m256 x) { // 31 instrinsi
 // Calculate approximation of exp(x) using Taylor series and lookup table
 //
 //------------------------------------------------------------------------------
-namespace { // anonymous namespace
-
 template <typename Register>
 Register exp_approx_taylor(Register x) { // 21-22 intrinsics
   const static float LOOKUP[] = {
@@ -219,12 +217,10 @@ Register exp_approx_taylor(Register x) { // 21-22 intrinsics
 
   result = add_ps(result, const_one);
 
-  auto ea = i32gather_ps(LOOKUP + 20, cvtps_epi32(a), 4);
+  auto ea = i32gather_ps<4>(LOOKUP + 20, cvtps_epi32(a));
   return mul_ps(ea, result);
 }
-} // anonymous namespace
 
-template INTGEMM_SSE2 static __m128 exp_approx_taylor(__m128 x);
 template INTGEMM_AVX2 static __m256 exp_approx_taylor(__m256 x);
 template INTGEMM_AVX512BW static __m512 exp_approx_taylor(__m512 x);
 
