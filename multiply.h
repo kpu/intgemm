@@ -89,13 +89,13 @@ INTGEMM_PACK0123(INTGEMM_AVX512BW, __m512i)
 #endif
 
 template <typename Callback>
-INTGEMM_SSE2 static inline void RunCallback(Callback callback_impl, dvector_t<CPUType::SSE2, int> total, Index row_idx, Index col_idx, Index rows, Index cols) {
+INTGEMM_SSE2 static inline void RunCallback(Callback& callback_impl, dvector_t<CPUType::SSE2, int> total, Index row_idx, Index col_idx, Index rows, Index cols) {
   callback_impl(total.first, callbacks::OutputBufferInfo(row_idx, col_idx, rows, cols));
   callback_impl(total.second, callbacks::OutputBufferInfo(row_idx, col_idx + 4, rows, cols));
 }
 
 template <typename Callback>
-INTGEMM_AVX2 static inline void RunCallback(Callback callback_impl, vector_t<CPUType::AVX2, int> total, Index row_idx, Index col_idx, Index rows, Index cols) {
+INTGEMM_AVX2 static inline void RunCallback(Callback& callback_impl, vector_t<CPUType::AVX2, int> total, Index row_idx, Index col_idx, Index rows, Index cols) {
   callback_impl(total, callbacks::OutputBufferInfo(row_idx, col_idx, rows, cols));
 }
 
