@@ -167,8 +167,14 @@ INTGEMM_SSE2 static inline __m128i srai_epi32(__m128i a, int8_t b) {
 INTGEMM_SSE2 static inline __m128i srli_epi16(__m128i a, int8_t b) {
   return _mm_srli_epi16(a, b);
 }
+INTGEMM_SSE2 static inline void storeu_pd(double* mem_addr, __m128d a) {
+  _mm_storeu_pd(mem_addr, a);
+}
 INTGEMM_SSE2 static inline void storeu_ps(float* mem_addr, __m128 a) {
   _mm_storeu_ps(mem_addr, a);
+}
+INTGEMM_SSE2 static inline void storeu_si(__m128i* mem_addr, __m128i a) {
+  _mm_storeu_si128(mem_addr, a);
 }
 INTGEMM_SSE2 static inline __m128d sub_pd(__m128d a, __m128d b) {
   return _mm_sub_pd(a, b);
@@ -336,8 +342,14 @@ INTGEMM_AVX2 static inline __m256i srai_epi32(__m256i a, int8_t b) {
 INTGEMM_AVX2 static inline __m256i srli_epi16(__m256i a, int8_t b) {
   return _mm256_srli_epi16(a, b);
 }
+INTGEMM_AVX2 static inline void storeu_pd(double* mem_addr, __m256d a) {
+  _mm256_storeu_pd(mem_addr, a);
+}
 INTGEMM_AVX2 static inline void storeu_ps(float* mem_addr, __m256 a) {
   _mm256_storeu_ps(mem_addr, a);
+}
+INTGEMM_AVX2 static inline void storeu_si(__m256i* mem_addr, __m256i a) {
+  _mm256_storeu_si256(mem_addr, a);
 }
 INTGEMM_AVX2 static inline __m256d sub_pd(__m256d a, __m256d b) {
   return _mm256_sub_pd(a, b);
@@ -507,8 +519,14 @@ INTGEMM_AVX512BW static inline __m512i srai_epi32(__m512i a, int8_t b) {
 INTGEMM_AVX512BW static inline __m512i srli_epi16(__m512i a, int8_t b) {
   return _mm512_srli_epi16(a, b);
 }
-INTGEMM_AVX512BW static inline void storeu_ps(float* mem_addr, __m512 a) {
+INTGEMM_AVX512BW static inline void storeu_pd(void* mem_addr, __m512d a) {
+  _mm512_storeu_pd(mem_addr, a);
+}
+INTGEMM_AVX512BW static inline void storeu_ps(void* mem_addr, __m512 a) {
   _mm512_storeu_ps(mem_addr, a);
+}
+INTGEMM_AVX512BW static inline void storeu_si(void* mem_addr, __m512i a) {
+  _mm512_storeu_si512(mem_addr, a);
 }
 INTGEMM_AVX512BW static inline __m512d sub_pd(__m512d a, __m512d b) {
   return _mm512_sub_pd(a, b);

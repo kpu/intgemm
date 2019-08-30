@@ -32,23 +32,23 @@ namespace kernels {
  * Write
  */
 CPU_ATTR static inline void write(vi input, int8_t* output, Index offset) {
-  *reinterpret_cast<vi*>(output + offset) = input;
+  storeu_si(reinterpret_cast<vi*>(output + offset), input);
 }
 
 CPU_ATTR static inline void write(vi input, int16_t* output, Index offset) {
-  *reinterpret_cast<vi*>(output + offset) = input;
+  storeu_si(reinterpret_cast<vi*>(output + offset), input);
 }
 
 CPU_ATTR static inline void write(vi input, int* output, Index offset) {
-  *reinterpret_cast<vi*>(output + offset) = input;
+  storeu_si(reinterpret_cast<vi*>(output + offset), input);
 }
 
 CPU_ATTR static inline void write(vf input, float* output, Index offset) {
-  *reinterpret_cast<vf*>(output + offset) = input;
+  storeu_ps(output + offset, input);
 }
 
 CPU_ATTR static inline void write(vd input, double* output, Index offset) {
-  *reinterpret_cast<vd*>(output + offset) = input;
+  storeu_pd(output + offset, input);
 }
 
 /*
