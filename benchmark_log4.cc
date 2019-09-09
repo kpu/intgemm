@@ -168,6 +168,8 @@ INTGEMM_AVX512BW void BenchmarkLog4_Chrono() {
   std::memcpy(result, &subtractreg, sizeof(accum));
   total = std::accumulate(result, result + 8, total);
   asm volatile("" : "+r" (total));
+  std::cout << std::fixed;
+  std::cout.precision(10);
   std::cout << "Lookup8 " << Summarize(stats_lookup8).count() << " Lookup16 " << Summarize(stats_lookup16).count() << " Shift " << Summarize(stats_shift).count() << " MAddUBS " << Summarize(stats_maddubs).count() << '\n';
 }
 
