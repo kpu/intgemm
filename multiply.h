@@ -400,6 +400,69 @@ template <class WriteC> target static void Multiply(const int8_t *A, const int8_
 } \
 
 
+INTGEMM_AVX512BW static void newTile(uint8_t *A, int16_t *B, Index A_rows, Index width, Index B_cols) {
+  //A is column major, ish
+  // 0  1  2  3  4          0 1 5 6 10 11
+  // 5  6  7  8  9    --->  2 3 7 8 12 13
+  // 10 11 12 13 14         4 0 9 0 14 0  //Extra zeroes to make maddubs horizontal addition
+
+  //B is row major, but we use load epi16 so that we have two consecutive 8 bit values
+
+  //Two columns of C are produced at a time
+  const int simd_width = width / (sizeof(__m512i) / sizeof(int8_t)); \
+  int i = 0;
+  __m512i* a = reinterpret_cast<__m512i*>(A);
+
+  //Assuming B is 8 columns long
+  __m512i b0 = _mm512_set1_epi16(B[i]);
+  __m512i b1 = _mm512_set1_epi16(B[i+1]);
+  __m512i b2 = _mm512_set1_epi16(B[i+2]);
+  __m512i b3 = _mm512_set1_epi16(B[i+3]);
+  __m512i b4 = _mm512_set1_epi16(B[i+4]);
+  __m512i b5 = _mm512_set1_epi16(B[i+5]);
+  __m512i b6 = _mm512_set1_epi16(B[i+6]);
+  __m512i b7 = _mm512_set1_epi16(B[i+7]);
+
+  //Upcasting will be necessary
+  __m512i sum0 = maddubs_epi16(*a, b0);
+  __m512i sum1 = maddubs_epi16(*a, b1);
+  __m512i sum2 = maddubs_epi16(*a, b2);
+  __m512i sum3 = maddubs_epi16(*a, b3);
+  __m512i sum4 = maddubs_epi16(*a, b4);
+  __m512i sum5 = maddubs_epi16(*a, b5);
+  __m512i sum6 = maddubs_epi16(*a, b6);
+  __m512i sum7 = maddubs_epi16(*a, b7);
+  i++;
+  for (Index a_rowid = simd_width; a_rowid < A_rows; a_rowid+=simd_width) {
+    __m512i* a = reinterpret_cast<__m512i*>(A + a_rowid);
+
+    //Assuming B is 8 columns long
+    __m512i b0 = _mm512_set1_epi16(B[i]);
+    __m512i b1 = _mm512_set1_epi16(B[i+1]);
+    __m512i b2 = _mm512_set1_epi16(B[i+2]);
+    __m512i b3 = _mm512_set1_epi16(B[i+3]);
+    __m512i b4 = _mm512_set1_epi16(B[i+4]);
+    __m512i b5 = _mm512_set1_epi16(B[i+5]);
+    __m512i b6 = _mm512_set1_epi16(B[i+6]);
+    __m512i b7 = _mm512_set1_epi16(B[i+7]);
+
+    //Upcasting will be necessary
+    __m512i sum0 = adds_epi16(sum0, maddubs_epi16(*a, b0));
+    __m512i sum1 = adds_epi16(sum1, maddubs_epi16(*a, b1));
+    __m512i sum2 = adds_epi16(sum2, maddubs_epi16(*a, b2));
+    __m512i sum3 = adds_epi16(sum3, maddubs_epi16(*a, b3));
+    __m512i sum4 = adds_epi16(sum4, maddubs_epi16(*a, b4));
+    __m512i sum5 = adds_epi16(sum5, maddubs_epi16(*a, b5));
+    __m512i sum6 = adds_epi16(sum6, maddubs_epi16(*a, b6));
+    __m512i sum7 = adds_epi16(sum7, maddubs_epi16(*a, b7));
+    i++;
+  }
+
+  //Run write callback here on the sums,
+
+}
+
+
 // Find the maximum absolute value of packed float32s.
 /*
 template <class Register> inline static float MaxAbsoluteBackend(const float *begin_float, const float *end_float) {
