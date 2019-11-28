@@ -37,6 +37,21 @@ intgemm::Int16::PrepareA(A.begin(), A_prepared.begin(), quant_mult, A_rows, widt
 intgemm::Int16::PrepareB(B.begin(), B_prepared.begin(), quant_mult, width, B_cols);
 /* Multiply and produce results in C */
 intgemm::Int16::Multiply(A_prepared.begin(), B_prepared.begin(), A_rows, width, B_cols, intgemm::callbacks::UnquantizeAndWrite(1.0 / (quant_mult * quant_mult), C.begin()));
+
+/* If you want to make use of the slightly faster 8bit codepath (assuming you can cache biases and quantization multipliers)
+ * This routine only supports C = A*B + Bias
+ * In practise it computes C = (A+127)*B + Bias - |127|*B
+ * Prepare A and B first:
+ */
+float alpha = 25;
+float quant_mult = 127/alpha;
+intgemm::Int8::PrepareANew(A.begin(), A_prepared.begin(), quant_mult, A_rows, width);
+intgemm::Int8::PrepareB(B.begin(), B_prepared.begin(), quant_mult, width, B_cols);
+/* Prepare the bias (inplace) */
+float unquant_mult_forprep = (-1)*(alpha)*(alpha)/(127.0f);
+intgemm::Int8::PrepareBiasFor8(1, B_prepared.begin(), 1, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, inputBias.begin(), inputBias.begin()));
+/* Multiply */
+intgemm::Int8::Multiply8new(A_prepared.begin(), B_prepared.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, bias.begin(), C.begin()));
 ```
 For 8-bit, use `Int8` instead of `Int16`.
 
