@@ -10,6 +10,9 @@ template <class T> class AlignedVector {
     explicit AlignedVector(std::size_t size)
       : mem_(static_cast<T*>(aligned_alloc(64, size * sizeof(T)))), size_(size) {}
 
+    AlignedVector(const AlignedVector&) = delete;
+    AlignedVector& operator=(const AlignedVector&) = delete;
+
     ~AlignedVector() { std::free(mem_); }
 
     std::size_t size() const { return size_; }
@@ -28,10 +31,6 @@ template <class T> class AlignedVector {
   private:
     T *mem_;
     std::size_t size_;
-
-    // Deleted.
-    AlignedVector(AlignedVector &);
-    AlignedVector &operator=(AlignedVector &);
 };
 
 } // namespace intgemm
