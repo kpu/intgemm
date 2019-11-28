@@ -269,8 +269,8 @@ template <typename Callback> target static void Multiply(const int16_t *A, const
 } \
 
 //An int8 version of the above code, using the add 127 technique
-#define INTGEMM_MULTIPLY8NEW(Integer, target, cpu_type) \
-  template <class Callback> target static void Multiply8new(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) { \
+#define INTGEMM_MULTIPLY8SHIFT(Integer, target, cpu_type) \
+  template <class Callback> target static void Multiply8Shift(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) { \
   assert(width % (sizeof(Integer) / sizeof(int8_t)) == 0); \
   assert(B_cols % 8 == 0); \
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0); \

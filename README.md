@@ -42,7 +42,31 @@ For 8-bit, use `Int8` instead of `Int16`.
 
 When repesented as floats, all of A, B, and C are in row-major format.
 
-You can write your own PostProcessing functions on C and use them as a template argument to `Multiply`. For details, see [cops.h](cops.h).
+~~You can write your own PostProcessing functions on C and use them as a template argument to `Multiply`. For details, see [cops.h](cops.h).~~
+
+For 8-bit, you can make use a of a slightly faster implementation, assuming you can determine tha quantization multipliers and prepare the biases offline:
+
+```C++
+#include "intgemm.h"
+
+/* Not shown: allocate 64-byte aligned memory with e.g. aligned_alloc.
+ * A is A_rows x width.
+ * B is width x B_cols.
+ * If you want to make use of the slightly faster 8bit codepath (assuming you can cache biases and quantization multipliers)
+ * This routine only supports C = A*B + Bias
+ * In practise it computes C = (A+127)*B + Bias - |127|*B
+ * Prepare A and B first:
+ */
+float alpha = 25;
+float quant_mult = 127/alpha;
+intgemm::Int8Shift::PrepareA(A.begin(), A_prepared.begin(), quant_mult, A_rows, width);
+intgemm::Int8Shift::PrepareB(B.begin(), B_prepared.begin(), quant_mult, width, B_cols);
+/* Prepare the bias (inplace) */
+float unquant_mult_forprep = (-1)*(alpha)*(alpha)/(127.0f);
+intgemm::Int8Shift::PrepareBias(1, B_prepared.begin(), 1, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, inputBias.begin(), inputBias.begin()));
+/* Multiply */
+intgemm::Int8Shift::Multiply(A_prepared.begin(), B_prepared.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, bias.begin(), C.begin()));
+```
 
 ## Quantization
 Floating-point values are multiplied by a user-specified constant then rounded to an integer.  
