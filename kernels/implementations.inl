@@ -3,7 +3,7 @@
 #include "utils.h"
 #include "vec_traits.h"
 
-#include <cassert>
+#include <cstdlib>
 
 #if defined(THIS_IS_SSE2)
   #define CPU_NAME SSE2
@@ -361,7 +361,7 @@ CPU_ATTR static inline vf floor(vf input) {
  */
 CPU_ATTR static inline vf exp_approx_taylor(vf x) {
 #if defined(THIS_IS_SSE2)
-  assert(false && "SSE2 is not supported");
+  std::abort();
 #else
   static constexpr int EXP_MIN = -20;
   static constexpr int EXP_MAX = 20;
@@ -421,7 +421,7 @@ CPU_ATTR static inline vf exp_approx_taylor(vf x) {
  */
 CPU_ATTR static inline vf sigmoid(vf input) {
 #if defined(THIS_IS_SSE2)
-  assert(false && "SSE2 is not supported"); // TODO: missing exp_approx_taylor for SSE2
+  std::abort(); // TODO: missing exp_approx_taylor for SSE2
 #elif defined(THIS_IS_AVX2)
   static const auto vconst_zero = setzero_ps<vf>();
   static const auto vconst_one = set1_ps<vf>(1.f);
@@ -458,7 +458,7 @@ CPU_ATTR static inline vf sigmoid(vf input) {
  */
 CPU_ATTR static inline vf tanh(vf input) {
 #if defined(THIS_IS_SSE2)
-  assert(false && "SSE2 is not supported"); // TODO: missing exp_approx_taylor for SSE2
+  std::abort(); // TODO: missing exp_approx_taylor for SSE2
 #else
   const static auto vconst_zero = setzero_ps<vf>();
 
