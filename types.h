@@ -1,7 +1,6 @@
 #pragma once
 #include <exception>
 
-#define DEFAULT __attribute__ ((target ("default")))
 #define INTGEMM_SSE2 __attribute__ ((target ("sse2")))
 //#define SSE2_3 __attribute__ ((target ("ssse3"), target("sse2"))) //Not supported by clang
 #define INTGEMM_SSSE3 __attribute__ ((target ("ssse3")))
