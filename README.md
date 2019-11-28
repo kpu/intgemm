@@ -59,13 +59,13 @@ For 8-bit, you can make use a of a slightly faster implementation, assuming you 
  */
 float alpha = 25;
 float quant_mult = 127/alpha;
-intgemm::Int8::PrepareANew(A.begin(), A_prepared.begin(), quant_mult, A_rows, width);
-intgemm::Int8::PrepareB(B.begin(), B_prepared.begin(), quant_mult, width, B_cols);
+intgemm::Int8Shift::PrepareA(A.begin(), A_prepared.begin(), quant_mult, A_rows, width);
+intgemm::Int8Shift::PrepareB(B.begin(), B_prepared.begin(), quant_mult, width, B_cols);
 /* Prepare the bias (inplace) */
 float unquant_mult_forprep = (-1)*(alpha)*(alpha)/(127.0f);
-intgemm::Int8::PrepareBiasFor8(1, B_prepared.begin(), 1, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, inputBias.begin(), inputBias.begin()));
+intgemm::Int8Shift::PrepareBias(1, B_prepared.begin(), 1, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, inputBias.begin(), inputBias.begin()));
 /* Multiply */
-intgemm::Int8::Multiply8new(A_prepared.begin(), B_prepared.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, bias.begin(), C.begin()));
+intgemm::Int8Shift::Multiply(A_prepared.begin(), B_prepared.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, bias.begin(), C.begin()));
 ```
 
 ## Quantization

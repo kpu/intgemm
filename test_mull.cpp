@@ -273,8 +273,8 @@ int main() {
 
     //printMatrix(bias.begin(), 1, B_cols); //Print bias
 
-    AVX2_8bit::Multiply8new(reinterpret_cast<uint8_t*>(A_prep2.begin()), B_prep.begin(), A_rows, width, B_cols, UnquantizeAndAddBiasAndWrite(unquant_mult, bias.begin(), test_C.begin()));
-    //AVX2_8bit::Multiply8new(reinterpret_cast<uint8_t*>(A_prep.begin()), B_prep.begin(), JustUnquantizeC(test_C.begin(), unquant_mult), A_rows, width, B_cols);
+    AVX2_8bit::Multiply8Shift(reinterpret_cast<uint8_t*>(A_prep2.begin()), B_prep.begin(), A_rows, width, B_cols, UnquantizeAndAddBiasAndWrite(unquant_mult, bias.begin(), test_C.begin()));
+    //AVX2_8bit::Multiply8Shift(reinterpret_cast<uint8_t*>(A_prep.begin()), B_prep.begin(), JustUnquantizeC(test_C.begin(), unquant_mult), A_rows, width, B_cols);
     
     AlignedVector<int16_t> A_prep3(A.size());
     AlignedVector<int16_t> B_prep3(B.size());

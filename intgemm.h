@@ -94,7 +94,7 @@ struct Unsupported_8bit {
     throw UnsupportedCPU();
   }
   template<class Callback>
-  static void Multiply8new(const uint8_t *, const int8_t *, Index, Index, Index, Callback) {
+  static void Multiply8Shift(const uint8_t *, const int8_t *, Index, Index, Index, Callback) {
     throw UnsupportedCPU();
   }
   constexpr static const char *const kName = "8-bit Unsupported";
@@ -195,7 +195,7 @@ class Int8Mult {
 public:
   // Multiply C = A * B, presuming A and B have been prepared.
   static void (*Multiply)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
-  static void (*Multiply8new)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
+  static void (*Multiply8Shift)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
   static void (*PrepareBiasFor8)(const int8_t A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
 };
 
@@ -203,11 +203,10 @@ template <typename Callback>
 void (*Int8Mult<Callback>::Multiply)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512_8bit::Multiply<Callback>, AVX2_8bit::Multiply<Callback>, SSSE3_8bit::Multiply<Callback>, SSSE3_8bit::Multiply<Callback>, Unsupported_8bit::Multiply);
 
 template <class Callback>
-void (*Int8Mult<Callback>::Multiply8new)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512_8bit::Multiply8new<Callback>, AVX2_8bit::Multiply8new<Callback>, SSSE3_8bit::Multiply8new<Callback>, SSSE3_8bit::Multiply8new<Callback>, Unsupported_8bit::Multiply8new);
+void (*Int8Mult<Callback>::Multiply8Shift)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512_8bit::Multiply8Shift<Callback>, AVX2_8bit::Multiply8Shift<Callback>, SSSE3_8bit::Multiply8Shift<Callback>, SSSE3_8bit::Multiply8Shift<Callback>, Unsupported_8bit::Multiply8Shift);
 
 template <class Callback>
 void (*Int8Mult<Callback>::PrepareBiasFor8)(const int8_t A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512_8bit::PrepareBiasFor8<Callback>, AVX2_8bit::PrepareBiasFor8<Callback>, SSSE3_8bit::PrepareBiasFor8<Callback>, SSSE3_8bit::PrepareBiasFor8<Callback>, Unsupported_8bit::PrepareBiasFor8);
-
 
 struct Int8 {
   typedef int8_t Integer;
@@ -224,11 +223,6 @@ struct Int8 {
   // The number of rows is anything.
   static inline void PrepareA(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
     Quantize(input, output, quant_mult, rows * cols);
-  }
-
-  // Identical to the above function, except it adds 127 to each number, making sure that all numbers are positive
-  static inline void PrepareANew(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
-    QuantizeU(input, reinterpret_cast<uint8_t *>(output), quant_mult, rows * cols);
   }
 
   // Multiply floats by quant_mult then convert to 8-bit integers with saturation.
@@ -250,21 +244,55 @@ struct Int8 {
   static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
     Int8Mult<Callback>::Multiply(A, B, A_rows, width, B_cols, callback);
   }
+  
+  static const char *const kName;
+};
 
-  // A slightly faster version of the above funciton (assuming a bias is used) because of better handling of the sign bit
-  // Multiply C = A * B + Bias, presuming A, B and Bias have all been prepared (for A, PrepareAnew should be used
-  template<class Callback>
-  static void Multiply8new(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
-    Int8Mult<Callback>::Multiply8new((const uint8_t *)A, B, A_rows, width, B_cols, callback);
+// Shifting A by 127 version of the above code
+struct Int8Shift {
+  typedef int8_t Integer;
+
+  // A's size must be a multiple of 1x64.
+  static const Index kATileRow = 1;
+  static const Index kATileCol = 64;
+  // B's size must be a multiple of 64x8.
+  static const Index kBTileRow = 64;
+  static const Index kBTileCol = 8;
+
+  // Identical to the Int8 Version, except it adds 127 to each number, making sure that all numbers are positive
+  static inline void PrepareA(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
+    QuantizeU(input, reinterpret_cast<uint8_t *>(output), quant_mult, rows * cols);
   }
 
-  // This function prepares the bias for the Multiply8new routine that does unsigned * signed multiplication.
+  // Multiply floats by quant_mult then convert to 8-bit integers with saturation.
+  // A version that adds 127 to each number, making sure that all numbers are positive
+  static void (*QuantizeU)(const float *input, uint8_t *output, float quant_mult, Index size);
+  
+  // Warning: the output of PrepareB depends on the CPU.
+  // It will match the Multiply function on the same CPU though.
+  static void PrepareB(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
+      Int8::PrepareB(input, output, quant_mult, rows, cols);
+  }
+
+  // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8. 
+  static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
+      Int8::SelectColumnsB(input, output, rows, cols_begin, cols_end);
+  }
+
+  // A slightly faster version compared to the Int8 one (assuming a bias is used) because of better handling of the sign bit
+  // Multiply C = A * B + Bias, presuming A, B and Bias have all been prepared (for A, PrepareAnew should be used
+  template<class Callback>
+  static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
+    Int8Mult<Callback>::Multiply8Shift((const uint8_t *)A, B, A_rows, width, B_cols, callback);
+  }
+
+  // This function prepares the bias for the Multiply routine that does unsigned * signed multiplication.
   // The function takes:
   // scaling factor A (usually 1), a preparedB matrix, 1 (since A is a const and not a matrix), width, B_cols and
   // the callback UnquantizeAndAddBiasAndWrite(unquant_mult, Bias_matrix, Bias_matrix)
   // unquant_mult is computed by (-1)*(alpha)*(alpha)/(127.0f);
   template<class Callback>
-  static void PrepareBiasFor8(const int8_t A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
+  static void PrepareBias(const int8_t A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
     Int8Mult<Callback>::PrepareBiasFor8(A, B, A_rows, width, B_cols, callback);
   }
   
