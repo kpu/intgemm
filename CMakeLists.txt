@@ -21,6 +21,14 @@ if(NOT INTGEMM_COMPILER_SUPPORTS_AVX512)
   message("${Orange}Not building AVX512-based multiplication because your compiler is too old.\nFor details rerun cmake with --debug-trycompile then try to build in compile_tests/CMakeFiles/CMakeTmp.${ColourReset}")
 endif()
 
+try_compile(INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
+  ${CMAKE_CURRENT_BINARY_DIR}/compile_tests
+  ${CMAKE_CURRENT_SOURCE_DIR}/compile_test_avx512vnni.cc)
+#No compiler flags for this test; that's part of the test!
+if(NOT INTGEMM_COMPILER_SUPPORTS_AVX512VNNI)
+  message("${Orange}Not building AVX512-based multiplication because your compiler is too old.\nFor details rerun cmake with --debug-trycompile then try to build in compile_tests/CMakeFiles/CMakeTmp.${ColourReset}")
+endif()
+
 # Working around https://bugs.llvm.org/show_bug.cgi?id=41482
 # Anything compiled with clang might not work properly in SSE2/SSSE3 world
 if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
