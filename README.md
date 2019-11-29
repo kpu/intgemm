@@ -69,37 +69,13 @@ intgemm::Int8Shift::Multiply(A_prepared.begin(), B_prepared.begin(), A_rows, wid
 ```
 
 ## Quantization
-Floating-point values are multiplied by a user-specified constant then rounded to an integer.  
+Floating-point values are multiplied by a user-specified constant then rounded to an integer.
 
 In 16 bit, Jacob Devlin recommends 1024.0 for neural networks to prevent the aforementioned overflow.
 
-In 8 bit, use 127.0 / the largest value.  Quantization will saturate so it's possible to use larger multipliers to obtain clipping.
+In 8 bit, use 127.0 / the largest value (use MaxAbsolute).  Quantization will saturate so it's possible to use larger multipliers to obtain clipping.
 
 ## Acknowledgments
 The original 16-bit SSE2 code came from:
 
-Sharp Models on Dull Hardware: Fast and Accurate Neural Machine Translation Decoding on the CPU by Jacob Devlin
-https://arxiv.org/abs/1705.01991
-
-Under a license:
-
-Copyright (c) 2017 Microsoft Corporation
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
+Sharp Models on Dull Hardware: Fast and Accurate Neural Machine Translation Decoding on the CPU by Jacob Devlin https://arxiv.org/abs/1705.01991 under the MIT license.
