@@ -27,7 +27,7 @@ std::chrono::duration<double> testNew(Index A_rows, Index width, Index B_cols) {
   for (auto& it : bias) {
     it = dist(gen);
   }
-  
+
   float alpha = 2.0f;
   float quant_mult = 127/alpha;
   float unquant_mult = 1.0/(quant_mult*quant_mult);
@@ -66,7 +66,7 @@ std::chrono::duration<double> testOld(Index A_rows, Index width, Index B_cols) {
   for (auto& it : bias) {
     it = dist(gen);
   }
-  
+
   float alpha = 2.0f;
   float quant_mult = 127/alpha;
   float unquant_mult = 1.0/(quant_mult*quant_mult);
@@ -99,7 +99,7 @@ std::chrono::duration<double> testOld_nobias(Index A_rows, Index width, Index B_
   for (auto& it : B) {
     it = dist(gen);
   }
-  
+
   float alpha = 2.0f;
   float quant_mult = 127/alpha;
   float unquant_mult = 1.0/(quant_mult*quant_mult);
@@ -136,8 +136,8 @@ int main(int argc, char ** argv) {
 		oldSSSE3_nobias += testOld_nobias<SSSE3_8bit>(200, 256, 256);
 	}
 
-	std::cout << repeat << " iterations of Old SSSE3 without bias took: " << oldSSSE3_nobias.count() << " seconds." << std::endl;
-	
+	std::cout << repeat << " iterations of SSSE3 without bias took: " << oldSSSE3_nobias.count() << " seconds." << std::endl;
+
 	std::chrono::duration<double> oldSSSE3 = testOld<SSSE3_8bit>(1, 64, 8);
 	for (int i = 0; i<repeat; i++) {
 		oldSSSE3 += testOld<SSSE3_8bit>(8, 256, 256);
@@ -148,7 +148,7 @@ int main(int argc, char ** argv) {
 		oldSSSE3 += testOld<SSSE3_8bit>(200, 256, 256);
 	}
 
-	std::cout << repeat << " iterations of Old SSSE3 took: " << oldSSSE3.count() << " seconds." << std::endl;
+	std::cout << repeat << " iterations of SSSE3 took: " << oldSSSE3.count() << " seconds." << std::endl;
 
 	std::chrono::duration<double> newTimeSSSE3 = testOld<SSSE3_8bit>(1, 64, 8);
 	for (int i = 0; i<repeat; i++) {
@@ -160,7 +160,7 @@ int main(int argc, char ** argv) {
 		newTimeSSSE3 += testNew<SSSE3_8bit>(200, 256, 256);
 	}
 
-	std::cout << repeat << " iterations of New SSSE3 took: " << newTimeSSSE3.count() << " seconds." << std::endl;
+	std::cout << repeat << " iterations of Shifted SSSE3 took: " << newTimeSSSE3.count() << " seconds." << std::endl;
 
 	std::chrono::duration<double> oldAVX2_nobias = testOld_nobias<AVX2_8bit>(1, 64, 8);
 	for (int i = 0; i<repeat; i++) {
@@ -172,7 +172,7 @@ int main(int argc, char ** argv) {
 		oldAVX2_nobias += testOld_nobias<AVX2_8bit>(200, 256, 256);
 	}
 
-	std::cout << repeat << " iterations of Old AVX2 without bias took: " << oldAVX2_nobias.count() << " seconds." << std::endl;
+	std::cout << repeat << " iterations of AVX2 without bias took: " << oldAVX2_nobias.count() << " seconds." << std::endl;
 
 	std::chrono::duration<double> oldAVX2 = testOld<AVX2_8bit>(1, 64, 8);
 	for (int i = 0; i<repeat; i++) {
@@ -184,7 +184,7 @@ int main(int argc, char ** argv) {
 		oldAVX2 += testOld<AVX2_8bit>(200, 256, 256);
 	}
 
-	std::cout << repeat << " iterations of Old AVX2 took: " << oldAVX2.count() << " seconds." << std::endl;
+	std::cout << repeat << " iterations of AVX2 took: " << oldAVX2.count() << " seconds." << std::endl;
 
 	std::chrono::duration<double> newTimeAVX2 = testOld<AVX2_8bit>(1, 64, 8);
 	for (int i = 0; i<repeat; i++) {
@@ -196,7 +196,7 @@ int main(int argc, char ** argv) {
 		newTimeAVX2 += testNew<AVX2_8bit>(200, 256, 256);
 	}
 
-	std::cout << repeat << " iterations of New AVX2 took: " << newTimeAVX2.count() << " seconds." << std::endl;
+	std::cout << repeat << " iterations of Shifted AVX2 took: " << newTimeAVX2.count() << " seconds." << std::endl;
 
 	if (kCPU < CPUType::AVX512BW) return 0;
 	std::chrono::duration<double> oldAVX512_nobias = testOld_nobias<AVX512_8bit>(1, 64, 8);
@@ -209,7 +209,7 @@ int main(int argc, char ** argv) {
 		oldAVX512_nobias += testOld_nobias<AVX512_8bit>(200, 256, 256);
 	}
 
-	std::cout << repeat << " iterations of Old AVX512 without bias took: " << oldAVX512_nobias.count() << " seconds." << std::endl;
+	std::cout << repeat << " iterations of AVX512 without bias took: " << oldAVX512_nobias.count() << " seconds." << std::endl;
 
 	std::chrono::duration<double> oldAVX512 = testOld<AVX512_8bit>(1, 64, 8);
 	for (int i = 0; i<repeat; i++) {
@@ -221,7 +221,7 @@ int main(int argc, char ** argv) {
 		oldAVX512 += testOld<AVX512_8bit>(200, 256, 256);
 	}
 
-	std::cout << repeat << " iterations of Old AVX512 took: " << oldAVX512.count() << " seconds." << std::endl;
+	std::cout << repeat << " iterations of AVX512 took: " << oldAVX512.count() << " seconds." << std::endl;
 
 	std::chrono::duration<double> newTimeAVX512 = testOld<AVX512_8bit>(1, 64, 8);
 	for (int i = 0; i<repeat; i++) {
@@ -233,7 +233,32 @@ int main(int argc, char ** argv) {
 		newTimeAVX512 += testNew<AVX512_8bit>(200, 256, 256);
 	}
 
-	std::cout << repeat << " iterations of New AVX512 took: " << newTimeAVX512.count() << " seconds." << std::endl;
+	std::cout << repeat << " iterations of Shifted AVX512 took: " << newTimeAVX512.count() << " seconds." << std::endl;
+
+        if (kCPU < CPUType::AVX512VNNI) return 0;
+        std::chrono::duration<double> oldAVX512VNNI_nobias = testOld_nobias<AVX512_8bit>(1, 64, 8);
+        for (int i = 0; i<repeat; i++) {
+                oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI_8bit>(8, 256, 256);
+                oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI_8bit>(8, 2048, 256);
+                oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI_8bit>(320, 256, 256);
+                oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI_8bit>(472, 256, 256);
+                oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI_8bit>(248, 256, 256);
+                oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI_8bit>(200, 256, 256);
+        }
+
+        std::cout << repeat << " iterations of AVX512VNNI without bias took: " << oldAVX512VNNI_nobias.count() << " seconds." << std::endl;
+
+        std::chrono::duration<double> oldAVX512VNNI = testOld<AVX512_8bit>(1, 64, 8);
+        for (int i = 0; i<repeat; i++) {
+                oldAVX512VNNI += testOld<AVX512VNNI_8bit>(8, 256, 256);
+                oldAVX512VNNI += testOld<AVX512VNNI_8bit>(8, 2048, 256);
+                oldAVX512VNNI += testOld<AVX512VNNI_8bit>(320, 256, 256);
+                oldAVX512VNNI += testOld<AVX512VNNI_8bit>(472, 256, 256);
+                oldAVX512VNNI += testOld<AVX512VNNI_8bit>(248, 256, 256);
+                oldAVX512VNNI += testOld<AVX512VNNI_8bit>(200, 256, 256);
+        }
+
+        std::cout << repeat << " iterations of AVX512VNNI took: " << oldAVX512VNNI.count() << " seconds." << std::endl;
 
 
 }
