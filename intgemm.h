@@ -259,7 +259,7 @@ struct Int8Shift {
   static const Index kBTileRow = 64;
   static const Index kBTileCol = 8;
 
-  // Identical to the Int8 Version, except it adds 127 to each number, making sure that all numbers are positive
+  // Identical to the Int8 Version, except it adds 127 to each number, making sure that all numbers are positive.
   static inline void PrepareA(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
     QuantizeU(input, reinterpret_cast<uint8_t *>(output), quant_mult, rows * cols);
   }
@@ -271,12 +271,12 @@ struct Int8Shift {
   // Warning: the output of PrepareB depends on the CPU.
   // It will match the Multiply function on the same CPU though.
   static void PrepareB(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
-      Int8::PrepareB(input, output, quant_mult, rows, cols);
+    Int8::PrepareB(input, output, quant_mult, rows, cols);
   }
 
   // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8. 
   static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
-      Int8::SelectColumnsB(input, output, rows, cols_begin, cols_end);
+    Int8::SelectColumnsB(input, output, rows, cols_begin, cols_end);
   }
 
   // A slightly faster version compared to the Int8 one (assuming a bias is used) because of better handling of the sign bit
