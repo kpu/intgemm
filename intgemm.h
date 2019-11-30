@@ -288,12 +288,12 @@ struct Int8Shift {
 
   // This function prepares the bias for the Multiply routine that does unsigned * signed multiplication.
   // The function takes:
-  // scaling factor A (usually 1), a preparedB matrix, 1 (since A is a const and not a matrix), width, B_cols and
+  // a preparedB matrix, width, B_cols and
   // the callback UnquantizeAndAddBiasAndWrite(unquant_mult, Bias_matrix, Bias_matrix)
   // unquant_mult is computed by (-1)*(alpha)*(alpha)/(127.0f);
   template<class Callback>
-  static void PrepareBias(const int8_t A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
-    Int8Mult<Callback>::PrepareBiasFor8(A, B, A_rows, width, B_cols, callback);
+  static void PrepareBias(const int8_t *B, Index width, Index B_cols, Callback callback) {
+    Int8Mult<Callback>::PrepareBiasFor8(B, width, B_cols, callback);
   }
   
   static const char *const kName;
