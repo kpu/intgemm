@@ -222,7 +222,7 @@ TEST_CASE("PrepareA AVX512F", "[Add127]") {
 
 // Multiply
 
-TEST_CASE ("Multiply SSSE3 8bit with new bias", "[Add127]") {
+TEST_CASE ("Multiply SSSE3 8bit Shift with bias", "[Add127]") {
   if (kCPU < CPUType::SSSE3) return;
   TestMultiplyBiasNew<SSSE3_8bit>(1, 64, 8, 0.11, 0.1, 0.06, 0.05);
   TestMultiplyBiasNew<SSSE3_8bit>(8, 256, 256, 0.45, 0.54, 0.17, 0.16); // 0.064, 0.026);
@@ -233,7 +233,7 @@ TEST_CASE ("Multiply SSSE3 8bit with new bias", "[Add127]") {
   TestMultiplyBiasNew<SSSE3_8bit>(200, 256, 256, 0.55, 0.74, 0.17, 0.16); // 0.1, 0.011);
 }
 
-TEST_CASE ("Multiply AVX2 8bit with new bias", "[Add127]") {
+TEST_CASE ("Multiply AVX2 8bit Shift with bias", "[Add127]") {
   if (kCPU < CPUType::AVX2) return;
   TestMultiplyBiasNew<AVX2_8bit>(1, 64, 8, 0.11, 0.11, 0.06, 0.05);
   TestMultiplyBiasNew<AVX2_8bit>(8, 256, 256, 0.49, 0.54, 0.17, 0.16); //0.1, 0);
@@ -244,7 +244,7 @@ TEST_CASE ("Multiply AVX2 8bit with new bias", "[Add127]") {
   TestMultiplyBiasNew<AVX2_8bit>(200, 256, 256, 0.55, 0.74, 0.17, 0.16); //0.1, 0);
 }
 
-TEST_CASE ("Multiply AVX512F 8bit with new bias", "[Add127]") {
+TEST_CASE ("Multiply AVX512F 8bit Shift with bias", "[Add127]") {
   if (kCPU < CPUType::AVX512BW) return;
   TestMultiplyBiasNew<AVX512_8bit>(1, 64, 8, 0.0001, 0.05, 0.03, 0.001);
   TestMultiplyBiasNew<AVX512_8bit>(8, 256, 256, 0.0001, 0.22, 0.06, 0.001);
@@ -255,7 +255,7 @@ TEST_CASE ("Multiply AVX512F 8bit with new bias", "[Add127]") {
   TestMultiplyBiasNew<AVX512_8bit>(200, 256, 256, 0.0001, 0.28, 0.06, 0.001);
 }
 
-TEST_CASE ("Multiply AVX512VNNI 8bit with new bias", "[Add127]") {
+TEST_CASE ("Multiply AVX512VNNI 8bit Shift with bias", "[Add127]") {
   if (kCPU < CPUType::AVX512VNNI) return;
   TestMultiplyBiasNew<AVX512VNNI_8bit>(1, 64, 8, 0.0001, 0.05, 0.03, 0.001);
   TestMultiplyBiasNew<AVX512VNNI_8bit>(8, 256, 256, 0.0001, 0.22, 0.06, 0.001);
