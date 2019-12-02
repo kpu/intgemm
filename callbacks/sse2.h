@@ -1,8 +1,8 @@
 #pragma once
 
-#define THIS_IS_SSE2
+#define CALLBACKS_THIS_IS_SSE2
 #include "callbacks/implementations.inl"
-#undef THIS_IS_SSE2
+#undef CALLBACKS_THIS_IS_SSE2
 
 namespace intgemm {
 namespace callbacks {

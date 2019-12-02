@@ -4,9 +4,9 @@
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 
-#define THIS_IS_AVX512BW
+#define CALLBACKS_THIS_IS_AVX512BW
 #include "callbacks/implementations.inl"
-#undef THIS_IS_AVX512BW
+#undef CALLBACKS_THIS_IS_AVX512BW
 
 namespace intgemm {
 namespace callbacks {
