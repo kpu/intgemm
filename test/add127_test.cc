@@ -98,7 +98,7 @@ template <class Routine> void TestPrepareBias(Index rows, Index cols) {
   }
 
   float unquant_mult_forprep = (-1)*(alpha)*(alpha)/(127.0f);
-  
+
   SlowSumB(B_quant.begin(), inputBias.begin(), goldBias.begin(), alpha, rows, cols);
 
   Routine::PrepareBiasFor8(1, B_prep.begin(), 1, rows, cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, inputBias.begin(), inputBias.begin()));
@@ -126,7 +126,7 @@ template <class Routine> void TestMultiplyBiasNew(Index A_rows, Index width, Ind
   for (auto& it : bias) {
     it = dist(gen);
   }
-  
+
   float alpha = 2.0f;
   float quant_mult = 127/alpha;
   float unquant_mult = 1.0/(quant_mult*quant_mult);
@@ -246,24 +246,24 @@ TEST_CASE ("Multiply AVX2 8bit with new bias", "[Add127]") {
 
 TEST_CASE ("Multiply AVX512F 8bit with new bias", "[Add127]") {
   if (kCPU < CPUType::AVX512BW) return;
-  TestMultiplyBiasNew<AVX512_8bit>(1, 64, 8, 0.11, 0.11, 0.06, 0.05);
-  TestMultiplyBiasNew<AVX512_8bit>(8, 256, 256, 0.48, 0.54, 0.17, 0.16); //, 1.6, 1.6); //0.1, 0);
-  TestMultiplyBiasNew<AVX512_8bit>(8, 2048, 256, 1.57, 1.66, 0.46, 0.43); //1.8, 1.8);
-  TestMultiplyBiasNew<AVX512_8bit>(320, 256, 256, 0.48, 0.64, 0.16, 0.15); //0.1, 0);
-  TestMultiplyBiasNew<AVX512_8bit>(472, 256, 256, 0.46, 0.62, 0.17, 0.16); //0.1, 0);
-  TestMultiplyBiasNew<AVX512_8bit>(248, 256, 256, 0.48, 0.64, 0.16, 0.15); //0.1, 0);
-  TestMultiplyBiasNew<AVX512_8bit>(200, 256, 256, 0.57, 0.74, 0.17, 0.16); //0.1, 0);
+  TestMultiplyBiasNew<AVX512_8bit>(1, 64, 8, 0.0001, 0.05, 0.03, 0.001);
+  TestMultiplyBiasNew<AVX512_8bit>(8, 256, 256, 0.0001, 0.22, 0.06, 0.001);
+  TestMultiplyBiasNew<AVX512_8bit>(8, 2048, 256, 0.0001, 0.61, 0.17, 0.001);
+  TestMultiplyBiasNew<AVX512_8bit>(320, 256, 256, 0.0001, 0.27, 0.06, 0.001);
+  TestMultiplyBiasNew<AVX512_8bit>(472, 256, 256, 0.0001, 0.33, 0.06, 0.001);
+  TestMultiplyBiasNew<AVX512_8bit>(248, 256, 256, 0.0001, 0.27, 0.06, 0.001);
+  TestMultiplyBiasNew<AVX512_8bit>(200, 256, 256, 0.0001, 0.28, 0.06, 0.001);
 }
 
 TEST_CASE ("Multiply AVX512VNNI 8bit with new bias", "[Add127]") {
   if (kCPU < CPUType::AVX512VNNI) return;
-  TestMultiplyBiasNew<AVX512VNNI_8bit>(1, 64, 8, 0.11, 0.11, 0.06, 0.05);
-  TestMultiplyBiasNew<AVX512VNNI_8bit>(8, 256, 256, 0.48, 0.54, 0.17, 0.16); //, 1.6, 1.6); //0.1, 0);
-  TestMultiplyBiasNew<AVX512VNNI_8bit>(8, 2048, 256, 1.57, 1.66, 0.46, 0.43); //1.8, 1.8);
-  TestMultiplyBiasNew<AVX512VNNI_8bit>(320, 256, 256, 0.48, 0.64, 0.16, 0.15); //0.1, 0);
-  TestMultiplyBiasNew<AVX512VNNI_8bit>(472, 256, 256, 0.46, 0.62, 0.17, 0.16); //0.1, 0);
-  TestMultiplyBiasNew<AVX512VNNI_8bit>(248, 256, 256, 0.48, 0.64, 0.16, 0.15); //0.1, 0);
-  TestMultiplyBiasNew<AVX512VNNI_8bit>(200, 256, 256, 0.57, 0.74, 0.17, 0.16); //0.1, 0);
+  TestMultiplyBiasNew<AVX512VNNI_8bit>(1, 64, 8, 0.0001, 0.05, 0.03, 0.001);
+  TestMultiplyBiasNew<AVX512VNNI_8bit>(8, 256, 256, 0.0001, 0.22, 0.06, 0.001);
+  TestMultiplyBiasNew<AVX512VNNI_8bit>(8, 2048, 256, 0.0001, 0.61, 0.17, 0.001);
+  TestMultiplyBiasNew<AVX512VNNI_8bit>(320, 256, 256, 0.0001, 0.27, 0.06, 0.001);
+  TestMultiplyBiasNew<AVX512VNNI_8bit>(472, 256, 256, 0.0001, 0.33, 0.06, 0.001);
+  TestMultiplyBiasNew<AVX512VNNI_8bit>(248, 256, 256, 0.0001, 0.27, 0.06, 0.001);
+  TestMultiplyBiasNew<AVX512VNNI_8bit>(200, 256, 256, 0.0001, 0.28, 0.06, 0.001);
 }
 
 } //namespace intgemm
