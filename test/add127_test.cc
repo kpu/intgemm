@@ -157,7 +157,7 @@ template <class Routine> void TestMultiplyBiasNew(Index A_rows, Index width, Ind
   *
   */
   float unquant_mult_forprep = (-1)*(alpha)*(alpha)/(127.0f); //Minus one to invert add_ps later on
-  Routine::PrepareBiasFor8(1, B_prep.begin(), 1, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, bias.begin(), bias.begin()));
+  Routine::PrepareBiasFor8(B_prep.begin(), width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, bias.begin(), bias.begin()));
   //Routine::PrepareBiasFor8(B.begin(), bias.begin(), alpha, width, B_cols);
   Routine::Multiply8Shift(A_prep.begin(), B_prep.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult, bias.begin(), test_C.begin()));
 
