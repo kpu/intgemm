@@ -42,7 +42,11 @@ For 8-bit, use `Int8` instead of `Int16`.
 
 When repesented as floats, all of A, B, and C are in row-major format.
 
-~~You can write your own PostProcessing functions on C and use them as a template argument to `Multiply`. For details, see [cops.h](cops.h).~~
+The last argument of `Multiply` is a callback which is usually used to performs postprocessing on the output matrix (C). Full set of built-in callbacks can be found in [callbacks/configs.h](callbacks/configs.h). You can also write your own callback. To do that you just need to:
+1. Add configuration structure for your callback in [callbacks/configs.h](callbacks/configs.h).
+2. Add your callback implementation:
+   - in [callbacks/implementations.inl](callbacks/implementations.inl) if you want to implement it for all architecturs at the same time.
+   - in `callbacks/ARCHITECTURE.h` (e.g. [callbacks/sse2.h](callbacks/sse2.h)) if you want to implement it only for the specific architecture.
 
 For 8-bit, you can make use a of a slightly faster implementation, assuming you can determine tha quantization multipliers and prepare the biases offline:
 
