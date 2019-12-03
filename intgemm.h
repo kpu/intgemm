@@ -112,6 +112,11 @@ static inline float MaxAbsolute(const float *begin, const float *end) {
 } //namespace
 #endif
 
+#ifndef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
+// These won't ever be called in this capacity, but it does let the code below compile.
+typedef Unsupported_8bit AVX512VNNI_8bit;
+#endif
+
 /* Returns:
  * avx512 if the CPU supports AVX512F (though really it should be AVX512BW, but
  * cloud providers lie).  TODO: don't catch Knights processors with this.
@@ -126,10 +131,13 @@ static inline float MaxAbsolute(const float *begin, const float *end) {
  */
 template <class T> T ChooseCPU(T avx512vnni, T avx512, T avx2, T ssse3, T sse2, T unsupported) {
   // TODO: don't catch Knights processors here!
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
   if (__builtin_cpu_supports("avx512vnni")) {
     return avx512vnni;
-  } else if (__builtin_cpu_supports("avx512f")) {
+  }
+#endif
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+  if (__builtin_cpu_supports("avx512f")) {
     return avx512;
   }
 #endif
@@ -206,7 +214,7 @@ template <typename Callback>
 void (*Int8Mult<Callback>::Multiply)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512VNNI_8bit::Multiply<Callback>, AVX512_8bit::Multiply<Callback>, AVX2_8bit::Multiply<Callback>, SSSE3_8bit::Multiply<Callback>, SSSE3_8bit::Multiply<Callback>, Unsupported_8bit::Multiply);
 
 template <class Callback>
-void (*Int8Mult<Callback>::Multiply8Shift)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512_8bit::Multiply8Shift<Callback> /* TODO VNNI version */, AVX512_8bit::Multiply8Shift<Callback>, AVX2_8bit::Multiply8Shift<Callback>, SSSE3_8bit::Multiply8Shift<Callback>, SSSE3_8bit::Multiply8Shift<Callback>, Unsupported_8bit::Multiply8Shift);
+void (*Int8Mult<Callback>::Multiply8Shift)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512VNNI_8bit::Multiply8Shift<Callback>, AVX512_8bit::Multiply8Shift<Callback>, AVX2_8bit::Multiply8Shift<Callback>, SSSE3_8bit::Multiply8Shift<Callback>, SSSE3_8bit::Multiply8Shift<Callback>, Unsupported_8bit::Multiply8Shift);
 
 template <class Callback>
 void (*Int8Mult<Callback>::PrepareBiasFor8)(const int8_t A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512VNNI_8bit::PrepareBiasFor8<Callback>, AVX512_8bit::PrepareBiasFor8<Callback>, AVX2_8bit::PrepareBiasFor8<Callback>, SSSE3_8bit::PrepareBiasFor8<Callback>, SSSE3_8bit::PrepareBiasFor8<Callback>, Unsupported_8bit::PrepareBiasFor8);
