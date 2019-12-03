@@ -40,7 +40,7 @@ std::chrono::duration<double> testNew(Index A_rows, Index width, Index B_cols) {
   AlignedVector<float> test_C(A_rows * B_cols);
 
   float unquant_mult_forprep = (-1)*(alpha)*(alpha)/(127.0f); //Minus one to invert add_ps later on
-  Routine::PrepareBiasFor8(1, B_prep.begin(), 1, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, bias.begin(), bias.begin()));
+  Routine::PrepareBiasFor8(B_prep.begin(), width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, bias.begin(), bias.begin()));
   auto start = std::chrono::system_clock::now();
   Routine::Multiply8Shift(A_prep.begin(), B_prep.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult, bias.begin(), test_C.begin()));
   auto end = std::chrono::system_clock::now();
@@ -235,30 +235,42 @@ int main(int argc, char ** argv) {
 
 	std::cout << repeat << " iterations of Shifted AVX512 took: " << newTimeAVX512.count() << " seconds." << std::endl;
 
-        if (kCPU < CPUType::AVX512VNNI) return 0;
-        std::chrono::duration<double> oldAVX512VNNI_nobias = testOld_nobias<AVX512_8bit>(1, 64, 8);
-        for (int i = 0; i<repeat; i++) {
-                oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI_8bit>(8, 256, 256);
-                oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI_8bit>(8, 2048, 256);
-                oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI_8bit>(320, 256, 256);
-                oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI_8bit>(472, 256, 256);
-                oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI_8bit>(248, 256, 256);
-                oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI_8bit>(200, 256, 256);
-        }
+  if (kCPU < CPUType::AVX512VNNI) return 0;
+  std::chrono::duration<double> oldAVX512VNNI_nobias = testOld_nobias<AVX512_8bit>(1, 64, 8);
+  for (int i = 0; i<repeat; i++) {
+          oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI_8bit>(8, 256, 256);
+          oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI_8bit>(8, 2048, 256);
+          oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI_8bit>(320, 256, 256);
+          oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI_8bit>(472, 256, 256);
+          oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI_8bit>(248, 256, 256);
+          oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI_8bit>(200, 256, 256);
+  }
 
-        std::cout << repeat << " iterations of AVX512VNNI without bias took: " << oldAVX512VNNI_nobias.count() << " seconds." << std::endl;
+  std::cout << repeat << " iterations of AVX512VNNI without bias took: " << oldAVX512VNNI_nobias.count() << " seconds." << std::endl;
 
-        std::chrono::duration<double> oldAVX512VNNI = testOld<AVX512_8bit>(1, 64, 8);
-        for (int i = 0; i<repeat; i++) {
-                oldAVX512VNNI += testOld<AVX512VNNI_8bit>(8, 256, 256);
-                oldAVX512VNNI += testOld<AVX512VNNI_8bit>(8, 2048, 256);
-                oldAVX512VNNI += testOld<AVX512VNNI_8bit>(320, 256, 256);
-                oldAVX512VNNI += testOld<AVX512VNNI_8bit>(472, 256, 256);
-                oldAVX512VNNI += testOld<AVX512VNNI_8bit>(248, 256, 256);
-                oldAVX512VNNI += testOld<AVX512VNNI_8bit>(200, 256, 256);
-        }
+  std::chrono::duration<double> oldAVX512VNNI = testOld<AVX512_8bit>(1, 64, 8);
+  for (int i = 0; i<repeat; i++) {
+          oldAVX512VNNI += testOld<AVX512VNNI_8bit>(8, 256, 256);
+          oldAVX512VNNI += testOld<AVX512VNNI_8bit>(8, 2048, 256);
+          oldAVX512VNNI += testOld<AVX512VNNI_8bit>(320, 256, 256);
+          oldAVX512VNNI += testOld<AVX512VNNI_8bit>(472, 256, 256);
+          oldAVX512VNNI += testOld<AVX512VNNI_8bit>(248, 256, 256);
+          oldAVX512VNNI += testOld<AVX512VNNI_8bit>(200, 256, 256);
+  }
 
-        std::cout << repeat << " iterations of AVX512VNNI took: " << oldAVX512VNNI.count() << " seconds." << std::endl;
+  std::cout << repeat << " iterations of AVX512VNNI took: " << oldAVX512VNNI.count() << " seconds." << std::endl;
+
+  std::chrono::duration<double> newTimeAVX512VNNI = testOld<AVX512_8bit>(1, 64, 8);
+  for (int i = 0; i<repeat; i++) {
+    newTimeAVX512VNNI += testNew<AVX512VNNI_8bit>(8, 256, 256);
+    newTimeAVX512VNNI += testNew<AVX512VNNI_8bit>(8, 2048, 256);
+    newTimeAVX512VNNI += testNew<AVX512VNNI_8bit>(320, 256, 256);
+    newTimeAVX512VNNI += testNew<AVX512VNNI_8bit>(472, 256, 256);
+    newTimeAVX512VNNI += testNew<AVX512VNNI_8bit>(248, 256, 256);
+    newTimeAVX512VNNI += testNew<AVX512VNNI_8bit>(200, 256, 256);
+  }
+
+  std::cout << repeat << " iterations of Shifted AVX512VNNI took: " << newTimeAVX512VNNI.count() << " seconds." << std::endl;
 
 
 }

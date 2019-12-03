@@ -262,7 +262,7 @@ struct Int8Shift {
   static const Index kBTileRow = 64;
   static const Index kBTileCol = 8;
 
-  // Identical to the Int8 Version, except it adds 127 to each number, making sure that all numbers are positive
+  // Identical to the Int8 Version, except it adds 127 to each number, making sure that all numbers are positive.
   static inline void PrepareA(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
     QuantizeU(input, reinterpret_cast<uint8_t *>(output), quant_mult, rows * cols);
   }
@@ -274,12 +274,12 @@ struct Int8Shift {
   // Warning: the output of PrepareB depends on the CPU.
   // It will match the Multiply function on the same CPU though.
   static void PrepareB(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
-      Int8::PrepareB(input, output, quant_mult, rows, cols);
+    Int8::PrepareB(input, output, quant_mult, rows, cols);
   }
 
   // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8. 
   static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
-      Int8::SelectColumnsB(input, output, rows, cols_begin, cols_end);
+    Int8::SelectColumnsB(input, output, rows, cols_begin, cols_end);
   }
 
   // A slightly faster version compared to the Int8 one (assuming a bias is used) because of better handling of the sign bit
@@ -291,12 +291,12 @@ struct Int8Shift {
 
   // This function prepares the bias for the Multiply routine that does unsigned * signed multiplication.
   // The function takes:
-  // scaling factor A (usually 1), a preparedB matrix, 1 (since A is a const and not a matrix), width, B_cols and
+  // a preparedB matrix, width, B_cols and
   // the callback UnquantizeAndAddBiasAndWrite(unquant_mult, Bias_matrix, Bias_matrix)
   // unquant_mult is computed by (-1)*(alpha)*(alpha)/(127.0f);
   template<class Callback>
-  static void PrepareBias(const int8_t A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
-    Int8Mult<Callback>::PrepareBiasFor8(A, B, A_rows, width, B_cols, callback);
+  static void PrepareBias(const int8_t *B, Index width, Index B_cols, Callback callback) {
+    Int8Mult<Callback>::PrepareBiasFor8(B, width, B_cols, callback);
   }
   
   static const char *const kName;
