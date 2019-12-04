@@ -6,20 +6,20 @@
 #include "types.h"
 #include "vec_traits.h"
 
-#if defined(THIS_IS_SSE2)
+#if defined(CALLBACKS_THIS_IS_SSE2)
   #define CPU_NAME SSE2
   #define CPU_ATTR INTGEMM_SSE2
-#elif defined(THIS_IS_AVX2)
+#elif defined(CALLBACKS_THIS_IS_AVX2)
   #define CPU_NAME AVX2
   #define CPU_ATTR INTGEMM_AVX2
-#elif defined(THIS_IS_AVX512BW)
+#elif defined(CALLBACKS_THIS_IS_AVX512BW)
   #define CPU_NAME AVX512BW
   #define CPU_ATTR INTGEMM_AVX512BW
 #else
   #error "Only SSE2, AVX2 and AVX512BW are supported"
 #endif
 
-#if defined(THIS_IS_SSE2)
+#if defined(CALLBACKS_THIS_IS_SSE2)
   #define vi vector_t<CPUType::SSE2, int>
   #define vf vector_t<CPUType::SSE2, float>
   #define vd vector_t<CPUType::SSE2, double>

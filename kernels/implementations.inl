@@ -5,13 +5,13 @@
 
 #include <cstdlib>
 
-#if defined(THIS_IS_SSE2)
+#if defined(KERNELS_THIS_IS_SSE2)
   #define CPU_NAME SSE2
   #define CPU_ATTR INTGEMM_SSE2
-#elif defined(THIS_IS_AVX2)
+#elif defined(KERNELS_THIS_IS_AVX2)
   #define CPU_NAME AVX2
   #define CPU_ATTR INTGEMM_AVX2
-#elif defined(THIS_IS_AVX512BW)
+#elif defined(KERNELS_THIS_IS_AVX512BW)
   #define CPU_NAME AVX512BW
   #define CPU_ATTR INTGEMM_AVX512BW
 #else
@@ -102,9 +102,9 @@ CPU_ATTR static inline vector_t<CPUType::CPU_NAME, Type> relu(vector_t<CPUType::
 template <>
 CPU_ATTR inline vi relu<int8_t>(vi input) {
   static const auto vconst_zero = set1_epi8<vi>(0);
-#if defined(THIS_IS_SSE2)
+#if defined(KERNELS_THIS_IS_SSE2)
   return and_si(input, _mm_cmplt_epi8(vconst_zero, input));
-#elif defined(THIS_IS_AVX2)
+#elif defined(KERNELS_THIS_IS_AVX2)
   return _mm256_max_epi8(input, vconst_zero);
 #else
   return _mm512_max_epi8(input, vconst_zero);
@@ -120,9 +120,9 @@ CPU_ATTR inline vi relu<int16_t>(vi input) {
 template <>
 CPU_ATTR inline vi relu<int>(vi input) {
   static const auto vconst_zero = set1_epi32<vi>(0);
-#if defined(THIS_IS_SSE2)
+#if defined(KERNELS_THIS_IS_SSE2)
   return and_si(input, _mm_cmplt_epi32(vconst_zero, input));
-#elif defined(THIS_IS_AVX2)
+#elif defined(KERNELS_THIS_IS_AVX2)
   return _mm256_max_epi32(input, vconst_zero);
 #else
   return _mm512_max_epi32(input, vconst_zero);
@@ -161,11 +161,11 @@ CPU_ATTR inline vi multiply<int16_t>(vi a, vi b) {
 
 template <>
 CPU_ATTR inline vi multiply<int>(vi a, vi b) {
-#if defined(THIS_IS_SSE2)
+#if defined(KERNELS_THIS_IS_SSE2)
   auto even = mul_epu32(a, b);
   auto odd = mul_epu32(_mm_srli_si128(a, 4), _mm_srli_si128(b, 4));
   return unpacklo_epi32(_mm_shuffle_epi32(even, 0x8 /* = 0 0 2 0 */), _mm_shuffle_epi32(odd, 0x8 /* = 0 0 2 0 */));
-#elif defined(THIS_IS_AVX2)
+#elif defined(KERNELS_THIS_IS_AVX2)
   return _mm256_mullo_epi32(a, b);
 #else
   return _mm512_mullo_epi32(a, b);
@@ -188,9 +188,9 @@ CPU_ATTR inline vd multiply<double>(vd a, vd b) {
 CPU_ATTR static inline vi downcast32to8(vi input1, vi input2, vi input3, vi input4) {
   auto result = packs_epi16(packs_epi32(input1, input2), packs_epi32(input3, input4));
 
-#if defined(THIS_IS_SSE2)
+#if defined(KERNELS_THIS_IS_SSE2)
   return result;
-#elif defined(THIS_IS_AVX2)
+#elif defined(KERNELS_THIS_IS_AVX2)
   return _mm256_shuffle_epi32(_mm256_permute4x64_epi64(result, 0xd8 /* = 0 2 1 3 */), 0xd8 /* = 0 2 1 3 */);
 #else
   static const auto permutation_indices = _mm512_set_epi32(15, 11, 7, 3, 14, 10, 6, 2, 13, 9, 5, 1, 12, 8, 4, 0);
@@ -201,9 +201,9 @@ CPU_ATTR static inline vi downcast32to8(vi input1, vi input2, vi input3, vi inpu
 CPU_ATTR static inline vi downcast32to16(vi input1, vi input2) {
   auto result = packs_epi32(input1, input2);
 
-#if defined(THIS_IS_SSE2)
+#if defined(KERNELS_THIS_IS_SSE2)
   return result;
-#elif defined(THIS_IS_AVX2)
+#elif defined(KERNELS_THIS_IS_AVX2)
   return _mm256_permute4x64_epi64(result, 0xd8 /* = 0 2 1 3 */);
 #else
   static const auto permutation_indices = _mm512_set_epi64(7, 5, 3, 1, 6, 4, 2, 0);
@@ -214,9 +214,9 @@ CPU_ATTR static inline vi downcast32to16(vi input1, vi input2) {
 CPU_ATTR static inline vi downcast16to8(vi input1, vi input2) {
   auto result = packs_epi16(input1, input2);
 
-#if defined(THIS_IS_SSE2)
+#if defined(KERNELS_THIS_IS_SSE2)
   return result;
-#elif defined(THIS_IS_AVX2)
+#elif defined(KERNELS_THIS_IS_AVX2)
   return _mm256_permute4x64_epi64(result, 0xd8 /* = 0 2 1 3 */);
 #else
   static const auto permutation_indices = _mm512_set_epi64(7, 5, 3, 1, 6, 4, 2, 0);
@@ -230,9 +230,9 @@ CPU_ATTR static inline vi downcast16to8(vi input1, vi input2) {
 CPU_ATTR static inline dvector_t<CPUType::CPU_NAME, int16_t> upcast8to16(vi input) {
   static const auto vzero = set1_epi8<vi>(0);
 
-#if defined(THIS_IS_SSE2)
+#if defined(KERNELS_THIS_IS_SSE2)
   auto higher_byte = _mm_cmpgt_epi8(vzero, input);
-#elif defined(THIS_IS_AVX2)
+#elif defined(KERNELS_THIS_IS_AVX2)
   input = _mm256_permute4x64_epi64(input, 0xd8 /* = 0 2 1 3 */);
   auto higher_byte = _mm256_cmpgt_epi8(vzero, input);
 #else
@@ -253,9 +253,9 @@ CPU_ATTR static inline dvector_t<CPUType::CPU_NAME, int16_t> upcast8to16(vi inpu
 CPU_ATTR static inline dvector_t<CPUType::CPU_NAME, int> upcast16to32(vi input) {
   static const auto vzero = set1_epi16<vi>(0);
 
-#if defined(THIS_IS_SSE2)
+#if defined(KERNELS_THIS_IS_SSE2)
   auto higher_byte = _mm_cmpgt_epi16(vzero, input);
-#elif defined(THIS_IS_AVX2)
+#elif defined(KERNELS_THIS_IS_AVX2)
   input = _mm256_permute4x64_epi64(input, 0xd8 /* = 0 2 1 3 */);
   auto higher_byte = _mm256_cmpgt_epi16(vzero, input);
 #else
@@ -330,7 +330,7 @@ CPU_ATTR inline vi multiply_sat<int16_t>(vi a, vi b, uint8_t right_shift) {
  * Floor
  */
 CPU_ATTR static inline vf floor(vf input) {
-#if defined(THIS_IS_SSE2)
+#if defined(KERNELS_THIS_IS_SSE2)
   static const auto vconst_zero = setzero_ps<vf>();
   static const auto vconst_one = set1_ps<vf>(1.f);
 
@@ -339,7 +339,7 @@ CPU_ATTR static inline vf floor(vf input) {
   auto nonintegers = _mm_cmpneq_ps(input, result);
 
   return sub_ps(result, and_ps(vconst_one, and_ps(negatives, nonintegers)));
-#elif defined(THIS_IS_AVX2)
+#elif defined(KERNELS_THIS_IS_AVX2)
   return _mm256_floor_ps(input);
 #else
   // TODO: It should work but compiler throw the error "incorrect rounding operand"
@@ -360,7 +360,7 @@ CPU_ATTR static inline vf floor(vf input) {
  * Calculate approximation of e^x using Taylor series and lookup table
  */
 CPU_ATTR static inline vf exp_approx_taylor(vf x) {
-#if defined(THIS_IS_SSE2)
+#if defined(KERNELS_THIS_IS_SSE2)
   std::abort();
 #else
   static constexpr int EXP_MIN = -20;
@@ -420,9 +420,9 @@ CPU_ATTR static inline vf exp_approx_taylor(vf x) {
  * Sigmoid
  */
 CPU_ATTR static inline vf sigmoid(vf input) {
-#if defined(THIS_IS_SSE2)
+#if defined(KERNELS_THIS_IS_SSE2)
   std::abort(); // TODO: missing exp_approx_taylor for SSE2
-#elif defined(THIS_IS_AVX2)
+#elif defined(KERNELS_THIS_IS_AVX2)
   static const auto vconst_zero = setzero_ps<vf>();
   static const auto vconst_one = set1_ps<vf>(1.f);
 
@@ -457,7 +457,7 @@ CPU_ATTR static inline vf sigmoid(vf input) {
  * Tanh
  */
 CPU_ATTR static inline vf tanh(vf input) {
-#if defined(THIS_IS_SSE2)
+#if defined(KERNELS_THIS_IS_SSE2)
   std::abort(); // TODO: missing exp_approx_taylor for SSE2
 #else
   const static auto vconst_zero = setzero_ps<vf>();

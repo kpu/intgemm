@@ -1,8 +1,8 @@
 #pragma once
 
-#define THIS_IS_AVX2
+#define CALLBACKS_THIS_IS_AVX2
 #include "callbacks/implementations.inl"
-#undef THIS_IS_AVX2
+#undef CALLBACKS_THIS_IS_AVX2
 
 namespace intgemm {
 namespace callbacks {
