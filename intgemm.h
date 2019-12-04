@@ -152,10 +152,16 @@ template <class T> T ChooseCPU(T avx512vnni, T avx512, T avx2, T ssse3, T sse2, 
   }
 }
 
+struct TileInfo {
+  const Index a_rows;
+  const Index a_cols;
+  const Index b_rows;
+  const Index b_cols;
+};
+
 /* 16-bit matrix multiplication. */
 template <typename Callback>
-class Int16Mult {
-public:
+struct Int16Mult {
   // Multiply C = A * B, presuming A and B have been prepared.
   static void (*Multiply)(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
 };
@@ -164,14 +170,11 @@ template <typename Callback>
 void (*Int16Mult<Callback>::Multiply)(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512_16bit::Multiply<Callback> /*TODO VNNI 16-bit. */, AVX512_16bit::Multiply<Callback>, AVX2_16bit::Multiply<Callback>, SSE2_16bit::Multiply<Callback>, SSE2_16bit::Multiply<Callback>, Unsupported_16bit::Multiply);
 
 struct Int16 {
-  typedef int16_t Integer;
+  using Integer = int16_t;
 
   // A's size must be a multiple of 1x32.
-  static const Index kATileRow = 1;
-  static const Index kATileCol = 32;
   // B's size must be a multiple of 32x8.
-  static const Index kBTileRow = 32;
-  static const Index kBTileCol = 8;
+  static constexpr TileInfo tile_info{1, 32, 32, 8};
 
   // Currently A is prepared by quantization but this could theoretically change.
   // A's columns must be a multiple of 8.
@@ -202,8 +205,7 @@ struct Int16 {
 
 /* 8-bit matrix multiplication */
 template <typename Callback>
-class Int8Mult {
-public:
+struct Int8Mult {
   // Multiply C = A * B, presuming A and B have been prepared.
   static void (*Multiply)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
   static void (*Multiply8Shift)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
@@ -220,14 +222,11 @@ template <class Callback>
 void (*Int8Mult<Callback>::PrepareBiasFor8)(const int8_t A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512VNNI_8bit::PrepareBiasFor8<Callback>, AVX512_8bit::PrepareBiasFor8<Callback>, AVX2_8bit::PrepareBiasFor8<Callback>, SSSE3_8bit::PrepareBiasFor8<Callback>, SSSE3_8bit::PrepareBiasFor8<Callback>, Unsupported_8bit::PrepareBiasFor8);
 
 struct Int8 {
-  typedef int8_t Integer;
+  using Integer = int8_t;
 
   // A's size must be a multiple of 1x64.
-  static const Index kATileRow = 1;
-  static const Index kATileCol = 64;
   // B's size must be a multiple of 64x8.
-  static const Index kBTileRow = 64;
-  static const Index kBTileCol = 8;
+  static constexpr TileInfo tile_info{1, 64, 64, 8};
 
   // Currently A is prepared by quantization but this could theoretically change.
   // A's columns must be a multiple of 8.
