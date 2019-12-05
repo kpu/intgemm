@@ -70,7 +70,7 @@ struct Unsupported_16bit {
   static void Multiply(const int16_t *, const int16_t *, Index, Index, Index, Callback) {
     throw UnsupportedCPU();
   }
-  constexpr static const char *const kName = "16-bit Unsupported";
+  static inline const char* const Name() { return "16-bit Unsupported"; };
 };
 
 struct Unsupported_8bit {
@@ -98,7 +98,7 @@ struct Unsupported_8bit {
   static void Multiply8Shift(const uint8_t *, const int8_t *, Index, Index, Index, Callback) {
     throw UnsupportedCPU();
   }
-  constexpr static const char *const kName = "8-bit Unsupported";
+  static inline const char* const Name() { return "8-bit Unsupported"; };
 };
 
 #ifndef INTGEMM_COMPILER_SUPPORTS_AVX512
@@ -168,6 +168,8 @@ struct Int8 {
   // A's size must be a multiple of 1x64, B's size must be a multiple of 64x8.
   static constexpr TileInfo tile_info{1, 64, 64, 8};
 
+  static const char *const (*Name)();
+
   // Currently A is prepared by quantization but this could theoretically change.
   // A's columns must be a multiple of 8.
   // The number of rows is anything.
@@ -194,8 +196,6 @@ struct Int8 {
   static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
     MultiplyImpl<Callback>::run(A, B, A_rows, width, B_cols, callback);
   }
-  
-  static const char *const kName;
 
 private:
   template <typename Callback>
@@ -215,6 +215,8 @@ struct Int8Shift {
 
   // A's size must be a multiple of 1x64, B's size must be a multiple of 64x8.
   static constexpr TileInfo tile_info{1, 64, 64, 8};
+
+  static const char *const (*Name)();
 
   // Identical to the Int8 Version, except it adds 127 to each number, making sure that all numbers are positive.
   static inline void PrepareA(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
@@ -252,8 +254,6 @@ struct Int8Shift {
   static void PrepareBias(const int8_t *B, Index width, Index B_cols, Callback callback) {
     PrepareBiasImpl<Callback>::run(B, width, B_cols, callback);
   }
-  
-  static const char *const kName;
 
 private:
   template <typename Callback>
@@ -282,6 +282,8 @@ struct Int16 {
   // A's size must be a multiple of 1x32, B's size must be a multiple of 32x8.
   static constexpr TileInfo tile_info{1, 32, 32, 8};
 
+  static const char *const (*Name)();
+
   // Currently A is prepared by quantization but this could theoretically change.
   // A's columns must be a multiple of 8.
   // The number of rows is anything.
@@ -305,8 +307,6 @@ struct Int16 {
   static void Multiply(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
     MultiplyImpl<Callback>::run(A, B, A_rows, width, B_cols, callback);
   }
-
-  static const char *const kName;
 
 private:
   template <typename Callback>

@@ -9,9 +9,12 @@
 namespace intgemm {
 
 struct AVX512VNNI_8bit : public AVX512_8bit {
+  static const CPUType kUses = CPUType::AVX512VNNI;
+  static inline const char* const Name() { return "8-bit AVX512VNNI"; };
+
   template <typename Callback>
   INTGEMM_AVX512VNNI static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
-    typedef __m512i Integer;
+    using Integer = __m512i;
     assert(width % sizeof(Integer) == 0);
     assert(B_cols % 8 == 0);
     assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0);
@@ -72,7 +75,7 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
 
   template <typename Callback>
   INTGEMM_AVX512VNNI static void Multiply8Shift(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
-    typedef __m512i Integer;
+    using Integer = __m512i;
     assert(width % sizeof(Integer) == 0);
     assert(B_cols % 8 == 0);
     assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0);
@@ -113,7 +116,7 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
 
   template <typename Callback>
   INTGEMM_AVX512VNNI static void PrepareBiasFor8(const int8_t *B, Index width, Index B_cols, Callback callback) {
-    typedef __m512i Integer;
+    using Integer = __m512i;
     assert(width % sizeof(Integer) == 0);
     assert(B_cols % 8 == 0);
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0);
@@ -146,10 +149,6 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
       callback_impl(total, callbacks::OutputBufferInfo(0, B0_colidx, 1, B_cols));
     }
   }
-
-  constexpr static const char *const kName = "8-bit AVX512VNNI";
-
-  static const CPUType kUses = CPUType::AVX512VNNI;
 };
 
 } // namespace intgemm

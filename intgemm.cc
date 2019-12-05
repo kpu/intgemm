@@ -12,7 +12,7 @@ void (*Int16::PrepareB)(const float *input, int16_t *output, float quant_mult, I
 
 void (*Int16::SelectColumnsB)(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) = ChooseCPU(AVX512_16bit::SelectColumnsB, AVX512_16bit::SelectColumnsB, AVX2_16bit::SelectColumnsB, SSE2_16bit::SelectColumnsB, SSE2_16bit::SelectColumnsB, Unsupported_16bit::SelectColumnsB);
 
-const char *const Int16::kName = ChooseCPU(AVX512_16bit::kName, AVX512_16bit::kName, AVX2_16bit::kName, SSE2_16bit::kName, SSE2_16bit::kName, Unsupported_16bit::kName);
+const char *const (*Int16::Name)() = ChooseCPU(AVX512_16bit::Name, AVX512_16bit::Name, AVX2_16bit::Name, SSE2_16bit::Name, SSE2_16bit::Name, Unsupported_16bit::Name);
 
 void (*Int8::Quantize)(const float *input, int8_t *output, float quant_mult, Index size) = ChooseCPU(AVX512VNNI_8bit::Quantize, AVX512_8bit::Quantize, AVX2_8bit::Quantize, SSSE3_8bit::Quantize, Unsupported_8bit::Quantize, Unsupported_8bit::Quantize);
 
@@ -22,22 +22,14 @@ void (*Int8::PrepareB)(const float *input, int8_t *output, float quant_mult, Ind
 
 void (*Int8::SelectColumnsB)(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) = ChooseCPU(AVX512VNNI_8bit::SelectColumnsB, AVX512_8bit::SelectColumnsB, AVX2_8bit::SelectColumnsB, SSSE3_8bit::SelectColumnsB, Unsupported_8bit::SelectColumnsB, Unsupported_8bit::SelectColumnsB);
 
-const char *const Int8::kName = ChooseCPU(AVX512VNNI_8bit::kName, AVX512_8bit::kName, AVX2_8bit::kName, SSSE3_8bit::kName, Unsupported_8bit::kName, Unsupported_8bit::kName);
+const char *const (*Int8::Name)() = ChooseCPU(AVX512VNNI_8bit::Name, AVX512_8bit::Name, AVX2_8bit::Name, SSSE3_8bit::Name, Unsupported_8bit::Name, Unsupported_8bit::Name);
 
 void (*Int8Shift::QuantizeU)(const float *input, uint8_t *output, float quant_mult, Index size) = ChooseCPU(AVX512VNNI_8bit::QuantizeU, AVX512_8bit::QuantizeU, AVX2_8bit::QuantizeU, SSSE3_8bit::QuantizeU, Unsupported_8bit::QuantizeU, Unsupported_8bit::QuantizeU);
 
-const char *const Int8Shift::kName = ChooseCPU(AVX512VNNI_8bit::kName, AVX512_8bit::kName, AVX2_8bit::kName, SSSE3_8bit::kName, Unsupported_8bit::kName, Unsupported_8bit::kName);
+const char *const (*Int8Shift::Name)() = ChooseCPU(AVX512VNNI_8bit::Name, AVX512_8bit::Name, AVX2_8bit::Name, SSSE3_8bit::Name, Unsupported_8bit::Name, Unsupported_8bit::Name);
 
 const CPUType kCPU = ChooseCPU(CPUType::AVX512VNNI, CPUType::AVX512BW, CPUType::AVX2, CPUType::SSSE3, CPUType::SSE2, CPUType::UNSUPPORTED);
 
 float (*MaxAbsolute)(const float *begin, const float *end) = ChooseCPU(avx512f::MaxAbsolute, avx512f::MaxAbsolute, avx2::MaxAbsolute, sse2::MaxAbsolute, sse2::MaxAbsolute, Unsupported_MaxAbsolute);
-
-constexpr const char *const SSE2_16bit::kName;
-constexpr const char *const SSSE3_8bit::kName;
-constexpr const char *const AVX2_8bit::kName;
-constexpr const char *const AVX2_16bit::kName;
-constexpr const char *const AVX512_8bit::kName;
-constexpr const char *const AVX512VNNI_8bit::kName;
-constexpr const char *const AVX512_16bit::kName;
 
 }

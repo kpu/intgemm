@@ -127,7 +127,7 @@ void Summarize(std::vector<uint64_t> &stats) {
 
 template <class Backend> void Print(std::vector<std::vector<uint64_t>> &stats, int index) {
   if (stats.empty()) return;
-  std::cout << Backend::kName << '\t';
+  std::cout << Backend::Name() << '\t';
   Summarize(stats[index]);
   std::cout << '\n';
 }

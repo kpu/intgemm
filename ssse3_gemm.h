@@ -22,7 +22,7 @@ INTGEMM_SELECT_COL_B(INTGEMM_SSSE3, __m128i)
 
 class QuantizeTile8 {
   public:
-    typedef __m128i Integer;
+    using Integer = __m128i;
 
     INTGEMM_SSSE3 explicit QuantizeTile8(float mult) : mult_reg_(_mm_set1_ps(mult)) {}
 
@@ -96,7 +96,10 @@ class QuantizeTile8 {
 
 // pmaddubsw (the 8-bit multiply) is INTGEMM_SSSE3, so pedantically that's the version we need.
 struct SSSE3_8bit {
-  typedef int8_t Integer;
+  using Integer = int8_t;
+
+  static const CPUType kUses = CPUType::SSSE3;
+  static inline const char* const Name() { return "8-bit INTGEMM_SSSE3"; };
 
   // Currently A is prepared by quantization but this could theoretically change.
   INTGEMM_SSSE3 static inline void PrepareA(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
@@ -146,10 +149,6 @@ struct SSSE3_8bit {
   INTGEMM_MULTIPLY8SHIFT(__m128i, INTGEMM_SSSE3, CPUType::SSE2)
   
   INTGEMM_PREPAREBIASFOR8(__m128i, INTGEMM_SSSE3, CPUType::SSE2)
-
-  constexpr static const char *const kName = "8-bit INTGEMM_SSSE3";
-
-  static const CPUType kUses = CPUType::SSSE3;
 };
 
 } // namespace intgemm
