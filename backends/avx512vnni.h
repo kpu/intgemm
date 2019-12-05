@@ -3,13 +3,14 @@
 #include "intgemm_config.h"
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
-#include "avx512_gemm.h"
+#include "avx512.h"
 #include "types.h"
+#include "backend.h"
 
 namespace intgemm {
 
-struct AVX512VNNI_8bit : public AVX512_8bit {
-  static const CPUType kUses = CPUType::AVX512VNNI;
+template <>
+struct Backend<CPUType::AVX512VNNI, int8_t> : public AVX512_8bit {
   static inline const char* const Name() { return "8-bit AVX512VNNI"; };
 
   template <typename Callback>

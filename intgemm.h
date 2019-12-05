@@ -46,75 +46,19 @@
 
 #include "intgemm_config.h"
 #include "types.h"
-#include "sse2_gemm.h"
-#include "ssse3_gemm.h"
-#include "avx2_gemm.h"
-#include "avx512_gemm.h"
-#include "avx512vnni_gemm.h"
+#include "backends.h"
 
 /* Dispatch to functions based on runtime CPUID.  This adds one call-by-variable to each call. */
 
 namespace intgemm {
 
-struct Unsupported_16bit {
-  static void Quantize(const float *, int16_t *, float, Index) {
-    throw UnsupportedCPU();
-  }
-  static void PrepareB(const float *, int16_t *, float, Index, Index) {
-    throw UnsupportedCPU();
-  }
-  static void SelectColumnsB(const int16_t *, int16_t *, Index, const Index *, const Index *) {
-    throw UnsupportedCPU();
-  }
-  template <typename Callback>
-  static void Multiply(const int16_t *, const int16_t *, Index, Index, Index, Callback) {
-    throw UnsupportedCPU();
-  }
-  static inline const char* const Name() { return "16-bit Unsupported"; };
-};
-
-struct Unsupported_8bit {
-  static void Quantize(const float *, int8_t *, float, Index) {
-    throw UnsupportedCPU();
-  }
-  static void QuantizeU(const float *, uint8_t *, float, Index) {
-    throw UnsupportedCPU();
-  }
-  static void PrepareB(const float *, int8_t *, float, Index, Index) {
-    throw UnsupportedCPU();
-  }
-  template<class Callback>
-  static void PrepareBiasFor8(const int8_t, const int8_t *, Index, Index, Index, Callback) {
-    throw UnsupportedCPU();
-  }
-  static void SelectColumnsB(const int8_t *, int8_t *, Index, const Index *, const Index *) {
-    throw UnsupportedCPU();
-  }
-  template <typename Callback>
-  static void Multiply(const int8_t *, const int8_t *, Index, Index, Index, Callback) {
-    throw UnsupportedCPU();
-  }
-  template<class Callback>
-  static void Multiply8Shift(const uint8_t *, const int8_t *, Index, Index, Index, Callback) {
-    throw UnsupportedCPU();
-  }
-  static inline const char* const Name() { return "8-bit Unsupported"; };
-};
-
 #ifndef INTGEMM_COMPILER_SUPPORTS_AVX512
 // These won't ever be called in this capacity, but it does let the code below compile.
-typedef Unsupported_16bit AVX512_16bit;
-typedef Unsupported_8bit AVX512_8bit;
 namespace avx512f {
 static inline float MaxAbsolute(const float *begin, const float *end) {
   throw UnsupportedCPU();
 }
 } //namespace
-#endif
-
-#ifndef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
-// These won't ever be called in this capacity, but it does let the code below compile.
-typedef Unsupported_8bit AVX512VNNI_8bit;
 #endif
 
 /* Returns:

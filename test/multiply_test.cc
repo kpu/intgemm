@@ -101,7 +101,7 @@ template <class Routine> void TestPrepare(Index rows = 32, Index cols = 16) {
     it = dist(gen);
   }
 
-  typedef typename Routine::Integer Integer;
+  using Integer = typename BackendInfo<Routine>::Integer;
   // Call Prepare
   AlignedVector<Integer> test(input.size());
   Routine::PrepareB(input.begin(), test.begin(), 1, rows, cols);
@@ -154,7 +154,7 @@ template <class Routine> void TestSelectColumnsB(Index rows = 64, Index cols = 1
   for (auto& it : input) {
     it = dist(gen);
   }
-  typedef typename Routine::Integer Integer;
+  using Integer = typename BackendInfo<Routine>::Integer;
   AlignedVector<Integer> prepared(input.size());
   Routine::PrepareB(input.begin(), prepared.begin(), 1, rows, cols);
 
@@ -288,7 +288,7 @@ TEST_CASE("MaxAbsolute AVX512F", "[max]") {
 
 template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_cols,
  float int_tolerance=.1, float float_tolerance=1, float MSE_float_tolerance=0, float MSE_int_tolerance=0) {
-  typedef typename Routine::Integer Integer;
+  using Integer = typename BackendInfo<Routine>::Integer;
   std::ostringstream info;
   info << Routine::Name() << "\t" << A_rows << '\t' << width << '\t' << B_cols << '\n';
 
@@ -336,7 +336,7 @@ template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_co
 //Require different number of arguments. I don't think the refactoring is worth it.
 template <class Routine> void TestMultiplyBias(Index A_rows, Index width, Index B_cols,
  float int_tolerance=.1, float float_tolerance=1, float MSE_float_tolerance=0, float MSE_int_tolerance=0) {
-  typedef typename Routine::Integer Integer;
+  using Integer = typename BackendInfo<Routine>::Integer;
   std::ostringstream info;
   info << Routine::Name() << "\t" << A_rows << '\t' << width << '\t' << B_cols << '\n';
 

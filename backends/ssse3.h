@@ -4,11 +4,12 @@
 #include "kernels.h"
 #include "multiply.h"
 #include "types.h"
+#include "backend.h"
 
 #include <cstdint>
 #include <stdint.h>
 
-// 16-bit is in sse2_gemm.h
+// 16-bit is in sse2.h
 
 namespace intgemm {
 
@@ -93,12 +94,9 @@ class QuantizeTile8 {
 
 } // namespace
 
-
 // pmaddubsw (the 8-bit multiply) is INTGEMM_SSSE3, so pedantically that's the version we need.
-struct SSSE3_8bit {
-  using Integer = int8_t;
-
-  static const CPUType kUses = CPUType::SSSE3;
+template <>
+struct Backend<CPUType::SSSE3, int8_t> {
   static inline const char* const Name() { return "8-bit INTGEMM_SSSE3"; };
 
   // Currently A is prepared by quantization but this could theoretically change.

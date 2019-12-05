@@ -4,6 +4,7 @@
 #include "kernels.h"
 #include "multiply.h"
 #include "types.h"
+#include "backend.h"
 
 #include <cstdint>
 #include <stdint.h>
@@ -49,10 +50,8 @@ class QuantizeTile16 {
 } // namespace
 
 
-struct AVX2_16bit {
-  using Integer = int16_t;
-
-  static const CPUType kUses = CPUType::AVX2;
+template <>
+struct Backend<CPUType::AVX2, int16_t> {
   static inline const char* const Name() { return "16-bit INTGEMM_AVX2"; };
 
   // Currently A is prepared by quantization but this could theoretically change.
@@ -170,10 +169,8 @@ INTGEMM_MAXABSOLUTE(__m256, INTGEMM_AVX2)
 
 } // namespace
 
-struct AVX2_8bit {
-  using Integer = int8_t;
-
-  static const CPUType kUses = CPUType::AVX2;
+template <>
+struct Backend<CPUType::AVX2, int8_t> {
   static inline const char* const Name() { return "8-bit INTGEMM_AVX2"; };
 
   // Currently A is prepared by quantization but this could theoretically change.

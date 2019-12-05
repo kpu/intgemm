@@ -3,11 +3,12 @@
 #include "kernels.h"
 #include "multiply.h"
 #include "types.h"
+#include "backend.h"
 
 #include <cstdint>
 #include <stdint.h>
 
-// 8 bit is in ssse3_gemm.h
+// 8 bit is in ssse3.h
 
 namespace intgemm {
 
@@ -45,11 +46,10 @@ class QuantizeTile16 {
 INTGEMM_MAXABSOLUTE(__m128, INTGEMM_SSE2)
 
 } //namespace
-// This should be pure INTGEMM_SSE2 (and below).
-struct SSE2_16bit {
-  using Integer = int16_t;
 
-  static const CPUType kUses = CPUType::SSE2;
+// This should be pure INTGEMM_SSE2 (and below).
+template <>
+struct Backend<CPUType::SSE2, int16_t> {
   static inline const char* const Name() { return "16-bit INTGEMM_SSE2"; };
 
   // Currently A is prepared by quantization but this could theoretically change.

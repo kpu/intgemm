@@ -8,6 +8,7 @@
 #include "kernels.h"
 #include "multiply.h"
 #include "types.h"
+#include "backend.h"
 
 #include <cassert>
 #include <cstddef>
@@ -125,10 +126,8 @@ INTGEMM_MAXABSOLUTE(__m512, INTGEMM_AVX512BW)
 
 } // namespace
 
-struct AVX512_16bit {
-  using Integer = int16_t;
-
-  static const CPUType kUses = CPUType::AVX512BW;
+template <>
+struct Backend<CPUType::AVX512BW, int16_t> {
   static inline const char* const Name() { return "16-bit AVX512"; };
 
   // Currently A is prepared by quantization but this could theoretically change.
@@ -176,10 +175,8 @@ struct AVX512_16bit {
   INTGEMM_MULTIPLY16(__m512i, INTGEMM_AVX512BW, CPUType::AVX2)
 };
 
-struct AVX512_8bit {
-  using Integer = int8_t;
-
-  static const CPUType kUses = CPUType::AVX512BW;
+template <>
+struct Backend<CPUType::AVX512BW, int8_t> {
   static inline const char* const Name() { return "8-bit AVX512BW"; };
 
   // Currently A is prepared by quantization but this could theoretically change.
