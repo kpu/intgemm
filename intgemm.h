@@ -66,9 +66,9 @@ static inline float MaxAbsolute(const float *begin, const float *end) {
  * cloud providers lie).  TODO: don't catch Knights processors with this.
  *
  * avx2 if the CPU supports AVX2
- * 
+ *
  * ssse3 if the CPU supports SSSE3 (this distinction from SSE2 matters for 8-bit)
- * 
+ *
  * sse2 if the CPU supports SSE2
  *
  * unsupported otherwise
@@ -112,8 +112,6 @@ struct Int8 {
   // A's size must be a multiple of 1x64, B's size must be a multiple of 64x8.
   static constexpr TileInfo tile_info{1, 64, 64, 8};
 
-  static const char *const (*Name)();
-
   // Currently A is prepared by quantization but this could theoretically change.
   // A's columns must be a multiple of 8.
   // The number of rows is anything.
@@ -122,18 +120,26 @@ struct Int8 {
   }
 
   // Multiply floats by quant_mult then convert to 8-bit integers with saturation.
-  static void (*Quantize)(const float *input, int8_t *output, float quant_mult, Index size);
+  static inline void Quantize(const float *input, int8_t *output, float quant_mult, Index size) {
+    interface.Quantize(input, output, quant_mult, size);
+  }
 
   // Multiply floats by quant_mult then convert to 8-bit integers with saturation.
   // A version that adds 127 to each number, making sure that all numbers are positive
-  static void (*QuantizeU)(const float *input, uint8_t *output, float quant_mult, Index size);
-  
+  static inline void QuantizeU(const float *input, uint8_t *output, float quant_mult, Index size) {
+    interface.QuantizeU(input, output, quant_mult, size);
+  }
+
   // Warning: the output of PrepareB depends on the CPU.
   // It will match the Multiply function on the same CPU though.
-  static void (*PrepareB)(const float *input, int8_t *output, float quant_mult, Index rows, Index cols);
+  static inline void PrepareB(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
+    interface.PrepareB(input, output, quant_mult, rows, cols);
+  }
 
-  // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8. 
-  static void (*SelectColumnsB)(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
+  // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8.
+  static inline void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
+    interface.SelectColumnsB(input, output, rows, cols_begin, cols_end);
+  }
 
   // Multiply C = A * B, presuming A and B have been prepared.
   template <typename Callback>
@@ -141,7 +147,17 @@ struct Int8 {
     MultiplyImpl<Callback>::run(A, B, A_rows, width, B_cols, callback);
   }
 
+  static inline const char *const Name() { return interface.Name(); }
+
 private:
+  static struct Interface {
+    void (*Quantize)(const float *input, int8_t *output, float quant_mult, Index size);
+    void (*QuantizeU)(const float *input, uint8_t *output, float quant_mult, Index size);
+    void (*PrepareB)(const float *input, int8_t *output, float quant_mult, Index rows, Index cols);
+    void (*SelectColumnsB)(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
+    const char *const (*Name)();
+  } interface;
+
   template <typename Callback>
   struct MultiplyImpl {
     static void (*run)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
@@ -160,8 +176,6 @@ struct Int8Shift {
   // A's size must be a multiple of 1x64, B's size must be a multiple of 64x8.
   static constexpr TileInfo tile_info{1, 64, 64, 8};
 
-  static const char *const (*Name)();
-
   // Identical to the Int8 Version, except it adds 127 to each number, making sure that all numbers are positive.
   static inline void PrepareA(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
     QuantizeU(input, reinterpret_cast<uint8_t *>(output), quant_mult, rows * cols);
@@ -169,15 +183,17 @@ struct Int8Shift {
 
   // Multiply floats by quant_mult then convert to 8-bit integers with saturation.
   // A version that adds 127 to each number, making sure that all numbers are positive
-  static void (*QuantizeU)(const float *input, uint8_t *output, float quant_mult, Index size);
-  
+  static inline void QuantizeU(const float *input, uint8_t *output, float quant_mult, Index size) {
+    interface.QuantizeU(input, output, quant_mult, size);
+  }
+
   // Warning: the output of PrepareB depends on the CPU.
   // It will match the Multiply function on the same CPU though.
   static void PrepareB(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
     Int8::PrepareB(input, output, quant_mult, rows, cols);
   }
 
-  // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8. 
+  // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8.
   static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     Int8::SelectColumnsB(input, output, rows, cols_begin, cols_end);
   }
@@ -199,7 +215,14 @@ struct Int8Shift {
     PrepareBiasImpl<Callback>::run(B, width, B_cols, callback);
   }
 
+  static inline const char *const Name() { return interface.Name(); }
+
 private:
+  static struct Interface {
+    void (*QuantizeU)(const float *input, uint8_t *output, float quant_mult, Index size);
+    const char *const (*Name)();
+  } interface;
+
   template <typename Callback>
   struct MultiplyImpl {
     static void (*run)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
@@ -226,8 +249,6 @@ struct Int16 {
   // A's size must be a multiple of 1x32, B's size must be a multiple of 32x8.
   static constexpr TileInfo tile_info{1, 32, 32, 8};
 
-  static const char *const (*Name)();
-
   // Currently A is prepared by quantization but this could theoretically change.
   // A's columns must be a multiple of 8.
   // The number of rows is anything.
@@ -237,14 +258,20 @@ struct Int16 {
 
   // Multiply floats by quant_mult then convert to 16-bit integers with saturation.
   // input
-  static void (*Quantize)(const float *input, int16_t *output, float quant_mult, Index size);
+  static inline void Quantize(const float *input, int16_t *output, float quant_mult, Index size) {
+    interface.Quantize(input, output, quant_mult, size);
+  }
 
   // Warning: the output of PrepareB depends on the CPU.
   // It will match the Multiply function on the same CPU though.
-  static void (*PrepareB)(const float *input, int16_t *output, float quant_mult, Index rows, Index cols);
+  static inline void PrepareB(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) {
+    interface.PrepareB(input, output, quant_mult, rows, cols);
+  }
 
-  // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8. 
-  static void (*SelectColumnsB)(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
+  // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8.
+  static inline void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
+    interface.SelectColumnsB(input, output, rows, cols_begin, cols_end);
+  }
 
   // Multiply C = A * B, presuming A and B have been prepared.
   template <typename Callback>
@@ -252,7 +279,16 @@ struct Int16 {
     MultiplyImpl<Callback>::run(A, B, A_rows, width, B_cols, callback);
   }
 
+  static inline const char *const Name() { return interface.Name(); }
+
 private:
+  static struct Interface {
+    void (*Quantize)(const float *input, int16_t *output, float quant_mult, Index size);
+    void (*PrepareB)(const float *input, int16_t *output, float quant_mult, Index rows, Index cols);
+    void (*SelectColumnsB)(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
+    const char *const (*Name)();
+  } interface;
+
   template <typename Callback>
   struct MultiplyImpl {
     static void (*run)(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
