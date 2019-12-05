@@ -159,73 +159,13 @@ struct TileInfo {
   const Index b_cols;
 };
 
-/* 16-bit matrix multiplication. */
-template <typename Callback>
-struct Int16Mult {
-  // Multiply C = A * B, presuming A and B have been prepared.
-  static void (*Multiply)(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
-};
-
-template <typename Callback>
-void (*Int16Mult<Callback>::Multiply)(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512_16bit::Multiply<Callback> /*TODO VNNI 16-bit. */, AVX512_16bit::Multiply<Callback>, AVX2_16bit::Multiply<Callback>, SSE2_16bit::Multiply<Callback>, SSE2_16bit::Multiply<Callback>, Unsupported_16bit::Multiply);
-
-struct Int16 {
-  using Integer = int16_t;
-
-  // A's size must be a multiple of 1x32.
-  // B's size must be a multiple of 32x8.
-  static constexpr TileInfo tile_info{1, 32, 32, 8};
-
-  // Currently A is prepared by quantization but this could theoretically change.
-  // A's columns must be a multiple of 8.
-  // The number of rows is anything.
-  static inline void PrepareA(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) {
-    Quantize(input, output, quant_mult, rows * cols);
-  }
-
-  // Multiply floats by quant_mult then convert to 16-bit integers with saturation.
-  // input
-  static void (*Quantize)(const float *input, int16_t *output, float quant_mult, Index size);
-
-  // Warning: the output of PrepareB depends on the CPU.
-  // It will match the Multiply function on the same CPU though.
-  static void (*PrepareB)(const float *input, int16_t *output, float quant_mult, Index rows, Index cols);
-
-  // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8. 
-  static void (*SelectColumnsB)(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
-
-  // Multiply C = A * B, presuming A and B have been prepared.
-  template <typename Callback>
-  static void Multiply(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
-    Int16Mult<Callback>::Multiply(A, B, A_rows, width, B_cols, callback);
-  }
-
-  static const char *const kName;
-};
-
-/* 8-bit matrix multiplication */
-template <typename Callback>
-struct Int8Mult {
-  // Multiply C = A * B, presuming A and B have been prepared.
-  static void (*Multiply)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
-  static void (*Multiply8Shift)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
-  static void (*PrepareBiasFor8)(const int8_t A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
-};
-
-template <typename Callback>
-void (*Int8Mult<Callback>::Multiply)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512VNNI_8bit::Multiply<Callback>, AVX512_8bit::Multiply<Callback>, AVX2_8bit::Multiply<Callback>, SSSE3_8bit::Multiply<Callback>, SSSE3_8bit::Multiply<Callback>, Unsupported_8bit::Multiply);
-
-template <class Callback>
-void (*Int8Mult<Callback>::Multiply8Shift)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512VNNI_8bit::Multiply8Shift<Callback>, AVX512_8bit::Multiply8Shift<Callback>, AVX2_8bit::Multiply8Shift<Callback>, SSSE3_8bit::Multiply8Shift<Callback>, SSSE3_8bit::Multiply8Shift<Callback>, Unsupported_8bit::Multiply8Shift);
-
-template <class Callback>
-void (*Int8Mult<Callback>::PrepareBiasFor8)(const int8_t A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512VNNI_8bit::PrepareBiasFor8<Callback>, AVX512_8bit::PrepareBiasFor8<Callback>, AVX2_8bit::PrepareBiasFor8<Callback>, SSSE3_8bit::PrepareBiasFor8<Callback>, SSSE3_8bit::PrepareBiasFor8<Callback>, Unsupported_8bit::PrepareBiasFor8);
-
+/*
+ * 8-bit matrix multiplication
+ */
 struct Int8 {
   using Integer = int8_t;
 
-  // A's size must be a multiple of 1x64.
-  // B's size must be a multiple of 64x8.
+  // A's size must be a multiple of 1x64, B's size must be a multiple of 64x8.
   static constexpr TileInfo tile_info{1, 64, 64, 8};
 
   // Currently A is prepared by quantization but this could theoretically change.
@@ -252,22 +192,29 @@ struct Int8 {
   // Multiply C = A * B, presuming A and B have been prepared.
   template <typename Callback>
   static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
-    Int8Mult<Callback>::Multiply(A, B, A_rows, width, B_cols, callback);
+    MultiplyImpl<Callback>::run(A, B, A_rows, width, B_cols, callback);
   }
   
   static const char *const kName;
+
+private:
+  template <typename Callback>
+  struct MultiplyImpl {
+    static void (*run)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
+  };
 };
 
-// Shifting A by 127 version of the above code
-struct Int8Shift {
-  typedef int8_t Integer;
+template <typename Callback>
+void (*Int8::MultiplyImpl<Callback>::run)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512VNNI_8bit::Multiply<Callback>, AVX512_8bit::Multiply<Callback>, AVX2_8bit::Multiply<Callback>, SSSE3_8bit::Multiply<Callback>, SSSE3_8bit::Multiply<Callback>, Unsupported_8bit::Multiply);
 
-  // A's size must be a multiple of 1x64.
-  static const Index kATileRow = 1;
-  static const Index kATileCol = 64;
-  // B's size must be a multiple of 64x8.
-  static const Index kBTileRow = 64;
-  static const Index kBTileCol = 8;
+/*
+ * 8-bit matrix multiplication with shifting A by 127
+ */
+struct Int8Shift {
+  using Integer = int8_t;
+
+  // A's size must be a multiple of 1x64, B's size must be a multiple of 64x8.
+  static constexpr TileInfo tile_info{1, 64, 64, 8};
 
   // Identical to the Int8 Version, except it adds 127 to each number, making sure that all numbers are positive.
   static inline void PrepareA(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
@@ -293,7 +240,7 @@ struct Int8Shift {
   // Multiply C = A * B + Bias, presuming A, B and Bias have all been prepared (for A, PrepareAnew should be used
   template<class Callback>
   static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
-    Int8Mult<Callback>::Multiply8Shift((const uint8_t *)A, B, A_rows, width, B_cols, callback);
+    MultiplyImpl<Callback>::run((const uint8_t *)A, B, A_rows, width, B_cols, callback);
   }
 
   // This function prepares the bias for the Multiply routine that does unsigned * signed multiplication.
@@ -303,16 +250,80 @@ struct Int8Shift {
   // unquant_mult is computed by (-1)*(alpha)*(alpha)/(127.0f);
   template<class Callback>
   static void PrepareBias(const int8_t *B, Index width, Index B_cols, Callback callback) {
-    Int8Mult<Callback>::PrepareBiasFor8(B, width, B_cols, callback);
+    PrepareBiasImpl<Callback>::run(B, width, B_cols, callback);
   }
   
   static const char *const kName;
+
+private:
+  template <typename Callback>
+  struct MultiplyImpl {
+    static void (*run)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
+  };
+
+  template <typename Callback>
+  struct PrepareBiasImpl {
+    static void (*run)(const int8_t *B, Index width, Index B_cols, Callback callback);
+  };
 };
 
+template <class Callback>
+void (*Int8Shift::MultiplyImpl<Callback>::run)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512VNNI_8bit::Multiply8Shift<Callback>, AVX512_8bit::Multiply8Shift<Callback>, AVX2_8bit::Multiply8Shift<Callback>, SSSE3_8bit::Multiply8Shift<Callback>, SSSE3_8bit::Multiply8Shift<Callback>, Unsupported_8bit::Multiply8Shift);
+
+template <class Callback>
+void (*Int8Shift::PrepareBiasImpl<Callback>::run)(const int8_t *B, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512VNNI_8bit::PrepareBiasFor8<Callback>, AVX512_8bit::PrepareBiasFor8<Callback>, AVX2_8bit::PrepareBiasFor8<Callback>, SSSE3_8bit::PrepareBiasFor8<Callback>, SSSE3_8bit::PrepareBiasFor8<Callback>, Unsupported_8bit::PrepareBiasFor8);
+
+/*
+ * 16-bit matrix multiplication
+ */
+struct Int16 {
+  using Integer = int16_t;
+
+  // A's size must be a multiple of 1x32, B's size must be a multiple of 32x8.
+  static constexpr TileInfo tile_info{1, 32, 32, 8};
+
+  // Currently A is prepared by quantization but this could theoretically change.
+  // A's columns must be a multiple of 8.
+  // The number of rows is anything.
+  static inline void PrepareA(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) {
+    Quantize(input, output, quant_mult, rows * cols);
+  }
+
+  // Multiply floats by quant_mult then convert to 16-bit integers with saturation.
+  // input
+  static void (*Quantize)(const float *input, int16_t *output, float quant_mult, Index size);
+
+  // Warning: the output of PrepareB depends on the CPU.
+  // It will match the Multiply function on the same CPU though.
+  static void (*PrepareB)(const float *input, int16_t *output, float quant_mult, Index rows, Index cols);
+
+  // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8. 
+  static void (*SelectColumnsB)(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
+
+  // Multiply C = A * B, presuming A and B have been prepared.
+  template <typename Callback>
+  static void Multiply(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
+    MultiplyImpl<Callback>::run(A, B, A_rows, width, B_cols, callback);
+  }
+
+  static const char *const kName;
+
+private:
+  template <typename Callback>
+  struct MultiplyImpl {
+    static void (*run)(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
+  };
+};
+
+template <typename Callback>
+void (*Int16::MultiplyImpl<Callback>::run)(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512_16bit::Multiply<Callback> /*TODO VNNI 16-bit. */, AVX512_16bit::Multiply<Callback>, AVX2_16bit::Multiply<Callback>, SSE2_16bit::Multiply<Callback>, SSE2_16bit::Multiply<Callback>, Unsupported_16bit::Multiply);
+
+/*
+ *
+ */
 extern const CPUType kCPU;
 
 // Get the maximum absolute value of an array of floats. The number of floats must be a multiple of 16 and 64-byte aligned.
 extern float (*MaxAbsolute)(const float *begin, const float *end);
-
 
 } // namespace intgemm
