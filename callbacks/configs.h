@@ -1,23 +1,42 @@
 #pragma once
 
+#include <tuple>
+
 namespace intgemm {
 namespace callbacks {
 
+/*
+ * Sequence meta-config
+ */
+template <typename... Configs>
+std::tuple<Configs...> Sequence(const Configs&... configs) {
+  return std::make_tuple(configs...);
+}
+
+/*
+ * Configs
+ */
 struct Dummy {
 };
 
-template <typename OutputBufferType>
+template <typename Type>
 struct Write {
-  OutputBufferType* addr;
+  Type* output_addr;
 
-  Write(OutputBufferType* addr) : addr(addr) {}
+  Write(Type* output_addr) : output_addr(output_addr) {}
+};
+
+struct Unquantize {
+  float unquant_mult;
+
+  Unquantize(float unquant_mult) : unquant_mult(unquant_mult) {}
 };
 
 struct UnquantizeAndWrite {
   float unquant_mult;
-  float* addr;
+  float* output_addr;
 
-  UnquantizeAndWrite(float unquant_mult, float* addr) : unquant_mult(unquant_mult), addr(addr) {}
+  UnquantizeAndWrite(float unquant_mult, float* output_addr) : unquant_mult(unquant_mult), output_addr(output_addr) {}
 };
 
 struct AddBiasAndWrite {
