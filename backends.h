@@ -4,14 +4,8 @@
 #include "backends/sse2.h"
 #include "backends/ssse3.h"
 #include "backends/avx2.h"
-
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 #include "backends/avx512.h"
-#endif
-
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
 #include "backends/avx512vnni.h"
-#endif
 
 namespace intgemm {
 
