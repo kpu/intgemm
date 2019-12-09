@@ -10,7 +10,7 @@
 namespace intgemm {
 
 template <>
-struct Backend<CPUType::AVX512VNNI, int8_t> : public AVX512_8bit {
+struct Backend<CPUType::AVX512VNNI, int8_t> : public Backend<CPUType::AVX512BW, int8_t> {
   static inline const char* const Name() { return "8-bit AVX512VNNI"; };
 
   template <typename Callback>
