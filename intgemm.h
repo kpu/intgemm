@@ -156,6 +156,11 @@ private:
     void (*PrepareB)(const float *input, int8_t *output, float quant_mult, Index rows, Index cols);
     void (*SelectColumnsB)(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
     const char *const (*Name)();
+
+    template <typename Backend>
+    static Interface create() {
+      return {Backend::Quantize, Backend::QuantizeU, Backend::PrepareB, Backend::SelectColumnsB, Backend::Name};
+    }
   } interface;
 
   template <typename Callback>
@@ -221,6 +226,11 @@ private:
   static struct Interface {
     void (*QuantizeU)(const float *input, uint8_t *output, float quant_mult, Index size);
     const char *const (*Name)();
+
+    template <typename Backend>
+    static Interface create() {
+      return {Backend::QuantizeU, Backend::Name};
+    }
   } interface;
 
   template <typename Callback>
@@ -287,6 +297,11 @@ private:
     void (*PrepareB)(const float *input, int16_t *output, float quant_mult, Index rows, Index cols);
     void (*SelectColumnsB)(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
     const char *const (*Name)();
+
+    template <typename Backend>
+    static Interface create() {
+      return {Backend::Quantize, Backend::PrepareB, Backend::SelectColumnsB, Backend::Name};
+    }
   } interface;
 
   template <typename Callback>
