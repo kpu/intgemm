@@ -368,4 +368,14 @@ struct Backend<CPUType::AVX512BW, int8_t> {
 
 } // namespace intgemm
 
+#else
+
+namespace avx512f {
+
+static inline float MaxAbsolute(const float *begin, const float *end) {
+  throw UnsupportedCPU();
+}
+
+}
+
 #endif

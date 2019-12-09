@@ -52,15 +52,6 @@
 
 namespace intgemm {
 
-#ifndef INTGEMM_COMPILER_SUPPORTS_AVX512
-// These won't ever be called in this capacity, but it does let the code below compile.
-namespace avx512f {
-static inline float MaxAbsolute(const float *begin, const float *end) {
-  throw UnsupportedCPU();
-}
-} //namespace
-#endif
-
 /* Returns:
  * avx512 if the CPU supports AVX512F (though really it should be AVX512BW, but
  * cloud providers lie).  TODO: don't catch Knights processors with this.
