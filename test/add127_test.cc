@@ -185,7 +185,7 @@ TEST_CASE("PrepareBias AVX2", "[Add127]") {
 
 TEST_CASE("PrepareBias AVX512F", "[Add127]") {
 	if (kCPU < CPUType::AVX512BW) return;
-	#ifndef INTGEMM_NO_AVX512
+	#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 	TestPrepareBias<AVX512_8bit>(8,8);
 	TestPrepareBias<AVX512_8bit>(256,256);
 	TestPrepareBias<AVX512_8bit>(2048,256);
@@ -212,7 +212,7 @@ TEST_CASE("PrepareA AVX2", "[Add127]") {
 
 TEST_CASE("PrepareA AVX512F", "[Add127]") {
 	if (kCPU < CPUType::AVX512BW) return;
-	#ifndef INTGEMM_NO_AVX512
+	#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 	TestPrepareA<AVX512_8bit>(64,64);
 	TestPrepareA<AVX512_8bit>(256,256);
 	TestPrepareA<AVX512_8bit>(512,512);
