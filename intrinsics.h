@@ -188,6 +188,15 @@ INTGEMM_SSE2 static inline __m128i unpackhi_epi16(__m128i a, __m128i b) {
 INTGEMM_SSE2 static inline __m128i unpacklo_epi32(__m128i a, __m128i b) {
   return _mm_unpacklo_epi32(a, b);
 }
+INTGEMM_SSE2 static inline __m128i unpackhi_epi32(__m128i a, __m128i b) {
+  return _mm_unpackhi_epi32(a, b);
+}
+INTGEMM_SSE2 static inline __m128i unpacklo_epi64(__m128i a, __m128i b) {
+  return _mm_unpacklo_epi64(a, b);
+}
+INTGEMM_SSE2 static inline __m128i unpackhi_epi64(__m128i a, __m128i b) {
+  return _mm_unpackhi_epi64(a, b);
+}
 INTGEMM_SSE2 static inline __m128i xor_si(__m128i a, __m128i b) {
   return _mm_xor_si128(a, b);
 }
@@ -353,6 +362,15 @@ INTGEMM_AVX2 static inline __m256i unpackhi_epi16(__m256i a, __m256i b) {
 }
 INTGEMM_AVX2 static inline __m256i unpacklo_epi32(__m256i a, __m256i b) {
   return _mm256_unpacklo_epi32(a, b);
+}
+INTGEMM_AVX2 static inline __m256i unpackhi_epi32(__m256i a, __m256i b) {
+  return _mm256_unpackhi_epi32(a, b);
+}
+INTGEMM_AVX2 static inline __m256i unpacklo_epi64(__m256i a, __m256i b) {
+  return _mm256_unpacklo_epi64(a, b);
+}
+INTGEMM_AVX2 static inline __m256i unpackhi_epi64(__m256i a, __m256i b) {
+  return _mm256_unpackhi_epi64(a, b);
 }
 INTGEMM_AVX2 static inline __m256i xor_si(__m256i a, __m256i b) {
   return _mm256_xor_si256(a, b);
@@ -521,6 +539,15 @@ INTGEMM_AVX512BW static inline __m512i unpackhi_epi16(__m512i a, __m512i b) {
 }
 INTGEMM_AVX512BW static inline __m512i unpacklo_epi32(__m512i a, __m512i b) {
   return _mm512_unpacklo_epi32(a, b);
+}
+INTGEMM_AVX512BW static inline __m512i unpackhi_epi32(__m512i a, __m512i b) {
+  return _mm512_unpackhi_epi32(a, b);
+}
+INTGEMM_AVX512BW static inline __m512i unpacklo_epi64(__m512i a, __m512i b) {
+  return _mm512_unpacklo_epi64(a, b);
+}
+INTGEMM_AVX512BW static inline __m512i unpackhi_epi64(__m512i a, __m512i b) {
+  return _mm512_unpackhi_epi64(a, b);
 }
 INTGEMM_AVX512BW static inline __m512i xor_si(__m512i a, __m512i b) {
   return _mm512_xor_si512(a, b);
