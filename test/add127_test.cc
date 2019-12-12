@@ -245,13 +245,23 @@ template <class Routine> void TestMultiplyShiftInt(Index A_rows, Index width, In
   /*
    * Multiply8 shift multiplication
    */
+  //First prepare SlowInteger Bias:
+  AlignedVector<int8_t> A_prep2(1*width);
+  for (auto& it : A_prep2) {
+    it = 1;
+  }
+  AlignedVector<float> ShiftedBias(B_cols);
   float unquant_mult_forprep = (-1)*(alpha)*(alpha)/(127.0f); //Minus one to invert add_ps later on
+  SlowRefInt(A_prep2.begin(), B_quant.begin(), ShiftedBias.begin(), unquant_mult_forprep, 1, width, B_cols, bias.begin());
+  
+
+  //Now prepare Fast integer Bias
   Routine::PrepareBiasFor8(B_prep.begin(), width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, bias.begin(), bias.begin()));
   Routine::Multiply8Shift(A_prep.begin(), B_prep.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult, bias.begin(), test_C.begin()));
 
   // Reference INT VERSION HERE with ADD127
   // Taking the original A_preparation which means A would be int8_t
-  SlowRefInt(A_prep.begin(), B_quant.begin(), slowint_C.begin(), unquant_mult, A_rows, width, B_cols, bias.begin());
+  SlowRefInt(A_prep.begin(), B_quant.begin(), slowint_C.begin(), unquant_mult, A_rows, width, B_cols, ShiftedBias.begin());
 
   Compare(float_C.begin(), slowint_C.begin(), test_C.begin(), test_C.size(), info.str(),
    int_tolerance, float_tolerance, MSE_float_tolerance, MSE_int_tolerance);
@@ -410,12 +420,12 @@ TEST_CASE ("Multiply AVX512F 8bit Shift vs nonshift", "[Add127]") {
 TEST_CASE ("Multiply SSSE3 8bit Shift vs Int", "[Add127]") {
   if (kCPU < CPUType::SSSE3) return;
   TestMultiplyShiftInt<SSSE3_8bit>(1, 64, 8, 0, 0.1, 0.06, 0);
-  //TestMultiplyShiftInt<SSSE3_8bit>(8, 256, 256, 0, 0.54, 0.17, 0); // 0.064, 0.026);
-  //TestMultiplyShiftInt<SSSE3_8bit>(8, 2048, 256, 1.7, 1.7, 0.46, 0.43); // 4.4, 4.4);
-  //TestMultiplyShiftInt<SSSE3_8bit>(320, 256, 256, 0.56, 0.64, 0.16, 0.15); // 0.1, 0.01);
-  //TestMultiplyShiftInt<SSSE3_8bit>(472, 256, 256, 0.46, 0.62, 0.17, 0.16); // 0.1, 0.011);
-  //TestMultiplyShiftInt<SSSE3_8bit>(248, 256, 256, 0.48, 0.64, 0.16, 0.15); // 0.1, 0.012);
-  //TestMultiplyShiftInt<SSSE3_8bit>(200, 256, 256, 0.55, 0.74, 0.17, 0.16); // 0.1, 0.011);
+  TestMultiplyShiftInt<SSSE3_8bit>(8, 256, 256, 0, 0.54, 0.17, 0); // 0.064, 0.026);
+  TestMultiplyShiftInt<SSSE3_8bit>(8, 2048, 256, 0, 1.7, 0.46, 0); // 4.4, 4.4);
+  TestMultiplyShiftInt<SSSE3_8bit>(320, 256, 256, 0, 0.64, 0.16, 0); // 0.1, 0.01);
+  TestMultiplyShiftInt<SSSE3_8bit>(472, 256, 256, 0, 0.62, 0.17, 0); // 0.1, 0.011);
+  TestMultiplyShiftInt<SSSE3_8bit>(248, 256, 256, 0, 0.64, 0.16, 0); // 0.1, 0.012);
+  TestMultiplyShiftInt<SSSE3_8bit>(200, 256, 256, 0, 0.74, 0.17, 0); // 0.1, 0.011);
 }
 
 TEST_CASE ("Multiply AVX2 8bit Shift vs Int", "[Add127]") {
