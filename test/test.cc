@@ -39,6 +39,21 @@ template <class Integer> void SlowRefInt(const Integer *A, const Integer *B, flo
     }
   }
 }
+void SlowRefInt(const uint8_t *A, const int8_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols, const float *bias) {
+  for (Index r = 0; r < A_rows; ++r) {
+    for (Index c = 0; c < B_cols; ++c) {
+      int32_t sum = 0;
+      for (Index k = 0; k < width; ++k) {
+        sum += static_cast<int16_t>(A[r * width + k]) * static_cast<int16_t>(B[k * B_cols + c]);
+      }
+      if (bias) {
+        C[r * B_cols + c] = sum * unquant_mult + bias[c];
+      } else {
+        C[r * B_cols + c] = sum * unquant_mult;
+      }
+    }
+  }
+}
 
 template void SlowRefInt<int8_t>(const int8_t *A, const int8_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols, const float *bias);
 template void SlowRefInt<int16_t>(const int16_t *A, const int16_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols, const float *bias);
