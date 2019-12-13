@@ -123,12 +123,12 @@ void Summarize(std::vector<uint64_t> &stats) {
     stddev += off * off;
   }
   stddev = sqrt(stddev / (keep - stats.begin() - 1));
-  std::cout << std::setw(8) << *std::min_element(stats.begin(), stats.end()) << '\t' << std::setw(8) << avg << '\t' << std::setw(8) << stddev;
+  std::cout << std::setw(10) << *std::min_element(stats.begin(), stats.end()) << '\t' << std::setw(8) << avg << '\t' << std::setw(8) << stddev;
 }
 
 template <class Backend> void Print(std::vector<std::vector<uint64_t>> &stats, int index) {
   if (stats.empty()) return;
-  std::cout << Backend::kName << '\t';
+  std::cout << std::setw(16) << Backend::kName << '\t';
   Summarize(stats[index]);
   std::cout << '\n';
 }
