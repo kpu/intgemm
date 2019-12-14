@@ -50,8 +50,11 @@ INTGEMM_AVX512BW static inline __m256i PermuteSummer(__m512i pack0123, __m512i p
 }
 
 // Find the maximum float.
-static inline INTGEMM_AVX512DQ float MaxFloat32(__m512 a) {
-  return MaxFloat32(max_ps(_mm512_castps512_ps256(a), _mm512_extractf32x8_ps(a, 1)));
+static inline INTGEMM_AVX512F float MaxFloat32(__m512 a) {
+  // _mm512_extractf32x8_ps is AVX512DQ but we don't care about masking.
+  // So cast to pd, do AVX512F _mm512_extractf64x4_pd, then cast to ps.
+  __m256 upper = _mm256_castpd_ps(_mm512_extractf64x4_pd(_mm512_castps_pd(a), 1));
+  return MaxFloat32(max_ps(_mm512_castps512_ps256(a), upper));
 }
 
 #endif
