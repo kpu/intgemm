@@ -1,12 +1,4 @@
-#include "callbacks/configs.h"
-#include "callbacks/output_buffer_info.h"
-
-#include "intrinsics.h"
-#include "kernels.h"
-#include "types.h"
-#include "utils.h"
-#include "vec_traits.h"
-
+/* This file is included multiple times, once per architecture. */
 #if defined(CALLBACKS_THIS_IS_SSE2)
   #define CPU_NAME SSE2
   #define CPU_ATTR INTGEMM_SSE2
