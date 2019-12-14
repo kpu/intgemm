@@ -1,12 +1,12 @@
-#include "aligned.h"
+#include "../aligned.h"
 #include "intgemm_config.h"
-#include "avx512_gemm.h"
-#include "sse2_gemm.h"
-#include "avx2_gemm.h"
-#include "ssse3_gemm.h"
-#include "intgemm.h"
-#include "stop_watch.h"
-#include "callbacks.h"
+#include "../avx512_gemm.h"
+#include "../sse2_gemm.h"
+#include "../avx2_gemm.h"
+#include "../ssse3_gemm.h"
+#include "../intgemm.h"
+#include "../stop_watch.h"
+#include "../callbacks.h"
 
 #include <algorithm>
 #include <cassert>

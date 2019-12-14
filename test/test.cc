@@ -1,5 +1,5 @@
 #define CATCH_CONFIG_RUNNER
-#include "test/test.h"
+#include "test.h"
 
 int main(int argc, char ** argv) {
   return Catch::Session().run(argc, argv);
