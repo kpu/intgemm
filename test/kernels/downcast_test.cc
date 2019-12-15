@@ -1,6 +1,6 @@
 #include "../test.h"
-#include "../aligned.h"
-#include "../kernels.h"
+#include "../../aligned.h"
+#include "../../kernels.h"
 
 #include <numeric>
 
