@@ -141,7 +141,7 @@ struct Int8 {
   static inline const char *const Name() { return interface.Name(); }
 
 private:
-  static struct Interface {
+  static struct BackendInterface {
     void (*Quantize)(const float *input, int8_t *output, float quant_mult, Index size);
     void (*QuantizeU)(const float *input, uint8_t *output, float quant_mult, Index size);
     void (*PrepareB)(const float *input, int8_t *output, float quant_mult, Index rows, Index cols);
@@ -149,7 +149,7 @@ private:
     const char *const (*Name)();
 
     template <typename Backend>
-    static Interface create() {
+    static BackendInterface create() {
       return {Backend::Quantize, Backend::QuantizeU, Backend::PrepareB, Backend::SelectColumnsB, Backend::Name};
     }
   } interface;
@@ -214,12 +214,12 @@ struct Int8Shift {
   static inline const char *const Name() { return interface.Name(); }
 
 private:
-  static struct Interface {
+  static struct BackendInterface {
     void (*QuantizeU)(const float *input, uint8_t *output, float quant_mult, Index size);
     const char *const (*Name)();
 
     template <typename Backend>
-    static Interface create() {
+    static BackendInterface create() {
       return {Backend::QuantizeU, Backend::Name};
     }
   } interface;
@@ -283,14 +283,14 @@ struct Int16 {
   static inline const char *const Name() { return interface.Name(); }
 
 private:
-  static struct Interface {
+  static struct BackendInterface {
     void (*Quantize)(const float *input, int16_t *output, float quant_mult, Index size);
     void (*PrepareB)(const float *input, int16_t *output, float quant_mult, Index rows, Index cols);
     void (*SelectColumnsB)(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
     const char *const (*Name)();
 
     template <typename Backend>
-    static Interface create() {
+    static BackendInterface create() {
       return {Backend::Quantize, Backend::PrepareB, Backend::SelectColumnsB, Backend::Name};
     }
   } interface;
