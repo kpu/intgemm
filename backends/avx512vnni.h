@@ -4,7 +4,7 @@
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
 #include "avx512.h"
-#include "types.h"
+#include "../types.h"
 #include "backend.h"
 
 namespace intgemm {

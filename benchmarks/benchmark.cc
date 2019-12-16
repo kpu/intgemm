@@ -1,9 +1,9 @@
-#include "aligned.h"
+#include "../aligned.h"
 #include "intgemm_config.h"
-#include "backends.h"
-#include "intgemm.h"
-#include "stop_watch.h"
-#include "callbacks.h"
+#include "../backends.h"
+#include "../intgemm.h"
+#include "../stop_watch.h"
+#include "../callbacks.h"
 
 #include <algorithm>
 #include <cassert>
@@ -98,6 +98,7 @@ struct BackendStats {
   std::vector<std::vector<uint64_t>> ssse3_8bit;
   std::vector<std::vector<uint64_t>> avx2_8bit;
   std::vector<std::vector<uint64_t>> avx512_8bit;
+  std::vector<std::vector<uint64_t>> avx512vnni_8bit;
   std::vector<std::vector<uint64_t>> sse2_16bit;
   std::vector<std::vector<uint64_t>> avx2_16bit;
   std::vector<std::vector<uint64_t>> avx512_16bit;
@@ -119,12 +120,12 @@ void Summarize(std::vector<uint64_t> &stats) {
     stddev += off * off;
   }
   stddev = sqrt(stddev / (keep - stats.begin() - 1));
-  std::cout << std::setw(8) << *std::min_element(stats.begin(), stats.end()) << '\t' << std::setw(8) << avg << '\t' << std::setw(8) << stddev;
+  std::cout << std::setw(10) << *std::min_element(stats.begin(), stats.end()) << '\t' << std::setw(8) << avg << '\t' << std::setw(8) << stddev;
 }
 
 template <class Backend> void Print(std::vector<std::vector<uint64_t>> &stats, int index) {
   if (stats.empty()) return;
-  std::cout << Backend::Name() << '\t';
+  std::cout << std::setw(16) << Backend::Name() << '\t';
   Summarize(stats[index]);
   std::cout << '\n';
 }
@@ -205,6 +206,13 @@ int main(int argc, char ** argv) {
     RunAll<AVX512_16bit>(matrices, end, stats.avx512_16bit);
   }
 #endif
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
+  std::cerr << "AVX512VNNI 8bit, 100 samples..." << std::endl;
+  for (int samples = 0; samples < kSamples; ++samples) {
+    RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
+    RunAll<AVX512VNNI_8bit>(matrices, end, stats.avx512vnni_8bit);
+  }
+#endif
 
   if (stats.sse2_16bit.empty()) {
     std::cerr << "No CPU support." << std::endl;
@@ -216,6 +224,9 @@ int main(int argc, char ** argv) {
     Print<AVX2_8bit>(stats.avx2_8bit, i);
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
     Print<AVX512_8bit>(stats.avx512_8bit, i);
+#endif
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
+    Print<AVX512VNNI_8bit>(stats.avx512vnni_8bit, i);
 #endif
     Print<SSE2_16bit>(stats.sse2_16bit, i);
     Print<AVX2_16bit>(stats.avx2_16bit, i);

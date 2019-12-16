@@ -1,5 +1,24 @@
 #pragma once
 
-#include "kernels/sse2.h"
-#include "kernels/avx2.h"
-#include "kernels/avx512.h"
+#include "intgemm_config.h"
+#include "intrinsics.h"
+#include "types.h"
+#include "utils.h"
+#include "vec_traits.h"
+
+#include <cstdlib>
+
+#define KERNELS_THIS_IS_SSE2
+#include "kernels/implementations.inl"
+#undef KERNELS_THIS_IS_SSE2
+
+#define KERNELS_THIS_IS_AVX2
+#include "kernels/implementations.inl"
+#undef KERNELS_THIS_IS_AVX2
+
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#define KERNELS_THIS_IS_AVX512BW
+#include "kernels/implementations.inl"
+#undef KERNELS_THIS_IS_AVX512BW
+#endif
+

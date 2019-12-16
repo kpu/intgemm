@@ -4,10 +4,10 @@
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 
-#include "interleave.h"
-#include "kernels.h"
-#include "multiply.h"
-#include "types.h"
+#include "../interleave.h"
+#include "../kernels.h"
+#include "../multiply.h"
+#include "../types.h"
 #include "backend.h"
 
 #include <cassert>

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "interleave.h"
-#include "kernels.h"
-#include "multiply.h"
-#include "types.h"
+#include "../interleave.h"
+#include "../kernels.h"
+#include "../multiply.h"
+#include "../types.h"
 #include "backend.h"
 
 #include <cstdint>
@@ -97,7 +97,7 @@ class QuantizeTile8 {
 // pmaddubsw (the 8-bit multiply) is INTGEMM_SSSE3, so pedantically that's the version we need.
 template <>
 struct Backend<CPUType::SSSE3, int8_t> {
-  static inline const char* const Name() { return "8-bit INTGEMM_SSSE3"; };
+  static inline const char* const Name() { return "8-bit SSSE3"; };
 
   // Currently A is prepared by quantization but this could theoretically change.
   INTGEMM_SSSE3 static inline void PrepareA(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {

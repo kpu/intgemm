@@ -1,8 +1,8 @@
 #pragma once
 
-#include "kernels.h"
-#include "multiply.h"
-#include "types.h"
+#include "../kernels.h"
+#include "../multiply.h"
+#include "../types.h"
 #include "backend.h"
 
 #include <cstdint>
@@ -50,7 +50,7 @@ INTGEMM_MAXABSOLUTE(__m128, INTGEMM_SSE2)
 // This should be pure INTGEMM_SSE2 (and below).
 template <>
 struct Backend<CPUType::SSE2, int16_t> {
-  static inline const char* const Name() { return "16-bit INTGEMM_SSE2"; };
+  static inline const char* const Name() { return "16-bit SSE2"; };
 
   // Currently A is prepared by quantization but this could theoretically change.
   INTGEMM_SSE2 static inline void PrepareA(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) {

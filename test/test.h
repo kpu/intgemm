@@ -1,9 +1,9 @@
 #pragma once
 
-#include "3rd_party/catch.hpp"
+#include "../3rd_party/catch.hpp"
 #include <sstream>
-#include "intgemm.h"
-#include "aligned.h"
+#include "../intgemm.h"
+#include "../aligned.h"
 
 #include "intgemm_config.h"
 

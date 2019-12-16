@@ -1,9 +1,4 @@
-#include "intrinsics.h"
-#include "types.h"
-#include "utils.h"
-#include "vec_traits.h"
-
-#include <cstdlib>
+/* This file is included multiple times, once for each backend instruction set. */
 
 #if defined(KERNELS_THIS_IS_SSE2)
   #define CPU_NAME SSE2

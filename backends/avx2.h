@@ -1,9 +1,9 @@
 #pragma once
 
-#include "interleave.h"
-#include "kernels.h"
-#include "multiply.h"
-#include "types.h"
+#include "../interleave.h"
+#include "../kernels.h"
+#include "../multiply.h"
+#include "../types.h"
 #include "backend.h"
 
 #include <cstdint>
@@ -52,7 +52,7 @@ class QuantizeTile16 {
 
 template <>
 struct Backend<CPUType::AVX2, int16_t> {
-  static inline const char* const Name() { return "16-bit INTGEMM_AVX2"; };
+  static inline const char* const Name() { return "16-bit AVX2"; };
 
   // Currently A is prepared by quantization but this could theoretically change.
   INTGEMM_AVX2 static inline void PrepareA(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) {
@@ -171,7 +171,7 @@ INTGEMM_MAXABSOLUTE(__m256, INTGEMM_AVX2)
 
 template <>
 struct Backend<CPUType::AVX2, int8_t> {
-  static inline const char* const Name() { return "8-bit INTGEMM_AVX2"; };
+  static inline const char* const Name() { return "8-bit AVX2"; };
 
   // Currently A is prepared by quantization but this could theoretically change.
   INTGEMM_AVX2 static inline void PrepareA(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {

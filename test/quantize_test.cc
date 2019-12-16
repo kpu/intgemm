@@ -1,6 +1,6 @@
-#include "test/test.h"
-#include "aligned.h"
-#include "backends.h"
+#include "test.h"
+#include "../aligned.h"
+#include "../backends.h"
 
 #include <cstring>
 #include <iostream>
