@@ -130,14 +130,25 @@ typedef Unsupported_8bit AVX512VNNI_8bit;
  * unsupported otherwise
  */
 template <class T> T ChooseCPU(T avx512vnni, T avx512, T avx2, T ssse3, T sse2, T unsupported) {
-  // TODO: don't catch Knights processors here!
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
-  if (__builtin_cpu_supports("avx512vnni")) {
+  if (
+#ifdef __INTEL_COMPILER
+      _may_i_use_cpu_feature(_FEATURE_AVX512_VNNI)
+#else
+      __builtin_cpu_supports("avx512vnni")
+#endif
+      ) {
     return avx512vnni;
   }
 #endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
-  if (__builtin_cpu_supports("avx512f")) {
+  if (
+#ifdef __INTEL_COMPILER
+      __builtin_cpu_supports("avx512bw")
+#else
+      _may_i_use_cpu_feature(_FEATURE_AVX512BW)
+#endif
+      ) {
     return avx512;
   }
 #endif
