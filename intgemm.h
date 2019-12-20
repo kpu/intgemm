@@ -144,9 +144,9 @@ template <class T> T ChooseCPU(T avx512vnni, T avx512, T avx2, T ssse3, T sse2, 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
   if (
 #ifdef __INTEL_COMPILER
-      __builtin_cpu_supports("avx512bw")
-#else
       _may_i_use_cpu_feature(_FEATURE_AVX512BW)
+#else
+      __builtin_cpu_supports("avx512bw")
 #endif
       ) {
     return avx512;
