@@ -1,5 +1,4 @@
 #pragma once
-
 /* Main interface for integer matrix multiplication.
  *
  * We are computing C = A * B with an optional scaling factor.
@@ -51,6 +50,10 @@
 #include "avx2_gemm.h"
 #include "avx512_gemm.h"
 #include "avx512vnni_gemm.h"
+
+#if defined(__GNUC__) && defined(INTGEMM_COMPILER_SUPPORTS_AVX512)
+#include "cpuid.h"
+#endif
 
 /* Dispatch to functions based on runtime CPUID.  This adds one call-by-variable to each call. */
 
@@ -117,9 +120,29 @@ static inline float MaxAbsolute(const float *begin, const float *end) {
 typedef Unsupported_8bit AVX512VNNI_8bit;
 #endif
 
+
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+// gcc 5.4.0 bizarrely supports avx512bw targets but not __builtin_cpu_supports("avx512bw").  So implement it manually.
+inline bool CheckAVX512BW() {
+#ifdef __INTEL_COMPILER
+  return _may_i_use_cpu_feature(_FEATURE_AVX512BW)
+#elif __GNUC__
+  unsigned int m = __get_cpuid_max(0, NULL);
+  if (m < 7) return false;
+  unsigned int eax, ebx, ecx, edx;
+  __cpuid_count(7, 0, eax, ebx, ecx, edx);
+  const unsigned int avx512bw_bit = (1 << 30);
+  return ebx & avx512bw_bit;
+#else
+  return __builtin_cpu_supports("avx512bw");
+#endif
+}
+#endif
+
 /* Returns:
- * avx512 if the CPU supports AVX512F (though really it should be AVX512BW, but
- * cloud providers lie).  TODO: don't catch Knights processors with this.
+ * axx512vnni if the CPU supports AVX512VNNI
+ *
+ * avx512bw if the CPU supports AVX512BW
  *
  * avx2 if the CPU supports AVX2
  * 
@@ -129,7 +152,7 @@ typedef Unsupported_8bit AVX512VNNI_8bit;
  *
  * unsupported otherwise
  */
-template <class T> T ChooseCPU(T avx512vnni, T avx512, T avx2, T ssse3, T sse2, T unsupported) {
+template <class T> T ChooseCPU(T avx512vnni, T avx512bw, T avx2, T ssse3, T sse2, T unsupported) {
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
   if (
 #ifdef __INTEL_COMPILER
@@ -142,14 +165,8 @@ template <class T> T ChooseCPU(T avx512vnni, T avx512, T avx2, T ssse3, T sse2, 
   }
 #endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
-  if (
-#ifdef __INTEL_COMPILER
-      _may_i_use_cpu_feature(_FEATURE_AVX512BW)
-#else
-      __builtin_cpu_supports("avx512bw")
-#endif
-      ) {
-    return avx512;
+  if (CheckAVX512BW()) {
+    return avx512bw;
   }
 #endif
   if (__builtin_cpu_supports("avx2")) {
