@@ -71,14 +71,14 @@ TEST_CASE("RearrangementB SSSE3", "") {
   if (kCPU < CPUType::SSSE3)
     return;
 
-  // CHECK(TestMany<SSSE3_8bit>());
+  CHECK(TestMany<SSSE3_8bit>());
 }
 
 TEST_CASE("RearrangementB AVX2", "") {
   if (kCPU < CPUType::AVX2)
     return;
 
-  // CHECK(TestMany<AVX2_8bit>());
+  CHECK(TestMany<AVX2_8bit>());
   // CHECK(TestMany<AVX2_16bit>());
 }
 

@@ -210,6 +210,8 @@ struct AVX2_8bit {
   static const Index kBTileRow = 32;
   static const Index kBTileCol = 8;
 
+  INTGEMM_REARRANGEMENT_B_8(INTGEMM_AVX2, CPUType::AVX2)
+
   INTGEMM_PREPARE_B_8(INTGEMM_AVX2, avx2::QuantizeTile8)
 
   INTGEMM_AVX2 static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {

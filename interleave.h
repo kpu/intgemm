@@ -28,6 +28,13 @@ INTGEMM_INTERLEAVE_N(target, type, 64)
 
 INTGEMM_INTERLEAVE(INTGEMM_SSE2, __m128i)
 INTGEMM_INTERLEAVE(INTGEMM_AVX2, __m256i)
+
+INTGEMM_AVX2 static inline void Interleave128(__m256i& first, __m256i& second) {
+  auto temp = _mm256_permute2f128_si256(first, second, 0x20);
+  second = _mm256_permute2f128_si256(first, second, 0x31);
+  first = temp;
+}
+
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 INTGEMM_INTERLEAVE(INTGEMM_AVX512BW, __m512i)
 #endif
@@ -142,6 +149,73 @@ template <class Register> static inline void Transpose8InLane(
   r14 = r13;
   r13 = r11;
   r11 = tmp;
+}
+
+static inline void Interleave(Index bytes, __m128i& first, __m128i& second) {
+  switch (bytes) {
+    case  1: Interleave8(first, second); break;
+    case  2: Interleave16(first, second); break;
+    case  4: Interleave32(first, second); break;
+    case  8: Interleave64(first, second); break;
+    default: break;
+  }
+}
+
+static inline void Interleave(Index bytes, __m256i& first, __m256i& second) {
+  switch (bytes) {
+    case  1: Interleave8(first, second); break;
+    case  2: Interleave16(first, second); break;
+    case  4: Interleave32(first, second); break;
+    case  8: Interleave64(first, second); break;
+    case 16: Interleave128(first, second); break;
+    default: break;
+  }
+}
+
+template <typename Integer, typename Register>
+static inline void Transpose(Register* ptr, Index step) {
+  for (Index bytes = sizeof(Integer); bytes < sizeof(Register); bytes *= 2)
+    for (Index i = 0; i < sizeof(Register) / bytes; ++i)
+      for (Index j = 0; j < bytes; ++j)
+        Interleave(bytes, ptr[(2 * bytes * i + j) * step], ptr[(2 * bytes * i + j + bytes) * step]);
+
+  for (Index i = 0; i < sizeof(Register) / sizeof(__m128i); ++i, ptr += sizeof(__m128i))
+  {
+    Swap(ptr[1 * step], ptr[8  * step]);
+    Swap(ptr[3 * step], ptr[10 * step]);
+    Swap(ptr[5 * step], ptr[12 * step]);
+    Swap(ptr[7 * step], ptr[14 * step]);
+    Swap(ptr[2 * step], ptr[4 * step]);
+    Swap(ptr[3 * step], ptr[5 * step]);
+    Swap(ptr[10 * step], ptr[12 * step]);
+    Swap(ptr[11 * step], ptr[13 * step]);
+  }
+}
+
+#define INTGEMM_REARRANGEMENT_B_8(target, cpu_type) \
+target static inline void RearrangementB(const int8_t* input, int8_t* output, Index rows, Index cols) { \
+  using Register = vector_t<cpu_type, int8_t>; \
+  static Register temp[sizeof(Register)]; \
+  const Index kColStride = 8; \
+  \
+  assert(cols % sizeof(Register) == 0); \
+  assert(rows % sizeof(Register) == 0); \
+  assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0); \
+  assert(reinterpret_cast<uintptr_t>(output) % sizeof(Register) == 0); \
+  \
+  Register* output_it = reinterpret_cast<Register*>(output); \
+  for (Index c = 0; c < cols; c += sizeof(Register), output_it += rows) { \
+    for (Index r = 0; r < rows; r += sizeof(Register)) { \
+      for (Index i = 0; i < sizeof(Register); ++i) \
+        temp[i] = loadu_si(reinterpret_cast<const Register*>(input + cols * (r + i) + c)); \
+      \
+      Transpose<int8_t>(temp, 1); \
+      \
+      for (Index i = 0; i < sizeof(Register) / kColStride; ++i) \
+        for (Index j = 0; j < kColStride; ++j) \
+          output_it[(r + i * rows) * kColStride / sizeof(Register) + j] = temp[i * kColStride + j]; \
+    } \
+  } \
 }
 
 // PREPARE B: quantize and rearrange.  B is presumed to be constantparameters
