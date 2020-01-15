@@ -76,6 +76,7 @@ struct AVX2_16bit {
     PrepareBFor16(input, output, avx2::QuantizeTile16(quant_mult), rows, cols);
   }*/
   INTGEMM_PREPARE_B_16(INTGEMM_AVX2, avx2::QuantizeTile16)
+  INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(INTGEMM_AVX2, CPUType::AVX2, int16_t)
 
   INTGEMM_AVX2 static void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     avx2::SelectColumnsOfB((const __m256i*)input, (__m256i*)output, rows * 2, cols_begin, cols_end);
@@ -211,6 +212,7 @@ struct AVX2_8bit {
   static const Index kBTileCol = 8;
 
   INTGEMM_PREPARE_B_8(INTGEMM_AVX2, avx2::QuantizeTile8)
+  INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(INTGEMM_AVX2, CPUType::AVX2, int8_t)
 
   INTGEMM_AVX2 static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     avx2::SelectColumnsOfB((const __m256i*)input, (__m256i*)output, rows, cols_begin, cols_end);

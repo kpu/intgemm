@@ -234,6 +234,24 @@ target static inline void PrepareB(const float *input, int16_t *output_shadow, f
   } \
 }
 
+#define INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(target, cpu_type, Integer) \
+target static inline void PrepareBQuantizedTransposed(const Integer* input, Integer* output, Index rows, Index cols) { \
+  using Register = vector_t<cpu_type, Integer>; \
+  const Index RegisterElems = sizeof(Register) / sizeof(Integer); \
+  const Index kColStride = 8; \
+  \
+  assert(cols % RegisterElems == 0); \
+  assert(rows % kColStride == 0); \
+  assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0); \
+  assert(reinterpret_cast<uintptr_t>(output) % sizeof(Register) == 0); \
+  \
+  Register* output_it = reinterpret_cast<Register*>(output); \
+  for (Index r = 0; r < rows; r += kColStride) \
+    for (Index c = 0; c < cols; c += RegisterElems) \
+      for (Index ri = 0; ri < 8; ++ri) \
+        *output_it++ = *reinterpret_cast<const Register*>(input + (r + ri) * cols + c); \
+}
+
 /* Select columns of B from PrepareB format to PrepareB format.
  */
 #define INTGEMM_SELECT_COL_B(target, Register) \

@@ -51,10 +51,11 @@ add_executable(tests
   test/test.cc
 
   # General tests
+  test/add127_test.cc
   test/multiply_test.cc
+  test/prepare_b_quantized_transposed.cc
   test/quantize_test.cc
   test/utils_test.cc
-  test/add127_test.cc
 
   # Kernels tests
   test/kernels/add_bias_test.cc
@@ -68,9 +69,9 @@ add_executable(tests
   test/kernels/relu_test.cc
   test/kernels/rescale_test.cc
   test/kernels/sigmoid_test.cc
-  test/kernels/upcast_test.cc
   test/kernels/tanh_test.cc
   test/kernels/unquantize_test.cc
+  test/kernels/upcast_test.cc
   test/kernels/write_test.cc
 
   # Definitions
