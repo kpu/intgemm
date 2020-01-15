@@ -234,6 +234,11 @@ target static inline void PrepareB(const float *input, int16_t *output_shadow, f
   } \
 }
 
+/*
+ * Prepare B matrix.
+ * B matrix has to be transposed and quantized.
+ * Cols has to be a multiple of sizeof(Register) / sizeof(Integer).
+ */
 #define INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(target, cpu_type, Integer) \
 target static inline void PrepareBQuantizedTransposed(const Integer* input, Integer* output, Index cols, Index rows) { \
   using Register = vector_t<cpu_type, Integer>; \
@@ -250,6 +255,38 @@ target static inline void PrepareBQuantizedTransposed(const Integer* input, Inte
     for (Index c = 0; c < cols; c += RegisterElems) \
       for (Index ri = 0; ri < 8; ++ri) \
         *output_it++ = *reinterpret_cast<const Register*>(input + (r + ri) * cols + c); \
+}
+
+/*
+ * Prepare B matrix.
+ * B matrix has to be transposed.
+ * Cols has to be a multiple of sizeof(Register) / sizeof(float).
+ */
+#define INTGEMM_PREPARE_B_TRANSPOSED(target, Quantizer, integer) \
+target static inline void PrepareBTransposed(const float* input, integer* output, float quant_mult, Index rows, Index cols) { \
+  using Register = typename Quantizer::Integer; \
+  const Index RegisterElemsInt = sizeof(Register) / sizeof(integer); \
+  const Index RegisterElemsFloat = sizeof(Register) / sizeof(float); \
+  const Index kColStride = 8; \
+  \
+  assert(cols % RegisterElemsFloat == 0); \
+  assert(rows % kColStride == 0); \
+  assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0); \
+  assert(reinterpret_cast<uintptr_t>(output) % sizeof(Register) == 0); \
+  \
+  Quantizer quantizer(quant_mult); \
+  Register* output_it = reinterpret_cast<Register*>(output); \
+  Index r = 0; \
+  Index c = 0; \
+  while (r < rows) { \
+    for (Index ri = 0; ri < 8; ++ri) \
+      *output_it++ = quantizer.ConsecutiveWithWrapping(input + (r + ri) * cols + c, cols - c, cols, 8); \
+    c += RegisterElemsInt; \
+    while (c >= cols) { \
+      r += kColStride; \
+      c -= cols; \
+    } \
+  } \
 }
 
 /* Select columns of B from PrepareB format to PrepareB format.
