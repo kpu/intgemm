@@ -83,7 +83,7 @@ struct AVX2_16bit {
   
   INTGEMM_MULTIPLY16(__m256i, INTGEMM_AVX2, CPUType::AVX2)
 
-  constexpr static const char *const kName = "16-bit INTGEMM_AVX2";
+  constexpr static const char *const kName = "16-bit AVX2";
 
   static const CPUType kUses = CPUType::AVX2;
 };
@@ -222,7 +222,7 @@ struct AVX2_8bit {
 
   INTGEMM_PREPAREBIASFOR8(__m256i, INTGEMM_AVX2, CPUType::AVX2)
   
-  constexpr static const char *const kName = "8-bit INTGEMM_AVX2";
+  constexpr static const char *const kName = "8-bit AVX2";
 
   static const CPUType kUses = CPUType::AVX2;
 };

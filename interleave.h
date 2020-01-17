@@ -10,45 +10,31 @@
 
 namespace intgemm {
 
-/* This macro defines functions that interleave their arguments like
- * inline void Interleave8(__m256i &first, __m256i &second) {
- *   __m256i temp = _mm256_unpacklo_epi8(first, second);
- *   second = _mm256_unpackhi_epi8(first, second);
- *   first = temp;
- * }
- *
- * Example usage:
- *   INTGEMM_INTERLEAVE(__m128i, )
- *   INTGEMM_INTERLEAVE(__m256i, 256)
- *   INTGEMM_INTERLEAVE(__m512i, 512)
+/*
+ * Interleave vectors.
  */
-#define INTGEMM_INTERLEAVE(target, type, prefix) \
-target static inline void Interleave8(type &first, type &second) { \
-  type temp = _mm##prefix##_unpacklo_epi8(first, second); \
-  second = _mm##prefix##_unpackhi_epi8(first, second); \
-  first = temp; \
-} \
-target static inline void Interleave16(type &first, type &second) { \
-  type temp = _mm##prefix##_unpacklo_epi16(first, second); \
-  second = _mm##prefix##_unpackhi_epi16(first, second); \
-  first = temp; \
-} \
-target static inline void Interleave32(type &first, type &second) { \
-  type temp = _mm##prefix##_unpacklo_epi32(first, second); \
-  second = _mm##prefix##_unpackhi_epi32(first, second); \
-  first = temp; \
-} \
-target static inline void Interleave64(type &first, type &second) { \
-  type temp = _mm##prefix##_unpacklo_epi64(first, second); \
-  second = _mm##prefix##_unpackhi_epi64(first, second); \
+#define INTGEMM_INTERLEAVE_N(target, type, N) \
+target static inline void Interleave##N(type &first, type &second) { \
+  type temp = unpacklo_epi##N(first, second); \
+  second = unpackhi_epi##N(first, second); \
   first = temp; \
 }
 
-INTGEMM_INTERLEAVE(INTGEMM_SSE2, __m128i, )
-INTGEMM_INTERLEAVE(INTGEMM_AVX2, __m256i, 256)
+#define INTGEMM_INTERLEAVE(target, type) \
+INTGEMM_INTERLEAVE_N(target, type, 8) \
+INTGEMM_INTERLEAVE_N(target, type, 16) \
+INTGEMM_INTERLEAVE_N(target, type, 32) \
+INTGEMM_INTERLEAVE_N(target, type, 64)
+
+INTGEMM_INTERLEAVE(INTGEMM_SSE2, __m128i)
+INTGEMM_INTERLEAVE(INTGEMM_AVX2, __m256i)
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
-INTGEMM_INTERLEAVE(INTGEMM_AVX512BW, __m512i, 512)
+INTGEMM_INTERLEAVE(INTGEMM_AVX512BW, __m512i)
 #endif
+
+/*
+ * Swap vectors.
+ */
 #define INTGEMM_SWAP(target, Register) \
 target static inline void Swap(Register &a, Register &b) { \
   Register tmp = a; \

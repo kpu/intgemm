@@ -1,9 +1,9 @@
-#include "test/test.h"
-#include "aligned.h"
-#include "avx2_gemm.h"
-#include "avx512_gemm.h"
-#include "sse2_gemm.h"
-#include "ssse3_gemm.h"
+#include "test.h"
+#include "../aligned.h"
+#include "../avx2_gemm.h"
+#include "../avx512_gemm.h"
+#include "../sse2_gemm.h"
+#include "../ssse3_gemm.h"
 
 #include <cstring>
 #include <iostream>

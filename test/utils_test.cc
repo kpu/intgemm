@@ -1,5 +1,5 @@
-#include "test/test.h"
-#include "utils.h"
+#include "test.h"
+#include "../utils.h"
 
 namespace intgemm {
 namespace {

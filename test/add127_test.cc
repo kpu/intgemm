@@ -1,4 +1,4 @@
-#include "test/test.h"
+#include "test.h"
 
 namespace intgemm {
 

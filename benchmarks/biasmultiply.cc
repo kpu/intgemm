@@ -1,5 +1,5 @@
-#include "intgemm.h"
-#include "aligned.h"
+#include "../intgemm.h"
+#include "../aligned.h"
 #include <chrono>
 #include <random>
 #include <iostream>

@@ -10,7 +10,6 @@
 #define INTGEMM_AVX512F __attribute__ ((target ("avx512f")))
 #define INTGEMM_AVX512BW __attribute__ ((target ("avx512f")))
 #define INTGEMM_AVX512DQ __attribute__ ((target ("avx512f")))
-// TODO is this right?
 #define INTGEMM_AVX512VNNI __attribute__ ((target ("avx512f")))
 #else
 #define INTGEMM_AVX512F __attribute__ ((target ("avx512f")))

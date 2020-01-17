@@ -1,9 +1,9 @@
-#include "test/test.h"
-#include "aligned.h"
-#include "interleave.h"
-#include "intgemm.h"
-#include "multiply.h"
-#include "callbacks.h"
+#include "test.h"
+#include "../aligned.h"
+#include "../interleave.h"
+#include "../intgemm.h"
+#include "../multiply.h"
+#include "../callbacks.h"
 
 #include <algorithm>
 #include <cassert>

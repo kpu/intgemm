@@ -1,6 +1,11 @@
 #include <immintrin.h>
 
-__attribute__ ((target ("avx512f,avx512bw,avx512dq,avx512vnni"))) bool Foo() {
+#ifdef __INTEL_COMPILER
+__attribute__ ((target ("avx512f")))
+#else
+__attribute__ ((target ("avx512f,avx512bw,avx512dq,avx512vnni")))
+#endif
+bool Foo() {
   // AVX512F
   __m512i value = _mm512_set1_epi32(1);
   // AVX512BW
@@ -14,5 +19,11 @@ __attribute__ ((target ("avx512f,avx512bw,avx512dq,avx512vnni"))) bool Foo() {
 }
 
 int main() {
-  return Foo() && __builtin_cpu_supports("avx512vnni");
+  return Foo() &&
+#ifdef __INTEL_COMPILER
+    _may_i_use_cpu_feature(_FEATURE_AVX512_VNNI)
+#else
+    __builtin_cpu_supports("avx512vnni")
+#endif
+    ;
 }

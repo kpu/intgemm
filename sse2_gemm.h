@@ -77,7 +77,7 @@ struct SSE2_16bit {
   }
   INTGEMM_MULTIPLY16(__m128i, INTGEMM_SSE2, CPUType::SSE2)
 
-  constexpr static const char *const kName = "16-bit INTGEMM_SSE2";
+  constexpr static const char *const kName = "16-bit SSE2";
 
   static const CPUType kUses = CPUType::SSE2;
 };
