@@ -395,7 +395,7 @@ TEST_CASE ("Multiply AVX512F 8bit Shift vs nonshift", "[Add127]") {
   if (kCPU < CPUType::AVX512BW) return;
   TestMultiplyShiftNonShift<AVX512_8bit>(1, 64, 8, 0.0001, 0.05, 0.03, 0.001);
   TestMultiplyShiftNonShift<AVX512_8bit>(8, 256, 256, 0.0001, 0.22, 0.06, 0.001);
-  TestMultiplyShiftNonShift<AVX512_8bit>(8, 2048, 256, 0.0001, 0.61, 0.17, 0.001);
+  TestMultiplyShiftNonShift<AVX512_8bit>(8, 2048, 256, 3.51, 0.61, 0.17, 0.3);
   TestMultiplyShiftNonShift<AVX512_8bit>(320, 256, 256, 0.0001, 0.27, 0.06, 0.001);
   TestMultiplyShiftNonShift<AVX512_8bit>(472, 256, 256, 0.0001, 0.33, 0.06, 0.001);
   TestMultiplyShiftNonShift<AVX512_8bit>(248, 256, 256, 0.0001, 0.27, 0.06, 0.001);
@@ -406,13 +406,13 @@ TEST_CASE ("Multiply AVX512F 8bit Shift vs nonshift", "[Add127]") {
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
   TEST_CASE ("Multiply AVX512VNNI 8bit Shift vs nonshift", "[Add127]") {
     if (kCPU < CPUType::AVX512VNNI) return;
-    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(1, 64, 8, 0.0001, 0.05, 0.03, 0.001);
-    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(8, 256, 256, 0.0001, 0.22, 0.06, 0.001);
-    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(8, 2048, 256, 0.0001, 0.61, 0.17, 0.001);
-    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(320, 256, 256, 0.0001, 0.27, 0.06, 0.001);
-    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(472, 256, 256, 0.0001, 0.33, 0.06, 0.001);
-    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(248, 256, 256, 0.0001, 0.27, 0.06, 0.001);
-    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(200, 256, 256, 0.0001, 0.28, 0.06, 0.001);
+    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(1, 64, 8, 0.00001, 0.05, 0.03, 0.00001);
+    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(8, 256, 256, 0.00001, 0.22, 0.06, 0.00001);
+    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(8, 2048, 256, 0.0001, 0.61, 0.17, 0.0001);
+    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(320, 256, 256, 0.00001, 0.27, 0.06, 0.00001);
+    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(472, 256, 256, 0.00001, 0.33, 0.06, 0.00001);
+    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(248, 256, 256, 0.00001, 0.27, 0.06, 0.00001);
+    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(200, 256, 256, 0.00001, 0.28, 0.06, 0.00001);
   }
 #endif
 
