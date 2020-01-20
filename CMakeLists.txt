@@ -47,8 +47,6 @@ endforeach()
 
 add_executable(example example.cc intgemm.cc)
 
-add_executable(quantizerAdd127 quantizerAdd127.cc intgemm.cc)
-
 add_executable(tests
   test/test.cc
 

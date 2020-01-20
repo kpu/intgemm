@@ -416,7 +416,7 @@ TEST_CASE ("Multiply AVX512F 8bit Shift vs nonshift", "[Add127]") {
   }
 #endif
 
-//Multiply old vs new
+//Multiply Shift vs int shift implementation
 TEST_CASE ("Multiply SSSE3 8bit Shift vs Int", "[Add127]") {
   if (kCPU < CPUType::SSSE3) return;
   TestMultiplyShiftInt<SSSE3_8bit>(1, 64, 8, 0, 0.1, 0.06, 0);
