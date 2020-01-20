@@ -6,6 +6,8 @@
 #include "vec_traits.h"
 #include "callbacks.h"
 
+#include <cmath> //sqrt
+
 namespace intgemm {
 
 INTGEMM_SSE2 static inline float MaxFloat32(__m128 a) {
@@ -36,6 +38,22 @@ INTGEMM_AVX2 static inline __m256i PermuteSummer(__m256i pack0123, __m256i pack4
   return _mm256_add_epi32(rev, blended);
 }
 
+/* https://stackoverflow.com/questions/6996764/fastest-way-to-do-horizontal-float-vector-sum-on-x86 */
+INTGEMM_SSSE3 static inline float horizontalSum(__m128 a) {
+    __m128 shuf = _mm_movehdup_ps(a);        // broadcast elements 3,1 to 2,0
+    __m128 sums = _mm_add_ps(a, shuf);
+    shuf        = _mm_movehl_ps(shuf, sums); // high half -> low half
+    sums        = _mm_add_ss(sums, shuf);
+    return        _mm_cvtss_f32(sums);
+}
+
+INTGEMM_AVX2 static inline float horizontalSum(__m256 a) {
+    __m128 vlow  = _mm256_castps256_ps128(a);
+    __m128 vhigh = _mm256_extractf128_ps(a, 1); // high 128
+    vlow  = _mm_add_ps(vlow, vhigh);     // add the low 128
+    return horizontalSum(vlow);         // and inline the sse3 version, which is optimal for AVX
+}
+
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_AVX512BW static inline __m256i PermuteSummer(__m512i pack0123, __m512i pack4567) {
@@ -55,6 +73,10 @@ static inline INTGEMM_AVX512F float MaxFloat32(__m512 a) {
   // So cast to pd, do AVX512F _mm512_extractf64x4_pd, then cast to ps.
   __m256 upper = _mm256_castpd_ps(_mm512_extractf64x4_pd(_mm512_castps_pd(a), 1));
   return MaxFloat32(max_ps(_mm512_castps512_ps256(a), upper));
+}
+
+static inline INTGEMM_AVX512F float horizontalSum(__m512 a) {
+  return _mm512_reduce_add_ps(a);
 }
 
 #endif
@@ -596,6 +618,26 @@ target static float MaxAbsolute(const float *begin_float, const float *end_float
     highest = max_ps(highest, reg); \
   } \
   return MaxFloat32(highest); \
+} \
+
+#define INTGEMM_GETQUANTIZERSTD(Register, target) \
+target static float GetQuantizerStd(const float *begin_float, const float *end_float, int stdnum) { \
+  /* Finds a quantizer value that is a certain number of standard deviations of the mean */ \
+  assert(end_float > begin_float); \
+  assert((end_float - begin_float) % (sizeof(Register) / sizeof(float)) == 0); \
+  size_t num_items = end_float - begin_float; \
+  const Register *begin = reinterpret_cast<const Register*>(begin_float); \
+  const Register *end = reinterpret_cast<const Register*>(end_float); \
+  Register squares = set1_ps<Register>(0); \
+  Register sums = set1_ps<Register>(0); \
+  for (; begin != end; begin++) { \
+    squares = add_ps(squares, mul_ps(*begin, *begin)); \
+    sums = add_ps(sums, *begin); \
+  } \
+  float squares_sum = horizontalSum(squares); \
+  float normal_sums = horizontalSum(sums); \
+  float mean = normal_sums/num_items; \
+  return mean + (std::sqrt((squares_sum/num_items) - (mean*mean)) * stdnum); \
 } \
 
 } // namespace intgemm

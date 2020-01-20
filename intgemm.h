@@ -101,6 +101,11 @@ struct Unsupported_8bit {
   static void Multiply8Shift(const uint8_t *, const int8_t *, Index, Index, Index, Callback) {
     throw UnsupportedCPU();
   }
+
+  static float GetQuantizerStd(const float *begin, const float *end, int stdnum) {
+    throw UnsupportedCPU();
+  }
+
   constexpr static const char *const kName = "8-bit Unsupported";
 };
 
@@ -283,6 +288,9 @@ struct Int8 {
     Int8Mult<Callback>::Multiply(A, B, A_rows, width, B_cols, callback);
   }
   
+  // Get a Quantization value that is equant to the mean of the data +N standard deviations. Use 2 by default
+  static float (*GetQuantizerStd)(const float *begin, const float *end, int stdnum);
+
   static const char *const kName;
 };
 
