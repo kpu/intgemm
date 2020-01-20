@@ -33,15 +33,8 @@ void QuantizeRef(const float *input, int8_t *output, float quant_mult, std::size
 float QuantizerStddRef(AlignedVector<float>& vals, int num_items, int stdnum) {
   float normal_sums = 0;
   float squares_sum = 0;
-  //std::for_each(vals.begin(), vals.end(), [&] (int n) {normal_sums+=n;});
-  //std::for_each(vals.begin(), vals.end(), [&] (int n) {squares_sum+=n*n;});
-  for (auto&& it : vals) {
-    normal_sums += it;
-  }
-
-  for (auto&& it : vals) {
-    squares_sum += it*it;
-  }
+  std::for_each(vals.begin(), vals.end(), [&] (float n) {normal_sums+=n;});
+  std::for_each(vals.begin(), vals.end(), [&] (float n) {squares_sum+=n*n;});
 
   float mean = normal_sums/num_items;
   return mean + (std::sqrt((squares_sum/num_items) - (mean*mean)) * stdnum);
