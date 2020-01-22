@@ -9,7 +9,7 @@ namespace intgemm {
 template <class T> class AlignedVector {
   public:
     explicit AlignedVector(std::size_t size)
-      : mem_(static_cast<T*>(aligned_alloc(64, std::max((size_t)64, size * sizeof(T))))), size_(size) {
+      : mem_(static_cast<T*>(aligned_alloc(64, (size * sizeof(T) + 63) & ~63))), size_(size) {
     }
 
     AlignedVector(const AlignedVector&) = delete;
