@@ -8,11 +8,7 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-if(APPLE)
-  set(CMAKE_CXX_STANDARD 17) # aligned_alloc doesn't work otherwise
-else(APPLE)
-  set(CMAKE_CXX_STANDARD 11)
-endif(APPLE)
+set(CMAKE_CXX_STANDARD 11)
 
 # Check if compiler supports AVX512
 try_compile(INTGEMM_COMPILER_SUPPORTS_AVX512
