@@ -124,6 +124,7 @@ typedef Unsupported_8bit AVX512VNNI_8bit;
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 // gcc 5.4.0 bizarrely supports avx512bw targets but not __builtin_cpu_supports("avx512bw").  So implement it manually.
 inline bool CheckAVX512BW() {
+  __builtin_cpu_init ();
 #ifdef __INTEL_COMPILER
   return _may_i_use_cpu_feature(_FEATURE_AVX512BW)
 #elif __GNUC__
@@ -153,6 +154,7 @@ inline bool CheckAVX512BW() {
  * unsupported otherwise
  */
 template <class T> T ChooseCPU(T avx512vnni, T avx512bw, T avx2, T ssse3, T sse2, T unsupported) {
+  __builtin_cpu_init ();
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
   if (
 #ifdef __INTEL_COMPILER
