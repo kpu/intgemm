@@ -87,7 +87,7 @@ struct Unsupported_8bit {
     throw UnsupportedCPU();
   }
   template<class Callback>
-  static void PrepareBiasFor8(const int8_t, const int8_t *, Index, Index, Index, Callback) {
+  static void PrepareBiasFor8(const int8_t *, Index, Index, Callback) {
     throw UnsupportedCPU();
   }
   static void SelectColumnsB(const int8_t *, int8_t *, Index, const Index *, const Index *) {
@@ -239,7 +239,7 @@ struct Int8Mult {
   // Multiply C = A * B, presuming A and B have been prepared.
   static void (*Multiply)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
   static void (*Multiply8Shift)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
-  static void (*PrepareBiasFor8)(const int8_t A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
+  static void (*PrepareBiasFor8)(const int8_t *B, Index width, Index B_cols, Callback callback);
 };
 
 template <typename Callback>
@@ -249,7 +249,7 @@ template <class Callback>
 void (*Int8Mult<Callback>::Multiply8Shift)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512VNNI_8bit::Multiply8Shift<Callback>, AVX512_8bit::Multiply8Shift<Callback>, AVX2_8bit::Multiply8Shift<Callback>, SSSE3_8bit::Multiply8Shift<Callback>, SSSE3_8bit::Multiply8Shift<Callback>, Unsupported_8bit::Multiply8Shift);
 
 template <class Callback>
-void (*Int8Mult<Callback>::PrepareBiasFor8)(const int8_t A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512VNNI_8bit::PrepareBiasFor8<Callback>, AVX512_8bit::PrepareBiasFor8<Callback>, AVX2_8bit::PrepareBiasFor8<Callback>, SSSE3_8bit::PrepareBiasFor8<Callback>, SSSE3_8bit::PrepareBiasFor8<Callback>, Unsupported_8bit::PrepareBiasFor8);
+void (*Int8Mult<Callback>::PrepareBiasFor8)(const int8_t *B, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512VNNI_8bit::PrepareBiasFor8<Callback>, AVX512_8bit::PrepareBiasFor8<Callback>, AVX2_8bit::PrepareBiasFor8<Callback>, SSSE3_8bit::PrepareBiasFor8<Callback>, SSSE3_8bit::PrepareBiasFor8<Callback>, Unsupported_8bit::PrepareBiasFor8);
 
 struct Int8 {
   using Integer = int8_t;
