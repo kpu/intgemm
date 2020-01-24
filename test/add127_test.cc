@@ -71,7 +71,7 @@ template <class Routine> void TestPrepareBias(Index rows, Index cols) {
 
   float unquant_mult_forprep = (-1)*(alpha)*(alpha)/(127.0f);
 
-  Routine::PrepareBiasFor8(B_prep.begin(), rows, cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, inputBias.begin(), inputBias.begin()));
+  Routine::PrepareBias(B_prep.begin(), rows, cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, inputBias.begin(), inputBias.begin()));
 
   int A_rows = 1;
   AlignedVector<int8_t> A_prep2(A_rows*rows);
@@ -136,8 +136,8 @@ template <class Routine> void TestMultiplyBiasNew(Index A_rows, Index width, Ind
   *
   */
   float unquant_mult_forprep = (-1)*(alpha)*(alpha)/(127.0f); //Minus one to invert add_ps later on
-  Routine::PrepareBiasFor8(B_prep.begin(), width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, bias.begin(), bias.begin()));
-  //Routine::PrepareBiasFor8(B.begin(), bias.begin(), alpha, width, B_cols);
+  Routine::PrepareBias(B_prep.begin(), width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, bias.begin(), bias.begin()));
+  //Routine::PrepareBias(B.begin(), bias.begin(), alpha, width, B_cols);
   Routine::Multiply8Shift(A_prep.begin(), B_prep.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult, bias.begin(), test_C.begin()));
 
   Compare(float_C.begin(), slowint_C.begin(), test_C.begin(), test_C.size(), info.str(),
@@ -190,7 +190,7 @@ template <class Routine> void TestMultiplyShiftNonShift(Index A_rows, Index widt
    * Multiply8 shift multiplication
    */
   float unquant_mult_forprep = (-1)*(alpha)*(alpha)/(127.0f); //Minus one to invert add_ps later on
-  Routine::PrepareBiasFor8(B_prep.begin(), width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, bias.begin(), bias.begin()));
+  Routine::PrepareBias(B_prep.begin(), width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, bias.begin(), bias.begin()));
   Routine::Multiply8Shift(A_prep.begin(), B_prep.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult, bias.begin(), test_C.begin()));
 
   Compare(float_C.begin(), slowint_C.begin(), test_C.begin(), test_C.size(), info.str(),
@@ -256,7 +256,7 @@ template <class Routine> void TestMultiplyShiftInt(Index A_rows, Index width, In
   
 
   //Now prepare Fast integer Bias
-  Routine::PrepareBiasFor8(B_prep.begin(), width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, bias.begin(), bias.begin()));
+  Routine::PrepareBias(B_prep.begin(), width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, bias.begin(), bias.begin()));
   Routine::Multiply8Shift(A_prep.begin(), B_prep.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult, bias.begin(), test_C.begin()));
 
   // Reference INT VERSION HERE with ADD127

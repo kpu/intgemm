@@ -112,7 +112,7 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
   }
 
   template <typename Callback>
-  INTGEMM_AVX512VNNI static void PrepareBiasFor8(const int8_t *B, Index width, Index B_cols, Callback callback) {
+  INTGEMM_AVX512VNNI static void PrepareBias(const int8_t *B, Index width, Index B_cols, Callback callback) {
     typedef __m512i Integer;
     assert(width % sizeof(Integer) == 0);
     assert(B_cols % 8 == 0);

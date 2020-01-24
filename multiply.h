@@ -197,7 +197,7 @@ template <typename Callback> target static void Multiply(const int16_t *A, const
 
 //An int8_prepbias version of the above code, using the add 127 technique
 #define INTGEMM_PREPAREBIASFOR8(Integer, target, cpu_type) \
-  template <class Callback> target static void PrepareBiasFor8(const int8_t *B, Index width, Index B_cols, Callback callback) { \
+  template <class Callback> target static void PrepareBias(const int8_t *B, Index width, Index B_cols, Callback callback) { \
   assert(width % (sizeof(Integer) / sizeof(int8_t)) == 0); \
   assert(B_cols % 8 == 0); \
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0); \
