@@ -41,6 +41,10 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/intgemm_config.h.in ${CMAKE_CURRENT_B
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
+if(INTGEMM_DONT_BUILD_TESTS)
+  return()
+endif()
+
 foreach(exe benchmark biasmultiply)
   add_executable(${exe} benchmarks/${exe}.cc intgemm.cc)
 endforeach()
