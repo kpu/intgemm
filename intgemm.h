@@ -86,6 +86,9 @@ struct Unsupported_8bit {
   static void PrepareA(const float *, int8_t *, float, Index, Index) {
     throw UnsupportedCPU();
   }
+  static void PrepareBQuantizedTransposed(const int8_t *, int8_t *, Index, Index) {
+    throw UnsupportedCPU();
+  }
   static void PrepareB(const float *, int8_t *, float, Index, Index) {
     throw UnsupportedCPU();
   }
@@ -278,6 +281,12 @@ struct Int8 {
   // Warning: the output of PrepareB depends on the CPU.
   // It will match the Multiply function on the same CPU though.
   static void (*PrepareB)(const float *input, int8_t *output, float quant_mult, Index rows, Index cols);
+
+  // Convert from a B that was already transposed (routine not provided) and
+  // quantized (e.g. with Quantize) to the CPU-dependent format used for
+  // Multiply.  This is useful for storing a quantized model on disk then in a
+  // CPU-independent fashion.
+  static void (*PrepareBQuantizedTransposed)(const int8_t *input, int8_t *output, Index rows, Index cols);
 
   // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8. 
   static void (*SelectColumnsB)(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end);

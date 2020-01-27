@@ -20,6 +20,8 @@ void (*Int8::QuantizeU)(const float *input, uint8_t *output, float quant_mult, I
 
 void (*Int8::PrepareB)(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) = ChooseCPU(AVX512VNNI_8bit::PrepareB, AVX512_8bit::PrepareB, AVX2_8bit::PrepareB, SSSE3_8bit::PrepareB, Unsupported_8bit::PrepareB, Unsupported_8bit::PrepareB);
 
+void (*Int8::PrepareBQuantizedTransposed)(const int8_t *input, int8_t *output, Index rows, Index cols) = ChooseCPU(AVX512_8bit::PrepareBQuantizedTransposed, AVX512_8bit::PrepareBQuantizedTransposed, AVX2_8bit::PrepareBQuantizedTransposed, SSSE3_8bit::PrepareBQuantizedTransposed, Unsupported_8bit::PrepareBQuantizedTransposed, Unsupported_8bit::PrepareBQuantizedTransposed);
+
 void (*Int8::SelectColumnsB)(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) = ChooseCPU(AVX512VNNI_8bit::SelectColumnsB, AVX512_8bit::SelectColumnsB, AVX2_8bit::SelectColumnsB, SSSE3_8bit::SelectColumnsB, Unsupported_8bit::SelectColumnsB, Unsupported_8bit::SelectColumnsB);
 
 const char *const Int8::kName = ChooseCPU(AVX512VNNI_8bit::kName, AVX512_8bit::kName, AVX2_8bit::kName, SSSE3_8bit::kName, Unsupported_8bit::kName, Unsupported_8bit::kName);
