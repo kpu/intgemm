@@ -83,6 +83,9 @@ struct Unsupported_8bit {
   static void QuantizeU(const float *, uint8_t *, float, Index) {
     throw UnsupportedCPU();
   }
+  static void PrepareA(const float *, int8_t *, float, Index, Index) {
+    throw UnsupportedCPU();
+  }
   static void PrepareB(const float *, int8_t *, float, Index, Index) {
     throw UnsupportedCPU();
   }
