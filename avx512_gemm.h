@@ -208,7 +208,7 @@ struct AVX512_16bit {
   }
 
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
-  INTGEMM_MULTIPLY16(__m512i, INTGEMM_AVX512BW, CPUType::AVX2)
+  INTGEMM_MULTIPLY(INTGEMM_AVX512BW, CPUType::AVX2, int16_t)
 
   constexpr static const char *const kName = "16-bit AVX512";
 
@@ -290,7 +290,7 @@ struct AVX512_8bit {
 
   // Special AVX512 implementation due to having 32 registers (so I don't have to
   // allocate registers manually) and no sign instruction.
-  template <typename Callback>
+  template <Index TileRows, Index TileColumnsMultiplier, typename Callback> \
   INTGEMM_AVX512BW static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
     typedef __m512i Register;
     //typedef __m256 Float; // For quantization we only do 8 at a time.

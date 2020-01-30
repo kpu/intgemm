@@ -156,7 +156,7 @@ struct SSSE3_8bit {
     ssse3::SelectColumnsOfB((const __m128i*)input, (__m128i*)output, rows, cols_begin, cols_end);
   }
 
-  INTGEMM_MULTIPLY8(__m128i, INTGEMM_SSSE3, CPUType::SSE2)
+  INTGEMM_MULTIPLY(INTGEMM_SSSE3, CPUType::SSE2, int8_t)
 
   INTGEMM_MULTIPLY8SHIFT(__m128i, INTGEMM_SSSE3, CPUType::SSE2)
 

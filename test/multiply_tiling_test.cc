@@ -1,0 +1,150 @@
+#include "test.h"
+#include "../aligned.h"
+#include "../avx2_gemm.h"
+#include "../avx512_gemm.h"
+#include "../sse2_gemm.h"
+#include "../ssse3_gemm.h"
+
+#include <cstring>
+#include <iostream>
+#include <math.h>
+
+namespace intgemm {
+namespace {
+
+template <typename Backend, Index TileRows, Index TileColumnsMultiplier>
+bool Test(const AlignedVector<float>& A, const AlignedVector<float>& B, Index A_rows, Index width, Index B_cols, float quant_mult) {
+  AlignedVector<typename Backend::Integer> A_quantized(A.size());
+  AlignedVector<typename Backend::Integer> B_prepared(B.size());
+  AlignedVector<int32_t> output(A_rows * B_cols);
+
+  AlignedVector<typename Backend::Integer> B_quantized(B.size());
+  AlignedVector<int32_t> reference(output.size());
+
+  Backend::PrepareA(A.begin(), A_quantized.begin(), quant_mult, A_rows, width);
+  // Backend::template PrepareB<TileColumnsMultiplier>(B.begin(), B_prepared.begin(), quant_mult, width, B_cols);
+  {
+    AlignedVector<typename Backend::Integer> B_quantized(B.size());
+    references::Quantize(B.begin(), B_quantized.begin(), quant_mult, B_quantized.size());
+    references::Rearragement(B_quantized.begin(), B_prepared.begin(), Backend::kBTileRow, TileColumnsMultiplier * 8, width, B_cols);
+  }
+  Backend::template Multiply<TileRows, TileColumnsMultiplier>(A_quantized.begin(), B_prepared.begin(), A_rows, width, B_cols, callbacks::Write<int32_t>(output.begin()));
+
+  references::Quantize(B.begin(), B_quantized.begin(), quant_mult, B_quantized.size());
+  references::Multiply(A_quantized.begin(), B_quantized.begin(), reference.begin(), A_rows, width, B_cols, [&](int32_t sum, const callbacks::OutputBufferInfo& info) {
+    return sum;
+  });
+
+  bool success = true;
+  for (std::size_t i = 0; i < output.size(); ++i) {
+    if (output[i] != reference[i]) {
+      UNSCOPED_INFO("Error at " << i << ", output = " << int(output[i]) << ", reference = " << int(reference[i]));
+      success = false;
+      break;
+    }
+  }
+  return success;
+}
+
+template <typename Backend, Index TileRows, Index TileColumnsMultiplier>
+bool TestMany(Index A_rows, Index width, Index B_cols, float quant_mult) {
+  AlignedVector<float> A(A_rows * width);
+  AlignedVector<float> B(width * B_cols);
+
+  std::generate(A.begin(), A.end(), []() {
+    static constexpr int divider = sizeof(intgemm::vector_t<Backend::kUses, typename Backend::Integer>) / sizeof(typename Backend::Integer);
+    static int value = 0;
+    return (value++) % divider;
+  });
+
+  std::generate(B.begin(), B.end(), []() {
+    static constexpr int divider = sizeof(intgemm::vector_t<Backend::kUses, typename Backend::Integer>) / sizeof(typename Backend::Integer);
+    static int value = 0;
+    return (value++) % divider;
+  });
+
+  return Test<Backend, TileRows, TileColumnsMultiplier>(A, B, A_rows, width, B_cols, quant_mult);
+}
+
+TEST_CASE("Multiply SSE2 16bit - custom tiling", "") {
+  if (kCPU < CPUType::SSE2)
+    return;
+
+  CHECK(TestMany<SSE2_16bit, 1, 1>(64, 128, 64, 1.0f));
+  CHECK(TestMany<SSE2_16bit, 2, 1>(64, 128, 64, 1.0f));
+  CHECK(TestMany<SSE2_16bit, 1, 2>(64, 128, 64, 1.0f));
+  CHECK(TestMany<SSE2_16bit, 2, 2>(64, 128, 64, 1.0f));
+  CHECK(TestMany<SSE2_16bit, 4, 1>(64, 128, 64, 1.0f));
+  CHECK(TestMany<SSE2_16bit, 1, 4>(64, 128, 64, 1.0f));
+  CHECK(TestMany<SSE2_16bit, 4, 4>(64, 128, 64, 1.0f));
+}
+
+TEST_CASE("Multiply SSSE3 8bit - custom tiling", "") {
+  if (kCPU < CPUType::SSSE3)
+    return;
+
+  CHECK(TestMany<SSSE3_8bit, 1, 1>(64, 128, 64, 1.0f));
+  CHECK(TestMany<SSSE3_8bit, 2, 1>(64, 128, 64, 1.0f));
+  CHECK(TestMany<SSSE3_8bit, 1, 2>(64, 128, 64, 1.0f));
+  CHECK(TestMany<SSSE3_8bit, 2, 2>(64, 128, 64, 1.0f));
+  CHECK(TestMany<SSSE3_8bit, 4, 1>(64, 128, 64, 1.0f));
+  CHECK(TestMany<SSSE3_8bit, 1, 4>(64, 128, 64, 1.0f));
+  CHECK(TestMany<SSSE3_8bit, 4, 4>(64, 128, 64, 1.0f));
+}
+
+TEST_CASE("Multiply AVX2 8bit - custom tiling", "") {
+  if (kCPU < CPUType::AVX2)
+    return;
+
+  CHECK(TestMany<AVX2_8bit, 1, 1>(64, 128, 64, 1.0f));
+  CHECK(TestMany<AVX2_8bit, 2, 1>(64, 128, 64, 1.0f));
+  CHECK(TestMany<AVX2_8bit, 1, 2>(64, 128, 64, 1.0f));
+  CHECK(TestMany<AVX2_8bit, 2, 2>(64, 128, 64, 1.0f));
+  CHECK(TestMany<AVX2_8bit, 4, 1>(64, 128, 64, 1.0f));
+  CHECK(TestMany<AVX2_8bit, 1, 4>(64, 128, 64, 1.0f));
+  CHECK(TestMany<AVX2_8bit, 4, 4>(64, 128, 64, 1.0f));
+}
+
+TEST_CASE("Multiply AVX2 16bit - custom tiling", "") {
+  if (kCPU < CPUType::AVX2)
+    return;
+
+  CHECK(TestMany<AVX2_16bit, 1, 1>(64, 128, 64, 1.0f));
+  CHECK(TestMany<AVX2_16bit, 2, 1>(64, 128, 64, 1.0f));
+  CHECK(TestMany<AVX2_16bit, 1, 2>(64, 128, 64, 1.0f));
+  CHECK(TestMany<AVX2_16bit, 2, 2>(64, 128, 64, 1.0f));
+  CHECK(TestMany<AVX2_16bit, 4, 1>(64, 128, 64, 1.0f));
+  CHECK(TestMany<AVX2_16bit, 1, 4>(64, 128, 64, 1.0f));
+  CHECK(TestMany<AVX2_16bit, 4, 4>(64, 128, 64, 1.0f));
+}
+
+// #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+//   TEST_CASE("Multiply AVX512BW 8bit - custom tiling", "") {
+//     if (kCPU < CPUType::AVX512BW)
+//       return;
+
+//     CHECK(TestMany<AVX512_8bit, 1, 1>(64, 128, 128, 1.0f));
+//     CHECK(TestMany<AVX512_8bit, 2, 1>(64, 128, 128, 1.0f));
+//     CHECK(TestMany<AVX512_8bit, 1, 2>(64, 128, 128, 1.0f));
+//     CHECK(TestMany<AVX512_8bit, 2, 2>(64, 128, 128, 1.0f));
+//     CHECK(TestMany<AVX512_8bit, 4, 1>(64, 128, 128, 1.0f));
+//     CHECK(TestMany<AVX512_8bit, 1, 4>(64, 128, 128, 1.0f));
+//     CHECK(TestMany<AVX512_8bit, 4, 4>(64, 128, 128, 1.0f));
+//   }
+
+//   TEST_CASE("Multiply AVX512BW 16bit - custom tiling", "") {
+//     if (kCPU < CPUType::AVX512BW)
+//       return;
+
+//     CHECK(TestMany<AVX512_16bit, 1, 1>(64, 128, 128, 1.0f));
+//     CHECK(TestMany<AVX512_16bit, 2, 1>(64, 128, 128, 1.0f));
+//     CHECK(TestMany<AVX512_16bit, 1, 2>(64, 128, 128, 1.0f));
+//     CHECK(TestMany<AVX512_16bit, 2, 2>(64, 128, 128, 1.0f));
+//     CHECK(TestMany<AVX512_16bit, 4, 1>(64, 128, 128, 1.0f));
+//     CHECK(TestMany<AVX512_16bit, 1, 4>(64, 128, 128, 1.0f));
+//     CHECK(TestMany<AVX512_16bit, 4, 4>(64, 128, 128, 1.0f));
+//   }
+// #endif
+
+}
+}

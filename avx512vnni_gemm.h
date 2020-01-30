@@ -9,7 +9,7 @@
 namespace intgemm {
 
 struct AVX512VNNI_8bit : public AVX512_8bit {
-  template <typename Callback>
+  template <Index TileRows, Index TileColumnsMultiplier, typename Callback> \
   INTGEMM_AVX512VNNI static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
     typedef __m512i Register;
     assert(width % sizeof(Register) == 0);
@@ -70,7 +70,7 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
     }
   }
 
-  template <typename Callback>
+  template <Index TileRows, Index TileColumnsMultiplier, typename Callback> \
   INTGEMM_AVX512VNNI static void Multiply8Shift(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
     typedef __m512i Register;
     assert(width % sizeof(Register) == 0);

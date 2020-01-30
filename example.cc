@@ -52,7 +52,7 @@ int main() {
 
     AlignedVector<float> C(A_rows * B_cols);
     // Do the actual multiply.
-    intgemm::Int16::Multiply(A_prepared.begin(), B_prepared.begin(), A_rows, width, B_cols, intgemm::callbacks::UnquantizeAndWrite(1.0 / (quant_mult * quant_mult), C.begin()));
+    intgemm::Int16::template Multiply<1, 1>(A_prepared.begin(), B_prepared.begin(), A_rows, width, B_cols, intgemm::callbacks::UnquantizeAndWrite(1.0 / (quant_mult * quant_mult), C.begin()));
     // Sanity check.  C will be row major.
     assert(fabs(C[0] - top_left_reference) < 0.05);
   }
@@ -71,7 +71,7 @@ int main() {
 
     AlignedVector<float> C(A_rows * B_cols);
     // Do the actual multiply.
-    intgemm::Int8::Multiply(A_prepared.begin(), B_prepared.begin(), A_rows, width, B_cols, intgemm::callbacks::UnquantizeAndWrite(1.0 / (quant_mult * quant_mult), C.begin()));
+    intgemm::Int8::template Multiply<1, 1>(A_prepared.begin(), B_prepared.begin(), A_rows, width, B_cols, intgemm::callbacks::UnquantizeAndWrite(1.0 / (quant_mult * quant_mult), C.begin()));
     // Sanity check.  C will be row major.
     assert(fabs(C[0] - top_left_reference) < 0.05);
   }

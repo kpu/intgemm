@@ -75,7 +75,7 @@ struct Unsupported_16bit {
   static void SelectColumnsB(const int16_t *, int16_t *, Index, const Index *, const Index *) {
     throw UnsupportedCPU();
   }
-  template <typename Callback>
+  template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
   static void Multiply(const int16_t *, const int16_t *, Index, Index, Index, Callback) {
     throw UnsupportedCPU();
   }
@@ -108,11 +108,11 @@ struct Unsupported_8bit {
   static void SelectColumnsB(const int8_t *, int8_t *, Index, const Index *, const Index *) {
     throw UnsupportedCPU();
   }
-  template <typename Callback>
+  template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
   static void Multiply(const int8_t *, const int8_t *, Index, Index, Index, Callback) {
     throw UnsupportedCPU();
   }
-  template<class Callback>
+  template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
   static void Multiply8Shift(const uint8_t *, const int8_t *, Index, Index, Index, Callback) {
     throw UnsupportedCPU();
   }
@@ -246,22 +246,25 @@ struct Int8 {
   static void (*SelectColumnsB)(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
 
   // Multiply C = A * B, presuming A and B have been prepared.
-  template <typename Callback>
+  template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
   static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
-    MultiplyImpl<Callback>::run(A, B, A_rows, width, B_cols, callback);
+    MultiplyImpl<TileRows, TileColumnsMultiplier, Callback>::run(A, B, A_rows, width, B_cols, callback);
   }
   
   static const char *const kName;
 
 private:
-  template <typename Callback>
+  template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
   struct MultiplyImpl {
     static void (*run)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
   };
 };
 
-template <typename Callback>
-void (*Int8::MultiplyImpl<Callback>::run)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512VNNI_8bit::Multiply<Callback>, AVX512_8bit::Multiply<Callback>, AVX2_8bit::Multiply<Callback>, SSSE3_8bit::Multiply<Callback>, SSSE3_8bit::Multiply<Callback>, Unsupported_8bit::Multiply);
+template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
+void (*Int8::MultiplyImpl<TileRows, TileColumnsMultiplier, Callback>::run)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(
+  AVX512VNNI_8bit::Multiply<TileRows, TileColumnsMultiplier, Callback>, AVX512_8bit::Multiply<TileRows, TileColumnsMultiplier, Callback>,
+  AVX2_8bit::Multiply<TileRows, TileColumnsMultiplier, Callback>, SSSE3_8bit::Multiply<TileRows, TileColumnsMultiplier, Callback>,
+  SSSE3_8bit::Multiply<TileRows, TileColumnsMultiplier, Callback>, Unsupported_8bit::Multiply<TileRows, TileColumnsMultiplier, Callback>);
 
 /*
  * 8-bit matrix multiplication with shifting A by 127
@@ -294,9 +297,9 @@ struct Int8Shift {
 
   // A slightly faster version compared to the Int8 one (assuming a bias is used) because of better handling of the sign bit
   // Multiply C = A * B + Bias, presuming A, B and Bias have all been prepared (for A, PrepareAnew should be used
-  template<class Callback>
+  template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
   static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
-    MultiplyImpl<Callback>::run((const uint8_t *)A, B, A_rows, width, B_cols, callback);
+    MultiplyImpl<TileRows, TileColumnsMultiplier, Callback>::run((const uint8_t *)A, B, A_rows, width, B_cols, callback);
   }
 
   // This function prepares the bias for the Multiply routine that does unsigned * signed multiplication.
@@ -312,7 +315,7 @@ struct Int8Shift {
   static const char *const kName;
 
 private:
-  template <typename Callback>
+  template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
   struct MultiplyImpl {
     static void (*run)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
   };
@@ -323,8 +326,11 @@ private:
   };
 };
 
-template <class Callback>
-void (*Int8Shift::MultiplyImpl<Callback>::run)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512VNNI_8bit::Multiply8Shift<Callback>, AVX512_8bit::Multiply8Shift<Callback>, AVX2_8bit::Multiply8Shift<Callback>, SSSE3_8bit::Multiply8Shift<Callback>, SSSE3_8bit::Multiply8Shift<Callback>, Unsupported_8bit::Multiply8Shift);
+template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
+void (*Int8Shift::MultiplyImpl<TileRows, TileColumnsMultiplier, Callback>::run)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(
+  AVX512VNNI_8bit::Multiply8Shift<TileRows, TileColumnsMultiplier, Callback>, AVX512_8bit::Multiply8Shift<TileRows, TileColumnsMultiplier, Callback>,
+  AVX2_8bit::Multiply8Shift<TileRows, TileColumnsMultiplier, Callback>, SSSE3_8bit::Multiply8Shift<TileRows, TileColumnsMultiplier, Callback>,
+  SSSE3_8bit::Multiply8Shift<TileRows, TileColumnsMultiplier, Callback>, Unsupported_8bit::Multiply8Shift<TileRows, TileColumnsMultiplier, Callback>);
 
 template <class Callback>
 void (*Int8Shift::PrepareBiasImpl<Callback>::run)(const int8_t *B, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512VNNI_8bit::PrepareBias<Callback>, AVX512_8bit::PrepareBias<Callback>, AVX2_8bit::PrepareBias<Callback>, SSSE3_8bit::PrepareBias<Callback>, SSSE3_8bit::PrepareBias<Callback>, Unsupported_8bit::PrepareBias);
@@ -368,22 +374,25 @@ struct Int16 {
   static void (*SelectColumnsB)(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
 
   // Multiply C = A * B, presuming A and B have been prepared.
-  template <typename Callback>
+  template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
   static void Multiply(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
-    MultiplyImpl<Callback>::run(A, B, A_rows, width, B_cols, callback);
+    MultiplyImpl<TileRows, TileColumnsMultiplier, Callback>::run(A, B, A_rows, width, B_cols, callback);
   }
 
   static const char *const kName;
 
 private:
-  template <typename Callback>
+  template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
   struct MultiplyImpl {
     static void (*run)(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
   };
 };
 
-template <typename Callback>
-void (*Int16::MultiplyImpl<Callback>::run)(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512_16bit::Multiply<Callback> /*TODO VNNI 16-bit. */, AVX512_16bit::Multiply<Callback>, AVX2_16bit::Multiply<Callback>, SSE2_16bit::Multiply<Callback>, SSE2_16bit::Multiply<Callback>, Unsupported_16bit::Multiply);
+template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
+void (*Int16::MultiplyImpl<TileRows, TileColumnsMultiplier, Callback>::run)(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(
+  AVX512_16bit::Multiply<TileRows, TileColumnsMultiplier, Callback> /*TODO VNNI 16-bit. */, AVX512_16bit::Multiply<TileRows, TileColumnsMultiplier, Callback>,
+  AVX2_16bit::Multiply<TileRows, TileColumnsMultiplier, Callback>, SSE2_16bit::Multiply<TileRows, TileColumnsMultiplier, Callback>,
+  SSE2_16bit::Multiply<TileRows, TileColumnsMultiplier, Callback>, Unsupported_16bit::Multiply<TileRows, TileColumnsMultiplier, Callback>);
 
 extern const CPUType kCPU;
 
