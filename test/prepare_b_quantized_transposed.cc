@@ -30,7 +30,7 @@ bool Test(const AlignedVector<typename Backend::Integer>& input, Index rows, Ind
   bool success = true;
 
   AlignedVector<typename Backend::Integer> output(input.size());
-  Backend::PrepareBQuantizedTransposed(input.begin(), output.begin(), rows, cols);
+  Backend::PrepareBQuantizedTransposed(input.begin(), output.begin(), cols, rows);
 
   AlignedVector<typename Backend::Integer> reference(input.size());
   PrepareBQuantizedTransposedRef<Backend>(input.begin(), reference.begin(), rows, cols);

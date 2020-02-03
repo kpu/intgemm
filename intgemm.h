@@ -277,7 +277,7 @@ struct Int8 {
   // Multiply floats by quant_mult then convert to 8-bit integers with saturation.
   // A version that adds 127 to each number, making sure that all numbers are positive
   static void (*QuantizeU)(const float *input, uint8_t *output, float quant_mult, Index size);
-  
+
   // Warning: the output of PrepareB depends on the CPU.
   // It will match the Multiply function on the same CPU though.
   static void (*PrepareB)(const float *input, int8_t *output, float quant_mult, Index rows, Index cols);
@@ -286,9 +286,9 @@ struct Int8 {
   // quantized (e.g. with Quantize) to the CPU-dependent format used for
   // Multiply.  This is useful for storing a quantized model on disk then in a
   // CPU-independent fashion.
-  static void (*PrepareBQuantizedTransposed)(const int8_t *input, int8_t *output, Index rows, Index cols);
+  static void (*PrepareBQuantizedTransposed)(const int8_t *input, int8_t *output, Index inner, Index B_untransposed_cols);
 
-  // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8. 
+  // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8.
   static void (*SelectColumnsB)(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
 
   // Multiply C = A * B, presuming A and B have been prepared.
