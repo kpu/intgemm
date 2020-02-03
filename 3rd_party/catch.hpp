@@ -7728,7 +7728,8 @@ namespace detail {
         }
     };
 
-    template<typename DerivedT, typename T>
+    template<typename DerivedT>
+    template<typename T>
     auto ComposableParserImpl<DerivedT>::operator|( T const &other ) const -> Parser {
         return Parser() | static_cast<DerivedT const &>( *this ) | other;
     }
