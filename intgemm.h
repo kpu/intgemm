@@ -66,6 +66,11 @@ struct Unsupported_16bit {
   static void PrepareB(const float *, int16_t *, float, Index, Index) {
     throw UnsupportedCPU();
   }
+
+  static void PrepareBQuantizedTransposed(const int16_t *, int16_t *, Index, Index) {
+    throw UnsupportedCPU();
+  }
+
   static void SelectColumnsB(const int16_t *, int16_t *, Index, const Index *, const Index *) {
     throw UnsupportedCPU();
   }
@@ -226,6 +231,12 @@ struct Int16 {
   // Warning: the output of PrepareB depends on the CPU.
   // It will match the Multiply function on the same CPU though.
   static void (*PrepareB)(const float *input, int16_t *output, float quant_mult, Index rows, Index cols);
+
+  // Convert from a B that was already transposed (routine not provided) and
+  // quantized (e.g. with Quantize) to the CPU-dependent format used for
+  // Multiply.  This is useful for storing a quantized model on disk then in a
+  // CPU-independent fashion.
+  static void (*PrepareBQuantizedTransposed)(const int16_t *input, int16_t *output, Index inner, Index B_untransposed_cols);
 
   // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8. 
   static void (*SelectColumnsB)(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end);

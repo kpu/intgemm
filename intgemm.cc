@@ -10,6 +10,8 @@ void (*Int16::Quantize)(const float *input, int16_t *output, float quant_mult, I
 
 void (*Int16::PrepareB)(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) = ChooseCPU(AVX512_16bit::PrepareB, AVX512_16bit::PrepareB, AVX2_16bit::PrepareB, SSE2_16bit::PrepareB, SSE2_16bit::PrepareB, Unsupported_16bit::PrepareB);
 
+void (*Int16::PrepareBQuantizedTransposed)(const int16_t *input, int16_t *output, Index inner, Index B_untransposed_cols) = ChooseCPU(AVX512_16bit::PrepareBQuantizedTransposed, AVX512_16bit::PrepareBQuantizedTransposed, AVX2_16bit::PrepareBQuantizedTransposed, SSE2_16bit::PrepareBQuantizedTransposed, SSE2_16bit::PrepareBQuantizedTransposed, Unsupported_16bit::PrepareBQuantizedTransposed);
+
 void (*Int16::SelectColumnsB)(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) = ChooseCPU(AVX512_16bit::SelectColumnsB, AVX512_16bit::SelectColumnsB, AVX2_16bit::SelectColumnsB, SSE2_16bit::SelectColumnsB, SSE2_16bit::SelectColumnsB, Unsupported_16bit::SelectColumnsB);
 
 const char *const Int16::kName = ChooseCPU(AVX512_16bit::kName, AVX512_16bit::kName, AVX2_16bit::kName, SSE2_16bit::kName, SSE2_16bit::kName, Unsupported_16bit::kName);
