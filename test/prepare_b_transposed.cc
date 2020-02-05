@@ -31,7 +31,7 @@ bool Test(const AlignedVector<float>& input, Index rows, Index cols, float quant
   bool success = true;
 
   AlignedVector<typename Backend::Integer> output(input.size());
-  Backend::PrepareBTransposed(input.begin(), output.begin(), quant_mult, rows, cols);
+  Backend::PrepareBTransposed(input.begin(), output.begin(), quant_mult, cols, rows);
 
   AlignedVector<typename Backend::Integer> reference(input.size());
   PrepareBTransposedRef<Backend>(input.begin(), reference.begin(), quant_mult, rows, cols);

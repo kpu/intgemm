@@ -263,7 +263,7 @@ target static inline void PrepareBQuantizedTransposed(const Integer* input, Inte
  * Cols has to be a multiple of sizeof(Register) / sizeof(float).
  */
 #define INTGEMM_PREPARE_B_TRANSPOSED(target, Quantizer, integer) \
-target static inline void PrepareBTransposed(const float* input, integer* output, float quant_mult, Index rows, Index cols) { \
+target static inline void PrepareBTransposed(const float* input, integer* output, float quant_mult, Index cols, Index rows) { \
   using Register = typename Quantizer::Integer; \
   const Index RegisterElemsInt = sizeof(Register) / sizeof(integer); \
   const Index RegisterElemsFloat = sizeof(Register) / sizeof(float); \
