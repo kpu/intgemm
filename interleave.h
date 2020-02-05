@@ -238,6 +238,8 @@ target static inline void PrepareB(const float *input, int16_t *output_shadow, f
  * Prepare B matrix.
  * B matrix has to be transposed and quantized.
  * Cols has to be a multiple of sizeof(Register) / sizeof(Integer).
+ *
+ * cols and rows describe size of transposed B.
  */
 #define INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(target, cpu_type, Integer) \
 target static inline void PrepareBQuantizedTransposed(const Integer* input, Integer* output, Index cols, Index rows) { \
@@ -261,6 +263,8 @@ target static inline void PrepareBQuantizedTransposed(const Integer* input, Inte
  * Prepare B matrix.
  * B matrix has to be transposed.
  * Cols has to be a multiple of sizeof(Register) / sizeof(float).
+ *
+ * cols and rows describe size of transposed B.
  */
 #define INTGEMM_PREPARE_B_TRANSPOSED(target, Quantizer, integer) \
 target static inline void PrepareBTransposed(const float* input, integer* output, float quant_mult, Index cols, Index rows) { \

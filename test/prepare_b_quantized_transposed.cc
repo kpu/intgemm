@@ -13,27 +13,27 @@ namespace intgemm {
 namespace {
 
 template <typename Backend>
-void PrepareBQuantizedTransposedRef(const typename Backend::Integer* input, typename Backend::Integer* output, Index rows, Index cols) {
+void PrepareBQuantizedTransposedRef(const typename Backend::Integer* input, typename Backend::Integer* output, Index B_transposed_cols, Index B_transposed_rows) {
   using vec_t = intgemm::vector_t<Backend::kUses, typename Backend::Integer>;
   constexpr Index vec_len = sizeof(vec_t) / sizeof(typename Backend::Integer);
 
   auto output_it = output;
-  for (Index r = 0; r < rows; r += 8)
-    for (Index c = 0; c < cols; c += vec_len)
+  for (Index r = 0; r < B_transposed_rows; r += 8)
+    for (Index c = 0; c < B_transposed_cols; c += vec_len)
       for (Index ri = 0; ri < 8; ++ri)
         for (Index ci = 0; ci < vec_len; ++ci)
-          *output_it++ = input[(r + ri) * cols + c + ci];
+          *output_it++ = input[(r + ri) * B_transposed_cols + c + ci];
 }
 
 template <typename Backend>
-bool Test(const AlignedVector<typename Backend::Integer>& input, Index rows, Index cols) {
+bool Test(const AlignedVector<typename Backend::Integer>& input, Index B_rows, Index B_cols) {
   bool success = true;
 
   AlignedVector<typename Backend::Integer> output(input.size());
-  Backend::PrepareBQuantizedTransposed(input.begin(), output.begin(), cols, rows);
+  Backend::PrepareBQuantizedTransposed(input.begin(), output.begin(), B_rows, B_cols);
 
   AlignedVector<typename Backend::Integer> reference(input.size());
-  PrepareBQuantizedTransposedRef<Backend>(input.begin(), reference.begin(), rows, cols);
+  PrepareBQuantizedTransposedRef<Backend>(input.begin(), reference.begin(), B_rows, B_cols);
 
   for (std::size_t i = 0; i < output.size(); ++i) {
     if (output[i] != reference[i]) {
@@ -46,10 +46,8 @@ bool Test(const AlignedVector<typename Backend::Integer>& input, Index rows, Ind
 }
 
 template <typename Backend>
-bool TestMany() {
-  const static Index rows = 128;
-  const static Index cols = 128;
-  AlignedVector<typename Backend::Integer> input(rows * cols);
+bool TestMany(Index B_rows, Index B_cols) {
+  AlignedVector<typename Backend::Integer> input(B_rows * B_cols);
 
   std::generate(input.begin(), input.end(), []() {
     static constexpr int divider = sizeof(intgemm::vector_t<Backend::kUses, typename Backend::Integer>) / sizeof(typename Backend::Integer);
@@ -57,29 +55,29 @@ bool TestMany() {
     return (value++) % divider;
   });
 
-  return Test<Backend>(input, rows, cols);
+  return Test<Backend>(input, B_rows, B_cols);
 }
 
 TEST_CASE("PrepareBQuantizedTransposed SSE2", "") {
   if (kCPU < CPUType::SSE2)
     return;
 
-  CHECK(TestMany<SSE2_16bit>());
+  CHECK(TestMany<SSE2_16bit>(32, 128));
 }
 
 TEST_CASE("PrepareBQuantizedTransposed SSSE3", "") {
   if (kCPU < CPUType::SSSE3)
     return;
 
-  CHECK(TestMany<SSSE3_8bit>());
+  CHECK(TestMany<SSSE3_8bit>(32, 128));
 }
 
 TEST_CASE("PrepareBQuantizedTransposed AVX2", "") {
   if (kCPU < CPUType::AVX2)
     return;
 
-  CHECK(TestMany<AVX2_8bit>());
-  CHECK(TestMany<AVX2_16bit>());
+  CHECK(TestMany<AVX2_8bit>(32, 128));
+  CHECK(TestMany<AVX2_16bit>(32, 128));
 }
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
@@ -87,8 +85,8 @@ TEST_CASE("PrepareBQuantizedTransposed AVX2", "") {
     if (kCPU < CPUType::AVX512BW)
       return;
 
-    CHECK(TestMany<AVX512_8bit>());
-    CHECK(TestMany<AVX512_16bit>());
+    CHECK(TestMany<AVX512_8bit>(32, 128));
+    CHECK(TestMany<AVX512_16bit>(32, 128));
   }
 #endif
 
