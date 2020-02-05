@@ -166,7 +166,7 @@ using MakeStaticLoopIterator = StaticLoopIterator<0, Ns...>;
  *   struct Test {
  *     template <typename Iterator, typename Number>
  *     static inline void body(const char* text, Number number) {
- *       std::cout << "[" << Iterator::template get<0>() << ", " << Iterator::template get<1>() << "] " << text << " " << number << std::endl;
+ *       std::cout << "[" << Iterator::template I<0>() << ", " << Iterator::template I<1>() << "] " << text << " " << number << std::endl;
  *     }
  *   };
  *
