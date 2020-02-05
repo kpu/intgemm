@@ -66,11 +66,12 @@ struct Unsupported_16bit {
   static void PrepareB(const float *, int16_t *, float, Index, Index) {
     throw UnsupportedCPU();
   }
-
   static void PrepareBQuantizedTransposed(const int16_t *, int16_t *, Index, Index) {
     throw UnsupportedCPU();
   }
-
+  static void PrepareBTransposed(const float *, int16_t *, float, Index, Index) {
+    throw UnsupportedCPU();
+  }
   static void SelectColumnsB(const int16_t *, int16_t *, Index, const Index *, const Index *) {
     throw UnsupportedCPU();
   }
@@ -92,6 +93,9 @@ struct Unsupported_8bit {
     throw UnsupportedCPU();
   }
   static void PrepareBQuantizedTransposed(const int8_t *, int8_t *, Index, Index) {
+    throw UnsupportedCPU();
+  }
+  static void PrepareBTransposed(const float *, int8_t *, float, Index, Index) {
     throw UnsupportedCPU();
   }
   static void PrepareB(const float *, int8_t *, float, Index, Index) {
@@ -238,6 +242,11 @@ struct Int16 {
   // CPU-independent fashion.
   static void (*PrepareBQuantizedTransposed)(const int16_t *input, int16_t *output, Index inner, Index B_untransposed_cols);
 
+  // Convert from a B that was already transposed (routine not provided) to
+  // the CPU-dependent format used for Multiply.  This is useful for storing
+  // a quantized model on disk then in a CPU-independent fashion.
+  static void (*PrepareBTransposed)(const float *input, int16_t *output, float quant_mul, Index inner, Index B_untransposed_cols);
+
   // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8. 
   static void (*SelectColumnsB)(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
 
@@ -298,6 +307,11 @@ struct Int8 {
   // Multiply.  This is useful for storing a quantized model on disk then in a
   // CPU-independent fashion.
   static void (*PrepareBQuantizedTransposed)(const int8_t *input, int8_t *output, Index inner, Index B_untransposed_cols);
+
+  // Convert from a B that was already transposed (routine not provided) to
+  // the CPU-dependent format used for Multiply.  This is useful for storing
+  // a quantized model on disk then in a CPU-independent fashion.
+  static void (*PrepareBTransposed)(const float *input, int8_t *output, float quant_mul, Index inner, Index B_untransposed_cols);
 
   // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8.
   static void (*SelectColumnsB)(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
