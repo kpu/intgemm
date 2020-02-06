@@ -75,6 +75,15 @@ class QuantizeTile16 {
     /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
     INTGEMM_AVX512BW explicit QuantizeTile16(float mult) : mult_reg_(_mm512_set1_ps(mult)) {}
 
+    INTGEMM_AVX512BW Integer ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) {
+      auto input0 = input;
+      auto input1 = input + 16 + (cols_left <= 16 ? cols * (row_step - 1) : 0);
+      auto g0 = QuantizerGrabHalves(input0, input1, mult_reg_);
+      auto g1 = QuantizerGrabHalves(input0 + 8, input1 + 8, mult_reg_);
+      auto packed = _mm512_packs_epi32(g0, g1);
+      return _mm512_permutex_epi64(packed, 0xd8 /* 0, 2, 1, 3 */);
+    }
+
     INTGEMM_AVX512BW inline __m512i ForReshape(const float *input, Index cols) {
       __m512i g0 = QuantizerGrabHalves(input, input + 16 * cols, mult_reg_);
       __m512i g1 = QuantizerGrabHalves(input + 8 * cols, input + 24 * cols, mult_reg_);
@@ -93,6 +102,33 @@ class QuantizeTile8 {
 
     /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
     INTGEMM_AVX512BW explicit QuantizeTile8(float mult) : mult_reg_(_mm512_set1_ps(mult)) {}
+
+    INTGEMM_AVX512BW Integer ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) {
+      static const __m512i neg127 = _mm512_set1_epi8(-127);
+      static const __m512i shuffle_param = _mm512_set_epi32(15, 11, 7, 3, 14, 10, 6, 2, 13, 9, 5, 1, 12, 8, 4, 0);
+
+      const float* inputs[4];
+      for (int i = 0; i < sizeof(inputs) / sizeof(inputs[0]); ++i) {
+        while (cols_left < sizeof(Integer) / sizeof(float)) {
+          input += cols * (row_step - 1);
+          cols_left += cols;
+        }
+        inputs[i] = input;
+        input += sizeof(Integer) / sizeof(float);
+        cols_left -= sizeof(Integer) / sizeof(float);
+      }
+
+      auto g0 = QuantizerGrab(inputs[0], mult_reg_);
+      auto g1 = QuantizerGrab(inputs[1], mult_reg_);
+      auto g2 = QuantizerGrab(inputs[2], mult_reg_);
+      auto g3 = QuantizerGrab(inputs[3], mult_reg_);
+
+      auto packed0 = _mm512_packs_epi32(g0, g1);
+      auto packed1 = _mm512_packs_epi32(g2, g3);
+      auto packed = _mm512_packs_epi16(packed0, packed1);
+      packed = _mm512_max_epi8(packed, neg127);
+      return _mm512_permutexvar_epi32(shuffle_param, packed);
+    }
 
     INTGEMM_AVX512BW inline __m512i ForReshape(const float *input, Index cols) {
       // TODO: try alternative: _mm512_cvtsepi32_epi8 ?
@@ -151,7 +187,7 @@ struct AVX512_16bit {
       _mm512_mask_cvtsepi32_storeu_epi16(output, 0xffff, avx512f::QuantizerGrab(input, quant_mult_reg));
     }
   }
-  
+
 
   // Tile size for B; B must be a multiple of this block size.
   static const Index kBTileRow = 32;
@@ -164,12 +200,13 @@ struct AVX512_16bit {
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
   INTGEMM_PREPARE_B_16(INTGEMM_AVX512BW, avx512f::QuantizeTile16)
   INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(INTGEMM_AVX512BW, CPUType::AVX512BW, int16_t)
+  INTGEMM_PREPARE_B_TRANSPOSED(INTGEMM_AVX512BW, avx512f::QuantizeTile16, int16_t)
 
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
   INTGEMM_AVX512BW static void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     avx512f::SelectColumnsOfB((const __m512i*)input, (__m512i*)output, rows * 2, cols_begin, cols_end);
   }
-  
+
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
   INTGEMM_MULTIPLY16(__m512i, INTGEMM_AVX512BW, CPUType::AVX2)
 
@@ -244,6 +281,7 @@ struct AVX512_8bit {
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
   INTGEMM_PREPARE_B_8(INTGEMM_AVX512BW, avx512f::QuantizeTile8)
   INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(INTGEMM_AVX512BW, CPUType::AVX512BW, int8_t)
+  INTGEMM_PREPARE_B_TRANSPOSED(INTGEMM_AVX512BW, avx512f::QuantizeTile8, int8_t)
 
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
   INTGEMM_AVX512BW static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
