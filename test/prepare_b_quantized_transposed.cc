@@ -85,8 +85,8 @@ TEST_CASE("PrepareBQuantizedTransposed AVX2", "") {
     if (kCPU < CPUType::AVX512BW)
       return;
 
-    CHECK(TestMany<AVX512_8bit>(32, 128));
-    CHECK(TestMany<AVX512_16bit>(32, 128));
+    CHECK(TestMany<AVX512_8bit>(64, 128));
+    CHECK(TestMany<AVX512_16bit>(64, 128));
   }
 #endif
 
