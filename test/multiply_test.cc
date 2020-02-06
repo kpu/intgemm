@@ -54,17 +54,6 @@ INTGEMM_SSSE3 TEST_CASE("Transpose 8", "[transpose]") {
   }
 }
 
-template <class T> std::string PrintMatrix(const T *mem, Index rows, Index cols) {
-  std::ostringstream out;
-  for (Index r = 0; r < rows; ++r) {
-    for (Index c = 0; c < cols; ++c) {
-      out << std::setw(4) << (int64_t) mem[r * cols + c] << ' ';
-    }
-    out << '\n';
-  }
-  return out.str();
-}
-
 template <class Routine> void TestPrepare(Index rows = 32, Index cols = 16) {
   std::mt19937 gen;
   // Go somewhat out of range too.
@@ -306,7 +295,7 @@ template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_co
     return sum;
   });
 
-  Compare(float_C.begin(), slowint_C.begin(), test_C.begin(), test_C.size(), info.str(),
+  CompareMSE(float_C.begin(), slowint_C.begin(), test_C.begin(), test_C.size(), info.str(),
    int_tolerance, float_tolerance, MSE_float_tolerance, MSE_int_tolerance);
 }
 
@@ -359,7 +348,7 @@ template <class Routine> void TestMultiplyBias(Index A_rows, Index width, Index 
     return sum + bias[info.col_idx];
   });
 
-  Compare(float_C.begin(), slowint_C.begin(), test_C.begin(), test_C.size(), info.str(),
+  CompareMSE(float_C.begin(), slowint_C.begin(), test_C.begin(), test_C.size(), info.str(),
    int_tolerance, float_tolerance, MSE_float_tolerance, MSE_int_tolerance);
 }
 

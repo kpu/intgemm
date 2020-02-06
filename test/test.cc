@@ -7,7 +7,7 @@ int main(int argc, char ** argv) {
 
 namespace intgemm {
 
-void Compare(const float *float_ref, const float *int_ref, const float *int_test, std::size_t size, std::string test_info,
+void CompareMSE(const float *float_ref, const float *int_ref, const float *int_test, std::size_t size, std::string test_info,
              float int_tolerance, float float_tolerance, float MSE_float_tolerance, float MSE_int_tolerance) {
   float int_sum = 0.0, float_sum = 0.0;
   for (std::size_t i = 0; i < size; ++i) {
