@@ -26,20 +26,20 @@ class QuantizeTile8 {
 
     INTGEMM_SSSE3 explicit QuantizeTile8(float mult) : mult_reg_(_mm_set1_ps(mult)) {}
 
-    INTGEMM_SSSE3 inline __m128i ForReshape(const float *input, Index cols) {
+    INTGEMM_SSSE3 inline __m128i ForReshape(const float *input, Index cols) const {
       // Skip a row.
       return Tile(input, input + 4, input + 2 * cols, input + 2 * cols + 4);
     }
 
-    INTGEMM_SSSE3 inline __m128i Consecutive(const float *input) {
+    INTGEMM_SSSE3 inline __m128i Consecutive(const float *input) const {
       return Tile(input, input + 4, input + 8, input + 12);
     }
 
-    INTGEMM_SSSE3 inline __m128i ConsecutiveU(const float *input) {
+    INTGEMM_SSSE3 inline __m128i ConsecutiveU(const float *input) const {
       return TileU(input, input + 4, input + 8, input + 12);
     }
 
-    INTGEMM_SSSE3 Integer ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) {
+    INTGEMM_SSSE3 Integer ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) const {
       const float* inputs[4];
       for (int i = 0; i < sizeof(inputs) / sizeof(inputs[0]); ++i) {
         while (cols_left < sizeof(Integer) / sizeof(float)) {
@@ -55,7 +55,7 @@ class QuantizeTile8 {
 
   private:
     // Quantize 16xfloat into 16xint8_t
-    INTGEMM_SSSE3 inline __m128i Tile(const float *input0, const float *input1, const float *input2, const float *input3) {
+    INTGEMM_SSSE3 inline __m128i Tile(const float *input0, const float *input1, const float *input2, const float *input3) const {
       const __m128i neg128 = _mm_set1_epi8(-128);
       __m128i g0 = QuantizerGrab(input0, mult_reg_);
       __m128i g1 = QuantizerGrab(input1, mult_reg_);
@@ -77,7 +77,7 @@ class QuantizeTile8 {
       // No permute needed.  packs is in order for SSE.
     }
 
-    INTGEMM_SSSE3 inline __m128i TileU(const float *input0, const float *input1, const float *input2, const float *input3) {
+    INTGEMM_SSSE3 inline __m128i TileU(const float *input0, const float *input1, const float *input2, const float *input3) const {
       const __m128i neg128 = _mm_set1_epi8(-128);
       const __m128i pos127 = _mm_set1_epi8(127);
       __m128i g0 = QuantizerGrab(input0, mult_reg_);

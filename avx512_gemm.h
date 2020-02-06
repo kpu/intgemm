@@ -75,7 +75,7 @@ class QuantizeTile16 {
     /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
     INTGEMM_AVX512BW explicit QuantizeTile16(float mult) : mult_reg_(_mm512_set1_ps(mult)) {}
 
-    INTGEMM_AVX512BW Integer ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) {
+    INTGEMM_AVX512BW Integer ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) const {
       auto input0 = input;
       auto input1 = input + 16 + (cols_left <= 16 ? cols * (row_step - 1) : 0);
       auto g0 = QuantizerGrabHalves(input0, input1, mult_reg_);
@@ -84,7 +84,7 @@ class QuantizeTile16 {
       return _mm512_permutex_epi64(packed, 0xd8 /* 0, 2, 1, 3 */);
     }
 
-    INTGEMM_AVX512BW inline __m512i ForReshape(const float *input, Index cols) {
+    INTGEMM_AVX512BW inline __m512i ForReshape(const float *input, Index cols) const {
       __m512i g0 = QuantizerGrabHalves(input, input + 16 * cols, mult_reg_);
       __m512i g1 = QuantizerGrabHalves(input + 8 * cols, input + 24 * cols, mult_reg_);
       __m512i packed = _mm512_packs_epi32(g0, g1);
@@ -103,7 +103,7 @@ class QuantizeTile8 {
     /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
     INTGEMM_AVX512BW explicit QuantizeTile8(float mult) : mult_reg_(_mm512_set1_ps(mult)) {}
 
-    INTGEMM_AVX512BW Integer ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) {
+    INTGEMM_AVX512BW Integer ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) const {
       static const __m512i neg127 = _mm512_set1_epi8(-127);
       static const __m512i shuffle_param = _mm512_set_epi32(15, 11, 7, 3, 14, 10, 6, 2, 13, 9, 5, 1, 12, 8, 4, 0);
 
@@ -130,7 +130,7 @@ class QuantizeTile8 {
       return _mm512_permutexvar_epi32(shuffle_param, packed);
     }
 
-    INTGEMM_AVX512BW inline __m512i ForReshape(const float *input, Index cols) {
+    INTGEMM_AVX512BW inline __m512i ForReshape(const float *input, Index cols) const {
       // TODO: try alternative: _mm512_cvtsepi32_epi8 ?
       const __m512i neg127 = _mm512_set1_epi8(-127);
       // In reverse order: grabbing the first 32-bit values from each 128-bit register, then the second 32-bit values, etc.
