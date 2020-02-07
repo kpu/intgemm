@@ -25,22 +25,22 @@ class QuantizeTile16 {
 
     INTGEMM_SSE2 explicit QuantizeTile16(float mult) : mult_reg_(_mm_set1_ps(mult)) {}
 
-    INTGEMM_SSE2 inline __m128i Consecutive(const float *input) {
+    INTGEMM_SSE2 inline __m128i Consecutive(const float *input) const {
       return Tile(input, input + 4);
     }
 
-    INTGEMM_SSE2 Integer ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) {
+    INTGEMM_SSE2 Integer ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) const {
       return Tile(
         input,
         input + 4 + (cols_left <= 4 ? cols * (row_step - 1) : 0));
     }
 
-    INTGEMM_SSE2 inline __m128i ForReshape(const float *input, int) {
+    INTGEMM_SSE2 inline __m128i ForReshape(const float *input, int) const {
       return Consecutive(input);
     }
 
   private:
-    INTGEMM_SSE2 __m128i Tile(const float *input0, const float *input1) {
+    INTGEMM_SSE2 __m128i Tile(const float *input0, const float *input1) const {
       __m128i g0 = QuantizerGrab(input0, mult_reg_);
       __m128i g1 = QuantizerGrab(input1, mult_reg_);
       return _mm_packs_epi32(g0, g1);

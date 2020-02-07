@@ -24,23 +24,23 @@ class QuantizeTile16 {
 
     INTGEMM_AVX2 explicit QuantizeTile16(float mult) : mult_(_mm256_set1_ps(mult)) {}
 
-    INTGEMM_AVX2 Integer Consecutive(const float *input) {
+    INTGEMM_AVX2 Integer Consecutive(const float *input) const {
       return Tile(input, input + 8);
     }
 
-    INTGEMM_AVX2 Integer ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) {
+    INTGEMM_AVX2 Integer ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) const {
       return Tile(
         input,
         input + 8 + (cols_left <= 8 ? cols * (row_step - 1) : 0));
     }
 
-    INTGEMM_AVX2 Integer ForReshape(const float *input, Index cols) {
+    INTGEMM_AVX2 Integer ForReshape(const float *input, Index cols) const {
       // 8 rows in the first 128-bit register, 8 in the second register.
       return Tile(input, input + 8 * cols);
     }
 
   private:
-    INTGEMM_AVX2 __m256i Tile(const float *input0, const float *input1) {
+    INTGEMM_AVX2 __m256i Tile(const float *input0, const float *input1) const {
       __m256i g0 = QuantizerGrab(input0, mult_);
       __m256i g1 = QuantizerGrab(input1, mult_);
       __m256i packed = _mm256_packs_epi32(g0, g1);
@@ -107,15 +107,15 @@ class QuantizeTile8 {
 
     INTGEMM_AVX2 explicit QuantizeTile8(float quant_mult) : mult_(_mm256_set1_ps(quant_mult)) {}
 
-    INTGEMM_AVX2 inline __m256i Consecutive(const float *input) {
+    INTGEMM_AVX2 inline __m256i Consecutive(const float *input) const {
       return Tile(input, input + 8, input + 16, input + 24);
     }
 
-    INTGEMM_AVX2 inline __m256i ConsecutiveU(const float *input) {
+    INTGEMM_AVX2 inline __m256i ConsecutiveU(const float *input) const {
       return TileU(input, input + 8, input + 16, input + 24);
     }
 
-    INTGEMM_AVX2 Integer ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) {
+    INTGEMM_AVX2 Integer ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) const {
       const float* inputs[4];
       for (int i = 0; i < sizeof(inputs) / sizeof(inputs[0]); ++i) {
         while (cols_left < sizeof(Integer) / sizeof(float)) {
@@ -129,14 +129,14 @@ class QuantizeTile8 {
       return Tile(inputs[0], inputs[1], inputs[2], inputs[3]);
     }
 
-    INTGEMM_AVX2 inline __m256i ForReshape(const float *input, Index cols) {
+    INTGEMM_AVX2 inline __m256i ForReshape(const float *input, Index cols) const {
       // Put higher rows in the second half of the register.  These will jumble
       // around in the same way then conveniently land in the right place.
       return Tile(input, input + 2 * cols, input + 16 * cols, input + 18 * cols);
     }
 
   private:
-    INTGEMM_AVX2 inline __m256i Tile(const float *input0, const float *input1, const float *input2, const float *input3) {
+    INTGEMM_AVX2 inline __m256i Tile(const float *input0, const float *input1, const float *input2, const float *input3) const {
       // Looking at the assembly, gcc has pulled this outside the loops calling this.
       const __m256i neg127 = _mm256_set1_epi8(-127);
       const __m256i shuffle_param = _mm256_set_epi32(7, 3, 6, 2, 5, 1, 4, 0);
@@ -160,7 +160,7 @@ class QuantizeTile8 {
     }
 
     //A version that produces uint8_ts
-    INTGEMM_AVX2 inline __m256i TileU(const float *input0, const float *input1, const float *input2, const float *input3) {
+    INTGEMM_AVX2 inline __m256i TileU(const float *input0, const float *input1, const float *input2, const float *input3) const {
       // Looking at the assembly, gcc has pulled this outside the loops calling this.
       const __m256i neg127 = _mm256_set1_epi8(-127);
       const __m256i pos127 = _mm256_set1_epi8(127);

@@ -561,26 +561,6 @@ INTGEMM_SSSE3 inline static void InnerINTGEMM_SSSE3(
   } \
 } \
 
-
-// Find the maximum absolute value of packed float32s.
-/*
-template <class Register> inline static float MaxAbsoluteBackend(const float *begin_float, const float *end_float) {
-  assert(end_float > begin_float);
-  assert((end_float - begin_float) % (sizeof(Register) / sizeof(float)) == 0);
-  const Register *begin = reinterpret_cast<const Register*>(begin_float);
-  const Register *end = reinterpret_cast<const Register*>(end_float);
-  // Get the sign bit.
-  union {float f; int32_t i;} float_convert;
-  float_convert.i = 0x7fffffff;
-  Register and_me = set1_ps<Register>(float_convert.f);
-  Register highest = and_ps(and_me, *begin);
-  for (++begin; begin != end; ++begin) {
-    Register reg = and_ps(and_me, *begin);
-    highest = max_ps(highest, reg);
-  }
-
-  return MaxFloat32(highest);
-}*/
 #define INTGEMM_MAXABSOLUTE(Register, target) \
 target static float MaxAbsolute(const float *begin_float, const float *end_float) { \
   assert(end_float > begin_float); \
