@@ -291,7 +291,7 @@ template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_co
   });
 
   AlignedVector<float> float_C(test_C.size());
-  references::MultiplyFF(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols, [&](float sum, const callbacks::OutputBufferInfo& info) {
+  references::Multiply(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols, [&](float sum, const callbacks::OutputBufferInfo& info) {
     return sum;
   });
 
@@ -344,7 +344,7 @@ template <class Routine> void TestMultiplyBias(Index A_rows, Index width, Index 
   });
 
   AlignedVector<float> float_C(test_C.size());
-  references::MultiplyFF(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols, [&](float sum, const callbacks::OutputBufferInfo& info) {
+  references::Multiply(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols, [&](float sum, const callbacks::OutputBufferInfo& info) {
     return sum + bias[info.col_idx];
   });
 
