@@ -35,7 +35,7 @@ std::chrono::duration<double> testNew(Index A_rows, Index width, Index B_cols) {
   AlignedVector<uint8_t> A_prep(A.size());
   AlignedVector<int8_t> B_prep(B.size());
   Routine::PrepareA(A.begin(), A_prep.begin(), quant_mult, A_rows, width);
-  Routine::PrepareB(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
+  Routine::template PrepareB<1>(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
 
   AlignedVector<float> test_C(A_rows * B_cols);
 
@@ -74,7 +74,7 @@ std::chrono::duration<double> testOld(Index A_rows, Index width, Index B_cols) {
   AlignedVector<int8_t> A_prep(A.size());
   AlignedVector<int8_t> B_prep(B.size());
   Routine::PrepareA(A.begin(), A_prep.begin(), quant_mult, A_rows, width);
-  Routine::PrepareB(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
+  Routine::template PrepareB<1>(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
 
   AlignedVector<float> test_C(A_rows * B_cols);
 
@@ -107,7 +107,7 @@ std::chrono::duration<double> testOld_nobias(Index A_rows, Index width, Index B_
   AlignedVector<int8_t> A_prep(A.size());
   AlignedVector<int8_t> B_prep(B.size());
   Routine::PrepareA(A.begin(), A_prep.begin(), quant_mult, A_rows, width);
-  Routine::PrepareB(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
+  Routine::template PrepareB<1>(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
 
   AlignedVector<float> test_C(A_rows * B_cols);
 

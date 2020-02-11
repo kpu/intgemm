@@ -81,7 +81,7 @@ struct AVX2_16bit {
   INTGEMM_AVX2 static void PrepareB(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) {
     PrepareBFor16(input, output, avx2::QuantizeTile16(quant_mult), rows, cols);
   }*/
-  INTGEMM_PREPARE_B_16(INTGEMM_AVX2, avx2::QuantizeTile16)
+  INTGEMM_PREPARE_B(INTGEMM_AVX2, avx2::QuantizeTile16, int16_t)
   INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(INTGEMM_AVX2, CPUType::AVX2, int16_t)
   INTGEMM_PREPARE_B_TRANSPOSED(INTGEMM_AVX2, avx2::QuantizeTile16, int16_t)
 
@@ -232,7 +232,7 @@ struct AVX2_8bit {
   static const Index kBTileRow = 32;
   static const Index kBTileCol = 8;
 
-  INTGEMM_PREPARE_B_8(INTGEMM_AVX2, avx2::QuantizeTile8)
+  INTGEMM_PREPARE_B(INTGEMM_AVX2, avx2::QuantizeTile8, int8_t)
   INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(INTGEMM_AVX2, CPUType::AVX2, int8_t)
   INTGEMM_PREPARE_B_TRANSPOSED(INTGEMM_AVX2, avx2::QuantizeTile8, int8_t)
 

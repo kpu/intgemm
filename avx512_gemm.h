@@ -198,7 +198,7 @@ struct AVX512_16bit {
   }
 */
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
-  INTGEMM_PREPARE_B_16(INTGEMM_AVX512BW, avx512f::QuantizeTile16)
+  INTGEMM_PREPARE_B(INTGEMM_AVX512BW, avx512f::QuantizeTile16, int16_t)
   INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(INTGEMM_AVX512BW, CPUType::AVX512BW, int16_t)
   INTGEMM_PREPARE_B_TRANSPOSED(INTGEMM_AVX512BW, avx512f::QuantizeTile16, int16_t)
 
@@ -279,7 +279,7 @@ struct AVX512_8bit {
     PrepareBFor8(input, output, avx512f::QuantizeTile8(quant_mult), rows, cols);
   }*/
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
-  INTGEMM_PREPARE_B_8(INTGEMM_AVX512BW, avx512f::QuantizeTile8)
+  INTGEMM_PREPARE_B(INTGEMM_AVX512BW, avx512f::QuantizeTile8, int8_t)
   INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(INTGEMM_AVX512BW, CPUType::AVX512BW, int8_t)
   INTGEMM_PREPARE_B_TRANSPOSED(INTGEMM_AVX512BW, avx512f::QuantizeTile8, int8_t)
 

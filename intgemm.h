@@ -63,6 +63,7 @@ struct Unsupported_16bit {
   static void Quantize(const float *, int16_t *, float, Index) {
     throw UnsupportedCPU();
   }
+  template <Index TileColumnsMultiplier>
   static void PrepareB(const float *, int16_t *, float, Index, Index) {
     throw UnsupportedCPU();
   }
@@ -98,6 +99,7 @@ struct Unsupported_8bit {
   static void PrepareBTransposed(const float *, int8_t *, float, Index, Index) {
     throw UnsupportedCPU();
   }
+  template <Index TileColumnsMultiplier>
   static void PrepareB(const float *, int8_t *, float, Index, Index) {
     throw UnsupportedCPU();
   }
@@ -229,7 +231,10 @@ struct Int8 {
 
   // Warning: the output of PrepareB depends on the CPU.
   // It will match the Multiply function on the same CPU though.
-  static void (*PrepareB)(const float *input, int8_t *output, float quant_mult, Index rows, Index cols);
+  template <Index TileColumnsMultiplier>
+  static void PrepareB(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
+    PrepareBImpl<TileColumnsMultiplier>::run(input, output, quant_mult, rows, cols);
+  }
 
   // Convert from a B that was already transposed (routine not provided) and
   // quantized (e.g. with Quantize) to the CPU-dependent format used for
@@ -254,11 +259,22 @@ struct Int8 {
   static const char *const kName;
 
 private:
+  template <Index TileColumnsMultiplier>
+  struct PrepareBImpl {
+    static void (*run)(const float *input, int8_t *output, float quant_mult, Index rows, Index cols);
+  };
+
   template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
   struct MultiplyImpl {
     static void (*run)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
   };
 };
+
+template <Index TileColumnsMultiplier>
+void (*Int8::PrepareBImpl<TileColumnsMultiplier>::run)(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) = ChooseCPU(
+  AVX512VNNI_8bit::PrepareB<TileColumnsMultiplier>, AVX512_8bit::PrepareB<TileColumnsMultiplier>,
+  AVX2_8bit::PrepareB<TileColumnsMultiplier>, SSSE3_8bit::PrepareB<TileColumnsMultiplier>,
+  SSSE3_8bit::PrepareB<TileColumnsMultiplier>, Unsupported_8bit::PrepareB<TileColumnsMultiplier>);
 
 template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
 void (*Int8::MultiplyImpl<TileRows, TileColumnsMultiplier, Callback>::run)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(
@@ -286,8 +302,9 @@ struct Int8Shift {
   
   // Warning: the output of PrepareB depends on the CPU.
   // It will match the Multiply function on the same CPU though.
+  template <Index TileColumnsMultiplier>
   static void PrepareB(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
-    Int8::PrepareB(input, output, quant_mult, rows, cols);
+    Int8::PrepareB<TileColumnsMultiplier>(input, output, quant_mult, rows, cols);
   }
 
   // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8. 
@@ -357,7 +374,10 @@ struct Int16 {
 
   // Warning: the output of PrepareB depends on the CPU.
   // It will match the Multiply function on the same CPU though.
-  static void (*PrepareB)(const float *input, int16_t *output, float quant_mult, Index rows, Index cols);
+  template <Index TileColumnsMultiplier>
+  static void PrepareB(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) {
+    PrepareBImpl<TileColumnsMultiplier>::run(input, output, quant_mult, rows, cols);
+  }
 
   // Convert from a B that was already transposed (routine not provided) and
   // quantized (e.g. with Quantize) to the CPU-dependent format used for
@@ -382,11 +402,22 @@ struct Int16 {
   static const char *const kName;
 
 private:
+  template <Index TileColumnsMultiplier>
+  struct PrepareBImpl {
+    static void (*run)(const float *input, int16_t *output, float quant_mult, Index rows, Index cols);
+  };
+
   template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
   struct MultiplyImpl {
     static void (*run)(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
   };
 };
+
+template <Index TileColumnsMultiplier>
+void (*Int16::PrepareBImpl<TileColumnsMultiplier>::run)(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) = ChooseCPU(
+  AVX512_16bit::PrepareB<TileColumnsMultiplier> /*TODO VNNI 16-bit. */, AVX512_16bit::PrepareB<TileColumnsMultiplier>,
+  AVX2_16bit::PrepareB<TileColumnsMultiplier>, SSE2_16bit::PrepareB<TileColumnsMultiplier>,
+  SSE2_16bit::PrepareB<TileColumnsMultiplier>, Unsupported_16bit::PrepareB<TileColumnsMultiplier>);
 
 template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
 void (*Int16::MultiplyImpl<TileRows, TileColumnsMultiplier, Callback>::run)(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(

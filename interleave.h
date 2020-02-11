@@ -3,6 +3,7 @@
 #include "intgemm_config.h"
 #include "intrinsics.h"
 #include "types.h"
+#include "utils.h"
 
 #include <algorithm>
 #include <cassert>
@@ -28,6 +29,13 @@ INTGEMM_INTERLEAVE_N(target, type, 64)
 
 INTGEMM_INTERLEAVE(INTGEMM_SSE2, __m128i)
 INTGEMM_INTERLEAVE(INTGEMM_AVX2, __m256i)
+
+INTGEMM_AVX2 static inline void Interleave128(__m256i& first, __m256i& second) {
+  auto temp = _mm256_permute2f128_si256(first, second, 0x20);
+  second = _mm256_permute2f128_si256(first, second, 0x31);
+  first = temp;
+}
+
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 INTGEMM_INTERLEAVE(INTGEMM_AVX512BW, __m512i)
 #endif
@@ -178,58 +186,82 @@ template <class Register> static inline void Transpose8InLane(
 // 256 272
 // 257 273
 // ... ...
-#define INTGEMM_PREPARE_B_8(target, QuantClass) \
-target static inline void PrepareB(const float *input, int8_t *output_shadow, float quant_mult, Index rows, Index cols) { \
-  typedef typename QuantClass Quantizer; \
-  typedef typename Quantizer::Register Register; \
-  Quantizer q = Quantizer(quant_mult); \
-  /* Currently all multipliers have a stride of 8 columns.*/ \
-  const int kColStride = 8; \
-  assert(cols % kColStride == 0); \
-  assert(rows % sizeof(Register) == 0); \
+
+template <typename Type>
+struct PrepareB_InnerLoop;
+
+#define INTGEMM_PREPARE_B_8_INNER_LOOP(target, Register) \
+  template <typename Iterator, typename Quantizer> \
+  target static void body(Register* output, const Quantizer &quantizer, const float* input, Index cols, Index row, Index col) { \
+    static constexpr Index I = Iterator::template I<0>(); \
+    output[8 * I + 0] = quantizer.ForReshape(input + cols * (row +  0) + 8 * I + col, cols); \
+    output[8 * I + 1] = quantizer.ForReshape(input + cols * (row +  1) + 8 * I + col, cols); \
+    output[8 * I + 2] = quantizer.ForReshape(input + cols * (row +  4) + 8 * I + col, cols); \
+    output[8 * I + 3] = quantizer.ForReshape(input + cols * (row +  5) + 8 * I + col, cols); \
+    output[8 * I + 4] = quantizer.ForReshape(input + cols * (row +  8) + 8 * I + col, cols); \
+    output[8 * I + 5] = quantizer.ForReshape(input + cols * (row +  9) + 8 * I + col, cols); \
+    output[8 * I + 6] = quantizer.ForReshape(input + cols * (row + 12) + 8 * I + col, cols); \
+    output[8 * I + 7] = quantizer.ForReshape(input + cols * (row + 13) + 8 * I + col, cols); \
+    Interleave8(output[8 * I + 0], output[8 * I + 1]); \
+    Interleave8(output[8 * I + 2], output[8 * I + 3]); \
+    Interleave8(output[8 * I + 4], output[8 * I + 5]); \
+    Interleave8(output[8 * I + 6], output[8 * I + 7]); \
+    Transpose16InLane(output[8 * I + 0], output[8 * I + 1], output[8 * I + 2], output[8 * I + 3], \
+                      output[8 * I + 4], output[8 * I + 5], output[8 * I + 6], output[8 * I + 7]); \
+  }
+
+template <>
+struct PrepareB_InnerLoop<int8_t> {
+  INTGEMM_PREPARE_B_8_INNER_LOOP(INTGEMM_SSSE3, __m128i)
+  INTGEMM_PREPARE_B_8_INNER_LOOP(INTGEMM_AVX2, __m256i)
+  INTGEMM_PREPARE_B_8_INNER_LOOP(INTGEMM_AVX512BW, __m512i)
+};
+
+#define INTGEMM_PREPARE_B_16_INNER_LOOP(target, Register) \
+  template <typename Iterator, typename Quantizer> \
+  target static void body(Register* output, const Quantizer &quantizer, const float* input, Index cols, Index row, Index col) { \
+    static constexpr Index I = Iterator::template I<0>(); \
+    output[8 * I + 0] = quantizer.ForReshape(input + cols * (row + 0) + 8 * I + col, cols); \
+    output[8 * I + 1] = quantizer.ForReshape(input + cols * (row + 1) + 8 * I + col, cols); \
+    output[8 * I + 2] = quantizer.ForReshape(input + cols * (row + 2) + 8 * I + col, cols); \
+    output[8 * I + 3] = quantizer.ForReshape(input + cols * (row + 3) + 8 * I + col, cols); \
+    output[8 * I + 4] = quantizer.ForReshape(input + cols * (row + 4) + 8 * I + col, cols); \
+    output[8 * I + 5] = quantizer.ForReshape(input + cols * (row + 5) + 8 * I + col, cols); \
+    output[8 * I + 6] = quantizer.ForReshape(input + cols * (row + 6) + 8 * I + col, cols); \
+    output[8 * I + 7] = quantizer.ForReshape(input + cols * (row + 7) + 8 * I + col, cols); \
+    Transpose16InLane(output[8 * I + 0], output[8 * I + 1], output[8 * I + 2], output[8 * I + 3], \
+                      output[8 * I + 4], output[8 * I + 5], output[8 * I + 6], output[8 * I + 7]); \
+  }
+
+template <>
+struct PrepareB_InnerLoop<int16_t> {
+  INTGEMM_PREPARE_B_16_INNER_LOOP(INTGEMM_SSSE3, __m128i)
+  INTGEMM_PREPARE_B_16_INNER_LOOP(INTGEMM_AVX2, __m256i)
+  INTGEMM_PREPARE_B_16_INNER_LOOP(INTGEMM_AVX512BW, __m512i)
+};
+
+#define INTGEMM_PREPARE_B(target, Quantizer, Integer) \
+template <Index TileColumnsMultiplier> \
+target static inline void PrepareB(const float *input, Integer *output, float quant_mult, Index rows, Index cols) { \
+  static constexpr Index Columns = 8 * TileColumnsMultiplier; \
+  using Register = Quantizer::Register; \
+  const Index RegisterElems = sizeof(Register) / sizeof(Integer); \
+  \
+  Quantizer quantizer = Quantizer(quant_mult); \
+  Register *output_it = reinterpret_cast<Register*>(output); \
+  \
+  assert(cols % 8 == 0); \
+  assert(rows % (RegisterElems * TileColumnsMultiplier) == 0); \
   assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0); \
-  Register *output = reinterpret_cast<Register*>(output_shadow); \
-  assert(reinterpret_cast<uintptr_t>(output) % sizeof(Register) == 0); \
-  for (Index c = 0; c < cols; c += kColStride) { \
-    for (Index r = 0; r < rows; r += sizeof(Register), output += 8) { \
-      /* Quantize and perform a transpose with height sizeof(Register) and width 8. \
+  assert(reinterpret_cast<uintptr_t>(output_it) % sizeof(Register) == 0); \
+  \
+  for (Index c = 0; c < cols; c += Columns) { \
+    for (Index r = 0; r < rows; r += RegisterElems, output_it += Columns) { \
+      /* Quantize and perform a transpose with height sizeof(Register) and width Columns. \
          This isn't quite Transpose8InLane because it's half the number of columns, \
          so each register starts with two rows instead of being one row. \
          The quantizers know to skip a row.*/ \
-      output[0] = q.ForReshape(input + cols * (r    ) + c, cols); \
-      output[1] = q.ForReshape(input + cols * (r + 1) + c, cols); \
-      output[2] = q.ForReshape(input + cols * (r + 4) + c, cols); \
-      output[3] = q.ForReshape(input + cols * (r + 5) + c, cols); \
-      output[4] = q.ForReshape(input + cols * (r + 8) + c, cols); \
-      output[5] = q.ForReshape(input + cols * (r + 9) + c, cols); \
-      output[6] = q.ForReshape(input + cols * (r + 12) + c, cols); \
-      output[7] = q.ForReshape(input + cols * (r + 13) + c, cols); \
-      Interleave8(output[0], output[1]); \
-      Interleave8(output[2], output[3]); \
-      Interleave8(output[4], output[5]); \
-      Interleave8(output[6], output[7]); \
-      Transpose16InLane(output[0], output[1], output[2], output[3], output[4], output[5], output[6], output[7]); \
-    } \
-  } \
-} \
-
-#define INTGEMM_PREPARE_B_16(target, QuantClass) \
-target static inline void PrepareB(const float *input, int16_t *output_shadow, float quant_mult, Index rows, Index cols) { \
-  typedef typename QuantClass Quantizer; \
-  typedef typename Quantizer::Register Register; \
-  Quantizer q = Quantizer(quant_mult); \
-  assert(cols % 8 == 0); \
-  assert(rows % (sizeof(Register) / sizeof(int16_t)) == 0); \
-  assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0); \
-  Register *output = reinterpret_cast<Register*>(output_shadow); \
-  assert(reinterpret_cast<uintptr_t>(output) % sizeof(Register) == 0); \
-  for (Index c = 0; c < cols; c += 8) { \
-    for (Index r = 0; r < rows; r += (sizeof(Register) / sizeof(int16_t)), output += 8) { \
-      /* gcc unrolls this loop and uses registers for output[k]*/ \
-      for (int k = 0; k < 8; ++k) { \
-        output[k] = q.ForReshape(input + cols * (r + k) + c, cols); \
-      } \
-      Transpose16InLane(output[0], output[1], output[2], output[3], output[4], output[5], output[6], output[7]); \
+      StaticLoop<PrepareB_InnerLoop<Integer>, MakeStaticLoopIterator<TileColumnsMultiplier>>(output_it, quantizer, input, cols, r, c); \
     } \
   } \
 }

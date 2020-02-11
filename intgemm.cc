@@ -8,8 +8,6 @@ float Unsupported_MaxAbsolute(const float *begin, const float *end) {
 
 void (*Int16::Quantize)(const float *input, int16_t *output, float quant_mult, Index size) = ChooseCPU(AVX512_16bit::Quantize, AVX512_16bit::Quantize, AVX2_16bit::Quantize, SSE2_16bit::Quantize, SSE2_16bit::Quantize, Unsupported_16bit::Quantize);
 
-void (*Int16::PrepareB)(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) = ChooseCPU(AVX512_16bit::PrepareB, AVX512_16bit::PrepareB, AVX2_16bit::PrepareB, SSE2_16bit::PrepareB, SSE2_16bit::PrepareB, Unsupported_16bit::PrepareB);
-
 void (*Int16::PrepareBQuantizedTransposed)(const int16_t *input, int16_t *output, Index inner, Index B_untransposed_cols) = ChooseCPU(AVX512_16bit::PrepareBQuantizedTransposed, AVX512_16bit::PrepareBQuantizedTransposed, AVX2_16bit::PrepareBQuantizedTransposed, SSE2_16bit::PrepareBQuantizedTransposed, SSE2_16bit::PrepareBQuantizedTransposed, Unsupported_16bit::PrepareBQuantizedTransposed);
 
 void (*Int16::PrepareBTransposed)(const float *input, int16_t *output, float quant_mult, Index inner, Index B_untransposed_cols) = ChooseCPU(AVX512_16bit::PrepareBTransposed, AVX512_16bit::PrepareBTransposed, AVX2_16bit::PrepareBTransposed, SSE2_16bit::PrepareBTransposed, SSE2_16bit::PrepareBTransposed, Unsupported_16bit::PrepareBTransposed);
@@ -21,8 +19,6 @@ const char *const Int16::kName = ChooseCPU(AVX512_16bit::kName, AVX512_16bit::kN
 void (*Int8::Quantize)(const float *input, int8_t *output, float quant_mult, Index size) = ChooseCPU(AVX512VNNI_8bit::Quantize, AVX512_8bit::Quantize, AVX2_8bit::Quantize, SSSE3_8bit::Quantize, Unsupported_8bit::Quantize, Unsupported_8bit::Quantize);
 
 void (*Int8::QuantizeU)(const float *input, uint8_t *output, float quant_mult, Index size) = ChooseCPU(AVX512VNNI_8bit::QuantizeU, AVX512_8bit::QuantizeU, AVX2_8bit::QuantizeU, SSSE3_8bit::QuantizeU, Unsupported_8bit::QuantizeU, Unsupported_8bit::QuantizeU);
-
-void (*Int8::PrepareB)(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) = ChooseCPU(AVX512VNNI_8bit::PrepareB, AVX512_8bit::PrepareB, AVX2_8bit::PrepareB, SSSE3_8bit::PrepareB, Unsupported_8bit::PrepareB, Unsupported_8bit::PrepareB);
 
 void (*Int8::PrepareBQuantizedTransposed)(const int8_t *input, int8_t *output, Index inner, Index B_untransposed_cols) = ChooseCPU(AVX512_8bit::PrepareBQuantizedTransposed, AVX512_8bit::PrepareBQuantizedTransposed, AVX2_8bit::PrepareBQuantizedTransposed, SSSE3_8bit::PrepareBQuantizedTransposed, Unsupported_8bit::PrepareBQuantizedTransposed, Unsupported_8bit::PrepareBQuantizedTransposed);
 

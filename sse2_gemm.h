@@ -78,7 +78,7 @@ struct SSE2_16bit {
   static const Index kBTileRow = 8;
   static const Index kBTileCol = 8;
 
-  INTGEMM_PREPARE_B_16(INTGEMM_SSE2, sse2::QuantizeTile16)
+  INTGEMM_PREPARE_B(INTGEMM_SSE2, sse2::QuantizeTile16, int16_t)
   INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(INTGEMM_SSE2, CPUType::SSE2, int16_t)
   INTGEMM_PREPARE_B_TRANSPOSED(INTGEMM_SSE2, sse2::QuantizeTile16, int16_t)
 

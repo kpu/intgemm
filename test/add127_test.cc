@@ -46,9 +46,8 @@ template <class Routine> void TestPrepareBias(Index rows, Index cols) {
 
   AlignedVector<int8_t> B_prep(inputB.size());
   AlignedVector<int8_t> B_quant(inputB.size());
-  Routine::PrepareB(inputB.begin(), B_prep.begin(), quant_mult, rows, cols);
+  Routine::template PrepareB<1>(inputB.begin(), B_prep.begin(), quant_mult, rows, cols);
   Routine::Quantize(inputB.begin(), B_quant.begin(), quant_mult, inputB.size());
-
 
   AlignedVector<float> inputBias(cols);
   AlignedVector<float> goldBias(cols);
@@ -108,7 +107,7 @@ template <class Routine> void TestMultiplyBiasNew(Index A_rows, Index width, Ind
   AlignedVector<uint8_t> A_prep(A.size());
   AlignedVector<int8_t> B_prep(B.size());
   Routine::PrepareA(A.begin(), A_prep.begin(), quant_mult, A_rows, width);
-  Routine::PrepareB(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
+  Routine::template PrepareB<1>(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
 
   AlignedVector<float> test_C(A_rows * B_cols);
 
@@ -173,7 +172,7 @@ template <class Routine> void TestMultiplyShiftNonShift(Index A_rows, Index widt
   AlignedVector<int8_t> B_prep(B.size());
   Routine::PrepareA(A.begin(), A_prep.begin(), quant_mult, A_rows, width);
   Routine::PrepareA(A.begin(), A_prep_old.begin(), quant_mult, A_rows, width); //Non shited version
-  Routine::PrepareB(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
+  Routine::template PrepareB<1>(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
 
   AlignedVector<float> test_C(A_rows * B_cols);
 
@@ -229,7 +228,7 @@ template <class Routine> void TestMultiplyShiftInt(Index A_rows, Index width, In
   AlignedVector<int8_t> B_prep(B.size());
   Routine::PrepareA(A.begin(), A_prep.begin(), quant_mult, A_rows, width);
   Routine::PrepareA(A.begin(), A_prep_old.begin(), quant_mult, A_rows, width); //Non shited version
-  Routine::PrepareB(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
+  Routine::template PrepareB<1>(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
 
   AlignedVector<float> test_C(A_rows * B_cols);
 

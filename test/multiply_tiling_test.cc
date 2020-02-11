@@ -8,6 +8,7 @@
 #include <cstring>
 #include <iostream>
 #include <math.h>
+#include <random>
 
 namespace intgemm {
 namespace {
@@ -22,12 +23,7 @@ bool Test(const AlignedVector<float>& A, const AlignedVector<float>& B, Index A_
   AlignedVector<int32_t> reference(output.size());
 
   Backend::PrepareA(A.begin(), A_quantized.begin(), quant_mult, A_rows, width);
-  // Backend::template PrepareB<TileColumnsMultiplier>(B.begin(), B_prepared.begin(), quant_mult, width, B_cols);
-  {
-    AlignedVector<typename Backend::Integer> B_quantized(B.size());
-    references::Quantize(B.begin(), B_quantized.begin(), quant_mult, B_quantized.size());
-    references::Rearragement(B_quantized.begin(), B_prepared.begin(), Backend::kBTileRow, TileColumnsMultiplier * 8, width, B_cols);
-  }
+  Backend::template PrepareB<TileColumnsMultiplier>(B.begin(), B_prepared.begin(), quant_mult, width, B_cols);
   Backend::template Multiply<TileRows, TileColumnsMultiplier>(A_quantized.begin(), B_prepared.begin(), A_rows, width, B_cols, callbacks::Write<int32_t>(output.begin()));
 
   references::Quantize(B.begin(), B_quantized.begin(), quant_mult, B_quantized.size());
@@ -51,16 +47,17 @@ bool TestMany(Index A_rows, Index width, Index B_cols, float quant_mult) {
   AlignedVector<float> A(A_rows * width);
   AlignedVector<float> B(width * B_cols);
 
-  std::generate(A.begin(), A.end(), []() {
-    static constexpr int divider = sizeof(intgemm::vector_t<Backend::kUses, typename Backend::Integer>) / sizeof(typename Backend::Integer);
-    static int value = 0;
-    return (value++) % divider;
+  std::mt19937 gen;
+  std::uniform_int_distribution<typename Backend::Integer> dist(0, 32);
+
+  gen.seed(0);
+
+  std::generate(A.begin(), A.end(), [&]() {
+    return dist(gen);
   });
 
-  std::generate(B.begin(), B.end(), []() {
-    static constexpr int divider = sizeof(intgemm::vector_t<Backend::kUses, typename Backend::Integer>) / sizeof(typename Backend::Integer);
-    static int value = 0;
-    return (value++) % divider;
+  std::generate(B.begin(), B.end(), [&]() {
+    return dist(gen);
   });
 
   return Test<Backend, TileRows, TileColumnsMultiplier>(A, B, A_rows, width, B_cols, quant_mult);
@@ -70,13 +67,13 @@ TEST_CASE("Multiply SSE2 16bit - custom tiling", "") {
   if (kCPU < CPUType::SSE2)
     return;
 
-  CHECK(TestMany<SSE2_16bit, 1, 1>(64, 128, 64, 1.0f));
-  CHECK(TestMany<SSE2_16bit, 2, 1>(64, 128, 64, 1.0f));
-  CHECK(TestMany<SSE2_16bit, 1, 2>(64, 128, 64, 1.0f));
-  CHECK(TestMany<SSE2_16bit, 2, 2>(64, 128, 64, 1.0f));
-  CHECK(TestMany<SSE2_16bit, 4, 1>(64, 128, 64, 1.0f));
-  CHECK(TestMany<SSE2_16bit, 1, 4>(64, 128, 64, 1.0f));
-  CHECK(TestMany<SSE2_16bit, 4, 4>(64, 128, 64, 1.0f));
+  CHECK(TestMany<SSE2_16bit, 1, 1>(64, 128, 32, 1.0f));
+  CHECK(TestMany<SSE2_16bit, 2, 1>(64, 128, 32, 1.0f));
+  CHECK(TestMany<SSE2_16bit, 1, 2>(64, 128, 32, 1.0f));
+  CHECK(TestMany<SSE2_16bit, 2, 2>(64, 128, 32, 1.0f));
+  CHECK(TestMany<SSE2_16bit, 4, 1>(64, 128, 32, 1.0f));
+  CHECK(TestMany<SSE2_16bit, 1, 4>(64, 128, 32, 1.0f));
+  CHECK(TestMany<SSE2_16bit, 4, 4>(64, 128, 32, 1.0f));
 }
 
 TEST_CASE("Multiply SSSE3 8bit - custom tiling", "") {
@@ -96,13 +93,13 @@ TEST_CASE("Multiply AVX2 8bit - custom tiling", "") {
   if (kCPU < CPUType::AVX2)
     return;
 
-  CHECK(TestMany<AVX2_8bit, 1, 1>(64, 128, 64, 1.0f));
-  CHECK(TestMany<AVX2_8bit, 2, 1>(64, 128, 64, 1.0f));
-  CHECK(TestMany<AVX2_8bit, 1, 2>(64, 128, 64, 1.0f));
-  CHECK(TestMany<AVX2_8bit, 2, 2>(64, 128, 64, 1.0f));
-  CHECK(TestMany<AVX2_8bit, 4, 1>(64, 128, 64, 1.0f));
-  CHECK(TestMany<AVX2_8bit, 1, 4>(64, 128, 64, 1.0f));
-  CHECK(TestMany<AVX2_8bit, 4, 4>(64, 128, 64, 1.0f));
+  CHECK(TestMany<AVX2_8bit, 1, 1>(64, 128, 128, 1.0f));
+  CHECK(TestMany<AVX2_8bit, 2, 1>(64, 128, 128, 1.0f));
+  CHECK(TestMany<AVX2_8bit, 1, 2>(64, 128, 128, 1.0f));
+  CHECK(TestMany<AVX2_8bit, 2, 2>(64, 128, 128, 1.0f));
+  CHECK(TestMany<AVX2_8bit, 4, 1>(64, 128, 128, 1.0f));
+  CHECK(TestMany<AVX2_8bit, 1, 4>(64, 128, 128, 1.0f));
+  CHECK(TestMany<AVX2_8bit, 4, 4>(64, 128, 128, 1.0f));
 }
 
 TEST_CASE("Multiply AVX2 16bit - custom tiling", "") {

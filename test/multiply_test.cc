@@ -67,7 +67,7 @@ template <class Routine> void TestPrepare(Index rows = 32, Index cols = 16) {
   typedef typename Routine::Integer Integer;
   // Call Prepare
   AlignedVector<Integer> test(input.size());
-  Routine::PrepareB(input.begin(), test.begin(), 1, rows, cols);
+  Routine::template PrepareB<1>(input.begin(), test.begin(), 1, rows, cols);
 
   // Compute reference output.
   AlignedVector<Integer> quantized(input.size());
@@ -119,7 +119,7 @@ template <class Routine> void TestSelectColumnsB(Index rows = 64, Index cols = 1
   }
   typedef typename Routine::Integer Integer;
   AlignedVector<Integer> prepared(input.size());
-  Routine::PrepareB(input.begin(), prepared.begin(), 1, rows, cols);
+  Routine::template PrepareB<1>(input.begin(), prepared.begin(), 1, rows, cols);
 
   int kSelectCols = 24;
   Index select_cols[kSelectCols];
@@ -140,7 +140,7 @@ template <class Routine> void TestSelectColumnsB(Index rows = 64, Index cols = 1
     }
   }
   AlignedVector<Integer> ref(rows * kSelectCols);
-  Routine::PrepareB(selected.begin(), ref.begin(), 1, rows, kSelectCols);
+  Routine::template PrepareB<1>(selected.begin(), ref.begin(), 1, rows, kSelectCols);
   CHECK_MESSAGE(memcmp(ref.begin(), test.begin(), sizeof(Integer) * rows * kSelectCols) == 0, "Reference:\n" <<
   	PrintMatrix(ref.begin(), rows, kSelectCols) << PrintMatrix(test.begin(), rows, kSelectCols));
 }
@@ -273,7 +273,7 @@ template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_co
   AlignedVector<Integer> A_prep(A.size());
   AlignedVector<Integer> B_prep(B.size());
   Routine::PrepareA(A.begin(), A_prep.begin(), quant_mult, A_rows, width);
-  Routine::PrepareB(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
+  Routine::template PrepareB<1>(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
 
   AlignedVector<float> test_C(A_rows * B_cols);
   Routine::template Multiply<1, 1>(A_prep.begin(), B_prep.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndWrite(unquant_mult, test_C.begin()));
@@ -329,7 +329,7 @@ template <class Routine> void TestMultiplyBias(Index A_rows, Index width, Index 
   AlignedVector<Integer> A_prep(A.size());
   AlignedVector<Integer> B_prep(B.size());
   Routine::PrepareA(A.begin(), A_prep.begin(), quant_mult, A_rows, width);
-  Routine::PrepareB(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
+  Routine::template PrepareB<1>(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
 
   AlignedVector<float> test_C(A_rows * B_cols);
 
