@@ -21,7 +21,7 @@ INTGEMM_SELECT_COL_B(INTGEMM_SSE2, __m128i)
 
 class QuantizeTile16 {
   public:
-    typedef __m128i Integer;
+    typedef __m128i Register;
 
     INTGEMM_SSE2 explicit QuantizeTile16(float mult) : mult_reg_(_mm_set1_ps(mult)) {}
 
@@ -29,7 +29,7 @@ class QuantizeTile16 {
       return Tile(input, input + 4);
     }
 
-    INTGEMM_SSE2 Integer ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) const {
+    INTGEMM_SSE2 Register ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) const {
       return Tile(
         input,
         input + 4 + (cols_left <= 4 ? cols * (row_step - 1) : 0));
