@@ -22,7 +22,7 @@ INTGEMM_SELECT_COL_B(INTGEMM_SSSE3, __m128i)
 
 class QuantizeTile8 {
   public:
-    typedef __m128i Integer;
+    typedef __m128i Register;
 
     INTGEMM_SSSE3 explicit QuantizeTile8(float mult) : mult_reg_(_mm_set1_ps(mult)) {}
 
@@ -39,16 +39,16 @@ class QuantizeTile8 {
       return TileU(input, input + 4, input + 8, input + 12);
     }
 
-    INTGEMM_SSSE3 Integer ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) const {
+    INTGEMM_SSSE3 Register ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) const {
       const float* inputs[4];
       for (int i = 0; i < sizeof(inputs) / sizeof(inputs[0]); ++i) {
-        while (cols_left < sizeof(Integer) / sizeof(float)) {
+        while (cols_left < sizeof(Register) / sizeof(float)) {
           input += cols * (row_step - 1);
           cols_left += cols;
         }
         inputs[i] = input;
-        input += sizeof(Integer) / sizeof(float);
-        cols_left -= sizeof(Integer) / sizeof(float);
+        input += sizeof(Register) / sizeof(float);
+        cols_left -= sizeof(Register) / sizeof(float);
       }
       return Tile(inputs[0], inputs[1], inputs[2], inputs[3]);
     }

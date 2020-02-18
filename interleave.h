@@ -181,7 +181,7 @@ template <class Register> static inline void Transpose8InLane(
 #define INTGEMM_PREPARE_B_8(target, QuantClass) \
 target static inline void PrepareB(const float *input, int8_t *output_shadow, float quant_mult, Index rows, Index cols) { \
   typedef typename QuantClass Quantizer; \
-  typedef typename Quantizer::Integer Register; \
+  typedef typename Quantizer::Register Register; \
   Quantizer q = Quantizer(quant_mult); \
   /* Currently all multipliers have a stride of 8 columns.*/ \
   const int kColStride = 8; \
@@ -216,7 +216,7 @@ target static inline void PrepareB(const float *input, int8_t *output_shadow, fl
 #define INTGEMM_PREPARE_B_16(target, QuantClass) \
 target static inline void PrepareB(const float *input, int16_t *output_shadow, float quant_mult, Index rows, Index cols) { \
   typedef typename QuantClass Quantizer; \
-  typedef typename Quantizer::Integer Register; \
+  typedef typename Quantizer::Register Register; \
   Quantizer q = Quantizer(quant_mult); \
   assert(cols % 8 == 0); \
   assert(rows % (sizeof(Register) / sizeof(int16_t)) == 0); \
@@ -266,10 +266,10 @@ target static inline void PrepareBQuantizedTransposed(const Integer* input, Inte
  *
  * cols and rows describe size of transposed B.
  */
-#define INTGEMM_PREPARE_B_TRANSPOSED(target, Quantizer, integer) \
-target static inline void PrepareBTransposed(const float* input, integer* output, float quant_mult, Index cols, Index rows) { \
-  using Register = typename Quantizer::Integer; \
-  const Index RegisterElemsInt = sizeof(Register) / sizeof(integer); \
+#define INTGEMM_PREPARE_B_TRANSPOSED(target, Quantizer, Integer) \
+target static inline void PrepareBTransposed(const float* input, Integer* output, float quant_mult, Index cols, Index rows) { \
+  using Register = typename Quantizer::Register; \
+  const Index RegisterElemsInt = sizeof(Register) / sizeof(Integer); \
   const Index RegisterElemsFloat = sizeof(Register) / sizeof(float); \
   const Index kColStride = 8; \
   \
