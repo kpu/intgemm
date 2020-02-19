@@ -45,7 +45,7 @@ if(INTGEMM_DONT_BUILD_TESTS)
   return()
 endif()
 
-foreach(exe benchmark biasmultiply)
+foreach(exe benchmark biasmultiply multiply_tiles_benchmark)
   add_executable(${exe} benchmarks/${exe}.cc intgemm.cc)
 endforeach()
 
