@@ -143,5 +143,20 @@ TEST_CASE("Multiply AVX2 16bit - custom tiling", "") {
 //   }
 // #endif
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
+  TEST_CASE("Multiply AVX512VNNI 8bit - custom tiling", "") {
+    if (kCPU < CPUType::AVX512VNNI)
+      return;
+
+    CHECK(TestMany<AVX512VNNI_8bit, 1, 1>(64, 128, 128, 1.0f));
+    CHECK(TestMany<AVX512VNNI_8bit, 2, 1>(64, 128, 128, 1.0f));
+    CHECK(TestMany<AVX512VNNI_8bit, 1, 2>(64, 128, 128, 1.0f));
+    CHECK(TestMany<AVX512VNNI_8bit, 2, 2>(64, 128, 128, 1.0f));
+    CHECK(TestMany<AVX512VNNI_8bit, 4, 1>(64, 128, 128, 1.0f));
+    CHECK(TestMany<AVX512VNNI_8bit, 1, 4>(64, 128, 128, 1.0f));
+    CHECK(TestMany<AVX512VNNI_8bit, 4, 4>(64, 128, 128, 1.0f));
+  }
+#endif
+
 }
 }
