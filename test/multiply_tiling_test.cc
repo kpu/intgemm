@@ -67,52 +67,52 @@ TEST_CASE("Multiply SSE2 16bit - custom tiling", "") {
   if (kCPU < CPUType::SSE2)
     return;
 
-  CHECK(TestMany<SSE2_16bit, 1, 1>(64, 128, 32, 1.0f));
-  CHECK(TestMany<SSE2_16bit, 2, 1>(64, 128, 32, 1.0f));
-  CHECK(TestMany<SSE2_16bit, 1, 2>(64, 128, 32, 1.0f));
-  CHECK(TestMany<SSE2_16bit, 2, 2>(64, 128, 32, 1.0f));
-  CHECK(TestMany<SSE2_16bit, 4, 1>(64, 128, 32, 1.0f));
-  CHECK(TestMany<SSE2_16bit, 1, 4>(64, 128, 32, 1.0f));
-  CHECK(TestMany<SSE2_16bit, 4, 4>(64, 128, 32, 1.0f));
+  CHECK(TestMany<SSE2_16bit, 1, 1>(256, 256, 256, 1.0f));
+  CHECK(TestMany<SSE2_16bit, 2, 1>(256, 256, 256, 1.0f));
+  CHECK(TestMany<SSE2_16bit, 1, 2>(256, 256, 256, 1.0f));
+  CHECK(TestMany<SSE2_16bit, 2, 2>(256, 256, 256, 1.0f));
+  CHECK(TestMany<SSE2_16bit, 4, 1>(256, 256, 256, 1.0f));
+  CHECK(TestMany<SSE2_16bit, 1, 4>(256, 256, 256, 1.0f));
+  CHECK(TestMany<SSE2_16bit, 4, 4>(256, 256, 256, 1.0f));
 }
 
 TEST_CASE("Multiply SSSE3 8bit - custom tiling", "") {
   if (kCPU < CPUType::SSSE3)
     return;
 
-  CHECK(TestMany<SSSE3_8bit, 1, 1>(64, 128, 64, 1.0f));
-  CHECK(TestMany<SSSE3_8bit, 2, 1>(64, 128, 64, 1.0f));
-  CHECK(TestMany<SSSE3_8bit, 1, 2>(64, 128, 64, 1.0f));
-  CHECK(TestMany<SSSE3_8bit, 2, 2>(64, 128, 64, 1.0f));
-  CHECK(TestMany<SSSE3_8bit, 4, 1>(64, 128, 64, 1.0f));
-  CHECK(TestMany<SSSE3_8bit, 1, 4>(64, 128, 64, 1.0f));
-  CHECK(TestMany<SSSE3_8bit, 4, 4>(64, 128, 64, 1.0f));
+  CHECK(TestMany<SSSE3_8bit, 1, 1>(256, 256, 256, 1.0f));
+  CHECK(TestMany<SSSE3_8bit, 2, 1>(256, 256, 256, 1.0f));
+  CHECK(TestMany<SSSE3_8bit, 1, 2>(256, 256, 256, 1.0f));
+  CHECK(TestMany<SSSE3_8bit, 2, 2>(256, 256, 256, 1.0f));
+  CHECK(TestMany<SSSE3_8bit, 4, 1>(256, 256, 256, 1.0f));
+  CHECK(TestMany<SSSE3_8bit, 1, 4>(256, 256, 256, 1.0f));
+  CHECK(TestMany<SSSE3_8bit, 4, 4>(256, 256, 256, 1.0f));
 }
 
 TEST_CASE("Multiply AVX2 8bit - custom tiling", "") {
   if (kCPU < CPUType::AVX2)
     return;
 
-  CHECK(TestMany<AVX2_8bit, 1, 1>(64, 128, 128, 1.0f));
-  CHECK(TestMany<AVX2_8bit, 2, 1>(64, 128, 128, 1.0f));
-  CHECK(TestMany<AVX2_8bit, 1, 2>(64, 128, 128, 1.0f));
-  CHECK(TestMany<AVX2_8bit, 2, 2>(64, 128, 128, 1.0f));
-  CHECK(TestMany<AVX2_8bit, 4, 1>(64, 128, 128, 1.0f));
-  CHECK(TestMany<AVX2_8bit, 1, 4>(64, 128, 128, 1.0f));
-  CHECK(TestMany<AVX2_8bit, 4, 4>(64, 128, 128, 1.0f));
+  CHECK(TestMany<AVX2_8bit, 1, 1>(256, 256, 256, 1.0f));
+  CHECK(TestMany<AVX2_8bit, 2, 1>(256, 256, 256, 1.0f));
+  CHECK(TestMany<AVX2_8bit, 1, 2>(256, 256, 256, 1.0f));
+  CHECK(TestMany<AVX2_8bit, 2, 2>(256, 256, 256, 1.0f));
+  CHECK(TestMany<AVX2_8bit, 4, 1>(256, 256, 256, 1.0f));
+  CHECK(TestMany<AVX2_8bit, 1, 4>(256, 256, 256, 1.0f));
+  CHECK(TestMany<AVX2_8bit, 4, 4>(256, 256, 256, 1.0f));
 }
 
 TEST_CASE("Multiply AVX2 16bit - custom tiling", "") {
   if (kCPU < CPUType::AVX2)
     return;
 
-  CHECK(TestMany<AVX2_16bit, 1, 1>(64, 128, 64, 1.0f));
-  CHECK(TestMany<AVX2_16bit, 2, 1>(64, 128, 64, 1.0f));
-  CHECK(TestMany<AVX2_16bit, 1, 2>(64, 128, 64, 1.0f));
-  CHECK(TestMany<AVX2_16bit, 2, 2>(64, 128, 64, 1.0f));
-  CHECK(TestMany<AVX2_16bit, 4, 1>(64, 128, 64, 1.0f));
-  CHECK(TestMany<AVX2_16bit, 1, 4>(64, 128, 64, 1.0f));
-  CHECK(TestMany<AVX2_16bit, 4, 4>(64, 128, 64, 1.0f));
+  CHECK(TestMany<AVX2_16bit, 1, 1>(256, 256, 256, 1.0f));
+  CHECK(TestMany<AVX2_16bit, 2, 1>(256, 256, 256, 1.0f));
+  CHECK(TestMany<AVX2_16bit, 1, 2>(256, 256, 256, 1.0f));
+  CHECK(TestMany<AVX2_16bit, 2, 2>(256, 256, 256, 1.0f));
+  CHECK(TestMany<AVX2_16bit, 4, 1>(256, 256, 256, 1.0f));
+  CHECK(TestMany<AVX2_16bit, 1, 4>(256, 256, 256, 1.0f));
+  CHECK(TestMany<AVX2_16bit, 4, 4>(256, 256, 256, 1.0f));
 }
 
 // #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
@@ -120,26 +120,26 @@ TEST_CASE("Multiply AVX2 16bit - custom tiling", "") {
 //     if (kCPU < CPUType::AVX512BW)
 //       return;
 
-//     CHECK(TestMany<AVX512_8bit, 1, 1>(64, 128, 128, 1.0f));
-//     CHECK(TestMany<AVX512_8bit, 2, 1>(64, 128, 128, 1.0f));
-//     CHECK(TestMany<AVX512_8bit, 1, 2>(64, 128, 128, 1.0f));
-//     CHECK(TestMany<AVX512_8bit, 2, 2>(64, 128, 128, 1.0f));
-//     CHECK(TestMany<AVX512_8bit, 4, 1>(64, 128, 128, 1.0f));
-//     CHECK(TestMany<AVX512_8bit, 1, 4>(64, 128, 128, 1.0f));
-//     CHECK(TestMany<AVX512_8bit, 4, 4>(64, 128, 128, 1.0f));
+//     CHECK(TestMany<AVX512_8bit, 1, 1>(256, 256, 256, 1.0f));
+//     CHECK(TestMany<AVX512_8bit, 2, 1>(256, 256, 256, 1.0f));
+//     CHECK(TestMany<AVX512_8bit, 1, 2>(256, 256, 256, 1.0f));
+//     CHECK(TestMany<AVX512_8bit, 2, 2>(256, 256, 256, 1.0f));
+//     CHECK(TestMany<AVX512_8bit, 4, 1>(256, 256, 256, 1.0f));
+//     CHECK(TestMany<AVX512_8bit, 1, 4>(256, 256, 256, 1.0f));
+//     CHECK(TestMany<AVX512_8bit, 4, 4>(256, 256, 256, 1.0f));
 //   }
 
 //   TEST_CASE("Multiply AVX512BW 16bit - custom tiling", "") {
 //     if (kCPU < CPUType::AVX512BW)
 //       return;
 
-//     CHECK(TestMany<AVX512_16bit, 1, 1>(64, 128, 128, 1.0f));
-//     CHECK(TestMany<AVX512_16bit, 2, 1>(64, 128, 128, 1.0f));
-//     CHECK(TestMany<AVX512_16bit, 1, 2>(64, 128, 128, 1.0f));
-//     CHECK(TestMany<AVX512_16bit, 2, 2>(64, 128, 128, 1.0f));
-//     CHECK(TestMany<AVX512_16bit, 4, 1>(64, 128, 128, 1.0f));
-//     CHECK(TestMany<AVX512_16bit, 1, 4>(64, 128, 128, 1.0f));
-//     CHECK(TestMany<AVX512_16bit, 4, 4>(64, 128, 128, 1.0f));
+//     CHECK(TestMany<AVX512_16bit, 1, 1>(256, 256, 256, 1.0f));
+//     CHECK(TestMany<AVX512_16bit, 2, 1>(256, 256, 256, 1.0f));
+//     CHECK(TestMany<AVX512_16bit, 1, 2>(256, 256, 256, 1.0f));
+//     CHECK(TestMany<AVX512_16bit, 2, 2>(256, 256, 256, 1.0f));
+//     CHECK(TestMany<AVX512_16bit, 4, 1>(256, 256, 256, 1.0f));
+//     CHECK(TestMany<AVX512_16bit, 1, 4>(256, 256, 256, 1.0f));
+//     CHECK(TestMany<AVX512_16bit, 4, 4>(256, 256, 256, 1.0f));
 //   }
 // #endif
 
@@ -148,13 +148,13 @@ TEST_CASE("Multiply AVX2 16bit - custom tiling", "") {
     if (kCPU < CPUType::AVX512VNNI)
       return;
 
-    CHECK(TestMany<AVX512VNNI_8bit, 1, 1>(64, 128, 128, 1.0f));
-    CHECK(TestMany<AVX512VNNI_8bit, 2, 1>(64, 128, 128, 1.0f));
-    CHECK(TestMany<AVX512VNNI_8bit, 1, 2>(64, 128, 128, 1.0f));
-    CHECK(TestMany<AVX512VNNI_8bit, 2, 2>(64, 128, 128, 1.0f));
-    CHECK(TestMany<AVX512VNNI_8bit, 4, 1>(64, 128, 128, 1.0f));
-    CHECK(TestMany<AVX512VNNI_8bit, 1, 4>(64, 128, 128, 1.0f));
-    CHECK(TestMany<AVX512VNNI_8bit, 4, 4>(64, 128, 128, 1.0f));
+    CHECK(TestMany<AVX512VNNI_8bit, 1, 1>(256, 256, 256, 1.0f));
+    CHECK(TestMany<AVX512VNNI_8bit, 2, 1>(256, 256, 256, 1.0f));
+    CHECK(TestMany<AVX512VNNI_8bit, 1, 2>(256, 256, 256, 1.0f));
+    CHECK(TestMany<AVX512VNNI_8bit, 2, 2>(256, 256, 256, 1.0f));
+    CHECK(TestMany<AVX512VNNI_8bit, 4, 1>(256, 256, 256, 1.0f));
+    CHECK(TestMany<AVX512VNNI_8bit, 1, 4>(256, 256, 256, 1.0f));
+    CHECK(TestMany<AVX512VNNI_8bit, 4, 4>(256, 256, 256, 1.0f));
   }
 #endif
 
