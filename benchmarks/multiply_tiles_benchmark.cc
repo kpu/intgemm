@@ -62,4 +62,7 @@ int main(int argc, char** argv) {
   StaticLoop<BenchmarkLoop<SSE2_16bit>, MakeStaticLoopIterator<TestCasesN>>(192, 256, 192, repeats);
   StaticLoop<BenchmarkLoop<AVX2_8bit>, MakeStaticLoopIterator<TestCasesN>>(192, 256, 192, repeats);
   StaticLoop<BenchmarkLoop<AVX2_16bit>, MakeStaticLoopIterator<TestCasesN>>(192, 256, 192, repeats);
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
+  StaticLoop<BenchmarkLoop<AVX512VNNI_8bit>, MakeStaticLoopIterator<TestCasesN>>(192, 256, 192, repeats);
+#endif
 }
