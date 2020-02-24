@@ -194,18 +194,20 @@ void CompareMaxAbs(const float *begin, const float *end, float test) {
 template <float (*Backend) (const float *, const float *)> void TestMaxAbsolute() {
   std::mt19937 gen;
   std::uniform_real_distribution<float> dist(-8.0, 8.0);
-  AlignedVector<float> test(64);
-  // 64 tries.
-  for (int t = 0; t < 64; ++t) {
-    // Fill with [-8, 8).
-    for (auto& it : test) {
-      it = dist(gen);
+  const std::size_t kLengthMax = 65;
+  AlignedVector<float> test(kLengthMax);
+  for (std::size_t len = 1; len < kLengthMax; ++len) {
+    for (int t = 0; t < len; ++t) {
+      // Fill with [-8, 8).
+      for (auto& it : test) {
+        it = dist(gen);
+      }
+      CompareMaxAbs(test.begin(), test.begin() + len, Backend(test.begin(), test.begin() + len));
+      test[t] = -32.0;
+      CompareMaxAbs(test.begin(), test.begin() + len, Backend(test.begin(), test.begin() + len));
+      test[t] = 32.0;
+      CompareMaxAbs(test.begin(), test.begin() + len, Backend(test.begin(), test.begin() + len));
     }
-    CompareMaxAbs(test.begin(), test.end(), Backend(test.begin(), test.end()));
-    test[t] = -32.0;
-    CompareMaxAbs(test.begin(), test.end(), Backend(test.begin(), test.end()));
-    test[t] = 32.0;
-    CompareMaxAbs(test.begin(), test.end(), Backend(test.begin(), test.end()));
   }
 }
 

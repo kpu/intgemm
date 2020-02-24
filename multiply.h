@@ -562,20 +562,28 @@ INTGEMM_SSSE3 inline static void InnerINTGEMM_SSSE3(
 } \
 
 #define INTGEMM_MAXABSOLUTE(Register, target) \
-target static float MaxAbsolute(const float *begin_float, const float *end_float) { \
+target static inline float MaxAbsolute(const float *begin_float, const float *end_float) { \
   assert(end_float > begin_float); \
-  assert((end_float - begin_float) % (sizeof(Register) / sizeof(float)) == 0); \
+  assert(reinterpret_cast<uintptr_t>(begin_float) % sizeof(Register) == 0); \
   const Register *begin = reinterpret_cast<const Register*>(begin_float); \
-  const Register *end = reinterpret_cast<const Register*>(end_float); \
-  union {float f; int32_t i;} float_convert; \
-  float_convert.i = 0x7fffffff; \
-  Register and_me = set1_ps<Register>(float_convert.f); \
-  Register highest = and_ps(and_me, *begin); \
-  for (++begin; begin != end; ++begin) { \
+  const float *end_reg = end_float - (reinterpret_cast<uintptr_t>(end_float) % sizeof(Register)) / sizeof(float); \
+  const Register *end = reinterpret_cast<const Register*>(end_reg); \
+  union {float f; int32_t i;} and_convert, float_convert; \
+  and_convert.i = 0x7fffffff; \
+  Register and_me = set1_ps<Register>(and_convert.f); \
+  Register highest = setzero_ps<Register>(); \
+  for (; begin < end; ++begin) { \
     Register reg = and_ps(and_me, *begin); \
     highest = max_ps(highest, reg); \
   } \
-  return MaxFloat32(highest); \
+  float ret = MaxFloat32(highest); \
+  /* Overhang: this would be more efficient if done in a single SIMD operation with some zeroing */ \
+  for (const float *i = end_reg; i < end_float; ++i) { \
+    float_convert.f = *i; \
+    float_convert.i &= and_convert.i; \
+    ret = std::max(ret, float_convert.f); \
+  } \
+  return ret; \
 } \
 
 } // namespace intgemm
