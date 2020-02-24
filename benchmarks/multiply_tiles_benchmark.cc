@@ -52,17 +52,57 @@ struct BenchmarkLoop {
 };
 
 int main(int argc, char** argv) {
-  if (argc != 2) {
-    std::cerr << "Usage: " << argv[0] << " repeats" << std::endl;
+  if (argc < 3) {
+    std::cerr << "Usage: " << argv[0] << " repeats ARCH [ARCH2 [ARCH3...]]" << std::endl;
     return 1;
   }
   Index repeats = atoi(argv[1]);
 
-  StaticLoop<BenchmarkLoop<SSSE3_8bit>, MakeStaticLoopIterator<TestCasesN>>(192, 256, 192, repeats);
-  StaticLoop<BenchmarkLoop<SSE2_16bit>, MakeStaticLoopIterator<TestCasesN>>(192, 256, 192, repeats);
-  StaticLoop<BenchmarkLoop<AVX2_8bit>, MakeStaticLoopIterator<TestCasesN>>(192, 256, 192, repeats);
-  StaticLoop<BenchmarkLoop<AVX2_16bit>, MakeStaticLoopIterator<TestCasesN>>(192, 256, 192, repeats);
+  std::string available_archs[] = {
+    "SSSE3_8bit",
+    "SSE2_16bit",
+    "AVX2_8bit",
+    "AVX2_16bit",
+//  Tiling not supported yet
+// #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
+//     "AVX512_8bit",
+//     "AVX512_16bit",
+// #endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
-  StaticLoop<BenchmarkLoop<AVX512VNNI_8bit>, MakeStaticLoopIterator<TestCasesN>>(192, 256, 192, repeats);
+    "AVX512VNNI_8bit",
 #endif
+  };
+
+  std::vector<std::string> selected_archs;
+  for (int i = 2; i < argc; ++i) {
+    bool found = false;
+    for (int j = 0; j < sizeof(available_archs) / sizeof(available_archs[0]) && !found; ++j) {
+      if (available_archs[j].compare(argv[i]) == 0) {
+        selected_archs.push_back(argv[i]);
+        found = true;
+      }
+    }
+    if (!found)
+      std::cerr << "Warning: Unknown architecture '" << argv[i] << "'!" << std::endl;
+  }
+
+#define ARCH_BENCHMARK_IMPL(arch, A_rows, width, B_cols) \
+  if (selected_archs[i].compare(#arch) == 0) { StaticLoop<BenchmarkLoop<arch>, MakeStaticLoopIterator<TestCasesN>>((A_rows), (width), (B_cols), repeats); }
+
+  for (int i  = 0; i < selected_archs.size(); ++i) {
+    ARCH_BENCHMARK_IMPL(SSSE3_8bit, 768, 768, 768)
+    ARCH_BENCHMARK_IMPL(SSE2_16bit, 768, 768, 768)
+    ARCH_BENCHMARK_IMPL(AVX2_8bit, 768, 768, 768)
+    ARCH_BENCHMARK_IMPL(AVX2_16bit, 768, 768, 768)
+    //  Tiling not supported yet
+    // #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
+      // ARCH_BENCHMARK_IMPL(AVX512BW_8bit, 768, 768, 768)
+      // ARCH_BENCHMARK_IMPL(AVX512BW_8bit, 768, 768, 768)
+    // #endif
+    #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
+      ARCH_BENCHMARK_IMPL(AVX512VNNI_8bit, 768, 768, 768)
+    #endif
+  }
+
+  return 0;
 }
