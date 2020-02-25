@@ -250,7 +250,7 @@ target static inline void PrepareB(const float *input, Integer *output, float qu
   Quantizer quantizer = Quantizer(quant_mult); \
   Register *output_it = reinterpret_cast<Register*>(output); \
   \
-  assert(cols % 8 == 0); \
+  assert(cols % Columns == 0); \
   assert(rows % (RegisterElems * TileColumnsMultiplier) == 0); \
   assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0); \
   assert(reinterpret_cast<uintptr_t>(output_it) % sizeof(Register) == 0); \
