@@ -1,7 +1,7 @@
-#include "log4/log4.h"
+#include "../log4/log4.h"
 
-#include "aligned.h"
-#include "stop_watch.h"
+#include "../aligned.h"
+#include "../stop_watch.h"
 
 #include <algorithm>
 #include <cassert>

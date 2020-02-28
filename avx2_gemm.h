@@ -1,18 +1,19 @@
 #pragma once
 
+#include "interleave.h"
+#include "kernels.h"
+#include "multiply.h"
 #include "types.h"
+
 #include <cstdint>
 #include <stdint.h>
-
-#include "interleave.h"
-#include "multiply.h"
 
 namespace intgemm {
 
 namespace avx2 {
 
 INTGEMM_AVX2 inline __m256i QuantizerGrab(const float *input, const __m256 quant_mult_reg) {
-  return quantize(loadu_ps<__m256>(input), quant_mult_reg);
+  return kernels::quantize(loadu_ps<__m256>(input), quant_mult_reg);
 }
 
 INTGEMM_SELECT_COL_B(INTGEMM_AVX2, __m256i)
@@ -75,16 +76,17 @@ struct AVX2_16bit {
     PrepareBFor16(input, output, avx2::QuantizeTile16(quant_mult), rows, cols);
   }*/
   INTGEMM_PREPARE_B_16(INTGEMM_AVX2, avx2::QuantizeTile16)
+  INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(INTGEMM_AVX2, CPUType::AVX2, int16_t)
 
   INTGEMM_AVX2 static void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     avx2::SelectColumnsOfB((const __m256i*)input, (__m256i*)output, rows * 2, cols_begin, cols_end);
   }
   
-  INTGEMM_MULTIPLY16(__m256i, INTGEMM_AVX2, OnAVX2)
+  INTGEMM_MULTIPLY16(__m256i, INTGEMM_AVX2, CPUType::AVX2)
 
-  constexpr static const char *const kName = "16-bit INTGEMM_AVX2";
+  constexpr static const char *const kName = "16-bit AVX2";
 
-  static const CPUType kUses = CPU_AVX2;
+  static const CPUType kUses = CPUType::AVX2;
 };
 
 namespace avx2 {
@@ -100,6 +102,10 @@ class QuantizeTile8 {
 
     INTGEMM_AVX2 inline __m256i Consecutive(const float *input) {
       return Tile(input, input + 8, input + 16, input + 24);
+    }
+
+    INTGEMM_AVX2 inline __m256i ConsecutiveU(const float *input) {
+      return TileU(input, input + 8, input + 16, input + 24);
     }
 
     INTGEMM_AVX2 inline __m256i ForReshape(const float *input, Index cols) {
@@ -125,6 +131,32 @@ class QuantizeTile8 {
       __m256i packed = _mm256_packs_epi16(packed0, packed1);
       // Ban -128.
       packed = _mm256_max_epi8(packed, neg127);
+      // Currently in 0 1 2 3 8 9 10 11 16 17 18 19 24 25 26 27 4 5 6 7 12 13 14 15 20 21 22 23 28 29 30 31
+      // Or as 32-bit integers 0 2 4 6 1 3 5 7
+      // Technically this could be removed so long as the rows are bigger than 16
+      // and the values are only used for GEMM.
+      return _mm256_permutevar8x32_epi32(packed, shuffle_param);
+    }
+
+    //A version that produces uint8_ts
+    INTGEMM_AVX2 inline __m256i TileU(const float *input0, const float *input1, const float *input2, const float *input3) {
+      // Looking at the assembly, gcc has pulled this outside the loops calling this.
+      const __m256i neg127 = _mm256_set1_epi8(-127);
+      const __m256i pos127 = _mm256_set1_epi8(127);
+      const __m256i shuffle_param = _mm256_set_epi32(7, 3, 6, 2, 5, 1, 4, 0);
+      // Grab 4 registers at a time in 32-bit format.
+      __m256i g0 = avx2::QuantizerGrab(input0, mult_);
+      __m256i g1 = avx2::QuantizerGrab(input1, mult_);
+      __m256i g2 = avx2::QuantizerGrab(input2, mult_);
+      __m256i g3 = avx2::QuantizerGrab(input3, mult_);
+      // Pack 32-bit to 16-bit.
+      __m256i packed0 = _mm256_packs_epi32(g0, g1);
+      __m256i packed1 = _mm256_packs_epi32(g2, g3);
+      // Pack 16-bit to 8-bit.
+      __m256i packed = _mm256_packs_epi16(packed0, packed1);
+      // Ban -128.
+      packed = _mm256_max_epi8(packed, neg127); //Could be removed  if we use +128
+      packed = _mm256_add_epi8(packed, pos127);
       // Currently in 0 1 2 3 8 9 10 11 16 17 18 19 24 25 26 27 4 5 6 7 12 13 14 15 20 21 22 23 28 29 30 31
       // Or as 32-bit integers 0 2 4 6 1 3 5 7
       // Technically this could be removed so long as the rows are bigger than 16
@@ -159,30 +191,42 @@ struct AVX2_8bit {
     }
   }
 
+  // Currently A is prepared by quantization but this could theoretically change.
+  INTGEMM_AVX2 static inline void PrepareA(const float *input, uint8_t *output, float quant_mult, Index rows, Index cols) {
+    QuantizeU(input, output, quant_mult, rows * cols);
+  }
+
+  // Just quantize everything in order.
+  INTGEMM_AVX2 static void QuantizeU(const float *input, uint8_t *output, float quant_mult, Index size) {
+    assert(size % 32 == 0);
+    assert(reinterpret_cast<uintptr_t>(input) % 32 == 0);
+    avx2::QuantizeTile8 q(quant_mult);
+    const float *end = input + size;
+    for (; input != end; input += 32, output += 32) {
+      *reinterpret_cast<__m256i*>(output) = q.ConsecutiveU(input);
+    }
+  }
+
   // Tile size for B; B must be a multiple of this block size.
   static const Index kBTileRow = 32;
   static const Index kBTileCol = 8;
 
-/*
-  INTGEMM_AVX2 static void PrepareB(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
-    PrepareBFor8(input, output, avx2::QuantizeTile8(quant_mult), rows, cols);
-  }*/
-
   INTGEMM_PREPARE_B_8(INTGEMM_AVX2, avx2::QuantizeTile8)
+  INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(INTGEMM_AVX2, CPUType::AVX2, int8_t)
 
   INTGEMM_AVX2 static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     avx2::SelectColumnsOfB((const __m256i*)input, (__m256i*)output, rows, cols_begin, cols_end);
   }
-/*
-  INTGEMM_AVX2 static void Multiply(const int8_t *A, const int8_t *B, float *C, float unquant_mult, Index A_rows, Index width, Index B_cols) {
-    //Multiply8_SSE2OrAVX2<Multiply8_AVXAVX2, __m256i, __m256>(A, B, C, unquant_mult, A_rows, width, B_cols);
-    Multiply8_SSE2OrAVX2__m256i<JustUnquantizeC>(A, B, JustUnquantizeC(C, unquant_mult), A_rows, width, B_cols);
-  }*/
-  INTGEMM_MULTIPLY8(__m256i, INTGEMM_AVX2, OnAVX2)
-  
-  constexpr static const char *const kName = "8-bit INTGEMM_AVX2";
 
-  static const CPUType kUses = CPU_AVX2;
+  INTGEMM_MULTIPLY8(__m256i, INTGEMM_AVX2, CPUType::AVX2)
+
+  INTGEMM_MULTIPLY8SHIFT(__m256i, INTGEMM_AVX2, CPUType::AVX2)
+
+  INTGEMM_PREPAREBIASFOR8(__m256i, INTGEMM_AVX2, CPUType::AVX2)
+  
+  constexpr static const char *const kName = "8-bit AVX2";
+
+  static const CPUType kUses = CPUType::AVX2;
 };
 
 } // namespace intgemm

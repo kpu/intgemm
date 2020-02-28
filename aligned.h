@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdlib>
+#include <stdlib.h>
 
 // 64-byte aligned simple vector.
 
@@ -8,7 +9,16 @@ namespace intgemm {
 template <class T> class AlignedVector {
   public:
     explicit AlignedVector(std::size_t size)
-      : mem_(static_cast<T*>(aligned_alloc(64, size * sizeof(T)))), size_(size) {}
+      : size_(size) {
+     #ifdef __APPLE__
+      posix_memalign(reinterpret_cast<void **>(&mem_), 64, size * sizeof(T));
+     #else
+      mem_ = reinterpret_cast<T*>(aligned_alloc(64, (size * sizeof(T) + 63) & ~63)); // pedantic requirements for memory size on aligned_alloc in case it's not just a call to posix_memalign
+     #endif
+    }
+
+    AlignedVector(const AlignedVector&) = delete;
+    AlignedVector& operator=(const AlignedVector&) = delete;
 
     ~AlignedVector() { std::free(mem_); }
 
@@ -22,13 +32,12 @@ template <class T> class AlignedVector {
     T *end() { return mem_ + size_; }
     const T *end() const { return mem_ + size_; }
 
+    template <typename ReturnType>
+    ReturnType *as() { return reinterpret_cast<ReturnType*>(mem_); }
+
   private:
     T *mem_;
     std::size_t size_;
-
-    // Deleted.
-    AlignedVector(AlignedVector &);
-    AlignedVector &operator=(AlignedVector &);
 };
 
 } // namespace intgemm

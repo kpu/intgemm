@@ -1,6 +1,6 @@
 /* Should be a test, just wanted to mess around first and be able to print easily */
-#include "log4/log4.h"
-#include "aligned.h"
+#include "../log4/log4.h"
+#include "../aligned.h"
 
 #include <cassert>
 #include <cstdint>
@@ -11,7 +11,7 @@
 #include <limits>
 #include <random>
 
-#include "3rd_party/catch.hpp"
+#include "../3rd_party/catch.hpp"
 #define CHECK_MESSAGE(cond, msg) do { INFO(msg); CHECK(cond); } while((void)0, 0)
 
 namespace intgemm {
@@ -99,7 +99,7 @@ INTGEMM_AVX512BW void CompareAll(const AlignedVector<uint8_t> &a, const AlignedV
 }
 
 INTGEMM_AVX512BW TEST_CASE("Log 4 Pattern", "Pattern") {
-  if (kCPU < CPUType::CPU_AVX512BW) return;
+  if (kCPU < CPUType::AVX512BW) return;
   // Generate all possible combinations of 4-bit pairs. Note this isn't an
   // exhaustive test case because they should be in each position of the 16-bit
   // blocks.
@@ -116,7 +116,7 @@ INTGEMM_AVX512BW TEST_CASE("Log 4 Pattern", "Pattern") {
 }
 
 INTGEMM_AVX512BW TEST_CASE("Log 4 Random", "Random") {
-  if (kCPU < CPUType::CPU_AVX512BW) return;
+  if (kCPU < CPUType::AVX512BW) return;
   const std::size_t size = 16384;
   std::mt19937 gen;
   std::uniform_int_distribution<uint8_t> d(0, 255);

@@ -1,52 +1,40 @@
 #pragma once
 
+#include "intgemm_config.h"
 #include "intrinsics.h"
 #include "types.h"
 
+#include <algorithm>
 #include <cassert>
 #include <stdint.h>
 
 namespace intgemm {
 
-/* This macro defines functions that interleave their arguments like
- * inline void Interleave8(__m256i &first, __m256i &second) {
- *   __m256i temp = _mm256_unpacklo_epi8(first, second);
- *   second = _mm256_unpackhi_epi8(first, second);
- *   first = temp;
- * }
- *
- * Example usage:
- *   INTGEMM_INTERLEAVE(__m128i, )
- *   INTGEMM_INTERLEAVE(__m256i, 256)
- *   INTGEMM_INTERLEAVE(__m512i, 512)
+/*
+ * Interleave vectors.
  */
-#define INTGEMM_INTERLEAVE(target, type, prefix) \
-target static inline void Interleave8(type &first, type &second) { \
-  type temp = _mm##prefix##_unpacklo_epi8(first, second); \
-  second = _mm##prefix##_unpackhi_epi8(first, second); \
-  first = temp; \
-} \
-target static inline void Interleave16(type &first, type &second) { \
-  type temp = _mm##prefix##_unpacklo_epi16(first, second); \
-  second = _mm##prefix##_unpackhi_epi16(first, second); \
-  first = temp; \
-} \
-target static inline void Interleave32(type &first, type &second) { \
-  type temp = _mm##prefix##_unpacklo_epi32(first, second); \
-  second = _mm##prefix##_unpackhi_epi32(first, second); \
-  first = temp; \
-} \
-target static inline void Interleave64(type &first, type &second) { \
-  type temp = _mm##prefix##_unpacklo_epi64(first, second); \
-  second = _mm##prefix##_unpackhi_epi64(first, second); \
+#define INTGEMM_INTERLEAVE_N(target, type, N) \
+target static inline void Interleave##N(type &first, type &second) { \
+  type temp = unpacklo_epi##N(first, second); \
+  second = unpackhi_epi##N(first, second); \
   first = temp; \
 }
 
-INTGEMM_INTERLEAVE(INTGEMM_SSE2, __m128i, )
-INTGEMM_INTERLEAVE(INTGEMM_AVX2, __m256i, 256)
-#ifndef INTGEMM_NO_AVX512
-INTGEMM_INTERLEAVE(INTGEMM_AVX512BW, __m512i, 512)
+#define INTGEMM_INTERLEAVE(target, type) \
+INTGEMM_INTERLEAVE_N(target, type, 8) \
+INTGEMM_INTERLEAVE_N(target, type, 16) \
+INTGEMM_INTERLEAVE_N(target, type, 32) \
+INTGEMM_INTERLEAVE_N(target, type, 64)
+
+INTGEMM_INTERLEAVE(INTGEMM_SSE2, __m128i)
+INTGEMM_INTERLEAVE(INTGEMM_AVX2, __m256i)
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+INTGEMM_INTERLEAVE(INTGEMM_AVX512BW, __m512i)
 #endif
+
+/*
+ * Swap vectors.
+ */
 #define INTGEMM_SWAP(target, Register) \
 target static inline void Swap(Register &a, Register &b) { \
   Register tmp = a; \
@@ -56,7 +44,7 @@ target static inline void Swap(Register &a, Register &b) { \
 
 INTGEMM_SWAP(INTGEMM_SSE2, __m128i)
 INTGEMM_SWAP(INTGEMM_AVX2, __m256i)
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_SWAP(INTGEMM_AVX512BW, __m512i)
 #endif
@@ -109,7 +97,7 @@ target static inline void Transpose16InLane(Register &r0, Register &r1, Register
 
 INTGEMM_TRANSPOSE16(INTGEMM_SSE2, __m128i)
 INTGEMM_TRANSPOSE16(INTGEMM_AVX2, __m256i)
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_TRANSPOSE16(INTGEMM_AVX512BW, __m512i)
 #endif
@@ -244,7 +232,25 @@ target static inline void PrepareB(const float *input, int16_t *output_shadow, f
       Transpose16InLane(output[0], output[1], output[2], output[3], output[4], output[5], output[6], output[7]); \
     } \
   } \
-} \
+}
+
+#define INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(target, cpu_type, Integer) \
+target static inline void PrepareBQuantizedTransposed(const Integer* input, Integer* output, Index rows, Index cols) { \
+  using Register = vector_t<cpu_type, Integer>; \
+  const Index RegisterElems = sizeof(Register) / sizeof(Integer); \
+  const Index kColStride = 8; \
+  \
+  assert(cols % RegisterElems == 0); \
+  assert(rows % kColStride == 0); \
+  assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0); \
+  assert(reinterpret_cast<uintptr_t>(output) % sizeof(Register) == 0); \
+  \
+  Register* output_it = reinterpret_cast<Register*>(output); \
+  for (Index r = 0; r < rows; r += kColStride) \
+    for (Index c = 0; c < cols; c += RegisterElems) \
+      for (Index ri = 0; ri < 8; ++ri) \
+        *output_it++ = *reinterpret_cast<const Register*>(input + (r + ri) * cols + c); \
+}
 
 /* Select columns of B from PrepareB format to PrepareB format.
  */
@@ -266,6 +272,6 @@ target static inline void SelectColumnsOfB(const Register *input, Register *outp
       } \
     } \
   } \
-} \
+}
 
 } // namespace intgemm

@@ -1,8 +1,10 @@
 #pragma once
 
+#include "intgemm_config.h"
 #include "interleave.h"
 #include "intrinsics.h"
-#include "vec_utils.h"
+#include "vec_traits.h"
+#include "callbacks.h"
 
 namespace intgemm {
 
@@ -17,12 +19,9 @@ INTGEMM_SSE2 static inline float MaxFloat32(__m128 a) {
   return *reinterpret_cast<float*>(&a);
 }
 
-INTGEMM_SSE2 static inline MultiplyResult128 PermuteSummer(__m128i pack0123, __m128i pack4567) {
+INTGEMM_SSE2 static inline dvector_t<CPUType::SSE2, int> PermuteSummer(__m128i pack0123, __m128i pack4567) {
   // No op for 128 bits: already reduced fully.
-  MultiplyResult128 ret;
-  ret.pack0123 = pack0123;
-  ret.pack4567 = pack4567;
-  return ret;
+  return { pack0123, pack4567 };
 }
 
 INTGEMM_AVX2 static inline float MaxFloat32(__m256 a) {
@@ -37,7 +36,7 @@ INTGEMM_AVX2 static inline __m256i PermuteSummer(__m256i pack0123, __m256i pack4
   return _mm256_add_epi32(rev, blended);
 }
 
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_AVX512BW static inline __m256i PermuteSummer(__m512i pack0123, __m512i pack4567) {
   // Form [0th 128-bit register of pack0123, 0st 128-bit register of pack4567, 2nd 128-bit register of pack0123, 2nd 128-bit register of pack4567]
@@ -51,8 +50,11 @@ INTGEMM_AVX512BW static inline __m256i PermuteSummer(__m512i pack0123, __m512i p
 }
 
 // Find the maximum float.
-static inline INTGEMM_AVX512DQ float MaxFloat32(__m512 a) {
-  return MaxFloat32(max_ps(_mm512_castps512_ps256(a), _mm512_extractf32x8_ps(a, 1)));
+static inline INTGEMM_AVX512F float MaxFloat32(__m512 a) {
+  // _mm512_extractf32x8_ps is AVX512DQ but we don't care about masking.
+  // So cast to pd, do AVX512F _mm512_extractf64x4_pd, then cast to ps.
+  __m256 upper = _mm256_castpd_ps(_mm512_extractf64x4_pd(_mm512_castps_pd(a), 1));
+  return MaxFloat32(max_ps(_mm512_castps512_ps256(a), upper));
 }
 
 #endif
@@ -84,10 +86,21 @@ target inline Register Pack0123(Register sum0, Register sum1, Register sum2, Reg
 
 INTGEMM_PACK0123(INTGEMM_SSE2, __m128i)
 INTGEMM_PACK0123(INTGEMM_AVX2, __m256i)
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_PACK0123(INTGEMM_AVX512BW, __m512i)
 #endif
+
+template <typename Callback>
+INTGEMM_SSE2 static inline void RunCallback(Callback& callback_impl, dvector_t<CPUType::SSE2, int> total, Index row_idx, Index col_idx, Index rows, Index cols) {
+  callback_impl(total.first, callbacks::OutputBufferInfo(row_idx, col_idx, rows, cols));
+  callback_impl(total.second, callbacks::OutputBufferInfo(row_idx, col_idx + 4, rows, cols));
+}
+
+template <typename Callback>
+INTGEMM_AVX2 static inline void RunCallback(Callback& callback_impl, vector_t<CPUType::AVX2, int> total, Index row_idx, Index col_idx, Index rows, Index cols) {
+  callback_impl(total, callbacks::OutputBufferInfo(row_idx, col_idx, rows, cols));
+}
 
 // 16-bit multiplier for INTGEMM_SSE2, INTGEMM_AVX2, and AVX512.
 // C = A * B * unquant_mult
@@ -126,14 +139,14 @@ INTGEMM_PACK0123(INTGEMM_AVX512BW, __m512i)
 // width must be a multiple of the register size.
 // B_cols must be a multiple of 8.
 // Multiply16
-#define INTGEMM_MULTIPLY16(Integer, target, WriteCSubType) \
-  template <class WriteC> target static void Multiply(const int16_t *A, const int16_t *B, WriteC C, Index A_rows, Index width, Index B_cols) { \
+#define INTGEMM_MULTIPLY16(Integer, target, cpu_type) \
+template <typename Callback> target static void Multiply(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback) { \
   assert(width % (sizeof(Integer) / sizeof(int16_t)) == 0); \
   assert(B_cols % 8 == 0); \
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0); \
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0); \
   const int simd_width = width / (sizeof(Integer) / sizeof(int16_t)); \
-  typename WriteC::WriteCSubType write_C(C); \
+  auto callback_impl = callbacks::CallbackImpl<cpu_type, Callback>(callback); \
   const Integer *B0_col = reinterpret_cast<const Integer *>(B); \
   for (Index B0_colidx = 0; B0_colidx < B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
     /* Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.*/ \
@@ -177,12 +190,162 @@ INTGEMM_PACK0123(INTGEMM_AVX512BW, __m512i)
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
       /*The specific implementation may need to reduce further.*/ \
       auto total = PermuteSummer(pack0123, pack4567); \
-      write_C(A_rowidx, B_cols, B0_colidx, total); \
+      RunCallback(callback_impl, total, A_rowidx, B0_colidx, A_rows, B_cols); \
     } \
   } \
 } \
 
-/* 8-bit matrix multiply used by AVX and INTGEMM_AVX2.
+//An int8_prepbias version of the above code, using the add 127 technique
+#define INTGEMM_PREPAREBIASFOR8(Integer, target, cpu_type) \
+  template <class Callback> target static void PrepareBiasFor8(const int8_t *B, Index width, Index B_cols, Callback callback) { \
+  assert(width % (sizeof(Integer) / sizeof(int8_t)) == 0); \
+  assert(B_cols % 8 == 0); \
+  assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0); \
+  const int simd_width = width / (sizeof(Integer) / sizeof(int8_t)); \
+  auto callback_impl = callbacks::CallbackImpl<cpu_type, Callback>(callback); \
+  const Integer *B0_col = reinterpret_cast<const Integer *>(B); \
+  const Integer a = set1_epi8<Integer>(1); \
+  for (Index B0_colidx = 0; B0_colidx < B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
+    /*const Integer *A_row = reinterpret_cast<const Integer*>(A + A_rowidx * width);*/ \
+    /* These will be packed 16-bit integers containing sums for each row of B multiplied by the row of A. \
+       Iterate over shared (inner) dimension.*/ \
+    int k = 0; \
+    Integer sum0 = maddubs_epi16(a, *(B0_col + k * 8)); \
+    Integer sum1 = maddubs_epi16(a, *(B0_col + k * 8 + 1)); \
+    Integer sum2 = maddubs_epi16(a, *(B0_col + k * 8 + 2)); \
+    Integer sum3 = maddubs_epi16(a, *(B0_col + k * 8 + 3)); \
+    Integer sum4 = maddubs_epi16(a, *(B0_col + k * 8 + 4)); \
+    Integer sum5 = maddubs_epi16(a, *(B0_col + k * 8 + 5)); \
+    Integer sum6 = maddubs_epi16(a, *(B0_col + k * 8 + 6)); \
+    Integer sum7 = maddubs_epi16(a, *(B0_col + k * 8 + 7)); \
+    /* Upcast to 32-bit and horizontally add. Seems a bit faster if this is declared here.*/ \
+    Integer ones = set1_epi16<Integer>(1); \
+    sum0 = madd_epi16(sum0, ones); \
+    sum1 = madd_epi16(sum1, ones); \
+    sum2 = madd_epi16(sum2, ones); \
+    sum3 = madd_epi16(sum3, ones); \
+    sum4 = madd_epi16(sum4, ones); \
+    sum5 = madd_epi16(sum5, ones); \
+    sum6 = madd_epi16(sum6, ones); \
+    sum7 = madd_epi16(sum7, ones); \
+    for (int k = 1; k < simd_width; ++k) { \
+      /*Integer a = *(A_row + k);*/ \
+      /* Multiply 8-bit, horizontally add to packed 16-bit integers.*/ \
+      Integer mult0 = maddubs_epi16(a, *(B0_col + k * 8)); \
+      Integer mult1 = maddubs_epi16(a, *(B0_col + k * 8 + 1)); \
+      Integer mult2 = maddubs_epi16(a, *(B0_col + k * 8 + 2)); \
+      Integer mult3 = maddubs_epi16(a, *(B0_col + k * 8 + 3)); \
+      Integer mult4 = maddubs_epi16(a, *(B0_col + k * 8 + 4)); \
+      Integer mult5 = maddubs_epi16(a, *(B0_col + k * 8 + 5)); \
+      Integer mult6 = maddubs_epi16(a, *(B0_col + k * 8 + 6)); \
+      Integer mult7 = maddubs_epi16(a, *(B0_col + k * 8 + 7)); \
+      /* Upcast to 32-bit and horizontally add.*/ \
+      mult0 = madd_epi16(mult0, ones); \
+      mult1 = madd_epi16(mult1, ones); \
+      mult2 = madd_epi16(mult2, ones); \
+      mult3 = madd_epi16(mult3, ones); \
+      mult4 = madd_epi16(mult4, ones); \
+      mult5 = madd_epi16(mult5, ones); \
+      mult6 = madd_epi16(mult6, ones); \
+      mult7 = madd_epi16(mult7, ones); \
+      /*Add in 32bit*/ \
+      sum0 = add_epi32(sum0, mult0); \
+      sum1 = add_epi32(sum1, mult1); \
+      sum2 = add_epi32(sum2, mult2); \
+      sum3 = add_epi32(sum3, mult3); \
+      sum4 = add_epi32(sum4, mult4); \
+      sum5 = add_epi32(sum5, mult5); \
+      sum6 = add_epi32(sum6, mult6); \
+      sum7 = add_epi32(sum7, mult7); \
+      \
+    } \
+    /* Reduce sums within 128-bit lanes.*/ \
+    Integer pack0123 = Pack0123(sum0, sum1, sum2, sum3); \
+    Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
+    /*The specific implementation may need to reduce further.*/ \
+    auto total = PermuteSummer(pack0123, pack4567); \
+    RunCallback(callback_impl, total, 0, B0_colidx, 1, B_cols); \
+  } \
+} \
+
+//An int8 version of the above code, using the add 127 technique
+#define INTGEMM_MULTIPLY8SHIFT(Integer, target, cpu_type) \
+  template <class Callback> target static void Multiply8Shift(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) { \
+  assert(width % (sizeof(Integer) / sizeof(int8_t)) == 0); \
+  assert(B_cols % 8 == 0); \
+  assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0); \
+  assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0); \
+  const int simd_width = width / (sizeof(Integer) / sizeof(int8_t)); \
+  auto callback_impl = callbacks::CallbackImpl<cpu_type, Callback>(callback); \
+  const Integer *B0_col = reinterpret_cast<const Integer *>(B); \
+  for (Index B0_colidx = 0; B0_colidx < B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
+    /* Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.*/ \
+    for (Index A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) { \
+      const Integer *A_row = reinterpret_cast<const Integer*>(A + A_rowidx * width); \
+      /* These will be packed 16-bit integers containing sums for each row of B multiplied by the row of A. \
+         Iterate over shared (inner) dimension.*/ \
+      int k = 0; \
+      Integer a = *(A_row + k); \
+      Integer sum0 = maddubs_epi16(a, *(B0_col + k * 8)); \
+      Integer sum1 = maddubs_epi16(a, *(B0_col + k * 8 + 1)); \
+      Integer sum2 = maddubs_epi16(a, *(B0_col + k * 8 + 2)); \
+      Integer sum3 = maddubs_epi16(a, *(B0_col + k * 8 + 3)); \
+      Integer sum4 = maddubs_epi16(a, *(B0_col + k * 8 + 4)); \
+      Integer sum5 = maddubs_epi16(a, *(B0_col + k * 8 + 5)); \
+      Integer sum6 = maddubs_epi16(a, *(B0_col + k * 8 + 6)); \
+      Integer sum7 = maddubs_epi16(a, *(B0_col + k * 8 + 7)); \
+      /* Upcast to 32-bit and horizontally add. Seems a bit faster if this is declared here.*/ \
+      Integer ones = set1_epi16<Integer>(1); \
+      sum0 = madd_epi16(sum0, ones); \
+      sum1 = madd_epi16(sum1, ones); \
+      sum2 = madd_epi16(sum2, ones); \
+      sum3 = madd_epi16(sum3, ones); \
+      sum4 = madd_epi16(sum4, ones); \
+      sum5 = madd_epi16(sum5, ones); \
+      sum6 = madd_epi16(sum6, ones); \
+      sum7 = madd_epi16(sum7, ones); \
+      for (int k = 1; k < simd_width; ++k) { \
+        Integer a = *(A_row + k); \
+        /* Multiply 8-bit, horizontally add to packed 16-bit integers.*/ \
+        Integer mult0 = maddubs_epi16(a, *(B0_col + k * 8)); \
+        Integer mult1 = maddubs_epi16(a, *(B0_col + k * 8 + 1)); \
+        Integer mult2 = maddubs_epi16(a, *(B0_col + k * 8 + 2)); \
+        Integer mult3 = maddubs_epi16(a, *(B0_col + k * 8 + 3)); \
+        Integer mult4 = maddubs_epi16(a, *(B0_col + k * 8 + 4)); \
+        Integer mult5 = maddubs_epi16(a, *(B0_col + k * 8 + 5)); \
+        Integer mult6 = maddubs_epi16(a, *(B0_col + k * 8 + 6)); \
+        Integer mult7 = maddubs_epi16(a, *(B0_col + k * 8 + 7)); \
+        /* Upcast to 32-bit and horizontally add.*/ \
+        mult0 = madd_epi16(mult0, ones); \
+        mult1 = madd_epi16(mult1, ones); \
+        mult2 = madd_epi16(mult2, ones); \
+        mult3 = madd_epi16(mult3, ones); \
+        mult4 = madd_epi16(mult4, ones); \
+        mult5 = madd_epi16(mult5, ones); \
+        mult6 = madd_epi16(mult6, ones); \
+        mult7 = madd_epi16(mult7, ones); \
+        /*Add in 32bit*/ \
+        sum0 = add_epi32(sum0, mult0); \
+        sum1 = add_epi32(sum1, mult1); \
+        sum2 = add_epi32(sum2, mult2); \
+        sum3 = add_epi32(sum3, mult3); \
+        sum4 = add_epi32(sum4, mult4); \
+        sum5 = add_epi32(sum5, mult5); \
+        sum6 = add_epi32(sum6, mult6); \
+        sum7 = add_epi32(sum7, mult7); \
+         \
+      } \
+      /* Reduce sums within 128-bit lanes.*/ \
+      Integer pack0123 = Pack0123(sum0, sum1, sum2, sum3); \
+      Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
+      /*The specific implementation may need to reduce further.*/ \
+      auto total = PermuteSummer(pack0123, pack4567); \
+      RunCallback(callback_impl, total, A_rowidx, B0_colidx, A_rows, B_cols); \
+    } \
+  } \
+} \
+
+/* 8-bit matrix multiply used by AVX and AVX2.
  * These have two peculiar properties:
  * 1. The sign instructions don't exist in AVX512.
  * 2. 16 registers means gcc's register allocation failed so I wrote it in my
@@ -330,15 +493,15 @@ INTGEMM_SSSE3 inline static void InnerINTGEMM_SSSE3(
   sum7 = adds_epi16(sum7, maddubs_epi16(a_positive, sign_epi8(b[7], a)));
 }
 //INTGEMM_AVX2 or INTGEMM_SSSE3 multiply
-#define INTGEMM_MULTIPLY8(Integer, target, WriteCSubType) \
-template <class WriteC> target static void Multiply(const int8_t *A, const int8_t *B, WriteC C, Index A_rows, Index width, Index B_cols) { \
+#define INTGEMM_MULTIPLY8(Integer, target, cpu_type) \
+  template <typename Callback> target static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) { \
   assert(width % sizeof(Integer) == 0); \
   assert(B_cols % 8 == 0); \
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Integer) == 0); \
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Integer) == 0); \
   const int simd_width = width / sizeof(Integer); \
+  auto callback_impl = callbacks::CallbackImpl<cpu_type, Callback>(callback); \
   const Integer *B0_col = reinterpret_cast<const Integer*>(B); \
-  typename WriteC::WriteCSubType c_writer(C); \
   /*Go over 8 columns of B at a time.*/ \
   for (Index B0_colidx = 0; B0_colidx != B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
     /*Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.*/ \
@@ -393,8 +556,7 @@ template <class WriteC> target static void Multiply(const int8_t *A, const int8_
       Integer pack0123 = Pack0123(sum0, sum1, sum2, sum3); \
       Integer pack4567 = Pack0123(sum4, sum5, sum6, sum7); \
       auto total = PermuteSummer(pack0123, pack4567); \
-      /*WriteC(C + A_rowidx * B_cols + B0_colidx, total, unquant_reg);*/ \
-      c_writer(A_rowidx, B_cols, B0_colidx, total); \
+      RunCallback(callback_impl, total, A_rowidx, B0_colidx, A_rows, B_cols); \
     } \
   } \
 } \

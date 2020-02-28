@@ -1,9 +1,12 @@
 #pragma once
 
+#include "kernels.h"
+#include "multiply.h"
 #include "types.h"
+
 #include <cstdint>
 #include <stdint.h>
-#include "multiply.h"
+
 // 8 bit is in ssse3_gemm.h
 
 namespace intgemm {
@@ -11,7 +14,7 @@ namespace intgemm {
 namespace sse2 {
 
 INTGEMM_SSE2 inline __m128i QuantizerGrab(const float *input, const __m128 quant_mult_reg) {
-  return quantize(loadu_ps<__m128>(input), quant_mult_reg);
+  return kernels::quantize(loadu_ps<__m128>(input), quant_mult_reg);
 }
 
 INTGEMM_SELECT_COL_B(INTGEMM_SSE2, __m128i)
@@ -67,16 +70,17 @@ struct SSE2_16bit {
   static const Index kBTileCol = 8;
 
   INTGEMM_PREPARE_B_16(INTGEMM_SSE2, sse2::QuantizeTile16)
+  INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(INTGEMM_SSE2, CPUType::SSE2, int16_t)
 
   INTGEMM_SSE2 static void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     //TODO #DEFINE
     sse2::SelectColumnsOfB((const __m128i*)input, (__m128i*)output, rows * 2, cols_begin, cols_end);
   }
-  INTGEMM_MULTIPLY16(__m128i, INTGEMM_SSE2, OnSSE2)
+  INTGEMM_MULTIPLY16(__m128i, INTGEMM_SSE2, CPUType::SSE2)
 
-  constexpr static const char *const kName = "16-bit INTGEMM_SSE2";
+  constexpr static const char *const kName = "16-bit SSE2";
 
-  static const CPUType kUses = CPU_SSE2;
+  static const CPUType kUses = CPUType::SSE2;
 };
 
 } // namespace intgemm

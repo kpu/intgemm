@@ -1,10 +1,12 @@
-#include "aligned.h"
-#include "avx512_gemm.h"
-#include "avx2_gemm.h"
-#include "ssse3_gemm.h"
-#include "sse2_gemm.h"
-#include "intgemm.h"
-#include "stop_watch.h"
+#include "../aligned.h"
+#include "intgemm_config.h"
+#include "../avx512_gemm.h"
+#include "../sse2_gemm.h"
+#include "../avx2_gemm.h"
+#include "../ssse3_gemm.h"
+#include "../intgemm.h"
+#include "../stop_watch.h"
+#include "../callbacks.h"
 
 #include <algorithm>
 #include <cassert>
@@ -78,10 +80,10 @@ template <class Backend> void Run(const RandomMatrices &m, std::vector<uint64_t>
   Backend::PrepareB(m.B.begin(), B_prepared.begin(), quant_mult, m.width, m.B_cols);
   AlignedVector<float> output(m.A_rows * m.B_cols);
   // Burn in
-  Backend::Multiply(A_prepared.begin(), B_prepared.begin(), JustUnquantizeC(output.begin(), unquant_mult), m.A_rows, m.width, m.B_cols);
+  Backend::Multiply(A_prepared.begin(), B_prepared.begin(), m.A_rows, m.width, m.B_cols, callbacks::UnquantizeAndWrite(unquant_mult, output.begin()));
   {
     StopWatch w(stats);
-    Backend::Multiply(A_prepared.begin(), B_prepared.begin(), JustUnquantizeC(output.begin(), unquant_mult), m.A_rows, m.width, m.B_cols);
+    Backend::Multiply(A_prepared.begin(), B_prepared.begin(), m.A_rows, m.width, m.B_cols, callbacks::UnquantizeAndWrite(unquant_mult, output.begin()));
   }
 }
 
@@ -99,6 +101,7 @@ struct BackendStats {
   std::vector<std::vector<uint64_t>> ssse3_8bit;
   std::vector<std::vector<uint64_t>> avx2_8bit;
   std::vector<std::vector<uint64_t>> avx512_8bit;
+  std::vector<std::vector<uint64_t>> avx512vnni_8bit;
   std::vector<std::vector<uint64_t>> sse2_16bit;
   std::vector<std::vector<uint64_t>> avx2_16bit;
   std::vector<std::vector<uint64_t>> avx512_16bit;
@@ -120,12 +123,12 @@ void Summarize(std::vector<uint64_t> &stats) {
     stddev += off * off;
   }
   stddev = sqrt(stddev / (keep - stats.begin() - 1));
-  std::cout << std::setw(8) << *std::min_element(stats.begin(), stats.end()) << '\t' << std::setw(8) << avg << '\t' << std::setw(8) << stddev;
+  std::cout << std::setw(10) << *std::min_element(stats.begin(), stats.end()) << '\t' << std::setw(8) << avg << '\t' << std::setw(8) << stddev;
 }
 
 template <class Backend> void Print(std::vector<std::vector<uint64_t>> &stats, int index) {
   if (stats.empty()) return;
-  std::cout << Backend::kName << '\t';
+  std::cout << std::setw(16) << Backend::kName << '\t';
   Summarize(stats[index]);
   std::cout << '\n';
 }
@@ -193,7 +196,7 @@ int main(int argc, char ** argv) {
     RunAll<AVX2_16bit>(matrices, end, stats.avx2_16bit);
   }
 
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
   std::cerr << "AVX512 8bit, 100 samples..." << std::endl;
   for (int samples = 0; samples < kSamples; ++samples) {
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
@@ -206,6 +209,13 @@ int main(int argc, char ** argv) {
     RunAll<AVX512_16bit>(matrices, end, stats.avx512_16bit);
   }
 #endif
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
+  std::cerr << "AVX512VNNI 8bit, 100 samples..." << std::endl;
+  for (int samples = 0; samples < kSamples; ++samples) {
+    RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
+    RunAll<AVX512VNNI_8bit>(matrices, end, stats.avx512vnni_8bit);
+  }
+#endif
 
   if (stats.sse2_16bit.empty()) {
     std::cerr << "No CPU support." << std::endl;
@@ -215,12 +225,15 @@ int main(int argc, char ** argv) {
     std::cout << "Multiply\t" << matrices[i].A_rows << '\t' << matrices[i].width << '\t' << matrices[i].B_cols << '\t' << "Samples=" << (kOutlierThreshold * stats.sse2_16bit[i].size()) << '\n';
     Print<SSSE3_8bit>(stats.ssse3_8bit, i);
     Print<AVX2_8bit>(stats.avx2_8bit, i);
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
     Print<AVX512_8bit>(stats.avx512_8bit, i);
+#endif
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
+    Print<AVX512VNNI_8bit>(stats.avx512vnni_8bit, i);
 #endif
     Print<SSE2_16bit>(stats.sse2_16bit, i);
     Print<AVX2_16bit>(stats.avx2_16bit, i);
-#ifndef INTGEMM_NO_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
     Print<AVX512_16bit>(stats.avx512_16bit, i);
 #endif
   }
