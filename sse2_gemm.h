@@ -21,22 +21,31 @@ INTGEMM_SELECT_COL_B(INTGEMM_SSE2, __m128i)
 
 class QuantizeTile16 {
   public:
-    typedef __m128i Integer;
+    typedef __m128i Register;
 
     INTGEMM_SSE2 explicit QuantizeTile16(float mult) : mult_reg_(_mm_set1_ps(mult)) {}
 
-    // Quantize 8xfloat into 8xint16_t
-    INTGEMM_SSE2 inline __m128i Consecutive(const float *input) {
-      __m128i g0 = QuantizerGrab(input, mult_reg_);
-      __m128i g1 = QuantizerGrab(input + 4, mult_reg_);
-      return _mm_packs_epi32(g0, g1);
+    INTGEMM_SSE2 inline __m128i Consecutive(const float *input) const {
+      return Tile(input, input + 4);
     }
 
-    INTGEMM_SSE2 inline __m128i ForReshape(const float *input, int) {
+    INTGEMM_SSE2 Register ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) const {
+      return Tile(
+        input,
+        input + 4 + (cols_left <= 4 ? cols * (row_step - 1) : 0));
+    }
+
+    INTGEMM_SSE2 inline __m128i ForReshape(const float *input, int) const {
       return Consecutive(input);
     }
 
   private:
+    INTGEMM_SSE2 __m128i Tile(const float *input0, const float *input1) const {
+      __m128i g0 = QuantizerGrab(input0, mult_reg_);
+      __m128i g1 = QuantizerGrab(input1, mult_reg_);
+      return _mm_packs_epi32(g0, g1);
+    }
+
     const __m128 mult_reg_;
 };
 
@@ -71,6 +80,7 @@ struct SSE2_16bit {
 
   INTGEMM_PREPARE_B_16(INTGEMM_SSE2, sse2::QuantizeTile16)
   INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(INTGEMM_SSE2, CPUType::SSE2, int16_t)
+  INTGEMM_PREPARE_B_TRANSPOSED(INTGEMM_SSE2, sse2::QuantizeTile16, int16_t)
 
   INTGEMM_SSE2 static void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     //TODO #DEFINE

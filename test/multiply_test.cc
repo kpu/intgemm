@@ -18,32 +18,6 @@
 
 namespace intgemm {
 
-// Rearrange a tile of simd x unroll entries.
-template <class V> void SlowRearrangeTile(const V *from, V *to, int simd, int unroll, Index cols) {
-  for (int i = 0; i < unroll; ++i) {
-    for (int j = 0; j < simd; ++j) {
-      to[simd * i + j] = from[cols * j + i];
-    }
-  }
-}
-
-template <class V> void SlowRearrange(const V *from, V *to, int simd, int unroll, Index rows, Index cols) {
-  for (Index c = 0; c < cols; c += unroll) {
-    for (Index r = 0; r < rows; r += simd) {
-      SlowRearrangeTile(from + cols * r + c, to, simd, unroll, cols);
-      to += unroll * simd;
-    }
-  }
-}
-
-template <class V> void SlowTranspose(const V *from, V *to, Index rows, Index cols) {
-  for (Index r = 0; r < rows; ++r) {
-    for (Index c = 0; c < cols; ++c) {
-      to[rows * c + r] = from[cols * r + c];
-    }
-  }
-}
-
 INTGEMM_SSE2 TEST_CASE("Transpose 16", "[transpose]") {
   if (kCPU < CPUType::SSE2) return;
   const unsigned N = 8;
@@ -51,7 +25,7 @@ INTGEMM_SSE2 TEST_CASE("Transpose 16", "[transpose]") {
   std::iota(input.begin(), input.end(), 0);
 
   AlignedVector<int16_t> ref(N * N);
-  SlowTranspose(input.begin(), ref.begin(), N, N);
+  references::Transpose(input.begin(), ref.begin(), N, N);
 
   // Overwrite input.
   __m128i *t = input.as<__m128i>();
@@ -69,7 +43,7 @@ INTGEMM_SSSE3 TEST_CASE("Transpose 8", "[transpose]") {
   std::iota(input.begin(), input.end(), 0);
 
   AlignedVector<int8_t> ref(input.size());
-  SlowTranspose(input.begin(), ref.begin(), N, N);
+  references::Transpose(input.begin(), ref.begin(), N, N);
 
   // Overwrite input.
   __m128i *t = input.as<__m128i>();
@@ -78,17 +52,6 @@ INTGEMM_SSSE3 TEST_CASE("Transpose 8", "[transpose]") {
   for (int i = 0; i < input.size(); ++i) {
     CHECK_MESSAGE(ref[i] == input[i], "8-bit transpose failure at " << i << ": " << (int16_t)ref[i] << " != " << (int16_t)input[i]);
   }
-}
-
-template <class T> std::string PrintMatrix(const T *mem, Index rows, Index cols) {
-  std::ostringstream out;
-  for (Index r = 0; r < rows; ++r) {
-    for (Index c = 0; c < cols; ++c) {
-      out << std::setw(4) << (int64_t) mem[r * cols + c] << ' ';
-    }
-    out << '\n';
-  }
-  return out.str();
 }
 
 template <class Routine> void TestPrepare(Index rows = 32, Index cols = 16) {
@@ -111,7 +74,7 @@ template <class Routine> void TestPrepare(Index rows = 32, Index cols = 16) {
   Routine::Quantize(input.begin(), quantized.begin(), 1, input.size());
   AlignedVector<Integer> reference(input.size());
   // Note this won't work for Int8/Int16 generic routines because tile sizes vary.
-  SlowRearrange<Integer>(quantized.begin(), reference.begin(), Routine::kBTileRow, Routine::kBTileCol, rows, cols);
+  references::Rearragement(quantized.begin(), reference.begin(), Routine::kBTileRow, Routine::kBTileCol, rows, cols);
   CHECK_MESSAGE(memcmp(reference.begin(), test.begin(), test.size() * sizeof(Integer)) == 0, Routine::kName << " Mismatch:\n" <<
   	"Quantized Input" << '\n' << PrintMatrix(quantized.begin(), rows, cols) << "Reference" << '\n' <<
   	 PrintMatrix(reference.begin(), rows, cols) << "Routine" << '\n' << PrintMatrix(test.begin(), rows, cols));
@@ -323,12 +286,16 @@ template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_co
   Routine::Quantize(B.begin(), B_quant.begin(), quant_mult, B.size());
   AlignedVector<float> slowint_C(test_C.size());
   // Assuming A is just quantization here.
-  SlowRefInt(A_prep.begin(), B_quant.begin(), slowint_C.begin(), unquant_mult, A_rows, width, B_cols);
+  references::Multiply(A_prep.begin(), B_quant.begin(), slowint_C.begin(), A_rows, width, B_cols, [&](int32_t sum, const callbacks::OutputBufferInfo& info) {
+    return sum * unquant_mult;
+  });
 
   AlignedVector<float> float_C(test_C.size());
-  SlowRefFloat(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols);
+  references::MultiplyFF(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols, [&](float sum, const callbacks::OutputBufferInfo& info) {
+    return sum;
+  });
 
-  Compare(float_C.begin(), slowint_C.begin(), test_C.begin(), test_C.size(), info.str(),
+  CompareMSE(float_C.begin(), slowint_C.begin(), test_C.begin(), test_C.size(), info.str(),
    int_tolerance, float_tolerance, MSE_float_tolerance, MSE_int_tolerance);
 }
 
@@ -372,12 +339,16 @@ template <class Routine> void TestMultiplyBias(Index A_rows, Index width, Index 
   Routine::Quantize(B.begin(), B_quant.begin(), quant_mult, B.size());
   AlignedVector<float> slowint_C(test_C.size());
   // Assuming A is just quantization here.
-  SlowRefInt(A_prep.begin(), B_quant.begin(), slowint_C.begin(), unquant_mult, A_rows, width, B_cols, bias.begin());
+  references::Multiply(A_prep.begin(), B_quant.begin(), slowint_C.begin(), A_rows, width, B_cols, [&](int32_t sum, const callbacks::OutputBufferInfo& info) {
+    return sum * unquant_mult + bias[info.col_idx];
+  });
 
   AlignedVector<float> float_C(test_C.size());
-  SlowRefFloat(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols, bias.begin());
+  references::MultiplyFF(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols, [&](float sum, const callbacks::OutputBufferInfo& info) {
+    return sum + bias[info.col_idx];
+  });
 
-  Compare(float_C.begin(), slowint_C.begin(), test_C.begin(), test_C.size(), info.str(),
+  CompareMSE(float_C.begin(), slowint_C.begin(), test_C.begin(), test_C.size(), info.str(),
    int_tolerance, float_tolerance, MSE_float_tolerance, MSE_int_tolerance);
 }
 
