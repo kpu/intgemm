@@ -61,27 +61,28 @@ static inline INTGEMM_AVX512F float MaxFloat32(__m512 a) {
 
 // Quantize function used for SSSE3 and AVX2.
 #define INTGEMM_QUANTIZE(target, Register, name) \
-target static void Quantize(const float *input, int8_t *output, float quant_mult, Index size) { \
+target static void Quantize(const float *const input, int8_t *const output, float quant_mult, Index size) { \
   assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0); \
   assert(reinterpret_cast<uintptr_t>(output) % sizeof(Register) == 0); \
   name::QuantizeTile8 q(quant_mult); \
   const std::size_t kBatch = sizeof(Register); \
-  const float *fast_end = input + (size & ~(kBatch - 1)); \
-  for (; input < fast_end; input += kBatch, output += kBatch) { \
-    *reinterpret_cast<Register*>(output) = q.Consecutive(input); \
+  const std::size_t fast_end = size & ~(kBatch - 1); \
+  _Pragma("omp parallel for") \
+  for (std::size_t i = 0; i < fast_end; i += kBatch) { \
+    *reinterpret_cast<Register*>(output + i) = q.Consecutive(input + i); \
   } \
   std::size_t overhang = size & (kBatch - 1); \
   if (!overhang) return; \
   /* Each does size(Register) / 32 == kBatch / 4 floats at a time.
    * If we're allowed to read one of them, then we can read the whole register.  */ \
   const float *inputs[4]; \
-  int i; \
+  std::size_t i; \
   for (i = 0; i < (overhang + (kBatch / 4) - 1) / (kBatch / 4); ++i) { \
-    inputs[i] = input + i * (kBatch / 4); \
+    inputs[i] = &input[fast_end + i * (kBatch / 4)]; \
   } \
   /* These will be clipped off. */ \
   for (; i < 4; ++i) { \
-    inputs[i] = input; \
+    inputs[i] = &input[fast_end]; \
   } \
   Register result = q.Tile(inputs[0], inputs[1], inputs[2], inputs[3]); \
   std::memcpy(output, &result, overhang); \
