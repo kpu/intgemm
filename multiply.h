@@ -281,7 +281,7 @@ struct Multiply_MakeFinalOutputAndRunCallback<int16_t> {
     \
     /* Process with tile = (TileRows, TileColumns). */ \
     auto *B0_col = reinterpret_cast<const Register*>(B); \
-    for (Index B0_colidx = 0; B0_colidx != B_cols; B0_col += TileColumns * simd_width, B0_colidx += TileColumns) { \
+    for (Index B0_colidx = 0; B0_colidx < B_cols; B0_col += TileColumns * simd_width, B0_colidx += TileColumns) { \
       for (Index A_rowidx = 0; A_rowidx < A_rows; A_rowidx += TileRows) { \
         StaticLoop<Multiply_InitALivesLoop, MakeStaticLoopIterator<TileRows>>(A, A_rowidx, A_rows, width, A_lives); \
         StaticLoop<Multiply_InitSumsLoop, MakeStaticLoopIterator<TileRows, TileColumns>>(sums); \

@@ -8,6 +8,8 @@
 
 namespace intgemm {
 
+#define MAGIC_CONSTANT 8
+
 // Rewrite that loads of struct to template labdas as soon as c++14 is used
 struct AVX512VNNI_Multiply_InitALivesLoop {
   template <typename Iterator, typename Type>
@@ -25,11 +27,12 @@ struct AVX512VNNI_Multiply_InitSumsLoop {
   }
 };
 
+template <Index TileColumnsRounded>
 struct AVX512VNNI_Multiply_TileLoop {
   template <typename Iterator>
   INTGEMM_AVX512VNNI static void body(const __m512i* A_lives[Iterator::template N<0>()],
-                          const __m512i* B_live,
-                          __m512i sums[Iterator::template N<0>()][Iterator::template N<1>()]) {
+                                      const __m512i* B_live,
+                                      __m512i sums[Iterator::template N<0>()][TileColumnsRounded]) {
     static constexpr auto Row = Iterator::template I<0>();
     static constexpr auto Column = Iterator::template I<1>();
     auto neg_mask = _mm512_test_epi8_mask(*A_lives[Row], _mm512_set1_epi8(-128));
@@ -44,15 +47,23 @@ struct AVX512VNNI_Multiply_IncreaseALivesLoop {
   }
 };
 
-struct AVX512VNNI_Multiply_MakeFinalOutputAndRunCallback {
-  template <typename Iterator, typename CallbackImpl>
-  INTGEMM_AVX512VNNI static void body(__m512i sums[Iterator::template N<0>()][8 * Iterator::template N<1>()], CallbackImpl callback_impl, Index A_rowidx, Index B_colidx, Index A_rows, Index B_cols) {
+struct AVX512VNNI_Multiply_MakeOutput {
+  template <typename Iterator>
+  INTGEMM_AVX512VNNI static void body(__m256i* results, __m512i sums[Iterator::template N<0>()][Iterator::template N<1>()]) {
     static constexpr auto Row = Iterator::template I<0>();
-    static constexpr auto Column8 = Iterator::template I<1>();
-    auto pack0123 = Pack0123(sums[Row][8 * Column8 + 0], sums[Row][8 * Column8 + 1], sums[Row][8 * Column8 + 2], sums[Row][8 * Column8 + 3]);
-    auto pack4567 = Pack0123(sums[Row][8 * Column8 + 4], sums[Row][8 * Column8 + 5], sums[Row][8 * Column8 + 6], sums[Row][8 * Column8 + 7]);
-    auto total = PermuteSummer(pack0123, pack4567);
-    RunCallback(callback_impl, total, A_rowidx + Iterator::template I<0>(), B_colidx + 8 * Column8, A_rows, B_cols);
+    static constexpr auto Column = Iterator::template I<1>();
+    auto pack0123 = Pack0123(sums[Row][Column * MAGIC_CONSTANT + 0], sums[Row][Column * MAGIC_CONSTANT + 1], sums[Row][Column * MAGIC_CONSTANT + 2], sums[Row][Column * MAGIC_CONSTANT + 3]);
+    auto pack4567 = Pack0123(sums[Row][Column * MAGIC_CONSTANT + 4], sums[Row][Column * MAGIC_CONSTANT + 5], sums[Row][Column * MAGIC_CONSTANT + 6], sums[Row][Column * MAGIC_CONSTANT + 7]);
+    results[Row * Iterator::template N<1>() + Column] = PermuteSummer(pack0123, pack4567);
+  }
+};
+
+struct AVX512VNNI_Multiply_RunCallback {
+  template <typename Iterator, typename CallbackImpl>
+  INTGEMM_AVX512VNNI static void body(__m256i* results, CallbackImpl callback_impl, Index A_rowidx, Index B_colidx, Index A_rows, Index B_cols) {
+    static constexpr auto Row = Iterator::template I<0>();
+    static constexpr auto Column = Iterator::template I<1>();
+    RunCallback(callback_impl, results[Row * Iterator::template N<1>() + Column], A_rowidx + Row, B_colidx + MAGIC_CONSTANT * Column, A_rows, B_cols);
   }
 };
 
@@ -60,6 +71,8 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
   template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
   INTGEMM_AVX512VNNI static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
     static constexpr Index TileColumns = 8 * TileColumnsMultiplier;
+    static constexpr Index TileColumnsRounded = round_up(TileColumns, MAGIC_CONSTANT);
+    static constexpr Index ResultsCount = TileColumnsRounded / MAGIC_CONSTANT;
     assert(A_rows % TileRows == 0);
     assert(width % sizeof(__m512i) == 0);
     assert(B_cols % TileColumns == 0);
@@ -69,21 +82,23 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
     const int simd_width = width / sizeof(__m512i);
     auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
     const __m512i *A_lives[TileRows];
-    __m512i sums[TileRows][TileColumns];
+    __m512i sums[TileRows][TileColumnsRounded];
+    __m256i results[TileRows * ResultsCount];
 
     /* Process with tile = (TileRows, TileColumns). */
     auto *B0_col = reinterpret_cast<const __m512i*>(B);
     for (Index B0_colidx = 0; B0_colidx != B_cols; B0_col += TileColumns * simd_width, B0_colidx += TileColumns) {
       for (Index A_rowidx = 0; A_rowidx < A_rows; A_rowidx += TileRows) {
         StaticLoop<AVX512VNNI_Multiply_InitALivesLoop, MakeStaticLoopIterator<TileRows>>(A, A_rowidx, A_rows, width, A_lives);
-        StaticLoop<AVX512VNNI_Multiply_InitSumsLoop, MakeStaticLoopIterator<TileRows, TileColumns>>(sums);
+        StaticLoop<AVX512VNNI_Multiply_InitSumsLoop, MakeStaticLoopIterator<TileRows, TileColumnsRounded>>(sums);
         /* Process a tile (use A as the loop variable so the add can be done where gcc likes it for branch prediction. */
         auto* B_live = B0_col;
         for (Index i = 0; i < simd_width; ++i, B_live += TileColumns) {
-          StaticLoop<AVX512VNNI_Multiply_TileLoop, MakeStaticLoopIterator<TileRows, TileColumns>>(A_lives, B_live, sums);
+          StaticLoop<AVX512VNNI_Multiply_TileLoop<TileColumnsRounded>, MakeStaticLoopIterator<TileRows, TileColumns>>(A_lives, B_live, sums);
           StaticLoop<AVX512VNNI_Multiply_IncreaseALivesLoop, MakeStaticLoopIterator<TileRows>>(A_lives);
         }
-        StaticLoop<AVX512VNNI_Multiply_MakeFinalOutputAndRunCallback, MakeStaticLoopIterator<TileRows, TileColumnsMultiplier>>(sums, callback_impl, A_rowidx, B0_colidx, A_rows, B_cols);
+        StaticLoop<AVX512VNNI_Multiply_MakeOutput, MakeStaticLoopIterator<TileRows, TileColumnsRounded>>(results, sums);
+        StaticLoop<AVX512VNNI_Multiply_RunCallback, MakeStaticLoopIterator<TileRows, ResultsCount>>(results, callback_impl, A_rowidx, B0_colidx, A_rows, B_cols);
       }
     }
   }
