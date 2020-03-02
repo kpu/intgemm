@@ -199,4 +199,11 @@ __attribute__((always_inline)) static inline void StaticLoop(Args&&... args) {
   StaticLoop<Body, typename StaticLoopIterator::next>(std::forward<Args>(args)...);
 }
 
+/*
+ * Round up
+ */
+static constexpr Index round_up(Index value, Index factor) {
+  return (value + factor - 1) / factor * factor;
+}
+
 }
