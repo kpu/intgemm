@@ -59,20 +59,37 @@ static inline INTGEMM_AVX512F float MaxFloat32(__m512 a) {
 
 #endif
 
+// Quantize function used for SSSE3 and AVX2.
+#define INTGEMM_QUANTIZE(target, Register, name) \
+target static void Quantize(const float *input, int8_t *output, float quant_mult, Index size) { \
+  assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0); \
+  assert(reinterpret_cast<uintptr_t>(output) % sizeof(Register) == 0); \
+  name::QuantizeTile8 q(quant_mult); \
+  const std::size_t kBatch = sizeof(Register); \
+  const float *fast_end = input + (size & ~(kBatch - 1)); \
+  for (; input < fast_end; input += kBatch, output += kBatch) { \
+    *reinterpret_cast<Register*>(output) = q.Consecutive(input); \
+  } \
+  std::size_t overhang = size & (kBatch - 1); \
+  if (!overhang) return; \
+  /* Each does size(Register) / 32 == kBatch / 4 floats at a time.
+   * If we're allowed to read one of them, then we can read the whole register.  */ \
+  const float *inputs[4]; \
+  int i; \
+  for (i = 0; i < (overhang + (kBatch / 4) - 1) / (kBatch / 4); ++i) { \
+    inputs[i] = input + i * (kBatch / 4); \
+  } \
+  /* These will be clipped off. */ \
+  for (; i < 4; ++i) { \
+    inputs[i] = input; \
+  } \
+  Register result = q.Tile(inputs[0], inputs[1], inputs[2], inputs[3]); \
+  std::memcpy(output, &result, overhang); \
+}
+
 /* Take 4 registers with 32-bit values to be horizontally added.  Reduce them
  * to one register with 32-bit values in the pattern 1 2 3 4 1 2 3 4, leaving
  * the final addition (which crosses 128-bit lanes) to the caller. 
-template <class Register> inline Register Pack0123(Register sum0, Register sum1, Register sum2, Register sum3) {
-  // 1 2 1 2 1 2 1 2
-  Interleave32(sum0, sum1);
-  Register pack01 = add_epi32(sum0, sum1);
-  // 3 4 3 4 3 4 3 4
-  Interleave32(sum2, sum3);
-  Register pack23 = add_epi32(sum2, sum3);
-  Interleave64(pack01, pack23);
-  // 1 2 3 4 1 2 3 4
-  return add_epi32(pack01, pack23);
-}
  */
 #define INTGEMM_PACK0123(target, Register) \
 target inline Register Pack0123(Register sum0, Register sum1, Register sum2, Register sum3) { \
