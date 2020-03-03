@@ -21,7 +21,7 @@ void kernel_quantize_test() {
   auto quant_mult = set1_ps<input_vec_t>(2.f);
 
   *output.template as<output_vec_t>() = kernels::quantize(*input.template as<input_vec_t>(), quant_mult);
-  for (auto i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == int(i*2.f));
 }
 

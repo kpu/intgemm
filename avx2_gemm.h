@@ -118,7 +118,7 @@ class QuantizeTile8 {
 
     INTGEMM_AVX2 Register ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) const {
       const float* inputs[4];
-      for (int i = 0; i < sizeof(inputs) / sizeof(inputs[0]); ++i) {
+      for (Index i = 0; i < sizeof(inputs) / sizeof(inputs[0]); ++i) {
         while (cols_left < sizeof(Register) / sizeof(float)) {
           input += cols * (row_step - 1);
           cols_left += cols;

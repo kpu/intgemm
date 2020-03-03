@@ -21,7 +21,7 @@ void kernel_unquantize_test() {
   auto unquant_mult = set1_ps<output_vec_t>(0.5f);
 
   *output.template as<output_vec_t>() = kernels::unquantize(*input.template as<input_vec_t>(), unquant_mult);
-  for (auto i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == i * 0.5f);
 }
 

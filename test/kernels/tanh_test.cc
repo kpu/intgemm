@@ -20,7 +20,7 @@ void kernel_tanh_test() {
   std::generate(input.begin(), input.end(), [] () { static int n = -int(VECTOR_LENGTH / 2); return n++ / float(VECTOR_LENGTH / 2); });
 
   *output.template as<vec_t>() = kernels::tanh(*input.template as<vec_t>());
-  for (auto i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK_EPS(output[i], tanh(input[i]), 0.001f);
 }
 

@@ -108,7 +108,7 @@ class QuantizeTile8 {
       static const __m512i shuffle_param = _mm512_set_epi32(15, 11, 7, 3, 14, 10, 6, 2, 13, 9, 5, 1, 12, 8, 4, 0);
 
       const float* inputs[4];
-      for (int i = 0; i < sizeof(inputs) / sizeof(inputs[0]); ++i) {
+      for (Index i = 0; i < sizeof(inputs) / sizeof(inputs[0]); ++i) {
         while (cols_left < sizeof(Register) / sizeof(float)) {
           input += cols * (row_step - 1);
           cols_left += cols;

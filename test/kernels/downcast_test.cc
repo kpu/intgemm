@@ -22,7 +22,7 @@ void kernel_downcast32to8_test() {
   *output.template as<vi>() = kernels::downcast32to8(
     input.template as<vi>()[0], input.template as<vi>()[1],
     input.template as<vi>()[2], input.template as<vi>()[3]);
-  for (int i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == int8_t(input[i]));
 }
 
@@ -52,7 +52,7 @@ void kernel_downcast32to16_test() {
 
   *output.template as<vi>() = kernels::downcast32to16(
     input.template as<vi>()[0], input.template as<vi>()[1]);
-  for (int i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == int16_t(input[i]));
 }
 
@@ -82,7 +82,7 @@ void kernel_downcast16to8_test() {
 
   *output.template as<vi>() = kernels::downcast16to8(
     input.template as<vi>()[0], input.template as<vi>()[1]);
-  for (int i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == int8_t(input[i]));
 }
 

@@ -137,7 +137,7 @@ template <class Backend> void Print(std::vector<std::vector<uint64_t>> &stats, i
 } // namespace
 
 // Program takes no input
-int main(int argc, char ** argv) {
+int main(int, char ** argv) {
   std::cerr << "Remember to run this on a specific core:\ntaskset --cpu-list 0 " << argv[0] << std::endl;
 
   using namespace intgemm;

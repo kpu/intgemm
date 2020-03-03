@@ -110,7 +110,7 @@ public:
     unquant_mult = set1_ps<vf>(config.unquant_mult);
   }
 
-  CPU_ATTR vf operator()(vi input, const OutputBufferInfo& info) {
+  CPU_ATTR vf operator()(vi input, const OutputBufferInfo&) {
     return kernels::unquantize(input, unquant_mult);
   }
 

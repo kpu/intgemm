@@ -23,7 +23,7 @@ void kernel_upcast8to16_test() {
   output.template as<vi>()[0] = result.first;
   output.template as<vi>()[1] = result.second;
 
-  for (int i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == int16_t(input[i]));
 }
 
@@ -55,7 +55,7 @@ void kernel_upcast16to32_test() {
   output.template as<vi>()[0] = result.first;
   output.template as<vi>()[1] = result.second;
 
-  for (int i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == int32_t(input[i]));
 }
 
@@ -89,7 +89,7 @@ void kernel_upcast8to32_test() {
   output.template as<vi>()[2] = result.third;
   output.template as<vi>()[3] = result.fourth;
 
-  for (int i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == int32_t(input[i]));
 }
 

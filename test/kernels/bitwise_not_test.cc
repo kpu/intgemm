@@ -20,7 +20,7 @@ void kernel_bitwise_not_test() {
   std::iota(input.begin(), input.end(), 0);
 
   *output.template as<vec_t>() = kernels::bitwise_not(*input.template as<vec_t>());
-  for (auto i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == ~input[i]);
 }
 

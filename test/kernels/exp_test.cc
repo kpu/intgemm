@@ -20,7 +20,7 @@ void kernel_exp_approx_taylor_test() {
   std::iota(input.begin(), input.end(), -int(VECTOR_LENGTH / 2));
 
   *output.template as<vec_t>() = kernels::exp_approx_taylor(*input.template as<vec_t>());
-  for (auto i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK_EPS(output[i], exp(input[i]), 0.001f);
 }
 

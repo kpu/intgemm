@@ -20,7 +20,7 @@ void kernel_write_test() {
   std::iota(input.begin(), input.end(), 0);
 
   kernels::write(*input.template as<vec_t>(), output.begin(), 0);
-  for (auto i = 0; i < VECTOR_LENGTH; ++i)
+  for (std::size_t i = 0; i < VECTOR_LENGTH; ++i)
     CHECK(output[i] == ElemType_(i));
 }
 

@@ -10,6 +10,12 @@ endif()
 
 set(CMAKE_CXX_STANDARD 11)
 
+if(MSVC)
+  add_compile_options(/W4 /WX)
+else()
+  add_compile_options(-Wall -Wextra -pedantic -Werror -Wno-unknown-pragmas)
+endif()
+
 # Check if compiler supports AVX512
 try_compile(INTGEMM_COMPILER_SUPPORTS_AVX512
   ${CMAKE_CURRENT_BINARY_DIR}/compile_tests

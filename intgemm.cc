@@ -2,7 +2,7 @@
 
 namespace intgemm {
 
-float Unsupported_MaxAbsolute(const float *begin, const float *end) {
+float Unsupported_MaxAbsolute(const float * /*begin*/, const float * /*end*/) {
   throw UnsupportedCPU();
 }
 

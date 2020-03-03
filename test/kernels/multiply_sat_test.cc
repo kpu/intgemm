@@ -21,9 +21,9 @@ void kernel_multiply_sat_test() {
   std::iota(input1.begin(), input1.end(), -int(VECTOR_LENGTH / 2));
   std::iota(input2.begin(), input2.end(), -int(VECTOR_LENGTH / 3));
 
-  for (auto shift = 0; shift <= 2 * 8 * sizeof(Type_); ++shift) {
+  for (std::size_t shift = 0; shift <= 2 * 8 * sizeof(Type_); ++shift) {
     *output.template as<vec_t>() = kernels::multiply_sat<Type_>(*input1.template as<vec_t>(), *input2.template as<vec_t>(), shift);
-    for (auto i = 0; i < output.size(); ++i) {
+    for (std::size_t i = 0; i < output.size(); ++i) {
       auto ref = (int64_t(input1[i]) * input2[i]) >> shift;
       auto ref_sat = Type_(std::min<int64_t>(std::numeric_limits<Type_>::max(), std::max<int64_t>(std::numeric_limits<Type_>::min(), ref)));
       CHECK(output[i] == ref_sat);

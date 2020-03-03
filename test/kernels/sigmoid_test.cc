@@ -27,7 +27,7 @@ void kernel_sigmoid_test() {
   std::iota(input.begin(), input.end(), -int(VECTOR_LENGTH / 2));
 
   *output.template as<vec_t>() = kernels::sigmoid(*input.template as<vec_t>());
-  for (auto i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK_EPS(output[i], sigmoid_ref(input[i]), 0.001f);
 }
 

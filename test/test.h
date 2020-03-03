@@ -106,7 +106,7 @@ void Multiply(const TypeA* A, const TypeB* B, float* C, Index A_rows, Index widt
 
 // Matrix rearragement
 template <typename Type>
-void Rearragement(const Type* input, Type* output, int simd, int unroll, Index rows, Index cols) {
+void Rearragement(const Type* input, Type* output, Index simd, Index unroll, Index rows, Index cols) {
   for (Index c = 0; c < cols; c += unroll) {
     for (Index r = 0; r < rows; r += simd) {
       for (Index i = 0; i < unroll; ++i)

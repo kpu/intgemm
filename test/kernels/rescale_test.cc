@@ -22,7 +22,7 @@ void kernel_rescale_test() {
   float scale = 2;
 
   *output.template as<vi>() = kernels::rescale(*input.template as<vi>(), intgemm::set1_ps<vf>(scale));
-  for (int i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == std::round(input[i] * scale));
 }
 

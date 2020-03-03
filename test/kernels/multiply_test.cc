@@ -22,7 +22,7 @@ void kernel_multiply_test() {
   std::iota(input2.begin(), input2.end(), -int(VECTOR_LENGTH / 3));
 
   *output.template as<vec_t>() = kernels::multiply<Type_>(*input1.template as<vec_t>(), *input2.template as<vec_t>());
-  for (auto i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == Type_(input1[i] * input2[i]));
 }
 
