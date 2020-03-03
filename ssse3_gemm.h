@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <stdint.h>
+#include <cstring>
 
 // 16-bit is in sse2_gemm.h
 
@@ -53,7 +54,6 @@ class QuantizeTile8 {
       return Tile(inputs[0], inputs[1], inputs[2], inputs[3]);
     }
 
-  private:
     // Quantize 16xfloat into 16xint8_t
     INTGEMM_SSSE3 inline __m128i Tile(const float *input0, const float *input1, const float *input2, const float *input3) const {
       const __m128i neg128 = _mm_set1_epi8(-128);
@@ -77,6 +77,7 @@ class QuantizeTile8 {
       // No permute needed.  packs is in order for SSE.
     }
 
+  private:
     INTGEMM_SSSE3 inline __m128i TileU(const float *input0, const float *input1, const float *input2, const float *input3) const {
       const __m128i neg128 = _mm_set1_epi8(-128);
       const __m128i pos127 = _mm_set1_epi8(127);
@@ -106,7 +107,6 @@ class QuantizeTile8 {
 
 } // namespace
 
-
 // pmaddubsw (the 8-bit multiply) is INTGEMM_SSSE3, so pedantically that's the version we need.
 struct SSSE3_8bit {
   typedef int8_t Integer;
@@ -116,16 +116,7 @@ struct SSSE3_8bit {
     Quantize(input, output, quant_mult, rows * cols);
   }
 
-  INTGEMM_SSSE3 static void Quantize(const float *input, int8_t *output, float quant_mult, Index size) {
-    assert(size % 16 == 0);
-    assert(reinterpret_cast<uintptr_t>(input) % 16 == 0);
-    assert(reinterpret_cast<uintptr_t>(output) % 16 == 0);
-    ssse3::QuantizeTile8 q(quant_mult);
-    const float *end = input + size;
-    for (; input != end; input += 16, output += 16) {
-      *reinterpret_cast<__m128i*>(output) = q.Consecutive(input);
-    }
-  }
+  INTGEMM_QUANTIZE(INTGEMM_SSSE3, __m128i, ssse3)
 
   // Version with unsigned int + 127
   // Currently A is prepared by quantization but this could theoretically change.
