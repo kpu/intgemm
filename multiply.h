@@ -85,7 +85,7 @@ target static void Quantize(const float *const input, int8_t *const output, floa
     inputs[i] = &input[fast_end]; \
   } \
   Register result = q.Tile(inputs[0], inputs[1], inputs[2], inputs[3]); \
-  std::memcpy(output, &result, overhang); \
+  std::memcpy(output + (size & ~(kBatch - 1)), &result, overhang); \
 }
 
 /* Take 4 registers with 32-bit values to be horizontally added.  Reduce them
