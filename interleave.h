@@ -270,7 +270,6 @@ target static inline void PrepareBQuantizedTransposed(const Integer* input, Inte
 target static inline void PrepareBTransposed(const float* input, Integer* output, float quant_mult, Index cols, Index rows) { \
   using Register = typename Quantizer::Register; \
   const Index RegisterElemsInt = sizeof(Register) / sizeof(Integer); \
-  const Index RegisterElemsFloat = sizeof(Register) / sizeof(float); \
   const Index kColStride = 8; \
   \
   assert(cols % RegisterElemsFloat == 0); \

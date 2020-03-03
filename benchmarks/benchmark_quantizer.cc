@@ -5,6 +5,7 @@
 #include "../avx2_gemm.h"
 #include "../avx512_gemm.h"
 
+#include <chrono>
 #include <iomanip>
 #include <random>
 #include <vector>
