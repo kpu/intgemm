@@ -38,14 +38,14 @@ void BenchmarkMaxAbsolute() {
 
   std::vector<uint64_t> stats;
   // Hopefully these don't get optimized out...
-  float result = MaxAbsoluteBaseline(v.begin(), v.end());
+  MaxAbsoluteBaseline(v.begin(), v.end());
   {
     StopWatch w(stats);
-    result = MaxAbsoluteBaseline(v.begin(), v.end());
+    MaxAbsoluteBaseline(v.begin(), v.end());
   }
   {
     StopWatch w(stats);
-    result = avx2::MaxAbsolute(v.begin(), v.end());
+    avx2::MaxAbsolute(v.begin(), v.end());
   }
   std::cout << "MaxAbsolute baseline = " << stats[0] << " optimized = " << stats[1] << " speedup = " << ((float)stats[0] / (float)stats[1])<< '\n';
 }
