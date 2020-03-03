@@ -161,14 +161,18 @@ inline bool CheckAVX512BW() {
  * avx512bw if the CPU supports AVX512BW
  *
  * avx2 if the CPU supports AVX2
- * 
+ *
  * ssse3 if the CPU supports SSSE3 (this distinction from SSE2 matters for 8-bit)
- * 
+ *
  * sse2 if the CPU supports SSE2
  *
  * unsupported otherwise
  */
-template <class T> T ChooseCPU(T avx512vnni, T avx512bw, T avx2, T ssse3, T sse2, T unsupported) {
+template <class T> T ChooseCPU(T
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
+    avx512vnni
+#endif
+    , T avx512bw, T avx2, T ssse3, T sse2, T unsupported) {
   __builtin_cpu_init ();
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
   if (
