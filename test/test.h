@@ -38,7 +38,9 @@ template <typename Type>
 void CompareEps(const Type* reference, const Type* actual, Index size, Type epsilon) {
   for (Index i = 0; i < size; ++i) {
     INFO("Inaccurate at " << i << ' ' << reference[i] << ' ' << actual[i]);
-    CHECK(fabs(reference[i] - actual[i]) < epsilon);
+    // Ratio to maximum value.
+    float threshold = epsilon * std::max(0.01f, fabs(reference[i]));
+    CHECK(fabs(reference[i] - actual[i]) < threshold);
   }
 }
 
