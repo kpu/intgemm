@@ -135,26 +135,6 @@ static inline float MaxAbsolute(const float *begin, const float *end) {
 typedef Unsupported_8bit AVX512VNNI_8bit;
 #endif
 
-
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
-// gcc 5.4.0 bizarrely supports avx512bw targets but not __builtin_cpu_supports("avx512bw").  So implement it manually.
-inline bool CheckAVX512BW() {
-  __builtin_cpu_init ();
-#ifdef __INTEL_COMPILER
-  return _may_i_use_cpu_feature(_FEATURE_AVX512BW)
-#elif __GNUC__
-  unsigned int m = __get_cpuid_max(0, NULL);
-  if (m < 7) return false;
-  unsigned int eax, ebx, ecx, edx;
-  __cpuid_count(7, 0, eax, ebx, ecx, edx);
-  const unsigned int avx512bw_bit = (1 << 30);
-  return ebx & avx512bw_bit;
-#else
-  return __builtin_cpu_supports("avx512bw");
-#endif
-}
-#endif
-
 /* Returns:
  * axx512vnni if the CPU supports AVX512VNNI
  *
@@ -172,24 +152,59 @@ template <class T> T ChooseCPU(T
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
     avx512vnni
 #endif
-    , T avx512bw, T avx2, T ssse3, T sse2, T unsupported) {
-  __builtin_cpu_init ();
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
-  if (
-#ifdef __INTEL_COMPILER
-      _may_i_use_cpu_feature(_FEATURE_AVX512_VNNI)
-#else
-      __builtin_cpu_supports("avx512vnni")
-#endif
-      ) {
-    return avx512vnni;
-  }
-#endif
+    , T 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
-  if (CheckAVX512BW()) {
-    return avx512bw;
-  }
+    avx512bw
 #endif
+    , T avx2, T ssse3, T sse2, T unsupported) {
+  /* If intgemm is compiled by gcc 6.4.1 then dlopened into an executable
+   * compiled by gcc 7.3.0, there will be a undefined symbol __cpu_info.
+   * Work around this by calling the intrinsics more directly instead of
+   * __builtin_cpu_supports.
+   *
+   * clang 6.0.0-1ubuntu2 supports vnni but doesn't have
+   *   __builtin_cpu_supports("avx512vnni")
+   * so use the hand-coded CPUID for clang.
+   */
+#if defined(__GNUC__) || defined(__clang__)
+  unsigned int m = __get_cpuid_max(0, NULL);
+  unsigned int eax, ebx, ecx, edx;
+  if (m >= 7) {
+    __cpuid_count(7, 0, eax, ebx, ecx, edx);
+#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
+    if (ecx & (1 << 11)) return avx512vnni;
+#  endif
+#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+    if (ebx & (1 << 30)) return avx512bw;
+#  endif
+    if (ebx & (1 << 5)) return avx2;
+  }
+  if (m >= 1) {
+    __cpuid_count(1, 0, eax, ebx, ecx, edx);
+    if (ecx & (1 << 9)) return ssse3;
+    if (edx & (1 << 26)) return sse2;
+  }
+  return unsupported;
+#else // not gcc or clang.
+  __builtin_cpu_init();
+#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
+  if (
+#    ifdef __INTEL_COMPILER
+      _may_i_use_cpu_feature(_FEATURE_AVX512_VNNI)
+#    else
+      __builtin_cpu_supports("avx512vnni")
+#    endif
+      ) return vnni;
+#  endif
+#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+  if (
+#    ifdef __INTEL_COMPILER
+      _may_i_use_cpu_feature(_FEATURE_AVX512BW)
+#    else
+      __builtin_cpu_supports("avx512bw")
+#    endif
+      ) return avx512bw;
+#  endif
   if (__builtin_cpu_supports("avx2")) {
     return avx2;
   } else if (__builtin_cpu_supports("ssse3")) {
@@ -199,6 +214,7 @@ template <class T> T ChooseCPU(T
   } else {
     return unsupported;
   }
+#endif
 }
 
 struct TileInfo {
