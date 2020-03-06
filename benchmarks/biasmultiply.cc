@@ -7,7 +7,7 @@
 using namespace intgemm;
 
 template <class Routine>
-void testOld(Index rows, Index cols) {
+void testOld(Index /*rows*/, Index /*cols*/) {
 
 }
 
