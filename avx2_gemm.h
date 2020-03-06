@@ -201,7 +201,9 @@ struct AVX2_8bit {
   INTGEMM_AVX2 static inline void PrepareA(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
     Quantize(input, output, quant_mult, rows * cols);
   }
-
+ private:
+  INTGEMM_QUANTIZE_THREAD(INTGEMM_AVX2, __m256i, avx2)
+ public:
   INTGEMM_QUANTIZE(INTGEMM_AVX2, __m256i, avx2)
 
   // Currently A is prepared by quantization but this could theoretically change.

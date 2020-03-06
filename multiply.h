@@ -60,19 +60,30 @@ static inline INTGEMM_AVX512F float MaxFloat32(__m512 a) {
 #endif
 
 // Quantize function used for SSSE3 and AVX2.
+// Separate function for thread to work around gcc 7 bug that doesn't imbue
+// target attributes across #pragma omp parallel.
+#define INTGEMM_QUANTIZE_THREAD(target, Register, name) \
+target static void QuantizeThread(const float *input, int8_t *output, float quant_mult, std::size_t count) { \
+  name::QuantizeTile8 q(quant_mult); \
+  _Pragma("omp for") \
+  for (std::size_t i = 0; i < count; i += sizeof(Register)) { \
+    *reinterpret_cast<Register*>(output + i) = q.Consecutive(input + i); \
+  } \
+}
+
 #define INTGEMM_QUANTIZE(target, Register, name) \
 target static void Quantize(const float *const input, int8_t *const output, float quant_mult, Index size) { \
   assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0); \
   assert(reinterpret_cast<uintptr_t>(output) % sizeof(Register) == 0); \
-  name::QuantizeTile8 q(quant_mult); \
   const std::size_t kBatch = sizeof(Register); \
   const std::size_t fast_end = size & ~(kBatch - 1); \
-  _Pragma("omp parallel for") \
-  for (std::size_t i = 0; i < fast_end; i += kBatch) { \
-    *reinterpret_cast<Register*>(output + i) = q.Consecutive(input + i); \
+  _Pragma("omp parallel") \
+  { \
+    QuantizeThread(input, output, quant_mult, fast_end); \
   } \
   std::size_t overhang = size & (kBatch - 1); \
   if (!overhang) return; \
+  name::QuantizeTile8 q(quant_mult); \
   /* Each does size(Register) / 32 == kBatch / 4 floats at a time.
    * If we're allowed to read one of them, then we can read the whole register.  */ \
   const float *inputs[4]; \

@@ -116,6 +116,9 @@ struct SSSE3_8bit {
     Quantize(input, output, quant_mult, rows * cols);
   }
 
+ private:
+  INTGEMM_QUANTIZE_THREAD(INTGEMM_SSSE3, __m128i, ssse3)
+ public:
   INTGEMM_QUANTIZE(INTGEMM_SSSE3, __m128i, ssse3)
 
   // Version with unsigned int + 127
