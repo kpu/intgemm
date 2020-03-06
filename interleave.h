@@ -272,7 +272,7 @@ target static inline void PrepareBTransposed(const float* input, Integer* output
   const Index RegisterElemsInt = sizeof(Register) / sizeof(Integer); \
   const Index kColStride = 8; \
   \
-  assert(cols % RegisterElemsInt == 0); \
+  assert(cols % (sizeof(Register) / sizeof(float)) == 0); \
   assert(rows % kColStride == 0); \
   assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0); \
   assert(reinterpret_cast<uintptr_t>(output) % sizeof(Register) == 0); \
