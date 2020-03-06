@@ -51,7 +51,7 @@
 #include "avx512_gemm.h"
 #include "avx512vnni_gemm.h"
 
-#if defined(__GNUC__) || defined(__CLANG__)
+#if defined(__GNUC__) || defined(__clang__)
 #include "cpuid.h"
 #endif
 
