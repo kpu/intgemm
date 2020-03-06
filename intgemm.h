@@ -51,7 +51,7 @@
 #include "avx512_gemm.h"
 #include "avx512vnni_gemm.h"
 
-#if defined(__GNUC__) && defined(INTGEMM_COMPILER_SUPPORTS_AVX512)
+#if defined(__GNUC__) || defined(__CLANG__)
 #include "cpuid.h"
 #endif
 
@@ -124,7 +124,7 @@ struct Unsupported_8bit {
 typedef Unsupported_16bit AVX512_16bit;
 typedef Unsupported_8bit AVX512_8bit;
 namespace avx512f {
-static inline float MaxAbsolute(const float *begin, const float *end) {
+static inline float MaxAbsolute(const float * /*begin*/, const float * /*end*/) {
   throw UnsupportedCPU();
 }
 } //namespace
