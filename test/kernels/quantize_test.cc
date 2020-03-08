@@ -31,7 +31,7 @@ KERNEL_TEST_CASE("quantize SSE2") { return kernel_quantize_test<CPUType::SSE2>()
 template INTGEMM_AVX2 void kernel_quantize_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("quantize AVX2") { return kernel_quantize_test<CPUType::AVX2>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_quantize_test<CPUType::AVX512BW>();
 KERNEL_TEST_CASE("quantize AVX512BW") { return kernel_quantize_test<CPUType::AVX512BW>(); }
 #endif

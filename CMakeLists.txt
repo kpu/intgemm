@@ -16,15 +16,13 @@ else()
   add_compile_options(-Wall -Wextra -pedantic -Werror -Wno-unknown-pragmas)
 endif()
 
-# Check if compiler supports AVX512
-try_compile(INTGEMM_COMPILER_SUPPORTS_AVX512
+# Check if compiler supports AVX512BW
+try_compile(INTGEMM_COMPILER_SUPPORTS_AVX512BW
   ${CMAKE_CURRENT_BINARY_DIR}/compile_tests
-  ${CMAKE_CURRENT_SOURCE_DIR}/compile_test_avx512.cc
-  #Hack: pass compiler arguments as definitions because the test code overrides CXX_FLAGS :'(
-  COMPILE_DEFINITIONS -mavx512f -mavx512bw -mavx512dq)
+  ${CMAKE_CURRENT_SOURCE_DIR}/compile_test_avx512bw.cc)
 
-if(NOT INTGEMM_COMPILER_SUPPORTS_AVX512)
-  message(WARNING "${Orange}Not building AVX512-based multiplication because your compiler is too old.\nFor details rerun cmake with --debug-trycompile then try to build in compile_tests/CMakeFiles/CMakeTmp.${ColourReset}")
+if(NOT INTGEMM_COMPILER_SUPPORTS_AVX512BW)
+  message(WARNING "${Orange}Not building AVX512BW-based multiplication because your compiler is too old.\nFor details rerun cmake with --debug-trycompile then try to build in compile_tests/CMakeFiles/CMakeTmp.${ColourReset}")
 endif()
 
 try_compile(INTGEMM_COMPILER_SUPPORTS_AVX512VNNI

@@ -82,7 +82,7 @@ template <class Routine> void TestPrepare(Index rows = 32, Index cols = 16) {
 
 TEST_CASE("Prepare AVX512", "[prepare]") {
   if (kCPU < CPUType::AVX512BW) return;
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 	TestPrepare<AVX512_8bit>(64, 8);
 	TestPrepare<AVX512_8bit>(256, 32);
     TestPrepare<AVX512_16bit>(64, 8);
@@ -147,7 +147,7 @@ template <class Routine> void TestSelectColumnsB(Index rows = 64, Index cols = 1
 
 TEST_CASE("SelectColumnsB AVX512", "[select]") {
   if (kCPU < CPUType::AVX512BW) return;
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
     TestSelectColumnsB<AVX512_8bit>();
     TestSelectColumnsB<AVX512_16bit>(256, 256);
 #endif
@@ -223,7 +223,7 @@ TEST_CASE("MaxAbsolute AVX2", "[max]") {
 
 TEST_CASE("MaxAbsolute AVX512F", "[max]") {
   if (kCPU < CPUType::AVX512BW) return;
-  #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+  #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
   TestMaxAbsolute<avx512f::MaxAbsolute>();
   #endif
 }
@@ -434,7 +434,7 @@ TEST_CASE ("Multiply AVX2 16bit with bias", "[biased_multiply]") {
   TestMultiplyBias<AVX2_16bit>(200, 256, 256, .1, 1, 0.01);
 }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
   TEST_CASE ("Multiply AVX512 8bit", "[multiply]") {
     if (kCPU < CPUType::AVX512BW) return;
     TestMultiply<AVX512_8bit>(8, 256, 256, 0, 0.25, 0.062);

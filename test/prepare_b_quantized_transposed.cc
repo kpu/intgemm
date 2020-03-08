@@ -80,7 +80,7 @@ TEST_CASE("PrepareBQuantizedTransposed AVX2", "") {
   CHECK(TestMany<AVX2_16bit>(32, 128));
 }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
   TEST_CASE("PrepareBQuantizedTransposed AVX512", "") {
     if (kCPU < CPUType::AVX512BW)
       return;

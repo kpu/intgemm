@@ -51,7 +51,7 @@
 #include "avx512_gemm.h"
 #include "avx512vnni_gemm.h"
 
-#if defined(__GNUC__) && defined(INTGEMM_COMPILER_SUPPORTS_AVX512)
+#if defined(__GNUC__) && defined(INTGEMM_COMPILER_SUPPORTS_AVX512BW)
 #include "cpuid.h"
 #endif
 
@@ -119,7 +119,7 @@ struct Unsupported_8bit {
   constexpr static const char *const kName = "8-bit Unsupported";
 };
 
-#ifndef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifndef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 // These won't ever be called in this capacity, but it does let the code below compile.
 typedef Unsupported_16bit AVX512_16bit;
 typedef Unsupported_8bit AVX512_8bit;
@@ -136,7 +136,7 @@ typedef Unsupported_8bit AVX512VNNI_8bit;
 #endif
 
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 // gcc 5.4.0 bizarrely supports avx512bw targets but not __builtin_cpu_supports("avx512bw").  So implement it manually.
 inline bool CheckAVX512BW() {
   __builtin_cpu_init ();
@@ -185,7 +185,7 @@ template <class T> T ChooseCPU(T
     return avx512vnni;
   }
 #endif
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
   if (CheckAVX512BW()) {
     return avx512bw;
   }
