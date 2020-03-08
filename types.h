@@ -1,5 +1,7 @@
 #pragma once
+#include "intgemm_config.h"
 #include <exception>
+#include <immintrin.h>
 
 #define INTGEMM_SSE2 __attribute__ ((target ("sse2")))
 //#define SSE2_3 __attribute__ ((target ("ssse3"), target("sse2"))) //Not supported by clang
@@ -45,5 +47,34 @@ enum class CPUType {
 
 // Running CPU type.  This is defined in intgemm.cc (as the dispatcher).
 extern const CPUType kCPU;
+
+struct Tile {
+  Index A_rows, inner, B_cols;
+};
+
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
+namespace AVX512VNNI {
+typedef __m512i Register;
+typedef __m512 FRegister;
+} // namespace AVX512VNNI
+#endif
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+namespace AVX512BW {
+typedef __m512i Register;
+typedef __m512 FRegister;
+} // namespace AVX512BW
+#endif
+namespace AVX2 {
+typedef __m256i Register;
+typedef __m256 FRegister;
+} // namespace AVX2
+namespace SSSE3 {
+typedef __m128i Register;
+typedef __m128 FRegister;
+} // namespace SSSE3
+namespace SSE2 {
+typedef __m128i Register;
+typedef __m128 FRegister;
+} // namespace SSE2
 
 } // namespace intgemm
