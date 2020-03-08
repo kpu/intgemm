@@ -30,7 +30,7 @@ KERNEL_TEST_CASE("bitwise_not SSE2") { return kernel_bitwise_not_test<CPUType::S
 template INTGEMM_AVX2 void kernel_bitwise_not_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("bitwise_not AVX2") { return kernel_bitwise_not_test<CPUType::AVX2>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_bitwise_not_test<CPUType::AVX512BW>();
 KERNEL_TEST_CASE("bitwise_not AVX512BW") { return kernel_bitwise_not_test<CPUType::AVX512BW>(); }
 #endif
