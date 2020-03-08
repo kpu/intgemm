@@ -58,7 +58,7 @@ typedef __m512i Register;
 typedef __m512 FRegister;
 } // namespace AVX512VNNI
 #endif
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 namespace AVX512BW {
 typedef __m512i Register;
 typedef __m512 FRegister;
