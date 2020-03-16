@@ -263,10 +263,10 @@ struct Multiply_MakeFinalOutputAndRunCallback<int16_t> {
   INTGEMM_MULTIPLY16_MAKE_FINAL_OUTPUT_AND_RUN_CALLBACK_IMPL(INTGEMM_AVX512BW, __m512i)
 };
 
-#define INTGEMM_MULTIPLY(target, cpu_type, integer) \
+#define INTGEMM_MULTIPLY(target, regsiter, cpu_type, integer) \
   template <Index TileRows, Index TileColumnsMultiplier, typename Callback> \
   target static void Multiply(const integer *A, const integer *B, Index A_rows, Index width, Index B_cols, Callback callback) { \
-    using Register = vector_t<cpu_type, integer>; \
+    using Register = regsiter; \
     static constexpr Index TileColumns = 8 * TileColumnsMultiplier; \
     assert(A_rows % TileRows == 0); \
     assert(width % (sizeof(Register) / sizeof(integer)) == 0); \

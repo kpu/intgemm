@@ -208,7 +208,7 @@ struct AVX512_16bit {
   }
 
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
-  INTGEMM_MULTIPLY(INTGEMM_AVX512BW, CPUType::AVX2, int16_t)
+  INTGEMM_MULTIPLY(INTGEMM_AVX512BW, __m512i, CPUType::AVX2, int16_t)
 
   constexpr static const char *const kName = "16-bit AVX512";
 
