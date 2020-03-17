@@ -47,7 +47,8 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_library(intgemm STATIC intgemm.cc)
 
-if (OPENMP)
+option(USE_OPENMP "Use OpenMP" OFF)
+if (USE_OPENMP)
   message(STATUS "Compiling with OpenMP")
   find_package(OpenMP)
   if (NOT ${OpenMP_CXX_FOUND})
