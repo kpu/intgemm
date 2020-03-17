@@ -119,7 +119,7 @@ struct Unsupported_8bit {
   constexpr static const char *const kName = "8-bit Unsupported";
 };
 
-#ifndef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifndef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 // These won't ever be called in this capacity, but it does let the code below compile.
 typedef Unsupported_16bit AVX512_16bit;
 typedef Unsupported_8bit AVX512_8bit;
@@ -153,7 +153,7 @@ template <class T> T ChooseCPU(T
     avx512vnni
 #endif
     , T 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
     avx512bw
 #endif
     , T avx2, T ssse3, T sse2, T unsupported) {
@@ -174,7 +174,7 @@ template <class T> T ChooseCPU(T
 #  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
     if (ecx & (1 << 11)) return avx512vnni;
 #  endif
-#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
     if (ebx & (1 << 30)) return avx512bw;
 #  endif
     if (ebx & (1 << 5)) return avx2;
@@ -196,7 +196,7 @@ template <class T> T ChooseCPU(T
 #    endif
       ) return vnni;
 #  endif
-#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
   if (
 #    ifdef __INTEL_COMPILER
       _may_i_use_cpu_feature(_FEATURE_AVX512BW)

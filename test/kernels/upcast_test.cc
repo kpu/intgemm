@@ -33,7 +33,7 @@ KERNEL_TEST_CASE("upcast8to16 SSE2") { return kernel_upcast8to16_test<CPUType::S
 template INTGEMM_AVX2 void kernel_upcast8to16_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("upcast8to16 AVX2") { return kernel_upcast8to16_test<CPUType::AVX2>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_upcast8to16_test<CPUType::AVX512BW>();
 KERNEL_TEST_CASE("upcast8to16 AVX512BW") { return kernel_upcast8to16_test<CPUType::AVX512BW>(); }
 #endif
@@ -65,7 +65,7 @@ KERNEL_TEST_CASE("upcast16to32 SSE2") { return kernel_upcast16to32_test<CPUType:
 template INTGEMM_AVX2 void kernel_upcast16to32_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("upcast16to32 AVX2") { return kernel_upcast16to32_test<CPUType::AVX2>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_upcast16to32_test<CPUType::AVX512BW>();
 KERNEL_TEST_CASE("upcast16to32 AVX512BW") { return kernel_upcast16to32_test<CPUType::AVX512BW>(); }
 #endif
@@ -99,7 +99,7 @@ KERNEL_TEST_CASE("upcast8to32 SSE2") { return kernel_upcast8to32_test<CPUType::S
 template INTGEMM_AVX2 void kernel_upcast8to32_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("upcast8to32 AVX2") { return kernel_upcast8to32_test<CPUType::AVX2>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_upcast8to32_test<CPUType::AVX512BW>();
 KERNEL_TEST_CASE("upcast8to32 AVX512BW") { return kernel_upcast8to32_test<CPUType::AVX512BW>(); }
 #endif

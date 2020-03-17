@@ -36,7 +36,7 @@ int main() {
     }
     QuantizerBench<intgemm::SSSE3_8bit>(in.begin(), out.begin(), count);
     QuantizerBench<intgemm::AVX2_8bit>(in.begin(), out.begin(), count);
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
     QuantizerBench<intgemm::AVX512_8bit>(in.begin(), out.begin(), count);
 #endif
   }

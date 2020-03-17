@@ -41,7 +41,7 @@ template INTGEMM_AVX2 void kernel_multiply_sat_test<CPUType::AVX2, int16_t>();
 KERNEL_TEST_CASE("multiply_sat/int8 AVX2") { return kernel_multiply_sat_test<CPUType::AVX2, int8_t>(); }
 KERNEL_TEST_CASE("multiply_sat/int16 AVX2") { return kernel_multiply_sat_test<CPUType::AVX2, int16_t>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_multiply_sat_test<CPUType::AVX512BW, int8_t>();
 template INTGEMM_AVX512BW void kernel_multiply_sat_test<CPUType::AVX512BW, int16_t>();
 KERNEL_TEST_CASE("multiply_sat/int8 AVX512BW") { return kernel_multiply_sat_test<CPUType::AVX512BW, int8_t>(); }

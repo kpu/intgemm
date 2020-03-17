@@ -48,7 +48,7 @@ KERNEL_TEST_CASE("multiply/int AVX2") { return kernel_multiply_test<CPUType::AVX
 KERNEL_TEST_CASE("multiply/float AVX2") { return kernel_multiply_test<CPUType::AVX2, float>(); }
 KERNEL_TEST_CASE("multiply/double AVX2") { return kernel_multiply_test<CPUType::AVX2, double>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_multiply_test<CPUType::AVX512BW, int8_t>();
 template INTGEMM_AVX512BW void kernel_multiply_test<CPUType::AVX512BW, int16_t>();
 template INTGEMM_AVX512BW void kernel_multiply_test<CPUType::AVX512BW, int>();

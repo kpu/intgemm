@@ -46,7 +46,7 @@ constexpr const char *const SSE2_16bit::kName;
 constexpr const char *const SSSE3_8bit::kName;
 constexpr const char *const AVX2_8bit::kName;
 constexpr const char *const AVX2_16bit::kName;
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 constexpr const char *const AVX512_8bit::kName;
 constexpr const char *const AVX512_16bit::kName;
 #endif

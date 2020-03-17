@@ -295,7 +295,7 @@ TEST_CASE("PrepareBias AVX2", "[Add127]") {
 
 TEST_CASE("PrepareBias AVX512F", "[Add127]") {
 	if (kCPU < CPUType::AVX512BW) return;
-	#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+	#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 	TestPrepareBias<AVX512_8bit>(256,256);
 	TestPrepareBias<AVX512_8bit>(2048,256);
 	TestPrepareBias<AVX512_8bit>(512,512);
@@ -321,7 +321,7 @@ TEST_CASE("PrepareA AVX2", "[Add127]") {
 
 TEST_CASE("PrepareA AVX512F", "[Add127]") {
 	if (kCPU < CPUType::AVX512BW) return;
-	#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+	#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 	TestPrepareA<AVX512_8bit>(64,64);
 	TestPrepareA<AVX512_8bit>(256,256);
 	TestPrepareA<AVX512_8bit>(512,512);
@@ -352,7 +352,7 @@ TEST_CASE ("Multiply AVX2 8bit Shift with bias", "[Add127]") {
   TestMultiplyBiasNew<AVX2_8bit>(248, 256, 256, 0.48, 0.64, 0.16, 0.15);
   TestMultiplyBiasNew<AVX2_8bit>(200, 256, 256, 0.55, 0.74, 0.17, 0.16);
 }
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 TEST_CASE ("Multiply AVX512F 8bit Shift with bias", "[Add127]") {
   if (kCPU < CPUType::AVX512BW) return;
   TestMultiplyBiasNew<AVX512_8bit>(1, 64, 8, 0.0001, 0.05, 0.03, 0.001);
@@ -400,7 +400,7 @@ TEST_CASE ("Multiply AVX2 8bit Shift vs nonshift", "[Add127]") {
   TestMultiplyShiftNonShift<AVX2_8bit>(248, 256, 256, 0.0001, 0.64, 0.16, 0.0001);
   TestMultiplyShiftNonShift<AVX2_8bit>(200, 256, 256, 0.0001, 0.74, 0.17, 0.0001);
 }
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 TEST_CASE ("Multiply AVX512F 8bit Shift vs nonshift", "[Add127]") {
   if (kCPU < CPUType::AVX512BW) return;
   TestMultiplyShiftNonShift<AVX512_8bit>(1, 64, 8, 0.0001, 0.05, 0.03, 0.001);
@@ -448,7 +448,7 @@ TEST_CASE ("Multiply AVX2 8bit Shift vs Int", "[Add127]") {
   TestMultiplyShiftInt<AVX2_8bit>(248, 256, 256, 0.0001f, 0.64, 0.16, 0.0001f);
   TestMultiplyShiftInt<AVX2_8bit>(200, 256, 256, 0.0001f, 0.74, 0.17, 0.0001f);
 }
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 TEST_CASE ("Multiply AVX512F 8bit Shift vs Int", "[Add127]") {
   if (kCPU < CPUType::AVX512BW) return;
   TestMultiplyShiftInt<AVX512_8bit>(1, 64, 8, 0.0001f, 0.05, 0.03, 0.0001f);

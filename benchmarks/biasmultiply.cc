@@ -196,7 +196,7 @@ int main(int argc, char ** argv) {
 	}
 
 	std::cout << repeat << " iterations of Shifted AVX2 took: " << newTimeAVX2.count() << " seconds." << std::endl;
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 	if (kCPU < CPUType::AVX512BW) return 0;
 	std::chrono::duration<double> oldAVX512_nobias = testOld_nobias<AVX512_8bit>(1, 64, 8);
 	for (int i = 0; i<repeat; i++) {

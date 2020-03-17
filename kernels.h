@@ -16,7 +16,7 @@
 #include "kernels/implementations.inl"
 #undef KERNELS_THIS_IS_AVX2
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 #define KERNELS_THIS_IS_AVX512BW
 #include "kernels/implementations.inl"
 #undef KERNELS_THIS_IS_AVX512BW
