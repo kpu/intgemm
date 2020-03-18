@@ -141,7 +141,7 @@ INTGEMM_AVX512VNNI void BenchmarkLog4() {
   std::mt19937 gen;
   std::uniform_int_distribution<uint8_t> dist(0, 255);
   gen.seed(1234);
-  const Index kUnroll = 30;
+  const Index kUnroll = 16;
   const int kCalls = (2048 / kUnroll) * kUnroll;
 
   AlignedVector<uint8_t> a(kCalls * sizeof(__m512i)), b(kCalls * sizeof(__m512i));
