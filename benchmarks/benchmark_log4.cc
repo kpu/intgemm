@@ -40,15 +40,6 @@ Summary Summarize(const std::vector<Timing> &samples, const int calls, const int
   return ret;
 }
 
-std::chrono::duration<double> Summarize(const std::vector<std::chrono::duration<double> > &samples, const int scale=1) {
-  auto first = samples[0];
-  return scale * std::accumulate(samples.begin() + 1, samples.end(), first) / samples.size();
-}
-
-INTGEMM_AVX512F inline __m512 fp32(__m512 a, __m512 b) {
-  return _mm512_mul_ps(a, b);
-}
-
 struct Shift {
   template <typename Iterator> INTGEMM_AVX512BW __attribute__((always_inline)) static void body(const __m512i *a, const __m512i *b, __m512i *c, __m512i *, uint64_t *) {
     const Index idx = Iterator::template I<0>();
