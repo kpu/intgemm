@@ -36,7 +36,7 @@ void BenchmarkMaxAbsolute() {
     it = dist(gen);
   }
 
-  std::vector<uint64_t> stats;
+  std::vector<Timing> stats;
   // Hopefully these don't get optimized out...
   float result = MaxAbsoluteBaseline(v.begin(), v.end());
   {
@@ -47,7 +47,7 @@ void BenchmarkMaxAbsolute() {
     StopWatch w(stats);
     result = avx2::MaxAbsolute(v.begin(), v.end());
   }
-  std::cout << "MaxAbsolute baseline = " << stats[0] << " optimized = " << stats[1] << " speedup = " << ((float)stats[0] / (float)stats[1])<< '\n';
+  std::cout << "MaxAbsolute baseline = " << stats[0].tsc << " optimized = " << stats[1].tsc << " speedup = " << ((float)stats[0].tsc / (float)stats[1].tsc)<< '\n';
 }
 
 struct RandomMatrices {
@@ -70,7 +70,7 @@ struct RandomMatrices {
   AlignedVector<float> A, B;
 };
 
-template <class Backend> void Run(const RandomMatrices &m, std::vector<uint64_t> &stats) {
+template <class Backend> void Run(const RandomMatrices &m, std::vector<Timing> &stats) {
   typedef typename Backend::Integer Integer;
   float quant_mult = 127.0 / 2;
   float unquant_mult = 1.0 / (quant_mult * quant_mult);
@@ -87,7 +87,7 @@ template <class Backend> void Run(const RandomMatrices &m, std::vector<uint64_t>
   }
 }
 
-template <class Backend> void RunAll(RandomMatrices *matrices, RandomMatrices *matrices_end, std::vector<std::vector<uint64_t>> &stats) {
+template <class Backend> void RunAll(RandomMatrices *matrices, RandomMatrices *matrices_end, std::vector<std::vector<Timing>> &stats) {
   if (Backend::kUses > kCPU) return;
   std::size_t size = matrices_end - matrices;
   if (stats.size() < size)
@@ -98,35 +98,35 @@ template <class Backend> void RunAll(RandomMatrices *matrices, RandomMatrices *m
 }
 
 struct BackendStats {
-  std::vector<std::vector<uint64_t>> ssse3_8bit;
-  std::vector<std::vector<uint64_t>> avx2_8bit;
-  std::vector<std::vector<uint64_t>> avx512_8bit;
-  std::vector<std::vector<uint64_t>> avx512vnni_8bit;
-  std::vector<std::vector<uint64_t>> sse2_16bit;
-  std::vector<std::vector<uint64_t>> avx2_16bit;
-  std::vector<std::vector<uint64_t>> avx512_16bit;
+  std::vector<std::vector<Timing>> ssse3_8bit;
+  std::vector<std::vector<Timing>> avx2_8bit;
+  std::vector<std::vector<Timing>> avx512_8bit;
+  std::vector<std::vector<Timing>> avx512vnni_8bit;
+  std::vector<std::vector<Timing>> sse2_16bit;
+  std::vector<std::vector<Timing>> avx2_16bit;
+  std::vector<std::vector<Timing>> avx512_16bit;
 };
 
 const float kOutlierThreshold = 0.75;
-void Summarize(std::vector<uint64_t> &stats) {
+void Summarize(std::vector<Timing> &stats) {
   // Throw out outliers.
-  std::vector<uint64_t>::iterator keep = stats.begin() + stats.size() * kOutlierThreshold;
-  std::nth_element(stats.begin(), keep, stats.end());
+  std::vector<Timing>::iterator keep = stats.begin() + stats.size() * kOutlierThreshold;
+  std::nth_element(stats.begin(), keep, stats.end(), [](const Timing &a, const Timing &b) {return a.tsc < b.tsc;});
   double avg = 0.0;
-  for (std::vector<uint64_t>::const_iterator i = stats.begin(); i != keep; ++i) {
-    avg += *i;
+  for (std::vector<Timing>::const_iterator i = stats.begin(); i != keep; ++i) {
+    avg += i->tsc;
   }
   avg /= (keep - stats.begin());
   double stddev = 0.0;
-  for (std::vector<uint64_t>::const_iterator i = stats.begin(); i != keep; ++i) {
-    double off = (double)*i - avg;
+  for (std::vector<Timing>::const_iterator i = stats.begin(); i != keep; ++i) {
+    double off = (double)i->tsc - avg;
     stddev += off * off;
   }
   stddev = sqrt(stddev / (keep - stats.begin() - 1));
-  std::cout << std::setw(10) << *std::min_element(stats.begin(), stats.end()) << '\t' << std::setw(8) << avg << '\t' << std::setw(8) << stddev;
+  std::cout << std::setw(10) << std::min_element(stats.begin(), stats.end(), [](const Timing &a, const Timing &b) {return a.tsc < b.tsc;})->tsc << '\t' << std::setw(8) << avg << '\t' << std::setw(8) << stddev;
 }
 
-template <class Backend> void Print(std::vector<std::vector<uint64_t>> &stats, int index) {
+template <class Backend> void Print(std::vector<std::vector<Timing>> &stats, int index) {
   if (stats.empty()) return;
   std::cout << std::setw(16) << Backend::kName << '\t';
   Summarize(stats[index]);

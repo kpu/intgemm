@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <cstdlib>
+#include <chrono>
 #include <vector>
 #include <iostream>
 
@@ -34,25 +35,35 @@ static inline uint64_t rdtsc_end(uint32_t &processor) {
   return static_cast<uint64_t>(hi) << 32 | lo;
 }
 
+struct Timing {
+  uint64_t tsc;
+  double wall;
+};
+
 class StopWatch {
   public:
-    StopWatch(std::vector<uint64_t> &stats)
-      : stats_(stats), start_(rdtsc_begin(processor_)) {}
+    StopWatch(std::vector<Timing> &stats)
+      : stats_(stats), start_wall_(std::chrono::steady_clock::now()), start_tsc_(rdtsc_begin(processor_)) {}
 
     ~StopWatch() {
       uint32_t proc;
-      uint64_t stop = rdtsc_end(proc);
+      uint64_t stop_tsc = rdtsc_end(proc);
+      std::chrono::time_point<std::chrono::steady_clock> stop_wall = std::chrono::steady_clock::now();
       if (proc != processor_) {
         std::cerr << "Detected core change from " << processor_ << " to " << proc << std::endl;
         abort();
       }
-      stats_.push_back(stop - start_);
+      Timing out;
+      out.tsc = stop_tsc - start_tsc_;
+      out.wall = (stop_wall - start_wall_).count();
+      stats_.push_back(out);
     }
 
   private:
-    std::vector<uint64_t> &stats_;
+    std::vector<Timing> &stats_;
     uint32_t processor_;
-    uint64_t start_;
+    uint64_t start_tsc_;
+    std::chrono::time_point<std::chrono::steady_clock> start_wall_;
 };
 
 } // namespace intgemm
