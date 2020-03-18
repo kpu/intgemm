@@ -57,7 +57,6 @@ struct MAddUBS16 {
 };
 
 struct MAddUBS32 {
-  // Overkill on the target option.
   template <typename Iterator> INTGEMM_AVX512BW __attribute__((always_inline)) static void body(const __m512i *a, const __m512i *b, __m512i *c, __m512i *, uint64_t *) {
     // Into 16
     __m512i added = _mm512_maddubs_epi16(a[Iterator::template I<0>()], b[Iterator::template I<0>()]);
@@ -112,8 +111,7 @@ template <class Backend, Index Unroll> INTGEMM_AVX512VNNI void Try(const __m512i
   for (int s = 0; s < kSamples; ++s) {
     StopWatch w(stats);
     for (const __m512i *a_it = a_begin, *b_it = b_begin; a_it != a_end; a_it += Unroll, b_it += Unroll) {
-      StaticLoop<MAddUBS32, MakeStaticLoopIterator<Unroll> >(a_it, b_it, &accum[0], &subtractreg, &subtract65535);
-
+      StaticLoop<Backend, MakeStaticLoopIterator<Unroll> >(a_it, b_it, &accum[0], &subtractreg, &subtract65535);
     }
   }
 
@@ -123,7 +121,7 @@ template <class Backend, Index Unroll> INTGEMM_AVX512VNNI void Try(const __m512i
   int64_t total = std::accumulate(result, result + sizeof(result) / sizeof(uint64_t), -255 * subtract65535);
   std::memcpy(result, &subtractreg, sizeof(subtractreg));
   total = std::accumulate(result, result + sizeof(subtractreg) / sizeof(uint64_t), total);
-  asm volatile("" : "+r" (total));
+  asm volatile("" : "+r" (total), "+r" (subtract65535));
 
   std::cout << Summarize(stats, a_end - a_begin, scale) << " " << name << '\n';
 }
