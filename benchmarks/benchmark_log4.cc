@@ -31,7 +31,7 @@ INTGEMM_AVX512BW __m512i MAddUBS(__m512i a, __m512i b) {
   return _mm512_maddubs_epi16(ret, _mm512_set1_epi16(1));
 }
 
-INTGEMM_AVX512BW void BenchmarkLog4() {
+INTGEMM_AVX512VNNI void BenchmarkLog4() {
   std::mt19937 gen;
   std::uniform_int_distribution<uint8_t> dist(0, 255);
   gen.seed(1234);
@@ -48,7 +48,7 @@ INTGEMM_AVX512BW void BenchmarkLog4() {
 
   __m512i subtractreg = _mm512_setzero_si512();
   uint64_t subtract65535 = 0;
-  std::vector<uint64_t> stats_lookup8, stats_lookup16, stats_shift, stats_maddubs, stats_fp32;
+  std::vector<uint64_t> stats_lookup8, stats_lookup16, stats_shift, stats_maddubs, stats_fp32, stats_vnni;
   const __m512i *a_begin = reinterpret_cast<const __m512i*>(a.begin()), *a_end = reinterpret_cast<const __m512i*>(a.end());
   const __m512i *b_begin = reinterpret_cast<const __m512i*>(b.begin());
   __m512i accum = _mm512_setzero_si512();
@@ -91,6 +91,13 @@ INTGEMM_AVX512BW void BenchmarkLog4() {
       accum = _mm512_add_epi64(accum, DotLog4_Shift(*a_it, *b_it));
     }
   }
+  for (int s = 0; s < kSamples; ++s) {
+    StopWatch w(stats_vnni);
+    for (const __m512i *a_it = a_begin, *b_it = b_begin; a_it != a_end; ++a_it, ++b_it) {
+      accum = _mm512_dpbusds_epi32(accum, *a_it, *b_it);
+    }
+  }
+
 
   uint64_t result[8];
   std::memcpy(result, &accum, sizeof(accum));
@@ -105,9 +112,10 @@ INTGEMM_AVX512BW void BenchmarkLog4() {
   std::cout<< " Shift    " << Summarize(stats_shift)    << '\n';
   std::cout<< " MAddUBS  " << Summarize(stats_maddubs, /*scale=*/2) << '\n';
   std::cout<< " FP32     " << Summarize(stats_fp32,    /*scale=*/8) << '\n';
+  std::cout<< " VNNI     " << Summarize(stats_vnni,    /*scale=*/2) << '\n';
 }
 
-INTGEMM_AVX512BW void BenchmarkLog4_Chrono() {
+INTGEMM_AVX512VNNI void BenchmarkLog4_Chrono() {
   std::mt19937 gen;
   std::uniform_int_distribution<uint8_t> dist(0, 255);
   gen.seed(1234);
@@ -124,7 +132,7 @@ INTGEMM_AVX512BW void BenchmarkLog4_Chrono() {
 
   __m512i subtractreg = _mm512_setzero_si512();
   uint64_t subtract65535 = 0;
-  std::vector<std::chrono::duration<double> > stats_lookup8, stats_lookup16, stats_shift, stats_maddubs, stats_fp32;
+  std::vector<std::chrono::duration<double> > stats_lookup8, stats_lookup16, stats_shift, stats_maddubs, stats_fp32, stats_vnni;
   const __m512i *a_begin = reinterpret_cast<const __m512i*>(a.begin()), *a_end = reinterpret_cast<const __m512i*>(a.end());
   const __m512i *b_begin = reinterpret_cast<const __m512i*>(b.begin());
 
@@ -188,6 +196,17 @@ INTGEMM_AVX512BW void BenchmarkLog4_Chrono() {
     stats_shift.push_back(elapsed_seconds);
   }
 
+  for (int s = 0; s < kSamples; ++s) {
+    auto start = std::chrono::system_clock::now();
+    for (const __m512i *a_it = a_begin, *b_it = b_begin; a_it != a_end; ++a_it, ++b_it) {
+      accum = _mm512_dpbusds_epi32(accum, *a_it, *b_it);
+    }
+    auto end = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end-start;
+    stats_vnni.push_back(elapsed_seconds);
+  }
+
+
   uint64_t result[8];
 
   std::memcpy(result, &accum, sizeof(accum));
@@ -205,6 +224,7 @@ INTGEMM_AVX512BW void BenchmarkLog4_Chrono() {
   std::cout<< " Shift    " << Summarize(stats_shift).count()    << '\n';
   std::cout<< " MAddUBS  " << Summarize(stats_maddubs, /*scale=*/2).count() << '\n';
   std::cout<< " FP32     " << Summarize(stats_fp32,    /*scale=*/8).count() << '\n';
+  std::cout<< " VNNI     " << Summarize(stats_vnni,    /*scale=*/2).count() << '\n';
 }
 
 
