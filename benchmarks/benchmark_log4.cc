@@ -2,13 +2,14 @@
 
 #include "../aligned.h"
 #include "../stop_watch.h"
+#include "../utils.h"
 
 #include <algorithm>
 #include <cassert>
 #include <cstring>
 #include <iostream>
+#include <iomanip>
 #include <random>
-#include <chrono>
 
 namespace intgemm {
 namespace {
@@ -19,10 +20,10 @@ struct Summary {
 };
 
 std::ostream &operator<<(std::ostream &o, const Summary &summary) {
-  return o << "wall = " << summary.wall << "\ttsc = " << summary.tsc;
+  return o << "wall = " << std::fixed << std::setprecision(5) << summary.wall << "\ttsc = " << std::fixed << std::setprecision(5) << summary.tsc;
 }
 
-Summary Summarize(const std::vector<Timing> &samples, const int scale = 1) {
+Summary Summarize(const std::vector<Timing> &samples, const int calls, const int scale) {
   Summary ret;
   ret.wall = 0;
   ret.tsc = 0;  
@@ -34,6 +35,8 @@ Summary Summarize(const std::vector<Timing> &samples, const int scale = 1) {
   ret.tsc *= scale;
   ret.wall /= samples.size();
   ret.tsc /= samples.size();
+  ret.wall /= calls;
+  ret.tsc /= calls;
   return ret;
 }
 
@@ -42,21 +45,104 @@ std::chrono::duration<double> Summarize(const std::vector<std::chrono::duration<
   return scale * std::accumulate(samples.begin() + 1, samples.end(), first) / samples.size();
 }
 
-INTGEMM_AVX512F __m512 fp32(__m512 a, __m512 b) {
+INTGEMM_AVX512F inline __m512 fp32(__m512 a, __m512 b) {
   return _mm512_mul_ps(a, b);
 }
 
-INTGEMM_AVX512BW __m512i MAddUBS(__m512i a, __m512i b) {
-  __m512i ret = _mm512_maddubs_epi16(a, b);
-  return _mm512_maddubs_epi16(ret, _mm512_set1_epi16(1));
+struct Shift {
+  template <typename Iterator> INTGEMM_AVX512BW __attribute__((always_inline)) static void body(const __m512i *a, const __m512i *b, __m512i *c, __m512i *, uint64_t *) {
+    const Index idx = Iterator::template I<0>();
+    c[idx] = _mm512_add_epi64(c[idx], DotLog4_Shift(a[idx], b[idx]));
+  }
+};
+
+struct MAddUBS16 {
+  template <typename Iterator> INTGEMM_AVX512BW __attribute__((always_inline)) static void body(const __m512i *a, const __m512i *b, __m512i *c, __m512i *, uint64_t *) {
+    // Into 16
+    __m512i added = _mm512_maddubs_epi16(a[Iterator::template I<0>()], b[Iterator::template I<0>()]);
+    // 16-bit accum.
+    c[Iterator::template I<0>()] = _mm512_adds_epi16(c[Iterator::template I<0>()], added);
+  }
+};
+
+struct MAddUBS32 {
+  // Overkill on the target option.
+  template <typename Iterator> INTGEMM_AVX512BW __attribute__((always_inline)) static void body(const __m512i *a, const __m512i *b, __m512i *c, __m512i *, uint64_t *) {
+    // Into 16
+    __m512i added = _mm512_maddubs_epi16(a[Iterator::template I<0>()], b[Iterator::template I<0>()]);
+    // Into 32
+    added = _mm512_madd_epi16(added, _mm512_set1_epi16(1));
+    // 32-bit accum.
+    c[Iterator::template I<0>()] = _mm512_add_epi32(c[Iterator::template I<0>()], added);
+  }
+};
+
+struct Lookup8 {
+  template <typename Iterator> INTGEMM_AVX512BW __attribute__((always_inline)) static void body(const __m512i *a, const __m512i *b, __m512i *c, __m512i *subtractreg, uint64_t *) {
+    const Index idx = Iterator::template I<0>();
+    const __m512i kLookup = _mm512_set_epi64(0xffab734d342217, 0x0f0a060402010000, 0xffab734d342217, 0x0f0a060402010000, 0xffab734d342217, 0x0f0a060402010000, 0xffab734d342217, 0x0f0a060402010000);
+    c[idx] = _mm512_add_epi64(c[idx], DotLog4_Lookup8(a[idx], b[idx], kLookup, *subtractreg));
+  }
+};
+
+struct Lookup16 {
+  template <typename Iterator> INTGEMM_AVX512BW __attribute__((always_inline)) static void body(const __m512i *a, const __m512i *b, __m512i *c, __m512i *subtractreg, uint64_t *subtract) {
+    const Index idx = Iterator::template I<0>();
+    c[idx] = _mm512_add_epi64(c[idx], DotLog4_Lookup16(a[idx], b[idx], *subtract));
+  }
+};
+
+struct VNNI {
+  template <typename Iterator> INTGEMM_AVX512VNNI __attribute__((always_inline)) static void body(const __m512i *a, const __m512i *b, __m512i *c, __m512i *, uint64_t *) {
+    const Index idx = Iterator::template I<0>();
+    c[idx] = _mm512_dpbusds_epi32(c[idx], a[idx], b[idx]);
+  }
+};
+
+struct FP32 {
+  template <typename Iterator> INTGEMM_AVX512F __attribute__((always_inline)) static void body(const __m512i *a, const __m512i *b, __m512i *c, __m512i *, uint64_t *) {
+    const Index idx = Iterator::template I<0>();
+    reinterpret_cast<__m512&>(c[idx]) = _mm512_fmadd_ps(
+        reinterpret_cast<const __m512&>(a[idx]),
+        reinterpret_cast<const __m512&>(b[idx]),
+        reinterpret_cast<__m512&>(c[idx]));
+  }
+};
+
+template <class Backend, Index Unroll> INTGEMM_AVX512VNNI void Try(const __m512i *a_begin, const __m512i *a_end, const __m512i *b_begin, const char *name, const int scale) {
+  const int kSamples = 10000;
+  __m512i accum[Unroll];
+  memset(accum, 0, sizeof(accum));
+
+  __m512i subtractreg = _mm512_setzero_si512();
+  uint64_t subtract65535 = 0;
+
+  std::vector<Timing> stats;
+  for (int s = 0; s < kSamples; ++s) {
+    StopWatch w(stats);
+    for (const __m512i *a_it = a_begin, *b_it = b_begin; a_it != a_end; a_it += Unroll, b_it += Unroll) {
+      StaticLoop<MAddUBS32, MakeStaticLoopIterator<Unroll> >(a_it, b_it, &accum[0], &subtractreg, &subtract65535);
+
+    }
+  }
+
+  uint64_t result[sizeof(accum) / sizeof(uint64_t)];
+  std::memcpy(result, &accum, sizeof(accum));
+  // This isn't valid, but it does do enough to prevent code removal.
+  int64_t total = std::accumulate(result, result + sizeof(result) / sizeof(uint64_t), -255 * subtract65535);
+  std::memcpy(result, &subtractreg, sizeof(subtractreg));
+  total = std::accumulate(result, result + sizeof(subtractreg) / sizeof(uint64_t), total);
+  asm volatile("" : "+r" (total));
+
+  std::cout << Summarize(stats, a_end - a_begin, scale) << " " << name << '\n';
 }
 
 INTGEMM_AVX512VNNI void BenchmarkLog4() {
   std::mt19937 gen;
   std::uniform_int_distribution<uint8_t> dist(0, 255);
   gen.seed(1234);
-  const int kCalls = 2048;
-  const int kSamples = 100000;
+  const Index kUnroll = 30;
+  const int kCalls = (2048 / kUnroll) * kUnroll;
 
   AlignedVector<uint8_t> a(kCalls * sizeof(__m512i)), b(kCalls * sizeof(__m512i));
   for (auto& it : a) {
@@ -71,67 +157,15 @@ INTGEMM_AVX512VNNI void BenchmarkLog4() {
   std::vector<Timing> stats_lookup8, stats_lookup16, stats_shift, stats_maddubs, stats_fp32, stats_vnni;
   const __m512i *a_begin = reinterpret_cast<const __m512i*>(a.begin()), *a_end = reinterpret_cast<const __m512i*>(a.end());
   const __m512i *b_begin = reinterpret_cast<const __m512i*>(b.begin());
-  __m512i accum = _mm512_setzero_si512();
-  const __m512i kLookup = _mm512_set_epi64(0xffab734d342217, 0x0f0a060402010000, 0xffab734d342217, 0x0f0a060402010000, 0xffab734d342217, 0x0f0a060402010000, 0xffab734d342217, 0x0f0a060402010000);
 
-  for (int s = 0; s < kSamples; ++s) {
-    StopWatch w(stats_shift);
-    for (const __m512i *a_it = a_begin, *b_it = b_begin; a_it != a_end; ++a_it, ++b_it) {
-      accum = _mm512_add_epi64(accum, DotLog4_Shift(*a_it, *b_it));
-    }
-  }
-  for (int s = 0; s < kSamples; ++s) {
-    StopWatch w(stats_lookup8);
-    for (const __m512i *a_it = a_begin, *b_it = b_begin; a_it != a_end; ++a_it, ++b_it) {
-      accum = _mm512_add_epi64(accum, DotLog4_Lookup8(*a_it, *b_it, kLookup, subtractreg));
-    }
-  }
-  for (int s = 0; s < kSamples; ++s) {
-    StopWatch w(stats_lookup16);
-    for (const __m512i *a_it = a_begin, *b_it = b_begin; a_it != a_end; ++a_it, ++b_it) {
-      accum = _mm512_add_epi64(accum, DotLog4_Lookup16(*a_it, *b_it, subtract65535));
-    }
-  }
-  for (int s = 0; s < kSamples; ++s) {
-    __m512* accumf = (__m512*) &accum;
-    StopWatch w(stats_fp32);
-    for (const __m512 *a_it = (__m512*) a_begin, *b_it = (__m512*) b_begin; a_it != (__m512*) a_end; ++a_it, ++b_it) {
-      *accumf = _mm512_add_ps(*accumf, fp32(*a_it, *b_it));
-    }
-  }
-  for (int s = 0; s < kSamples; ++s) {
-    StopWatch w(stats_maddubs);
-    for (const __m512i *a_it = a_begin, *b_it = b_begin; a_it != a_end; ++a_it, ++b_it) {
-      accum = _mm512_adds_epi16(accum, MAddUBS(*a_it, *b_it));
-    }
-  }
-  for (int s = 0; s < kSamples; ++s) {
-    StopWatch w(stats_shift);
-    for (const __m512i *a_it = a_begin, *b_it = b_begin; a_it != a_end; ++a_it, ++b_it) {
-      accum = _mm512_add_epi64(accum, DotLog4_Shift(*a_it, *b_it));
-    }
-  }
-  for (int s = 0; s < kSamples; ++s) {
-    StopWatch w(stats_vnni);
-    for (const __m512i *a_it = a_begin, *b_it = b_begin; a_it != a_end; ++a_it, ++b_it) {
-      accum = _mm512_dpbusds_epi32(accum, *a_it, *b_it);
-    }
-  }
-
-
-  uint64_t result[8];
-  std::memcpy(result, &accum, sizeof(accum));
-  // This isn't valid, but it does do enough to prevent code removal.
-  int64_t total = std::accumulate(result, result + 8, -255 * subtract65535);
-  std::memcpy(result, &subtractreg, sizeof(accum));
-  total = std::accumulate(result, result + 8, total);
-  asm volatile("" : "+r" (total));
-  std::cout<< " Lookup8  " << Summarize(stats_lookup8)  << '\n';
-  std::cout<< " Lookup16 " << Summarize(stats_lookup16) << '\n';
-  std::cout<< " Shift    " << Summarize(stats_shift)    << '\n';
-  std::cout<< " MAddUBS  " << Summarize(stats_maddubs, /*scale=*/2) << '\n';
-  std::cout<< " FP32     " << Summarize(stats_fp32,    /*scale=*/8) << '\n';
-  std::cout<< " VNNI     " << Summarize(stats_vnni,    /*scale=*/2) << '\n';
+  // The multipliers represent how many times it would have to run to process the same number of elements.
+  Try<Shift, kUnroll>(a_begin, a_begin + kCalls, b_begin, "Shift", 1);
+  Try<Lookup8, kUnroll>(a_begin, a_begin + kCalls, b_begin, "Lookup8", 1);
+  Try<Lookup16, kUnroll>(a_begin, a_begin + kCalls, b_begin, "Lookup16", 1);
+  Try<MAddUBS16, kUnroll>(a_begin, a_begin + kCalls, b_begin, "MAddUBS16", 2);
+  Try<MAddUBS32, kUnroll>(a_begin, a_begin + kCalls, b_begin, "MAddUBS32", 2);
+  Try<VNNI, kUnroll>(a_begin, a_begin + kCalls, b_begin, "VNNI", 2);
+  Try<FP32, kUnroll>(a_begin, a_begin + kCalls, b_begin, "FP32", 8);
 }
 
 } // namespace

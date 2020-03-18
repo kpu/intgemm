@@ -1,5 +1,7 @@
 #pragma once
 
+#include "types.h"
+
 #include <tuple>
 
 namespace intgemm {
@@ -191,12 +193,14 @@ using MakeStaticLoopIterator = StaticLoopIterator<0, Ns...>;
  *
  */
 template <typename Body, typename StaticLoopIterator, typename std::enable_if<std::is_same<StaticLoopIterator, typename StaticLoopIterator::last>::value>::type* = nullptr, typename... Args>
-__attribute__((always_inline)) static inline void StaticLoop(Args&&... args) {
+// TODO VNNI is overkill
+INTGEMM_AVX512VNNI __attribute__((always_inline)) static inline void StaticLoop(Args&&... args) {
   Body::template body<StaticLoopIterator>(std::forward<Args>(args)...);
 }
 
 template <typename Body, typename StaticLoopIterator, typename std::enable_if<!std::is_same<StaticLoopIterator, typename StaticLoopIterator::last>::value>::type* = nullptr, typename... Args>
-__attribute__((always_inline)) static inline void StaticLoop(Args&&... args) {
+// TODO VNNI is overkill
+INTGEMM_AVX512VNNI __attribute__((always_inline)) static inline void StaticLoop(Args&&... args) {
   Body::template body<StaticLoopIterator>(std::forward<Args>(args)...);
   StaticLoop<Body, typename StaticLoopIterator::next>(std::forward<Args>(args)...);
 }

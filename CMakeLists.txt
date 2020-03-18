@@ -61,7 +61,6 @@ add_executable(tests
   test/prepare_b_quantized_transposed.cc
   test/prepare_b_transposed.cc
   test/quantize_test.cc
-  test/utils_test.cc
 
   # Kernels tests
   test/kernels/add_bias_test.cc
