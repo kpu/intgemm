@@ -55,7 +55,7 @@ class StopWatch {
       }
       Timing out;
       out.tsc = stop_tsc - start_tsc_;
-      out.wall = (stop_wall - start_wall_).count();
+      out.wall = std::chrono::duration_cast<std::chrono::duration<double>>(stop_wall - start_wall_).count();
       stats_.push_back(out);
     }
 

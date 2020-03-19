@@ -20,7 +20,7 @@ struct Summary {
 };
 
 std::ostream &operator<<(std::ostream &o, const Summary &summary) {
-  return o << "wall = " << std::fixed << std::setprecision(5) << summary.wall << "\ttsc = " << std::fixed << std::setprecision(5) << summary.tsc;
+  return o << "wall = " << std::fixed << std::setprecision(14) << summary.wall << "\ttsc = " << std::fixed << std::setprecision(5) << summary.tsc;
 }
 
 Summary Summarize(const std::vector<Timing> &samples, const int calls, const int scale) {
@@ -126,12 +126,12 @@ template <class Backend, Index Unroll> INTGEMM_AVX512VNNI void Try(const __m512i
   std::cout << Summarize(stats, a_end - a_begin, scale) << " " << name << '\n';
 }
 
-INTGEMM_AVX512VNNI void BenchmarkLog4() {
+template <Index kUnroll> INTGEMM_AVX512VNNI void BenchmarkLog4() {
   std::mt19937 gen;
   std::uniform_int_distribution<uint8_t> dist(0, 255);
   gen.seed(1234);
-  const Index kUnroll = 16;
-  const int kCalls = (2048 / kUnroll) * kUnroll;
+  const int kTargetCalls = 2048;
+  const int kCalls = kTargetCalls - (kTargetCalls % kUnroll);
 
   AlignedVector<uint8_t> a(kCalls * sizeof(__m512i)), b(kCalls * sizeof(__m512i));
   for (auto& it : a) {
@@ -165,7 +165,38 @@ int main(int argc, char ** argv) {
   std::cerr << "Remember to run this on a specific core:\ntaskset --cpu-list 0 " << argv[0] << std::endl;
 
   using namespace intgemm;
-  BenchmarkLog4();
+  BenchmarkLog4<1>();
+  BenchmarkLog4<2>();
+  BenchmarkLog4<3>();
+  BenchmarkLog4<4>();
+  BenchmarkLog4<5>();
+  BenchmarkLog4<6>();
+  BenchmarkLog4<7>();
+  BenchmarkLog4<8>();
+  BenchmarkLog4<9>();
+  BenchmarkLog4<10>();
+  BenchmarkLog4<11>();
+  BenchmarkLog4<12>();
+  BenchmarkLog4<13>();
+  BenchmarkLog4<14>();
+  BenchmarkLog4<15>();
+  BenchmarkLog4<16>();
+  BenchmarkLog4<17>();
+  BenchmarkLog4<18>();
+  BenchmarkLog4<19>();
+  BenchmarkLog4<20>();
+  BenchmarkLog4<21>();
+  BenchmarkLog4<22>();
+  BenchmarkLog4<23>();
+  BenchmarkLog4<24>();
+  BenchmarkLog4<25>();
+  BenchmarkLog4<26>();
+  BenchmarkLog4<27>();
+  BenchmarkLog4<28>();
+  BenchmarkLog4<29>();
+  BenchmarkLog4<30>();
+  BenchmarkLog4<31>();
+  BenchmarkLog4<32>();
   return 0;
 }
 
