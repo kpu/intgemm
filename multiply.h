@@ -176,8 +176,9 @@ template <typename Callback> target static void Multiply(const int16_t *A, const
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0); \
   const int simd_width = width / (sizeof(Register) / sizeof(int16_t)); \
   auto callback_impl = callbacks::CallbackImpl<cpu_type, Callback>(callback); \
-  const Register *B0_col = reinterpret_cast<const Register *>(B); \
-  for (Index B0_colidx = 0; B0_colidx < B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
+  _Pragma("omp for") \
+  for (Index B0_colidx = 0; B0_colidx < B_cols; B0_colidx += 8) { \
+    const Register *B0_col = reinterpret_cast<const Register *>(B) + simd_width * B0_colidx; \
     /* Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.*/ \
     for (Index A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) { \
       const Register *A_row = reinterpret_cast<const Register*>(A + A_rowidx * width); \
@@ -232,9 +233,10 @@ template <typename Callback> target static void Multiply(const int16_t *A, const
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0); \
   const int simd_width = width / (sizeof(Register) / sizeof(int8_t)); \
   auto callback_impl = callbacks::CallbackImpl<cpu_type, Callback>(callback); \
-  const Register *B0_col = reinterpret_cast<const Register *>(B); \
   const Register a = set1_epi8<Register>(1); \
-  for (Index B0_colidx = 0; B0_colidx < B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
+  _Pragma("omp for") \
+  for (Index B0_colidx = 0; B0_colidx < B_cols; B0_colidx += 8) { \
+    const Register *B0_col = reinterpret_cast<const Register *>(B) + simd_width * B0_colidx; \
     /*const Register *A_row = reinterpret_cast<const Register*>(A + A_rowidx * width);*/ \
     /* These will be packed 16-bit integers containing sums for each row of B multiplied by the row of A. \
        Iterate over shared (inner) dimension.*/ \
@@ -306,8 +308,9 @@ template <typename Callback> target static void Multiply(const int16_t *A, const
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0); \
   const int simd_width = width / (sizeof(Register) / sizeof(int8_t)); \
   auto callback_impl = callbacks::CallbackImpl<cpu_type, Callback>(callback); \
-  const Register *B0_col = reinterpret_cast<const Register *>(B); \
-  for (Index B0_colidx = 0; B0_colidx < B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
+  _Pragma("omp for") \
+  for (Index B0_colidx = 0; B0_colidx < B_cols; B0_colidx += 8) { \
+    const Register *B0_col = reinterpret_cast<const Register *>(B) + simd_width * B0_colidx; \
     /* Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.*/ \
     for (Index A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) { \
       const Register *A_row = reinterpret_cast<const Register*>(A + A_rowidx * width); \
@@ -530,9 +533,9 @@ INTGEMM_SSSE3 inline static void InnerINTGEMM_SSSE3(
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0); \
   const int simd_width = width / sizeof(Register); \
   auto callback_impl = callbacks::CallbackImpl<cpu_type, Callback>(callback); \
-  const Register *B0_col = reinterpret_cast<const Register*>(B); \
-  /*Go over 8 columns of B at a time.*/ \
-  for (Index B0_colidx = 0; B0_colidx != B_cols; B0_col += 8 * simd_width, B0_colidx += 8) { \
+  _Pragma("omp for") \
+  for (Index B0_colidx = 0; B0_colidx < B_cols; B0_colidx += 8) { \
+    const Register *B0_col = reinterpret_cast<const Register *>(B) + simd_width * B0_colidx; \
     /*Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.*/ \
     for (Index A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) { \
       /*Iterate over shared (inner) dimension.*/ \
@@ -588,7 +591,25 @@ INTGEMM_SSSE3 inline static void InnerINTGEMM_SSSE3(
       RunCallback(callback_impl, total, A_rowidx, B0_colidx, A_rows, B_cols); \
     } \
   } \
-} \
+}
+
+/* Wrap a multiply call in OMP parallelism.  Here it launches threads then
+ * inside the implementation there is a pragma omp for.  In gcc >= 8 these
+ * could have been the same but older compilers don't imbue target attributes
+ * on the hidden function created by pragma omp parallel.
+ * 
+ * Also, gcc 7 is unable to deduce the function pointer type (for ChooseCPU) if
+ * I use typename Backend::Integer directly in the arguments.  As a workaround,
+ * have a default template argument Integer then use that so it's resolved.
+ */
+template <class Callback, class Backend, class Integer = typename Backend::Integer> static inline void OMPParallelWrap(const Integer *A, const Integer *B, Index A_rows, Index width, Index B_cols, Callback callback) {
+#pragma omp parallel
+  Backend::template Multiply<Callback>(A, B, A_rows, width, B_cols, callback);
+}
+template <class Callback, class Backend> static inline void OMPParallelWrap8Shift(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
+#pragma omp parallel
+  Backend::template Multiply8Shift<Callback>(A, B, A_rows, width, B_cols, callback);
+}
 
 #define INTGEMM_MAXABSOLUTE(Register, target) \
 target static inline float MaxAbsolute(const float *begin_float, const float *end_float) { \
