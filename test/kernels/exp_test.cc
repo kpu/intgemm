@@ -20,14 +20,14 @@ void kernel_exp_approx_taylor_test() {
   std::iota(input.begin(), input.end(), -int(VECTOR_LENGTH / 2));
 
   *output.template as<vec_t>() = kernels::exp_approx_taylor(*input.template as<vec_t>());
-  for (auto i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK_EPS(output[i], exp(input[i]), 0.001f);
 }
 
 template INTGEMM_AVX2 void kernel_exp_approx_taylor_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("exp_approx_taylor AVX2") { return kernel_exp_approx_taylor_test<CPUType::AVX2>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_exp_approx_taylor_test<CPUType::AVX512BW>();
 KERNEL_TEST_CASE("exp_approx_taylor AVX512BW") { return kernel_exp_approx_taylor_test<CPUType::AVX512BW>(); }
 #endif

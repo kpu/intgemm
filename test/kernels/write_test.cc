@@ -20,7 +20,7 @@ void kernel_write_test() {
   std::iota(input.begin(), input.end(), 0);
 
   kernels::write(*input.template as<vec_t>(), output.begin(), 0);
-  for (auto i = 0; i < VECTOR_LENGTH; ++i)
+  for (std::size_t i = 0; i < VECTOR_LENGTH; ++i)
     CHECK(output[i] == ElemType_(i));
 }
 
@@ -46,7 +46,7 @@ KERNEL_TEST_CASE("write/int AVX2") { return kernel_write_test<CPUType::AVX2, int
 KERNEL_TEST_CASE("write/float AVX2") { return kernel_write_test<CPUType::AVX2, float>(); }
 KERNEL_TEST_CASE("write/double AVX2") { return kernel_write_test<CPUType::AVX2, double>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_write_test<CPUType::AVX512BW, int8_t>();
 template INTGEMM_AVX512BW void kernel_write_test<CPUType::AVX512BW, int16_t>();
 template INTGEMM_AVX512BW void kernel_write_test<CPUType::AVX512BW, int>();

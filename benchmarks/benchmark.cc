@@ -38,14 +38,14 @@ void BenchmarkMaxAbsolute() {
 
   std::vector<uint64_t> stats;
   // Hopefully these don't get optimized out...
-  float result = MaxAbsoluteBaseline(v.begin(), v.end());
+  MaxAbsoluteBaseline(v.begin(), v.end());
   {
     StopWatch w(stats);
-    result = MaxAbsoluteBaseline(v.begin(), v.end());
+    MaxAbsoluteBaseline(v.begin(), v.end());
   }
   {
     StopWatch w(stats);
-    result = avx2::MaxAbsolute(v.begin(), v.end());
+    avx2::MaxAbsolute(v.begin(), v.end());
   }
   std::cout << "MaxAbsolute baseline = " << stats[0] << " optimized = " << stats[1] << " speedup = " << ((float)stats[0] / (float)stats[1])<< '\n';
 }
@@ -137,7 +137,7 @@ template <class Backend> void Print(std::vector<std::vector<uint64_t>> &stats, i
 } // namespace
 
 // Program takes no input
-int main(int argc, char ** argv) {
+int main(int, char ** argv) {
   std::cerr << "Remember to run this on a specific core:\ntaskset --cpu-list 0 " << argv[0] << std::endl;
 
   using namespace intgemm;
@@ -196,7 +196,7 @@ int main(int argc, char ** argv) {
     RunAll<AVX2_16bit>(matrices, end, stats.avx2_16bit);
   }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
   std::cerr << "AVX512 8bit, 100 samples..." << std::endl;
   for (int samples = 0; samples < kSamples; ++samples) {
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
@@ -225,7 +225,7 @@ int main(int argc, char ** argv) {
     std::cout << "Multiply\t" << matrices[i].A_rows << '\t' << matrices[i].width << '\t' << matrices[i].B_cols << '\t' << "Samples=" << (kOutlierThreshold * stats.sse2_16bit[i].size()) << '\n';
     Print<SSSE3_8bit>(stats.ssse3_8bit, i);
     Print<AVX2_8bit>(stats.avx2_8bit, i);
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
     Print<AVX512_8bit>(stats.avx512_8bit, i);
 #endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
@@ -233,7 +233,7 @@ int main(int argc, char ** argv) {
 #endif
     Print<SSE2_16bit>(stats.sse2_16bit, i);
     Print<AVX2_16bit>(stats.avx2_16bit, i);
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
     Print<AVX512_16bit>(stats.avx512_16bit, i);
 #endif
   }

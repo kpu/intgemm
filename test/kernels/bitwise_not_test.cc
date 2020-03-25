@@ -20,7 +20,7 @@ void kernel_bitwise_not_test() {
   std::iota(input.begin(), input.end(), 0);
 
   *output.template as<vec_t>() = kernels::bitwise_not(*input.template as<vec_t>());
-  for (auto i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == ~input[i]);
 }
 
@@ -30,7 +30,7 @@ KERNEL_TEST_CASE("bitwise_not SSE2") { return kernel_bitwise_not_test<CPUType::S
 template INTGEMM_AVX2 void kernel_bitwise_not_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("bitwise_not AVX2") { return kernel_bitwise_not_test<CPUType::AVX2>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_bitwise_not_test<CPUType::AVX512BW>();
 KERNEL_TEST_CASE("bitwise_not AVX512BW") { return kernel_bitwise_not_test<CPUType::AVX512BW>(); }
 #endif

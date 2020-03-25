@@ -20,7 +20,7 @@ void kernel_relu_test() {
   std::iota(input.begin(), input.end(), -int(VECTOR_LENGTH / 2));
 
   *output.template as<vec_t>() = kernels::relu<ElemType_>(*input.template as<vec_t>());
-  for (auto i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == (input[i] < 0 ? 0 : input[i]));
 }
 
@@ -46,7 +46,7 @@ KERNEL_TEST_CASE("relu/int AVX2") { return kernel_relu_test<CPUType::AVX2, int>(
 KERNEL_TEST_CASE("relu/float AVX2") { return kernel_relu_test<CPUType::AVX2, float>(); }
 KERNEL_TEST_CASE("relu/double AVX2") { return kernel_relu_test<CPUType::AVX2, double>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_relu_test<CPUType::AVX512BW, int8_t>();
 template INTGEMM_AVX512BW void kernel_relu_test<CPUType::AVX512BW, int16_t>();
 template INTGEMM_AVX512BW void kernel_relu_test<CPUType::AVX512BW, int>();

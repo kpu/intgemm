@@ -231,7 +231,7 @@ CPU_ATTR static inline dvector_t<CPUType::CPU_NAME, int16_t> upcast8to16(vi inpu
   input = _mm256_permute4x64_epi64(input, 0xd8 /* = 0 2 1 3 */);
   auto higher_byte = _mm256_cmpgt_epi8(vzero, input);
 #else
-  static const auto vmax_negative = set1_epi8<vi>(0xff);
+  static const auto vmax_negative = set1_epi8<vi>(-1 /* 0xff */);
   static const auto permutation_indices = _mm512_set_epi64(7, 3, 6, 2, 5, 1, 4, 0);
 
   input = _mm512_castpd_si512(_mm512_permutexvar_pd(permutation_indices, _mm512_castsi512_pd(input)));
@@ -254,7 +254,7 @@ CPU_ATTR static inline dvector_t<CPUType::CPU_NAME, int> upcast16to32(vi input) 
   input = _mm256_permute4x64_epi64(input, 0xd8 /* = 0 2 1 3 */);
   auto higher_byte = _mm256_cmpgt_epi16(vzero, input);
 #else
-  static const auto vmax_negative = set1_epi16<vi>(0xffff);
+  static const auto vmax_negative = set1_epi16<vi>(-1 /* 0xffff */);
   static const auto permutation_indices = _mm512_set_epi64(7, 3, 6, 2, 5, 1, 4, 0);
 
   input = _mm512_castpd_si512(_mm512_permutexvar_pd(permutation_indices, _mm512_castsi512_pd(input)));
@@ -354,10 +354,12 @@ CPU_ATTR static inline vf floor(vf input) {
 /*
  * Calculate approximation of e^x using Taylor series and lookup table
  */
-CPU_ATTR static inline vf exp_approx_taylor(vf x) {
 #if defined(KERNELS_THIS_IS_SSE2)
+CPU_ATTR static inline vf exp_approx_taylor(vf) {
   std::abort();
+}
 #else
+CPU_ATTR static inline vf exp_approx_taylor(vf x) {
   static constexpr int EXP_MIN = -20;
   static constexpr int EXP_MAX = 20;
   static constexpr float EXP_LOOKUP[EXP_MAX - EXP_MIN + 1] = {
@@ -408,13 +410,17 @@ CPU_ATTR static inline vf exp_approx_taylor(vf x) {
 
   auto ea = i32gather_ps<4>(EXP_LOOKUP + EXP_MAX, cvtps_epi32(a));
   return mul_ps(ea, result);
-#endif
 }
+#endif
 
 /*
  * Sigmoid
  */
-CPU_ATTR static inline vf sigmoid(vf input) {
+CPU_ATTR static inline vf sigmoid(vf
+#ifndef KERNELS_THIS_IS_SSE2
+    input
+#endif
+    ) {
 #if defined(KERNELS_THIS_IS_SSE2)
   std::abort(); // TODO: missing exp_approx_taylor for SSE2
 #elif defined(KERNELS_THIS_IS_AVX2)
@@ -451,18 +457,20 @@ CPU_ATTR static inline vf sigmoid(vf input) {
 /*
  * Tanh
  */
-CPU_ATTR static inline vf tanh(vf input) {
 #if defined(KERNELS_THIS_IS_SSE2)
+CPU_ATTR static inline vf tanh(vf) {
   std::abort(); // TODO: missing exp_approx_taylor for SSE2
+}
 #else
+CPU_ATTR static inline vf tanh(vf input) {
   const static auto vconst_zero = setzero_ps<vf>();
 
   auto e_x = exp_approx_taylor(input);
   auto e_minus_x = exp_approx_taylor(sub_ps(vconst_zero, input));
 
   return div_ps(sub_ps(e_x, e_minus_x), add_ps(e_x, e_minus_x));
-#endif
 }
+#endif
 
 }
 }

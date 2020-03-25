@@ -22,7 +22,7 @@ void kernel_multiply_test() {
   std::iota(input2.begin(), input2.end(), -int(VECTOR_LENGTH / 3));
 
   *output.template as<vec_t>() = kernels::multiply<Type_>(*input1.template as<vec_t>(), *input2.template as<vec_t>());
-  for (auto i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == Type_(input1[i] * input2[i]));
 }
 
@@ -48,7 +48,7 @@ KERNEL_TEST_CASE("multiply/int AVX2") { return kernel_multiply_test<CPUType::AVX
 KERNEL_TEST_CASE("multiply/float AVX2") { return kernel_multiply_test<CPUType::AVX2, float>(); }
 KERNEL_TEST_CASE("multiply/double AVX2") { return kernel_multiply_test<CPUType::AVX2, double>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_multiply_test<CPUType::AVX512BW, int8_t>();
 template INTGEMM_AVX512BW void kernel_multiply_test<CPUType::AVX512BW, int16_t>();
 template INTGEMM_AVX512BW void kernel_multiply_test<CPUType::AVX512BW, int>();

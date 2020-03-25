@@ -21,7 +21,7 @@ void kernel_unquantize_test() {
   auto unquant_mult = set1_ps<output_vec_t>(0.5f);
 
   *output.template as<output_vec_t>() = kernels::unquantize(*input.template as<input_vec_t>(), unquant_mult);
-  for (auto i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == i * 0.5f);
 }
 
@@ -31,7 +31,7 @@ KERNEL_TEST_CASE("unquantize SSE2") { return kernel_unquantize_test<CPUType::SSE
 template INTGEMM_AVX2 void kernel_unquantize_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("unquantize AVX2") { return kernel_unquantize_test<CPUType::AVX2>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_unquantize_test<CPUType::AVX512BW>();
 KERNEL_TEST_CASE("unquantize AVX512BW") { return kernel_unquantize_test<CPUType::AVX512BW>(); }
 #endif

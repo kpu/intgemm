@@ -23,7 +23,7 @@ void kernel_upcast8to16_test() {
   output.template as<vi>()[0] = result.first;
   output.template as<vi>()[1] = result.second;
 
-  for (int i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == int16_t(input[i]));
 }
 
@@ -33,7 +33,7 @@ KERNEL_TEST_CASE("upcast8to16 SSE2") { return kernel_upcast8to16_test<CPUType::S
 template INTGEMM_AVX2 void kernel_upcast8to16_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("upcast8to16 AVX2") { return kernel_upcast8to16_test<CPUType::AVX2>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_upcast8to16_test<CPUType::AVX512BW>();
 KERNEL_TEST_CASE("upcast8to16 AVX512BW") { return kernel_upcast8to16_test<CPUType::AVX512BW>(); }
 #endif
@@ -55,7 +55,7 @@ void kernel_upcast16to32_test() {
   output.template as<vi>()[0] = result.first;
   output.template as<vi>()[1] = result.second;
 
-  for (int i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == int32_t(input[i]));
 }
 
@@ -65,7 +65,7 @@ KERNEL_TEST_CASE("upcast16to32 SSE2") { return kernel_upcast16to32_test<CPUType:
 template INTGEMM_AVX2 void kernel_upcast16to32_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("upcast16to32 AVX2") { return kernel_upcast16to32_test<CPUType::AVX2>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_upcast16to32_test<CPUType::AVX512BW>();
 KERNEL_TEST_CASE("upcast16to32 AVX512BW") { return kernel_upcast16to32_test<CPUType::AVX512BW>(); }
 #endif
@@ -89,7 +89,7 @@ void kernel_upcast8to32_test() {
   output.template as<vi>()[2] = result.third;
   output.template as<vi>()[3] = result.fourth;
 
-  for (int i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == int32_t(input[i]));
 }
 
@@ -99,7 +99,7 @@ KERNEL_TEST_CASE("upcast8to32 SSE2") { return kernel_upcast8to32_test<CPUType::S
 template INTGEMM_AVX2 void kernel_upcast8to32_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("upcast8to32 AVX2") { return kernel_upcast8to32_test<CPUType::AVX2>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_upcast8to32_test<CPUType::AVX512BW>();
 KERNEL_TEST_CASE("upcast8to32 AVX512BW") { return kernel_upcast8to32_test<CPUType::AVX512BW>(); }
 #endif

@@ -7,8 +7,7 @@
 using namespace intgemm;
 
 template <class Routine>
-void testOld(Index rows, Index cols) {
-
+void testOld(Index /*rows*/, Index /*cols*/) {
 }
 
 template <class Routine>
@@ -40,7 +39,7 @@ std::chrono::duration<double> testNew(Index A_rows, Index width, Index B_cols) {
   AlignedVector<float> test_C(A_rows * B_cols);
 
   float unquant_mult_forprep = (-1)*(alpha)*(alpha)/(127.0f); //Minus one to invert add_ps later on
-  Routine::PrepareBiasFor8(B_prep.begin(), width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, bias.begin(), bias.begin()));
+  Routine::PrepareBias(B_prep.begin(), width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, bias.begin(), bias.begin()));
   auto start = std::chrono::system_clock::now();
   Routine::Multiply8Shift(A_prep.begin(), B_prep.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult, bias.begin(), test_C.begin()));
   auto end = std::chrono::system_clock::now();
@@ -197,7 +196,7 @@ int main(int argc, char ** argv) {
 	}
 
 	std::cout << repeat << " iterations of Shifted AVX2 took: " << newTimeAVX2.count() << " seconds." << std::endl;
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 	if (kCPU < CPUType::AVX512BW) return 0;
 	std::chrono::duration<double> oldAVX512_nobias = testOld_nobias<AVX512_8bit>(1, 64, 8);
 	for (int i = 0; i<repeat; i++) {
