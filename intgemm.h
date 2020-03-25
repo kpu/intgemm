@@ -117,7 +117,7 @@ struct Unsupported_8bit {
     throw UnsupportedCPU();
   }
 
-  static float GetQuantizerStd(const float *begin, const float *end, int stdnum) {
+  static MeanStd GetQuantizerStd(const float *, const float *) {
     throw UnsupportedCPU();
   }
 
@@ -277,7 +277,7 @@ struct Int8 {
   }
   
   // Get a Quantization value that is equant to the mean of the data +N standard deviations. Use 2 by default
-  static float (*GetQuantizerStd)(const float *begin, const float *end, int stdnum);
+  static MeanStd (*GetQuantizerStd)(const float *begin, const float *end);
 
   static const char *const kName;
 

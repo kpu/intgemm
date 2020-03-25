@@ -30,18 +30,20 @@ void QuantizeRef(const float *input, int8_t *output, float quant_mult, std::size
   }
 }
 
-float QuantizerStddRef(AlignedVector<float>& vals, int num_items, int stdnum) {
+MeanStd QuantizerStddRef(AlignedVector<float>& vals, int num_items) {
   float normal_sums = 0;
   float squares_sum = 0;
   std::for_each(vals.begin(), vals.end(), [&] (float n) {normal_sums+=n;});
   std::for_each(vals.begin(), vals.end(), [&] (float n) {squares_sum+=n*n;});
 
-  float mean = normal_sums/num_items;
-  return mean + (std::sqrt((squares_sum/num_items) - (mean*mean)) * stdnum);
+  MeanStd ret;
+  ret.mean = normal_sums/num_items;
+  ret.stddev = std::sqrt((squares_sum/num_items) - (ret.mean*ret.mean));
+  return ret;
 }
 
 template <class Backend>
-void testQuantizerStd(int num_items, int stdnum) {
+void testQuantizerStd(int num_items) {
   std::mt19937 gen;
   std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
   AlignedVector<float> inputVec(num_items);
@@ -50,13 +52,15 @@ void testQuantizerStd(int num_items, int stdnum) {
     it = dist(gen);
   }
 
-  float reference = QuantizerStddRef(inputVec, num_items, stdnum);
-  float fast = Backend::GetQuantizerStd(inputVec.begin(), inputVec.end(), stdnum);
+  MeanStd reference = QuantizerStddRef(inputVec, num_items);
+  MeanStd fast = Backend::GetQuantizerStd(inputVec.begin(), inputVec.end());
 
-  float difference = fabs(reference - fast);
+  float meanDifference = fabs(reference.mean - fast.mean);
+  float stdDifference = fabs(reference.stddev - fast.stddev);
   float eps = 0.00002; //Accumulating horizontal sums can lead to errors.
 
-  CHECK_MESSAGE(difference <= eps, "Reference: " << reference << " actual: " << fast);// /*Backend::kName << */" Mismatch:\n" << "Reference: " << reference << " Fast: " << fast << std::endl);
+  CHECK_MESSAGE(meanDifference <= eps, "Reference mean: " << reference.mean << " actual: " << fast.mean);// /*Backend::kName << */" Mismatch:\n" << "Reference: " << reference << " Fast: " << fast << std::endl);
+  CHECK_MESSAGE(stdDifference <= eps, "Reference stddev: " << reference.stddev << " actual: " << fast.stddev);
 
 }
 
@@ -126,51 +130,51 @@ TEST_CASE ("Quantize AVX2", "[quantize]") {
 
 TEST_CASE("QuantizeStd SSSE3", "[quantizerSTD]") {
   if (kCPU < CPUType::SSSE3) return;
-  testQuantizerStd<SSSE3_8bit>(64, 1);
-  testQuantizerStd<SSSE3_8bit>(64, 2);
-  testQuantizerStd<SSSE3_8bit>(256, 1);
-  testQuantizerStd<SSSE3_8bit>(256, 2);
-  testQuantizerStd<SSSE3_8bit>(2048, 1);
-  testQuantizerStd<SSSE3_8bit>(2048, 2);
-  testQuantizerStd<SSSE3_8bit>(65536, 1);
-  testQuantizerStd<SSSE3_8bit>(65536, 2);
-  testQuantizerStd<SSSE3_8bit>(81920, 1);
-  testQuantizerStd<SSSE3_8bit>(81920, 2);
-  testQuantizerStd<SSSE3_8bit>(120832, 1);
-  testQuantizerStd<SSSE3_8bit>(120832, 2);
+  testQuantizerStd<SSSE3_8bit>(64);
+  testQuantizerStd<SSSE3_8bit>(64);
+  testQuantizerStd<SSSE3_8bit>(256);
+  testQuantizerStd<SSSE3_8bit>(256);
+  testQuantizerStd<SSSE3_8bit>(2048);
+  testQuantizerStd<SSSE3_8bit>(2048);
+  testQuantizerStd<SSSE3_8bit>(65536);
+  testQuantizerStd<SSSE3_8bit>(65536);
+  testQuantizerStd<SSSE3_8bit>(81920);
+  testQuantizerStd<SSSE3_8bit>(81920);
+  testQuantizerStd<SSSE3_8bit>(120832);
+  testQuantizerStd<SSSE3_8bit>(120832);
 }
 
 TEST_CASE("QuantizeStd AVX2", "[quantizerSTD]") {
   if (kCPU < CPUType::AVX2) return;
-  testQuantizerStd<AVX2_8bit>(64, 1);
-  testQuantizerStd<AVX2_8bit>(64, 2);
-  testQuantizerStd<AVX2_8bit>(256, 1);
-  testQuantizerStd<AVX2_8bit>(256, 2);
-  testQuantizerStd<AVX2_8bit>(2048, 1);
-  testQuantizerStd<AVX2_8bit>(2048, 2);
-  testQuantizerStd<AVX2_8bit>(65536, 1);
-  testQuantizerStd<AVX2_8bit>(65536, 2);
-  testQuantizerStd<AVX2_8bit>(81920, 1);
-  testQuantizerStd<AVX2_8bit>(81920, 2);
-  testQuantizerStd<AVX2_8bit>(120832, 1);
-  testQuantizerStd<AVX2_8bit>(120832, 2);
+  testQuantizerStd<AVX2_8bit>(64);
+  testQuantizerStd<AVX2_8bit>(64);
+  testQuantizerStd<AVX2_8bit>(256);
+  testQuantizerStd<AVX2_8bit>(256);
+  testQuantizerStd<AVX2_8bit>(2048);
+  testQuantizerStd<AVX2_8bit>(2048);
+  testQuantizerStd<AVX2_8bit>(65536);
+  testQuantizerStd<AVX2_8bit>(65536);
+  testQuantizerStd<AVX2_8bit>(81920);
+  testQuantizerStd<AVX2_8bit>(81920);
+  testQuantizerStd<AVX2_8bit>(120832);
+  testQuantizerStd<AVX2_8bit>(120832);
 }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 TEST_CASE("QuantizeStd AVX512", "[quantizerSTD]") {
   if (kCPU < CPUType::AVX512BW) return;
-  testQuantizerStd<AVX512_8bit>(64, 1);
-  testQuantizerStd<AVX512_8bit>(64, 2);
-  testQuantizerStd<AVX512_8bit>(256, 1);
-  testQuantizerStd<AVX512_8bit>(256, 2);
-  testQuantizerStd<AVX512_8bit>(2048, 1);
-  testQuantizerStd<AVX512_8bit>(2048, 2);
-  testQuantizerStd<AVX512_8bit>(65536, 1);
-  testQuantizerStd<AVX512_8bit>(65536, 2);
-  testQuantizerStd<AVX512_8bit>(81920, 1);
-  testQuantizerStd<AVX512_8bit>(81920, 2);
-  testQuantizerStd<AVX512_8bit>(120832, 1);
-  testQuantizerStd<AVX512_8bit>(120832, 2);
+  testQuantizerStd<AVX512_8bit>(64);
+  testQuantizerStd<AVX512_8bit>(64);
+  testQuantizerStd<AVX512_8bit>(256);
+  testQuantizerStd<AVX512_8bit>(256);
+  testQuantizerStd<AVX512_8bit>(2048);
+  testQuantizerStd<AVX512_8bit>(2048);
+  testQuantizerStd<AVX512_8bit>(65536);
+  testQuantizerStd<AVX512_8bit>(65536);
+  testQuantizerStd<AVX512_8bit>(81920);
+  testQuantizerStd<AVX512_8bit>(81920);
+  testQuantizerStd<AVX512_8bit>(120832);
+  testQuantizerStd<AVX512_8bit>(120832);
 }
 #endif
 

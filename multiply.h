@@ -10,6 +10,11 @@
 
 namespace intgemm {
 
+struct MeanStd {
+  float mean;
+  float stddev;
+};
+
 INTGEMM_SSE2 static inline float MaxFloat32(__m128 a) {
   // Fold to just using the first 64 bits.
   __m128 second_half = _mm_shuffle_ps(a, a, 3 * 4 + 2);
@@ -638,7 +643,7 @@ target static inline float MaxAbsolute(const float *begin_float, const float *en
 } \
 
 #define INTGEMM_GETQUANTIZERSTD(Register, target) \
-target static float GetQuantizerStd(const float *begin_float, const float *end_float, int stdnum) { \
+target static MeanStd GetQuantizerStd(const float *begin_float, const float *end_float) { \
   /* Finds a quantizer value that is a certain number of standard deviations of the mean */ \
   assert(end_float > begin_float); \
   assert((end_float - begin_float) % (sizeof(Register) / sizeof(float)) == 0); \
@@ -653,8 +658,10 @@ target static float GetQuantizerStd(const float *begin_float, const float *end_f
   } \
   float squares_sum = horizontalSum(squares); \
   float normal_sums = horizontalSum(sums); \
-  float mean = normal_sums/num_items; \
-  return mean + (std::sqrt((squares_sum/num_items) - (mean*mean)) * stdnum); \
+  MeanStd ret; \
+  ret.mean = normal_sums/num_items; \
+  ret.stddev = std::sqrt((squares_sum/num_items) - (ret.mean*ret.mean)); \
+  return ret; \
 } \
 
 } // namespace intgemm
