@@ -433,6 +433,8 @@ struct AVX512_8bit {
 
   INTGEMM_PREPAREBIASFOR8(__m512i, INTGEMM_AVX512BW, CPUType::AVX2)
 
+  INTGEMM_GETQUANTIZERSTD(__m512, INTGEMM_AVX512BW)
+
   constexpr static const char *const kName = "8-bit AVX512BW";
 
   static const CPUType kUses = CPUType::AVX512BW;

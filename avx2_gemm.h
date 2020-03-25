@@ -240,6 +240,8 @@ struct AVX2_8bit {
 
   INTGEMM_PREPAREBIASFOR8(__m256i, INTGEMM_AVX2, CPUType::AVX2)
 
+  INTGEMM_GETQUANTIZERSTD(__m256, INTGEMM_AVX2)
+  
   constexpr static const char *const kName = "8-bit AVX2";
 
   static const CPUType kUses = CPUType::AVX2;
