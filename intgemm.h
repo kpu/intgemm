@@ -117,10 +117,6 @@ struct Unsupported_8bit {
     throw UnsupportedCPU();
   }
 
-  static MeanStd GetQuantizerStd(const float *, const float *) {
-    throw UnsupportedCPU();
-  }
-
   constexpr static const char *const kName = "8-bit Unsupported";
 };
 
@@ -130,6 +126,9 @@ typedef Unsupported_16bit AVX512_16bit;
 typedef Unsupported_8bit AVX512_8bit;
 namespace avx512f {
 static inline float MaxAbsolute(const float * /*begin*/, const float * /*end*/) {
+  throw UnsupportedCPU();
+}
+static inline MeanStd MaxAbsolute(const float * /*begin*/, const float * /*end*/) {
   throw UnsupportedCPU();
 }
 } //namespace
@@ -275,9 +274,6 @@ struct Int8 {
   static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
     MultiplyImpl<Callback>::run(A, B, A_rows, width, B_cols, callback);
   }
-  
-  // Get a Quantization value that is equant to the mean of the data +N standard deviations. Use 2 by default
-  static MeanStd (*GetQuantizerStd)(const float *begin, const float *end);
 
   static const char *const kName;
 
@@ -417,6 +413,9 @@ extern const CPUType kCPU;
 
 // Get the maximum absolute value of an array of floats. The number of floats must be a multiple of 16 and 64-byte aligned.
 extern float (*MaxAbsolute)(const float *begin, const float *end);
+
+// Get a Quantization value that is equant to the mean of the data +N standard deviations. Use 2 by default
+extern MeanStd (*GetQuantizerStd)(const float *begin, const float *end);
 
 
 } // namespace intgemm

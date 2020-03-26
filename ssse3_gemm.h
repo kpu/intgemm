@@ -156,8 +156,6 @@ struct SSSE3_8bit {
 
   INTGEMM_PREPAREBIASFOR8(__m128i, INTGEMM_SSSE3, CPUType::SSE2)
 
-  INTGEMM_GETQUANTIZERSTD(__m128, INTGEMM_SSSE3)
-
   constexpr static const char *const kName = "8-bit SSSE3";
 
   static const CPUType kUses = CPUType::SSSE3;
