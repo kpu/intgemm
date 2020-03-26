@@ -81,7 +81,9 @@ static inline INTGEMM_AVX512F float MaxFloat32(__m512 a) {
 }
 
 static inline INTGEMM_AVX512F float horizontalSum(__m512 a) {
-  return _mm512_reduce_add_ps(a);
+  __m256 low  = _mm512_castps512_ps256(a);
+  __m256 high = _mm256_castpd_ps(_mm512_extractf64x4_pd(_mm512_castps_pd(a),1));
+  return horizontalSum(low) + horizontalSum(high);
 }
 
 #endif
