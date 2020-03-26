@@ -645,7 +645,7 @@ target static inline float MaxAbsolute(const float *begin_float, const float *en
 } \
 
 #define INTGEMM_GETQUANTIZERSTD(Register, target) \
-target static MeanStd GetQuantizerStd(const float *begin_float, const float *end_float) { \
+target static inline MeanStd GetQuantizerStd(const float *begin_float, const float *end_float) { \
   /* Finds a quantizer value that is a certain number of standard deviations of the mean */ \
   assert(end_float > begin_float); \
   assert((end_float - begin_float) % (sizeof(Register) / sizeof(float)) == 0); \
