@@ -40,7 +40,7 @@ const CPUType kCPU = ChooseCPU(CPUType::AVX512VNNI, CPUType::AVX512BW, CPUType::
 
 float (*MaxAbsolute)(const float *begin, const float *end) = ChooseCPU(avx512f::MaxAbsolute, avx512f::MaxAbsolute, avx2::MaxAbsolute, sse2::MaxAbsolute, sse2::MaxAbsolute, Unsupported_MaxAbsolute);
 
-MeanStd (*GetQuantizerStd)(const float *begin, const float *end) = ChooseCPU(avx512f::GetQuantizerStd, avx512f::GetQuantizerStd, avx2::GetQuantizerStd, sse2::GetQuantizerStd, sse2::GetQuantizerStd, sse2::GetQuantizerStd);
+MeanStd (*QuantizerStd)(const float *begin, const float *end, bool absolute) = ChooseCPU(avx512f::QuantizerStd, avx512f::QuantizerStd, avx2::QuantizerStd, sse2::QuantizerStd, sse2::QuantizerStd, sse2::QuantizerStd);
 
 constexpr const char *const Unsupported_16bit::kName;
 constexpr const char *const Unsupported_8bit::kName;
