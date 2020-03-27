@@ -11,7 +11,6 @@
 #include <random>
 
 namespace intgemm {
-namespace {
 
 template <typename Backend, Index TileRows, Index TileColumnsMultiplier>
 bool Test(const AlignedVector<float>& A, const AlignedVector<float>& B, Index A_rows, Index width, Index B_cols, float quant_mult) {
@@ -23,7 +22,7 @@ bool Test(const AlignedVector<float>& A, const AlignedVector<float>& B, Index A_
   AlignedVector<int32_t> reference(output.size());
 
   Backend::PrepareA(A.begin(), A_quantized.begin(), quant_mult, A_rows, width);
-  Backend::template PrepareB<TileColumnsMultiplier>(B.begin(), B_prepared.begin(), quant_mult, width, B_cols);
+  Backend::template PrepareB<TileColumnsMultiplier * 8>(B.begin(), B_prepared.begin(), quant_mult, width, B_cols);
   Backend::template Multiply<TileRows, TileColumnsMultiplier>(A_quantized.begin(), B_prepared.begin(), A_rows, width, B_cols, callbacks::Write<int32_t>(output.begin()));
 
   references::Quantize(B.begin(), B_quantized.begin(), quant_mult, B_quantized.size());
@@ -158,5 +157,4 @@ TEST_CASE("Multiply AVX2 16bit - custom tiling", "") {
   }
 #endif
 
-}
 }

@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cassert>
 #include <stdint.h>
+#include <iostream>
 
 namespace intgemm {
 
@@ -187,31 +188,32 @@ template <class Register> static inline void Transpose8InLane(
 // 257 273
 // ... ...
 
-template <typename Type>
+template <typename Type, Index TileColumns>
 struct PrepareB_InnerLoop;
 
 #define INTGEMM_PREPARE_B_8_INNER_LOOP(target, Register) \
   template <typename Iterator, typename Quantizer> \
-  target static void body(Register* output, const Quantizer &quantizer, const float* input, Index cols, Index row, Index col) { \
+  target static void body(Register* output, const Quantizer &quantizer, const float* input, Index rows, Index cols, Index row, Index col) { \
     static constexpr Index I = Iterator::template I<0>(); \
-    output[8 * I + 0] = quantizer.ForReshape(input + cols * (row +  0) + 8 * I + col, cols); \
-    output[8 * I + 1] = quantizer.ForReshape(input + cols * (row +  1) + 8 * I + col, cols); \
-    output[8 * I + 2] = quantizer.ForReshape(input + cols * (row +  4) + 8 * I + col, cols); \
-    output[8 * I + 3] = quantizer.ForReshape(input + cols * (row +  5) + 8 * I + col, cols); \
-    output[8 * I + 4] = quantizer.ForReshape(input + cols * (row +  8) + 8 * I + col, cols); \
-    output[8 * I + 5] = quantizer.ForReshape(input + cols * (row +  9) + 8 * I + col, cols); \
-    output[8 * I + 6] = quantizer.ForReshape(input + cols * (row + 12) + 8 * I + col, cols); \
-    output[8 * I + 7] = quantizer.ForReshape(input + cols * (row + 13) + 8 * I + col, cols); \
-    Interleave8(output[8 * I + 0], output[8 * I + 1]); \
-    Interleave8(output[8 * I + 2], output[8 * I + 3]); \
-    Interleave8(output[8 * I + 4], output[8 * I + 5]); \
-    Interleave8(output[8 * I + 6], output[8 * I + 7]); \
-    Transpose16InLane(output[8 * I + 0], output[8 * I + 1], output[8 * I + 2], output[8 * I + 3], \
-                      output[8 * I + 4], output[8 * I + 5], output[8 * I + 6], output[8 * I + 7]); \
+    const Index offset = rows / 8 * TileColumns; \
+    output[0 / TileColumns * offset + 8 * I + 0] = quantizer.ForReshape(input + cols * (row +  0) + 8 * I + col, cols); \
+    output[1 / TileColumns * offset + 8 * I + 1] = quantizer.ForReshape(input + cols * (row +  1) + 8 * I + col, cols); \
+    output[2 / TileColumns * offset + 8 * I + 2] = quantizer.ForReshape(input + cols * (row +  4) + 8 * I + col, cols); \
+    output[3 / TileColumns * offset + 8 * I + 3] = quantizer.ForReshape(input + cols * (row +  5) + 8 * I + col, cols); \
+    output[4 / TileColumns * offset + 8 * I + 4] = quantizer.ForReshape(input + cols * (row +  8) + 8 * I + col, cols); \
+    output[5 / TileColumns * offset + 8 * I + 5] = quantizer.ForReshape(input + cols * (row +  9) + 8 * I + col, cols); \
+    output[6 / TileColumns * offset + 8 * I + 6] = quantizer.ForReshape(input + cols * (row + 12) + 8 * I + col, cols); \
+    output[7 / TileColumns * offset + 8 * I + 7] = quantizer.ForReshape(input + cols * (row + 13) + 8 * I + col, cols); \
+    Interleave8(output[0 / TileColumns * offset + 8 * I + 0], output[1 / TileColumns * offset + 8 * I + 1]); \
+    Interleave8(output[2 / TileColumns * offset + 8 * I + 2], output[3 / TileColumns * offset + 8 * I + 3]); \
+    Interleave8(output[4 / TileColumns * offset + 8 * I + 4], output[5 / TileColumns * offset + 8 * I + 5]); \
+    Interleave8(output[6 / TileColumns * offset + 8 * I + 6], output[7 / TileColumns * offset + 8 * I + 7]); \
+    Transpose16InLane(output[0 / TileColumns * offset + 8 * I + 0], output[1 / TileColumns * offset + 8 * I + 1], output[2 / TileColumns * offset + 8 * I + 2], output[3 / TileColumns * offset + 8 * I + 3], \
+                      output[4 / TileColumns * offset + 8 * I + 4], output[5 / TileColumns * offset + 8 * I + 5], output[6 / TileColumns * offset + 8 * I + 6], output[7 / TileColumns * offset + 8 * I + 7]); \
   }
 
-template <>
-struct PrepareB_InnerLoop<int8_t> {
+template <Index TileColumns>
+struct PrepareB_InnerLoop<int8_t, TileColumns> {
   INTGEMM_PREPARE_B_8_INNER_LOOP(INTGEMM_SSSE3, __m128i)
   INTGEMM_PREPARE_B_8_INNER_LOOP(INTGEMM_AVX2, __m256i)
   INTGEMM_PREPARE_B_8_INNER_LOOP(INTGEMM_AVX512BW, __m512i)
@@ -219,49 +221,51 @@ struct PrepareB_InnerLoop<int8_t> {
 
 #define INTGEMM_PREPARE_B_16_INNER_LOOP(target, Register) \
   template <typename Iterator, typename Quantizer> \
-  target static void body(Register* output, const Quantizer &quantizer, const float* input, Index cols, Index row, Index col) { \
+  target static void body(Register* output, const Quantizer &quantizer, const float* input, Index rows, Index cols, Index row, Index col) { \
     static constexpr Index I = Iterator::template I<0>(); \
-    output[8 * I + 0] = quantizer.ForReshape(input + cols * (row + 0) + 8 * I + col, cols); \
-    output[8 * I + 1] = quantizer.ForReshape(input + cols * (row + 1) + 8 * I + col, cols); \
-    output[8 * I + 2] = quantizer.ForReshape(input + cols * (row + 2) + 8 * I + col, cols); \
-    output[8 * I + 3] = quantizer.ForReshape(input + cols * (row + 3) + 8 * I + col, cols); \
-    output[8 * I + 4] = quantizer.ForReshape(input + cols * (row + 4) + 8 * I + col, cols); \
-    output[8 * I + 5] = quantizer.ForReshape(input + cols * (row + 5) + 8 * I + col, cols); \
-    output[8 * I + 6] = quantizer.ForReshape(input + cols * (row + 6) + 8 * I + col, cols); \
-    output[8 * I + 7] = quantizer.ForReshape(input + cols * (row + 7) + 8 * I + col, cols); \
-    Transpose16InLane(output[8 * I + 0], output[8 * I + 1], output[8 * I + 2], output[8 * I + 3], \
-                      output[8 * I + 4], output[8 * I + 5], output[8 * I + 6], output[8 * I + 7]); \
+    const Index offset = rows / 8 * TileColumns; \
+    output[0 / TileColumns * 8 * I + 0] = quantizer.ForReshape(input + cols * (row + 0) + 8 * I + col, cols); \
+    output[1 / TileColumns * 8 * I + 1] = quantizer.ForReshape(input + cols * (row + 1) + 8 * I + col, cols); \
+    output[2 / TileColumns * 8 * I + 2] = quantizer.ForReshape(input + cols * (row + 2) + 8 * I + col, cols); \
+    output[3 / TileColumns * 8 * I + 3] = quantizer.ForReshape(input + cols * (row + 3) + 8 * I + col, cols); \
+    output[4 / TileColumns * 8 * I + 4] = quantizer.ForReshape(input + cols * (row + 4) + 8 * I + col, cols); \
+    output[5 / TileColumns * 8 * I + 5] = quantizer.ForReshape(input + cols * (row + 5) + 8 * I + col, cols); \
+    output[6 / TileColumns * 8 * I + 6] = quantizer.ForReshape(input + cols * (row + 6) + 8 * I + col, cols); \
+    output[7 / TileColumns * 8 * I + 7] = quantizer.ForReshape(input + cols * (row + 7) + 8 * I + col, cols); \
+    Transpose16InLane(output[0 / TileColumns * offset + 8 * I + 0], output[1 / TileColumns * offset + 8 * I + 1], output[2 / TileColumns * offset + 8 * I + 2], output[3 / TileColumns * offset + 8 * I + 3], \
+                      output[4 / TileColumns * offset + 8 * I + 4], output[5 / TileColumns * offset + 8 * I + 5], output[6 / TileColumns * offset + 8 * I + 6], output[7 / TileColumns * offset + 8 * I + 7]); \
   }
 
-template <>
-struct PrepareB_InnerLoop<int16_t> {
+template <Index TileColumns>
+struct PrepareB_InnerLoop<int16_t, TileColumns> {
   INTGEMM_PREPARE_B_16_INNER_LOOP(INTGEMM_SSSE3, __m128i)
   INTGEMM_PREPARE_B_16_INNER_LOOP(INTGEMM_AVX2, __m256i)
   INTGEMM_PREPARE_B_16_INNER_LOOP(INTGEMM_AVX512BW, __m512i)
 };
 
 #define INTGEMM_PREPARE_B(target, Quantizer, Integer) \
-template <Index TileColumnsMultiplier> \
+template <Index TileColumns> \
 target static inline void PrepareB(const float *input, Integer *output, float quant_mult, Index rows, Index cols) { \
-  static constexpr Index Columns = 8 * TileColumnsMultiplier; \
   using Register = Quantizer::Register; \
-  const Index RegisterElems = sizeof(Register) / sizeof(Integer); \
+  static constexpr Index TileColumnsRoundUp = (TileColumns + 7) / 8 * 8; \
+  constexpr Index RegisterElems = sizeof(Register) / sizeof(Integer); \
   \
   Quantizer quantizer = Quantizer(quant_mult); \
   Register *output_it = reinterpret_cast<Register*>(output); \
   \
-  assert(cols % Columns == 0); \
-  assert(rows % (RegisterElems * TileColumnsMultiplier) == 0); \
+  assert(cols % TileColumnsRoundUp == 0); \
+  assert(rows % RegisterElems == 0); \
   assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0); \
   assert(reinterpret_cast<uintptr_t>(output_it) % sizeof(Register) == 0); \
   \
-  for (Index c = 0; c < cols; c += Columns) { \
-    for (Index r = 0; r < rows; r += RegisterElems, output_it += Columns) { \
+  for (Index c = 0; c < cols - TileColumns; c += TileColumns) { \
+    for (Index r = 0; r < rows; r += RegisterElems, output_it += TileColumns) { \
+      std::cout << TileColumns << ", r: " << r << ", c: " << c << ", output: " << output_it << "/" << output + rows * cols * sizeof(Integer) << std::endl; \
       /* Quantize and perform a transpose with height sizeof(Register) and width Columns. \
          This isn't quite Transpose8InLane because it's half the number of columns, \
          so each register starts with two rows instead of being one row. \
          The quantizers know to skip a row.*/ \
-      StaticLoop<PrepareB_InnerLoop<Integer>, MakeStaticLoopIterator<TileColumnsMultiplier>>(output_it, quantizer, input, cols, r, c); \
+      StaticLoop<PrepareB_InnerLoop<Integer, TileColumns>, MakeStaticLoopIterator<TileColumnsRoundUp / 8>>(output_it, quantizer, input, rows, cols, r, c); \
     } \
   } \
 }

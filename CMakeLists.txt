@@ -58,6 +58,7 @@ add_executable(tests
   test/add127_test.cc
   test/multiply_test.cc
   test/multiply_tiling_test
+  test/prepare_b.cc
   test/prepare_b_quantized_transposed.cc
   test/prepare_b_transposed.cc
   test/quantize_test.cc

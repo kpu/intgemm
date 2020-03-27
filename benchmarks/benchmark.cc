@@ -77,7 +77,7 @@ template <class Backend> void Run(const RandomMatrices &m, std::vector<uint64_t>
   AlignedVector<Integer> A_prepared(m.A_rows * m.width);
   Backend::PrepareA(m.A.begin(), A_prepared.begin(), quant_mult, m.A_rows, m.width);
   AlignedVector<Integer> B_prepared(m.width * m.B_cols);
-  Backend::template PrepareB<1>(m.B.begin(), B_prepared.begin(), quant_mult, m.width, m.B_cols);
+  Backend::template PrepareB<8>(m.B.begin(), B_prepared.begin(), quant_mult, m.width, m.B_cols);
   AlignedVector<float> output(m.A_rows * m.B_cols);
   // Burn in
   Backend::template  Multiply<1, 1>(A_prepared.begin(), B_prepared.begin(), m.A_rows, m.width, m.B_cols, callbacks::UnquantizeAndWrite(unquant_mult, output.begin()));
