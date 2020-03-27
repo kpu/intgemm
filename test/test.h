@@ -76,30 +76,28 @@ void Quantize(const float* input, Type* output, float quant_mult, Index size) {
   }
 }
 
-// Multiply A(float) x B(float)
-template <typename LambdaCallback>
-void MultiplyFF(const float* A, const float* B, float* C, Index A_rows, Index width, Index B_cols, LambdaCallback callback) {
-  for (Index r = 0; r < A_rows; ++r) {
-    for (Index c = 0; c < B_cols; ++c) {
-      float sum = 0.0f;
-      for (Index k = 0; k < width; ++k) {
-        sum += A[r * width + k] * B[k * B_cols + c];
-      }
-      C[r * B_cols + c] = callback(sum, {r, c, A_rows, B_cols});
-    }
-  }
-}
+/*
+ * Multiply C = A x B
+ *
+ * Notes: A and B has to be both integers or both floating points.
+ *
+ * Callback takes two arguments:
+ *   - Intermediate value of multiplication 1 row times 1 column - it's int32_t or double based on types A and B.
+ *   - Object containing information about position in output matrix - callbacks::OutputBufferInfo.
+ */
+template <typename TypeA, typename TypeB, typename TypeC, typename LambdaCallback,
+          typename std::enable_if<
+            (std::is_integral<TypeA>::value && std::is_integral<TypeB>::value) ||
+            (std::is_floating_point<TypeA>::value && std::is_floating_point<TypeB>::value)
+          >::type* = nullptr>
+void Multiply(const TypeA* A, const TypeB* B, TypeC* C, Index A_rows, Index width, Index B_cols, LambdaCallback callback) {
+  using IntermediateType = typename std::conditional<std::is_integral<TypeA>::value, int32_t, double>::type;
 
-// Multiply A(int) x B(int)
-template <typename TypeA, typename TypeB, typename LambdaCallback,
-          typename std::enable_if<std::is_integral<TypeA>::value>::type* = nullptr,
-          typename std::enable_if<std::is_integral<TypeB>::value>::type* = nullptr>
-void Multiply(const TypeA* A, const TypeB* B, float* C, Index A_rows, Index width, Index B_cols, LambdaCallback callback) {
   for (Index r = 0; r < A_rows; ++r) {
     for (Index c = 0; c < B_cols; ++c) {
-      int32_t sum = 0;
+      IntermediateType sum = 0;
       for (Index k = 0; k < width; ++k) {
-        sum += int32_t(A[r * width + k]) * int32_t(B[k * B_cols + c]);
+        sum += IntermediateType(A[r * width + k]) * IntermediateType(B[k * B_cols + c]);
       }
       C[r * B_cols + c] = callback(sum, {r, c, A_rows, B_cols});
     }
