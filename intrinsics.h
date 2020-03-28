@@ -3,6 +3,7 @@
 #include "intgemm_config.h"
 #include "types.h"
 
+#include <tmmintrin.h>
 #include <emmintrin.h>
 #include <immintrin.h>
 #include <xmmintrin.h>

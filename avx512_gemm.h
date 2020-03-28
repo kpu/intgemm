@@ -224,26 +224,48 @@ struct AVX512_8bit {
     Quantize(input, output, quant_mult, rows * cols);
   }
 
+ private:
+  /* g++ (Ubuntu 7.4.0-1ubuntu1~18.04.1) 7.4.0 does not carry target attributes
+   * to the hidden function it creates in implementing #pragma omp parallel for.
+   * So intrinstics were not working inside the for loop when compiled with
+   * OMP. Also, passing register types across #pragma omp parallel for
+   * generated an internal compiler error.
+   * The problem does not occur in g++-8 (Ubuntu 8.3.0-6ubuntu1~18.04.1) 8.3.0.
+   * As a workaround, I split into #pragma omp parallel with boring types
+   * passed across the boundary then call this function with target attributes.
+   */
+  INTGEMM_AVX512BW static void QuantizeThread(const float *input, int8_t *output, float quant_mult, std::size_t count) {
+    const __m512i neg127 = _mm512_set1_epi32(-127);
+    const __m512 quant_mult_reg = _mm512_set1_ps(quant_mult);
+    const std::size_t kBatch = sizeof(__m512i) / sizeof(float);
+#pragma omp for
+    for (std::size_t i = 0; i < count; i += kBatch) {
+      __m512i asint = avx512f::QuantizerGrab(input + i, quant_mult_reg);
+      asint = _mm512_max_epi32(asint, neg127);
+      // There doesn't seem to be an unmasked version.
+      _mm512_mask_cvtsepi32_storeu_epi8(output + i, 0xffff, asint);
+    }
+  }
+
+ public:
   // Technically output can be unaligned in Quantize.
   // But then it will need to be aligned for Multiply.
   // Convert to 8-bit signed integers.
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
   INTGEMM_AVX512BW static void Quantize(const float *input, int8_t *output, float quant_mult, Index size) {
     assert(reinterpret_cast<uintptr_t>(input) % sizeof(__m512i) == 0);
-    const __m512i neg127 = _mm512_set1_epi32(-127);
-    const __m512 quant_mult_reg = _mm512_set1_ps(quant_mult);
     const std::size_t kBatch = sizeof(__m512i) / sizeof(float);
-    const float *fast_input_end = input + (size & ~(kBatch - 1));
-    int8_t *fast_output_end = output + (size & ~(kBatch - 1));
-#pragma omp parallel for
-    for (const float *input_it = input; input_it < fast_input_end; input_it += kBatch) {
-      __m512i asint = avx512f::QuantizerGrab(input_it, quant_mult_reg);
-      asint = _mm512_max_epi32(asint, neg127);
-      // There doesn't seem to be an unmasked version.
-      _mm512_mask_cvtsepi32_storeu_epi8(output + (input_it - input), 0xffff, asint);
+    std::size_t fast_size = (size & ~(kBatch - 1));
+    const float *fast_input_end = input + fast_size;
+    int8_t *fast_output_end = output + fast_size;
+#pragma omp parallel
+    {
+      QuantizeThread(input, output, quant_mult, fast_size);
     }
     std::size_t overhang = size & (kBatch - 1);
     if (!overhang) return; // We needed a branch anyway for the empty case.
+    const __m512i neg127 = _mm512_set1_epi32(-127);
+    const __m512 quant_mult_reg = _mm512_set1_ps(quant_mult);
     __m512i asint = avx512f::QuantizerGrab(fast_input_end, quant_mult_reg);
     asint = _mm512_max_epi32(asint, neg127);
     _mm512_mask_cvtsepi32_storeu_epi8(fast_output_end, (1 << overhang) - 1, asint);
