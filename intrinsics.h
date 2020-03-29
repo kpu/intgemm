@@ -150,6 +150,9 @@ template <> INTGEMM_SSE2 inline __m128 setzero_ps<__m128>() {
 template <> INTGEMM_SSE2 inline __m128i setzero_si<__m128i>() {
   return _mm_setzero_si128();
 }
+INTGEMM_SSE2 static inline __m128i shuffle_epi32(__m128i a, int imm8) {
+  return _mm_shuffle_epi32(a, imm8);
+}
 INTGEMM_SSSE3 static inline __m128i sign_epi8(__m128i first, __m128i second) {
   return _mm_sign_epi8(first, second);
 }
@@ -324,6 +327,9 @@ template <> INTGEMM_AVX2 inline __m256 setzero_ps<__m256>() {
 }
 template <> INTGEMM_AVX2 inline __m256i setzero_si<__m256i>() {
   return _mm256_setzero_si256();
+}
+INTGEMM_AVX2 static inline __m256i shuffle_epi32(__m256i a, const int imm8) {
+  return _mm256_shuffle_epi32(a, imm8);
 }
 INTGEMM_AVX2 static inline __m256i sign_epi8(__m256i first, __m256i second) {
   return _mm256_sign_epi8(first, second);
@@ -501,6 +507,9 @@ template <> INTGEMM_AVX512BW inline __m512i setzero_si<__m512i>() {
 }
 template <> INTGEMM_AVX512BW inline __m512 load_ps<__m512>(const float* from) {
   return _mm512_load_ps(from);
+}
+INTGEMM_AVX512BW static inline __m512i shuffle_epi32(__m512i a, const int imm8) {
+  return _mm512_shuffle_epi32(a, static_cast<_MM_PERM_ENUM>(imm8));
 }
 /*
  * Missing sign_epi8
