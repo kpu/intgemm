@@ -17,7 +17,7 @@ template <class T> class RowMajorAccess {
       return RowMajorAccess<Content>(data_ + row * cols_ + col, cols_);
     }
 
-    Content &Front() const { return *data_; }
+    const Content &Front() const { return *data_; }
     Content &Front() { return *data_; }
 
   private:
@@ -36,7 +36,7 @@ template <class T> class ColMajorAccess {
       return ColMajorAccess<Content>(data_ + row + col * rows_, rows_);
     }
 
-    Content &Front() const { return *data_; }
+    const Content &Front() const { return *data_; }
     Content &Front() { return *data_; }
 
   private:

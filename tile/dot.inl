@@ -36,7 +36,7 @@ class RegisterRowMajorAccess {
       return RegisterRowMajorAccess(data_ + row * cols_ + col, cols_);
     }
 
-    Content &Front() const { return *data_; }
+    const Content &Front() const { return *data_; }
     Content &Front() { return *data_; }
 
   private:
