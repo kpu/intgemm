@@ -5,6 +5,12 @@
 #include "test.h"
 #include "../aligned.h"
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
+#define INTGEMM_THIS_IS_AVX512VNNI
+#include "tile_test.inl"
+#undef INTGEMM_THIS_IS_AVX512VNNI
+#endif
+
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 #define INTGEMM_THIS_IS_AVX512BW
 #include "tile_test.inl"

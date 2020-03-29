@@ -1,4 +1,8 @@
-#if defined(INTGEMM_THIS_IS_AVX512BW)
+#if defined(INTGEMM_THIS_IS_AVX512VNNI)
+#define INTGEMM_ARCH AVX512VNNI
+#define INTGEMM_TARGET INTGEMM_AVX512VNNI
+#define INTGEMM_TEST_NAME "AVX512VNNI"
+#elif defined(INTGEMM_THIS_IS_AVX512BW)
 #define INTGEMM_ARCH AVX512BW
 #define INTGEMM_TARGET INTGEMM_AVX512BW
 #define INTGEMM_TEST_NAME "AVX512BW"
@@ -13,6 +17,7 @@
 #else
 #error "Included without expected architecture"
 #endif
+
 
 namespace intgemm {
 namespace INTGEMM_ARCH {
