@@ -1,9 +1,10 @@
+#include "../aligned.h"
 #include "../tile/access.h"
 #include "../tile/dot.h"
 #include "../tile/reduce.h"
-
 #include "test.h"
-#include "../aligned.h"
+
+#include <random>
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
 #define INTGEMM_THIS_IS_AVX512VNNI

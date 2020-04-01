@@ -57,6 +57,45 @@ TEST_CASE("Basic Tile " INTGEMM_TEST_NAME, "[tile]") {
   }
 }
 
+INTGEMM_TARGET void DumpRegister(Register reg) {
+  int32_t values[sizeof(Register) / sizeof(int32_t)];
+  memcpy(values, &reg, sizeof(Register));
+  for (std::size_t i = 0; i < sizeof(Register) / sizeof(int32_t); ++i) {
+    std::cout.width(11);
+    std::cout << values[i] << ' ';
+  }
+}
+
+INTGEMM_TARGET void Pack32Test() {
+  const std::size_t kPack = sizeof(Register) / sizeof(int32_t);
+  Register regs[kPack];
+  std::mt19937 gen;
+  //std::uniform_int_distribution<int32_t> dist(std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::max());
+  std::uniform_int_distribution<int32_t> dist(0, 100);
+  std::vector<int32_t> reference(kPack, 0);
+  for (std::size_t i = 0; i < kPack; ++i) {
+    int32_t temp[kPack];
+    for (std::size_t j = 0; j < kPack; ++j) {
+      temp[j] = dist(gen);
+      reference[j] += temp[j];
+    }
+    memcpy(&regs[i], temp, sizeof(Register));
+  }
+  Register *indirect = regs;
+  for (std::size_t i = 0; i < 4; ++i) {
+    DumpRegister(indirect[i]);
+    std::cout << '\n';
+  }
+  Pack32<3, Sum32Op>(indirect);
+  DumpRegister(indirect[0]);
+  std::cout << '\n';
+}
+
+TEST_CASE("Reduce " INTGEMM_TEST_NAME, "[tile]") {
+  if (kCPU >= CPUType::INTGEMM_ARCH)
+    Pack32Test();
+}
+
 } // namespace INTGEMM_ARCH
 } // namespace intgemm
 

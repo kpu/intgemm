@@ -37,3 +37,15 @@ struct Sum32Op {
 #define INTGEMM_THIS_IS_SSE2
 #include "reduce.inl"
 #undef INTGEMM_THIS_IS_SSE2
+
+namespace intgemm {
+
+namespace SSSE3 {
+using SSE2::Pack32;
+} // namespace SSSE3
+
+namespace AVX512VNNI {
+using AVX512BW::Pack32;
+} // namespace AVX512VNNI
+
+} // namespace intgemm
