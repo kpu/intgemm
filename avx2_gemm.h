@@ -192,6 +192,8 @@ class QuantizeTile8 {
 // Technically only requires AVX
 INTGEMM_MAXABSOLUTE(__m256, INTGEMM_AVX2)
 
+INTGEMM_GETQUANTIZERSTD(__m256, INTGEMM_AVX2)
+
 } // namespace
 
 struct AVX2_8bit {
@@ -239,7 +241,7 @@ struct AVX2_8bit {
   INTGEMM_MULTIPLY8SHIFT(__m256i, INTGEMM_AVX2, CPUType::AVX2)
 
   INTGEMM_PREPAREBIASFOR8(__m256i, INTGEMM_AVX2, CPUType::AVX2)
-
+  
   constexpr static const char *const kName = "8-bit AVX2";
 
   static const CPUType kUses = CPUType::AVX2;

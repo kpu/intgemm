@@ -41,6 +41,12 @@ struct StaticLoopTest {
   }
 };
 
+TEST_CASE("Static loop (N = 0)",) {
+  Index result = 128;
+  StaticLoop<StaticLoopTest, MakeStaticLoopIterator<0>>(result);
+  CHECK(result == 128);
+}
+
 TEST_CASE("Static loop (N = 1)",) {
   Index result = 128;
   StaticLoop<StaticLoopTest, MakeStaticLoopIterator<1>>(result);
@@ -76,6 +82,13 @@ TEST_CASE("Static loop with mult-dim iterator (Iterator<5, 2>)",) {
   Index result = 0;
   StaticLoop<StaticLoopMultiDimTest, MakeStaticLoopIterator<5, 2>>(result);
   CHECK(result == 11223344);
+}
+
+TEST_CASE("Round up",) {
+  CHECK(round_up(0, 5) == 0);
+  CHECK(round_up(1, 5) == 5);
+  CHECK(round_up(4, 5) == 5);
+  CHECK(round_up(6, 5) == 10);
 }
 
 }

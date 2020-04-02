@@ -52,20 +52,18 @@ constexpr subtuple_t<Tuple, Indices...> make_subtuple(const Tuple& tuple, sequen
 /*
  * Factorial
  */
-constexpr unsigned long long factorial(unsigned n) {
+static constexpr unsigned long long factorial(unsigned n) {
   return n <= 1 ? 1 : n * factorial(n - 1);
 }
 
 /*
  * e^n, where n is integer
  */
-namespace { // anonymous namespace
-constexpr double expi_nonnegative(unsigned n) {
+static constexpr double expi_nonnegative(unsigned n) {
   return n == 0 ? 1.0 : (n == 1 ? 2.718281828459045 : expi_nonnegative(n / 2) * expi_nonnegative((n + 1) / 2));
 }
-} // anonymous namespace
 
-constexpr double expi(int n) {
+static constexpr double expi(int n) {
   return (n >= 0 ? expi_nonnegative(n) : 1.0 / expi_nonnegative(-n));
 }
 
@@ -143,7 +141,7 @@ public:
   /*
    * Last iterator
    */
-  using last = StaticLoopIterator<total_iterations - 1, Ns...>;
+  using end = StaticLoopIterator<total_iterations, Ns...>;
 };
 
 /*
@@ -190,15 +188,21 @@ using MakeStaticLoopIterator = StaticLoopIterator<0, Ns...>;
  * [4, 1] Test 1
  *
  */
-template <typename Body, typename StaticLoopIterator, typename std::enable_if<std::is_same<StaticLoopIterator, typename StaticLoopIterator::last>::value>::type* = nullptr, typename... Args>
-__attribute__((always_inline)) static inline void StaticLoop(Args&&... args) {
-  Body::template body<StaticLoopIterator>(std::forward<Args>(args)...);
+template <typename Body, typename StaticLoopIterator, typename std::enable_if<std::is_same<StaticLoopIterator, typename StaticLoopIterator::end>::value>::type* = nullptr, typename... Args>
+__attribute__((always_inline)) static inline void StaticLoop(Args&&...) {
 }
 
-template <typename Body, typename StaticLoopIterator, typename std::enable_if<!std::is_same<StaticLoopIterator, typename StaticLoopIterator::last>::value>::type* = nullptr, typename... Args>
+template <typename Body, typename StaticLoopIterator, typename std::enable_if<!std::is_same<StaticLoopIterator, typename StaticLoopIterator::end>::value>::type* = nullptr, typename... Args>
 __attribute__((always_inline)) static inline void StaticLoop(Args&&... args) {
   Body::template body<StaticLoopIterator>(std::forward<Args>(args)...);
   StaticLoop<Body, typename StaticLoopIterator::next>(std::forward<Args>(args)...);
+}
+
+/*
+ * Round up
+ */
+static constexpr Index round_up(Index value, Index factor) {
+  return (value + factor - 1) / factor * factor;
 }
 
 }
