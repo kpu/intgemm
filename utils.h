@@ -141,7 +141,7 @@ public:
   /*
    * Last iterator
    */
-  using last = StaticLoopIterator<total_iterations - 1, Ns...>;
+  using end = StaticLoopIterator<total_iterations, Ns...>;
 };
 
 /*
@@ -188,12 +188,11 @@ using MakeStaticLoopIterator = StaticLoopIterator<0, Ns...>;
  * [4, 1] Test 1
  *
  */
-template <typename Body, typename StaticLoopIterator, typename std::enable_if<std::is_same<StaticLoopIterator, typename StaticLoopIterator::last>::value>::type* = nullptr, typename... Args>
-__attribute__((always_inline)) static inline void StaticLoop(Args&&... args) {
-  Body::template body<StaticLoopIterator>(std::forward<Args>(args)...);
+template <typename Body, typename StaticLoopIterator, typename std::enable_if<std::is_same<StaticLoopIterator, typename StaticLoopIterator::end>::value>::type* = nullptr, typename... Args>
+__attribute__((always_inline)) static inline void StaticLoop(Args&&...) {
 }
 
-template <typename Body, typename StaticLoopIterator, typename std::enable_if<!std::is_same<StaticLoopIterator, typename StaticLoopIterator::last>::value>::type* = nullptr, typename... Args>
+template <typename Body, typename StaticLoopIterator, typename std::enable_if<!std::is_same<StaticLoopIterator, typename StaticLoopIterator::end>::value>::type* = nullptr, typename... Args>
 __attribute__((always_inline)) static inline void StaticLoop(Args&&... args) {
   Body::template body<StaticLoopIterator>(std::forward<Args>(args)...);
   StaticLoop<Body, typename StaticLoopIterator::next>(std::forward<Args>(args)...);
