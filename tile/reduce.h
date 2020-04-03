@@ -24,19 +24,19 @@ struct Sum32Op {
 
 } // namespace intgemm
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-#define INTGEMM_THIS_IS_AVX512BW
+#define INTGEMM_THIS_IS_SSE2
 #include "reduce.inl"
-#undef INTGEMM_THIS_IS_AVX512BW
-#endif
+#undef INTGEMM_THIS_IS_SSE2
 
 #define INTGEMM_THIS_IS_AVX2
 #include "reduce.inl"
 #undef INTGEMM_THIS_IS_AVX2
 
-#define INTGEMM_THIS_IS_SSE2
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
+#define INTGEMM_THIS_IS_AVX512BW
 #include "reduce.inl"
-#undef INTGEMM_THIS_IS_SSE2
+#undef INTGEMM_THIS_IS_AVX512BW
+#endif
 
 namespace intgemm {
 
