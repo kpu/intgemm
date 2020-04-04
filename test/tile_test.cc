@@ -25,3 +25,7 @@
 #define INTGEMM_THIS_IS_SSSE3
 #include "tile_test.inl"
 #undef INTGEMM_THIS_IS_SSSE3
+
+#define INTGEMM_THIS_IS_SSE2
+#include "tile_test.inl"
+#undef INTGEMM_THIS_IS_SSE2

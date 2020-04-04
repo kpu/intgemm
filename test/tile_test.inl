@@ -14,6 +14,10 @@
 #define INTGEMM_ARCH SSSE3
 #define INTGEMM_TARGET INTGEMM_SSSE3
 #define INTGEMM_TEST_NAME "SSSE3"
+#elif defined(INTGEMM_THIS_IS_SSE2)
+#define INTGEMM_ARCH SSE2
+#define INTGEMM_TARGET INTGEMM_SSE2
+#define INTGEMM_TEST_NAME "SSE2"
 #else
 #error "Included without expected architecture"
 #endif
@@ -22,6 +26,8 @@
 namespace intgemm {
 namespace INTGEMM_ARCH {
 
+// There isn't a Shifted8 for SSE2.
+#ifndef INTGEMM_THIS_IS_SSE2
 INTGEMM_TARGET void OneIteration() {
   AlignedVector<int8_t> A(1 * sizeof(Register));
   AlignedVector<int8_t> B(sizeof(Register) * 1);
@@ -56,6 +62,7 @@ TEST_CASE("Basic Tile " INTGEMM_TEST_NAME, "[tile]") {
     OneIteration();
   }
 }
+#endif
 
 struct Reduce32Test {
   template <typename Iterator> INTGEMM_TARGET static void body() {
