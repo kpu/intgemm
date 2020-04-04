@@ -41,11 +41,11 @@ struct Sum32Op {
 namespace intgemm {
 
 namespace SSSE3 {
-using SSE2::Pack32;
+using SSE2::Reduce32;
 } // namespace SSSE3
 
 namespace AVX512VNNI {
-using AVX512BW::Pack32;
+using AVX512BW::Reduce32;
 } // namespace AVX512VNNI
 
 } // namespace intgemm

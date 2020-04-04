@@ -16,7 +16,7 @@ namespace INTGEMM_ARCH {
 
 struct RegisterPair { Register hi; Register lo; };
 
-template <class Op, class Folder> struct PackEvens {
+template <class Op, class Folder> struct ReduceEvens {
   template <class Iterator> INTGEMM_TARGET static inline void body(Register *regs) {
     const Index i = Iterator::template I<0>();
     RegisterPair ret = Folder::Even(regs[2 * i], regs[2 * i + 1]);
@@ -24,15 +24,15 @@ template <class Op, class Folder> struct PackEvens {
   }
 };
 
-template <Index Valid, class Op, class Folder> INTGEMM_TARGET static inline void GenericPack(Register *regs) {
-  StaticLoop<PackEvens<Op, Folder>, MakeStaticLoopIterator<Valid / 2>>(regs);
+template <Index Valid, class Op, class Folder> INTGEMM_TARGET static inline void GenericReduce(Register *regs) {
+  StaticLoop<ReduceEvens<Op, Folder>, MakeStaticLoopIterator<Valid / 2>>(regs);
   if (Valid & 1) {
     auto values = Folder::Odd(regs[Valid - 1]);
     regs[Valid / 2] = Folder::OddUpcast(Op::Run(values.lo, values.hi));
   }
 }
 
-struct Pack32Folder {
+struct Reduce32Folder {
   INTGEMM_TARGET static inline RegisterPair Even(Register first, Register second) {
     return RegisterPair { unpackhi_epi32(first, second), unpacklo_epi32(first, second) };
   }
@@ -43,7 +43,7 @@ struct Pack32Folder {
   INTGEMM_TARGET static inline Register OddUpcast(Register reg) { return reg; }
 };
 
-struct Pack64Folder {
+struct Reduce64Folder {
   INTGEMM_TARGET static inline RegisterPair Even(Register first, Register second) {
     return RegisterPair { unpackhi_epi64(first, second), unpacklo_epi64(first, second) };
   }
@@ -55,7 +55,7 @@ struct Pack64Folder {
 };
 
 #ifdef INTGEMM_THIS_IS_AVX2
-struct Pack128Folder {
+struct Reduce128Folder {
   INTGEMM_TARGET static inline RegisterPair Even(Register first, Register second) {
     return RegisterPair {
       // This instruction generates 0s 1s 2s 3s 4f 5f 6f 7f
@@ -72,7 +72,7 @@ struct Pack128Folder {
 #endif
 
 #ifdef INTGEMM_THIS_IS_AVX512BW
-struct Pack128Folder {
+struct Reduce128Folder {
   INTGEMM_TARGET static inline RegisterPair Even(Register first, Register second) {
     // TODO can this be optimized with a blend and a shuffle instruction?
     return RegisterPair {
@@ -84,7 +84,7 @@ struct Pack128Folder {
   }
 };
 
-struct Pack256Folder {
+struct Reduce256Folder {
   INTGEMM_TARGET static inline RegisterPair Even(Register first, Register second) {
     return RegisterPair {
       // This instruction generates first[2] first[3] second[0] second[1]
@@ -95,75 +95,75 @@ struct Pack256Folder {
   }
 };
 
-template <class Op> struct PackFours {
+template <class Op> struct ReduceFours {
   // Collapse 4 AVX512 registers at once, interleaving 128-bit fields.
   template <class Iterator> INTGEMM_TARGET static inline void body(Register *regs) {
     const Index i = Iterator::template I<0>();
     const Register *in = regs + i * 4;
     // Do 256-bit interleaving first because it's slightly cheaper.
-    RegisterPair mix0pair = Pack256Folder::Even(in[0], in[2]);
-    RegisterPair mix1pair = Pack256Folder::Even(in[1], in[3]);
+    RegisterPair mix0pair = Reduce256Folder::Even(in[0], in[2]);
+    RegisterPair mix1pair = Reduce256Folder::Even(in[1], in[3]);
     // 0 0 2 2
     Register mix0 = Op::Run(mix0pair.hi, mix0pair.lo);
     // 1 1 3 3
     Register mix1 = Op::Run(mix1pair.hi, mix1pair.lo);
-    mix0pair = Pack128Folder::Even(mix0, mix1);
+    mix0pair = Reduce128Folder::Even(mix0, mix1);
     regs[i] = Op::Run(mix0pair.hi, mix0pair.lo);
   }
 };
 
-// non-type partial specialization ‘PackOverhang<0, Op>’ is not allowed
-template <Index Valid, class Op> struct PackOverhang;
+// non-type partial specialization ‘ReduceOverhang<0, Op>’ is not allowed
+template <Index Valid, class Op> struct ReduceOverhang;
 
-template <class Op> struct PackOverhang<0, Op> {
+template <class Op> struct ReduceOverhang<0, Op> {
   INTGEMM_TARGET static inline void Run(const Register *, Register &) {}
 };
-template <class Op> struct PackOverhang<1, Op> {
+template <class Op> struct ReduceOverhang<1, Op> {
   // Overhang of 1 register: fold it overself to SSE2.
   INTGEMM_TARGET static inline void Run(const Register *regs, Register &to) {
     AVX2::Register folded = Op::Run(_mm512_castsi512_si256(regs[0]), _mm512_extracti64x4_epi64(regs[0], 1));
-    SSE2::RegisterPair pair = AVX2::Pack128Folder::Odd(folded);
+    SSE2::RegisterPair pair = AVX2::Reduce128Folder::Odd(folded);
     SSE2::Register more = Op::Run(pair.hi, pair.lo);
     to = _mm512_castsi128_si512(more);
   }
 };
-template <class Op> struct PackOverhang<2, Op> {
+template <class Op> struct ReduceOverhang<2, Op> {
   // Overhang of 2 registers: fold to AVX2.
   INTGEMM_TARGET static inline void Run(const Register *regs, Register &to) {
-    RegisterPair mixpair = Pack128Folder::Even(regs[0], regs[1]);
+    RegisterPair mixpair = Reduce128Folder::Even(regs[0], regs[1]);
     Register mix = Op::Run(mixpair.hi, mixpair.lo);
     AVX2::Register folded = Op::Run(_mm512_castsi512_si256(mix), _mm512_extracti64x4_epi64(mix, 1));
     to = _mm512_castsi256_si512(folded);
   }
 };
-template <class Op> struct PackOverhang<3, Op> {
+template <class Op> struct ReduceOverhang<3, Op> {
   INTGEMM_TARGET static inline void Run(const Register *regs, Register &to) {
-    RegisterPair mix0pair = Pack256Folder::Even(regs[0], regs[2]);
+    RegisterPair mix0pair = Reduce256Folder::Even(regs[0], regs[2]);
     Register mix0022 = Op::Run(mix0pair.hi, mix0pair.lo);
     // mix0022 128-bit bit blocks: 0 0 2 2
 
     AVX2::Register fold11 = Op::Run(_mm512_castsi512_si256(regs[1]), _mm512_extracti64x4_epi64(regs[1], 1));
     // fold11 128-bit blocks: 1 1
 
-    RegisterPair finish = Pack128Folder::Even(mix0022, _mm512_castsi256_si512(fold11));
+    RegisterPair finish = Reduce128Folder::Even(mix0022, _mm512_castsi256_si512(fold11));
     to = Op::Run(finish.hi, finish.lo);
   }
 };
 
 #endif
 
-template <Index Valid, class Op> INTGEMM_TARGET static inline void Pack32(Register *regs) {
-  GenericPack<Valid, Op, Pack32Folder>(regs);
-  GenericPack<(Valid + 1) / 2, Op, Pack64Folder>(regs);
+template <Index Valid, class Op> INTGEMM_TARGET static inline void Reduce32(Register *regs) {
+  GenericReduce<Valid, Op, Reduce32Folder>(regs);
+  GenericReduce<(Valid + 1) / 2, Op, Reduce64Folder>(regs);
   // SSE2 is done.
 #if defined(INTGEMM_THIS_IS_AVX2)
-  GenericPack<(Valid + 3) / 4, Op, Pack128Folder>(regs);
+  GenericReduce<(Valid + 3) / 4, Op, Reduce128Folder>(regs);
 #elif defined(INTGEMM_THIS_IS_AVX512BW)
   // Special handling for AVX512BW because we need to fold twice and it can actually go all the way down to SSE2.
   constexpr Index remaining = (Valid + 3) / 4;
   // Handle registers a multiple of 4.
-  StaticLoop<PackFours<Op>, MakeStaticLoopIterator<(remaining / 4)>>(regs);
-  PackOverhang<remaining & 3, Op>::Run(regs + (remaining & ~3), *(regs + remaining / 4));
+  StaticLoop<ReduceFours<Op>, MakeStaticLoopIterator<(remaining / 4)>>(regs);
+  ReduceOverhang<remaining & 3, Op>::Run(regs + (remaining & ~3), *(regs + remaining / 4));
 #endif
 }
 
