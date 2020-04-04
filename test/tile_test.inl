@@ -67,21 +67,24 @@ struct Pack32Test {
     std::mt19937 gen;
     std::uniform_int_distribution<int32_t> dist(std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::max());
     int32_t reference[ArrayLen];
-    memset(reference, 0, sizeof(reference));
-    for (Index i = 0; i < Valid; ++i) {
-      int32_t temp[kPack];
-      for (std::size_t j = 0; j < kPack; ++j) {
-        temp[j] = dist(gen);
-        reference[i] += temp[j];
+    // Do 20 different loops of random numbers.
+    for (Index attempt = 0; attempt < 20; ++attempt) {
+      memset(reference, 0, sizeof(reference));
+      for (Index i = 0; i < Valid; ++i) {
+        int32_t temp[kPack];
+        for (std::size_t j = 0; j < kPack; ++j) {
+          temp[j] = dist(gen);
+          reference[i] += temp[j];
+        }
+        memcpy(&regs[i], temp, sizeof(Register));
       }
-      memcpy(&regs[i], temp, sizeof(Register));
-    }
-    // Decay type for template.
-    Register *indirect = regs;
-    Pack32<Valid, Sum32Op>(indirect);
-    const int32_t *test = reinterpret_cast<const int32_t*>(regs);
-    for (Index i = 0; i < Valid; ++i) {
-      CHECK(test[i] == reference[i]);
+      // Decay type for template.
+      Register *indirect = regs;
+      Pack32<Valid, Sum32Op>(indirect);
+      const int32_t *test = reinterpret_cast<const int32_t*>(regs);
+      for (Index i = 0; i < Valid; ++i) {
+        CHECK(test[i] == reference[i]);
+      }
     }
   }
 };
