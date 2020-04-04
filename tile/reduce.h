@@ -1,11 +1,40 @@
+/* reduce.h: Horizontally reduce an arbitrary number of registers
+ * simultaneously.  Given an array of registers, they will be horizontally
+ * reduced (i.e. summed if Sum32Op is used) with the results placed back into
+ * the array.
+ *
+ * This is the function:
+ * template <Index Valid, class Op> INTGEMM_TARGET static inline void Reduce32(Register *regs);
+ *
+ * Valid is the length of the array of Registers in the input.
+ *
+ * Op defines the reduction operation.  It should support three architectures:
+ * INTGEMM_SSE2 static inline __m128i Run(__m128i first, __m128i second);
+ * INTGEMM_AVX2 static inline __m256i Run(__m256i first, __m256i second);
+ * INTGEMM_AVX512BW static inline __m512i Run(__m512i first, __m512i second);
+ * See Sum32Op for an example.
+ *
+ * regs is memory to use.
+ * Input: an array Register[Valid].
+ * Output: an array int32_t[Valid] of reduced values in the same order.  This
+ * can be interpreted as registers with reduced values packed into them.
+ * Anything at index Valid or later is undefined in the output.
+ *
+ * The function is defined in each architecture's namespace, so:
+ * intgemm::SSE2:Reduce32
+ * intgemm::SSSE3:Reduce32
+ * intgemm::AVX2:Reduce32
+ * intgemm::AVX512BW:Reduce32
+ * intgemm::AVX512VNNI:Reduce32
+ */
 #pragma once
-
 #include "../intrinsics.h"
 #include "../utils.h"
 #include "../types.h"
 
 namespace intgemm {
 
+// Op argument appropriate for summing 32-bit integers.
 struct Sum32Op {
   INTGEMM_SSE2 static inline __m128i Run(__m128i first, __m128i second) {
     return add_epi32(first, second);
@@ -24,6 +53,7 @@ struct Sum32Op {
 
 } // namespace intgemm
 
+// One implementation per width; the rest just import below.
 #define INTGEMM_THIS_IS_SSE2
 #include "reduce.inl"
 #undef INTGEMM_THIS_IS_SSE2
