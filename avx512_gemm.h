@@ -331,11 +331,12 @@ struct AVX512_8bit {
     // There's 8 results for INTGEMM_AVX2 to handle.
     auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
     const int simd_width = width / sizeof(Register);
-    const Register *B0_col = reinterpret_cast<const Register*>(B);
     // Added for AVX512.
     Register zeros = setzero_si<Register>();
     // Go over 8 columns of B at a time.
-    for (Index B0_colidx = 0; B0_colidx != B_cols; B0_col += 8 * simd_width, B0_colidx += 8) {
+#pragma omp for
+    for (Index B0_colidx = 0; B0_colidx < B_cols; B0_colidx += 8) {
+      const Register *B0_col = reinterpret_cast<const Register*>(B) + B0_colidx * simd_width;
       // Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.
       for (Index A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) {
         // Iterate over shared (inner) dimension.
