@@ -251,8 +251,18 @@ struct Int8 {
   static void (*SelectColumnsB)(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
 
   // Multiply C = A * B, presuming A and B have been prepared.
-  template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
+  template <typename Callback>
   static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
+    switch (B_cols % 32) {
+      case 0:   MultiplyCustomTile<1, 4, Callback>(A, B, A_rows, width, B_cols, callback); break;
+      case 24:  MultiplyCustomTile<1, 3, Callback>(A, B, A_rows, width, B_cols, callback); break;
+      case 16:  MultiplyCustomTile<1, 2, Callback>(A, B, A_rows, width, B_cols, callback); break;
+      default:  MultiplyCustomTile<1, 1, Callback>(A, B, A_rows, width, B_cols, callback); break;
+    }
+  }
+
+  template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
+  static void MultiplyCustomTile(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
     MultiplyImpl<TileRows, TileColumnsMultiplier, Callback>::run(A, B, A_rows, width, B_cols, callback);
   }
   
@@ -314,8 +324,18 @@ struct Int8Shift {
 
   // A slightly faster version compared to the Int8 one (assuming a bias is used) because of better handling of the sign bit
   // Multiply C = A * B + Bias, presuming A, B and Bias have all been prepared (for A, PrepareAnew should be used
-  template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
+  template <typename Callback>
   static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
+    switch (B_cols % 32) {
+      case 0:   MultiplyCustomTile<1, 4, Callback>(A, B, A_rows, width, B_cols, callback); break;
+      case 24:  MultiplyCustomTile<1, 3, Callback>(A, B, A_rows, width, B_cols, callback); break;
+      case 16:  MultiplyCustomTile<1, 2, Callback>(A, B, A_rows, width, B_cols, callback); break;
+      default:  MultiplyCustomTile<1, 1, Callback>(A, B, A_rows, width, B_cols, callback); break;
+    }
+  }
+
+  template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
+  static void MultiplyCustomTile(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
     MultiplyImpl<TileRows, TileColumnsMultiplier, Callback>::run((const uint8_t *)A, B, A_rows, width, B_cols, callback);
   }
 
@@ -394,8 +414,18 @@ struct Int16 {
   static void (*SelectColumnsB)(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
 
   // Multiply C = A * B, presuming A and B have been prepared.
-  template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
+  template <typename Callback>
   static void Multiply(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
+    switch (B_cols % 32) {
+      case 0:   MultiplyCustomTile<1, 4, Callback>(A, B, A_rows, width, B_cols, callback); break;
+      case 24:  MultiplyCustomTile<1, 3, Callback>(A, B, A_rows, width, B_cols, callback); break;
+      case 16:  MultiplyCustomTile<1, 2, Callback>(A, B, A_rows, width, B_cols, callback); break;
+      default:  MultiplyCustomTile<1, 1, Callback>(A, B, A_rows, width, B_cols, callback); break;
+    }
+  }
+
+  template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
+  static void MultiplyCustomTile(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
     MultiplyImpl<TileRows, TileColumnsMultiplier, Callback>::run(A, B, A_rows, width, B_cols, callback);
   }
 
