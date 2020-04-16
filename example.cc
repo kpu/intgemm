@@ -48,7 +48,7 @@ int main() {
     intgemm::Int16::PrepareA(A.begin(), A_prepared.begin(), quant_mult, A_rows, width);
     // Quantize and reshape B.
     // Typically you will do this once when parameters are loaded, not every time.
-    intgemm::Int16::template PrepareB<1>(B.begin(), B_prepared.begin(), quant_mult, width, B_cols);
+    intgemm::Int16::template PrepareBCustomTile<1>(B.begin(), B_prepared.begin(), quant_mult, width, B_cols);
 
     AlignedVector<float> C(A_rows * B_cols);
     // Do the actual multiply.
@@ -67,7 +67,7 @@ int main() {
     intgemm::Int8::PrepareA(A.begin(), A_prepared.begin(), quant_mult, A_rows, width);
     // Quantize and reshape B.
     // Typically you will do this once when parameters are loaded, not every time.
-    intgemm::Int8::template PrepareB<1>(B.begin(), B_prepared.begin(), quant_mult, width, B_cols);
+    intgemm::Int8::template PrepareBCustomTile<1>(B.begin(), B_prepared.begin(), quant_mult, width, B_cols);
 
     AlignedVector<float> C(A_rows * B_cols);
     // Do the actual multiply.

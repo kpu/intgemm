@@ -231,8 +231,17 @@ struct Int8 {
 
   // Warning: the output of PrepareB depends on the CPU.
   // It will match the Multiply function on the same CPU though.
-  template <Index TileColumnsMultiplier>
   static void PrepareB(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
+    switch (cols % 32) {
+      case 0:   PrepareBCustomTile<4>(input, output, quant_mult, rows, cols); break;
+      case 24:  PrepareBCustomTile<3>(input, output, quant_mult, rows, cols); break;
+      case 16:  PrepareBCustomTile<2>(input, output, quant_mult, rows, cols); break;
+      default:  PrepareBCustomTile<1>(input, output, quant_mult, rows, cols); break;
+    }
+  }
+
+  template <Index TileColumnsMultiplier>
+  static void PrepareBCustomTile(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
     PrepareBImpl<TileColumnsMultiplier>::run(input, output, quant_mult, rows, cols);
   }
 
@@ -312,9 +321,18 @@ struct Int8Shift {
   
   // Warning: the output of PrepareB depends on the CPU.
   // It will match the Multiply function on the same CPU though.
-  template <Index TileColumnsMultiplier>
   static void PrepareB(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
-    Int8::PrepareB<TileColumnsMultiplier>(input, output, quant_mult, rows, cols);
+    switch (cols % 32) {
+      case 0:   PrepareBCustomTile<4>(input, output, quant_mult, rows, cols); break;
+      case 24:  PrepareBCustomTile<3>(input, output, quant_mult, rows, cols); break;
+      case 16:  PrepareBCustomTile<2>(input, output, quant_mult, rows, cols); break;
+      default:  PrepareBCustomTile<1>(input, output, quant_mult, rows, cols); break;
+    }
+  }
+
+  template <Index TileColumnsMultiplier>
+  static void PrepareBCustomTile(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
+    Int8::PrepareBCustomTile<TileColumnsMultiplier>(input, output, quant_mult, rows, cols);
   }
 
   // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8. 
@@ -394,8 +412,17 @@ struct Int16 {
 
   // Warning: the output of PrepareB depends on the CPU.
   // It will match the Multiply function on the same CPU though.
-  template <Index TileColumnsMultiplier>
   static void PrepareB(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) {
+    switch (cols % 32) {
+      case 0:   PrepareBCustomTile<4>(input, output, quant_mult, rows, cols); break;
+      case 24:  PrepareBCustomTile<3>(input, output, quant_mult, rows, cols); break;
+      case 16:  PrepareBCustomTile<2>(input, output, quant_mult, rows, cols); break;
+      default:  PrepareBCustomTile<1>(input, output, quant_mult, rows, cols); break;
+    }
+  }
+
+  template <Index TileColumnsMultiplier>
+  static void PrepareBCustomTile(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) {
     PrepareBImpl<TileColumnsMultiplier>::run(input, output, quant_mult, rows, cols);
   }
 
