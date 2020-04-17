@@ -20,7 +20,7 @@ void kernel_floor_test() {
   std::iota(input.begin(), input.end(), -int(VECTOR_LENGTH / 2));
 
   *output.template as<vec_t>() = kernels::floor(*input.template as<vec_t>());
-  for (auto i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == std::floor(input[i]));
 }
 
@@ -30,7 +30,7 @@ KERNEL_TEST_CASE("floor SSE2") { return kernel_floor_test<CPUType::SSE2>(); }
 template INTGEMM_AVX2 void kernel_floor_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("floor AVX2") { return kernel_floor_test<CPUType::AVX2>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_floor_test<CPUType::AVX512BW>();
 KERNEL_TEST_CASE("floor AVX512BW") { return kernel_floor_test<CPUType::AVX512BW>(); }
 #endif

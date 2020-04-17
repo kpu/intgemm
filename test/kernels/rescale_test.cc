@@ -22,7 +22,7 @@ void kernel_rescale_test() {
   float scale = 2;
 
   *output.template as<vi>() = kernels::rescale(*input.template as<vi>(), intgemm::set1_ps<vf>(scale));
-  for (int i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == std::round(input[i] * scale));
 }
 
@@ -32,7 +32,7 @@ KERNEL_TEST_CASE("rescale SSE2") { return kernel_rescale_test<CPUType::SSE2>(); 
 template INTGEMM_AVX2 void kernel_rescale_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("rescale AVX2") { return kernel_rescale_test<CPUType::AVX2>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_rescale_test<CPUType::AVX512BW>();
 KERNEL_TEST_CASE("rescale AVX512BW") { return kernel_rescale_test<CPUType::AVX512BW>(); }
 #endif

@@ -11,7 +11,7 @@ namespace intgemm {
 // Rewrite that loads of struct to template labdas as soon as c++14 is used
 struct AVX512VNNI_Multiply_InitALivesLoop {
   template <typename Iterator, typename Type>
-  INTGEMM_AVX512VNNI static void body(const Type* A, Index A_rowidx, Index A_rows, Index width, const __m512i* A_lives[Iterator::total_iterations]) {
+  INTGEMM_AVX512VNNI static void body(const Type* A, Index A_rowidx, Index width, const __m512i* A_lives[Iterator::total_iterations]) {
     A_lives[Iterator::template I<0>()] = reinterpret_cast<const __m512i*>(A + (A_rowidx + Iterator::template I<0>()) * width);
   }
 };
@@ -77,16 +77,17 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
     assert(reinterpret_cast<uintptr_t>(A) % sizeof(__m512i) == 0);
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(__m512i) == 0);
 
-    const int simd_width = width / sizeof(__m512i);
+    const Index simd_width = width / sizeof(__m512i);
     auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
     const __m512i *A_lives[TileRows];
     __m512i sums[TileRows][TileColumns];
 
     /* Process with tile = (TileRows, TileColumns). */
     auto *B0_col = reinterpret_cast<const __m512i*>(B);
+#pragma omp for
     for (Index B0_colidx = 0; B0_colidx != B_cols; B0_col += TileColumns * simd_width, B0_colidx += TileColumns) {
       for (Index A_rowidx = 0; A_rowidx < A_rows; A_rowidx += TileRows) {
-        StaticLoop<AVX512VNNI_Multiply_InitALivesLoop, MakeStaticLoopIterator<TileRows>>(A, A_rowidx, A_rows, width, A_lives);
+        StaticLoop<AVX512VNNI_Multiply_InitALivesLoop, MakeStaticLoopIterator<TileRows>>(A, A_rowidx, width, A_lives);
         StaticLoop<AVX512VNNI_Multiply_InitSumsLoop, MakeStaticLoopIterator<TileRows, TileColumns>>(sums);
         /* Process a tile (use A as the loop variable so the add can be done where gcc likes it for branch prediction. */
         auto* B_live = B0_col;
@@ -108,16 +109,17 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
     assert(reinterpret_cast<uintptr_t>(A) % sizeof(__m512i) == 0);
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(__m512i) == 0);
 
-    const int simd_width = width / sizeof(__m512i);
+    const Index simd_width = width / sizeof(__m512i);
     auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
     const __m512i *A_lives[TileRows];
     __m512i sums[TileRows][TileColumns];
 
     /* Process with tile = (TileRows, TileColumns). */
     auto *B0_col = reinterpret_cast<const __m512i*>(B);
+#pragma omp for
     for (Index B0_colidx = 0; B0_colidx != B_cols; B0_col += TileColumns * simd_width, B0_colidx += TileColumns) {
       for (Index A_rowidx = 0; A_rowidx < A_rows; A_rowidx += TileRows) {
-        StaticLoop<AVX512VNNI_Multiply_InitALivesLoop, MakeStaticLoopIterator<TileRows>>(A, A_rowidx, A_rows, width, A_lives);
+        StaticLoop<AVX512VNNI_Multiply_InitALivesLoop, MakeStaticLoopIterator<TileRows>>(A, A_rowidx, width, A_lives);
         StaticLoop<AVX512VNNI_Multiply_InitSumsLoop, MakeStaticLoopIterator<TileRows, TileColumns>>(sums);
         /* Process a tile (use A as the loop variable so the add can be done where gcc likes it for branch prediction. */
         auto* B_live = B0_col;
@@ -132,17 +134,17 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
 
   template <typename Callback>
   INTGEMM_AVX512VNNI static void PrepareBias(const int8_t *B, Index width, Index B_cols, Callback callback) {
-    typedef __m512i __m512i;
     assert(width % sizeof(__m512i) == 0);
     assert(B_cols % 8 == 0);
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(__m512i) == 0);
     auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
-    const int simd_width = width / sizeof(__m512i);
-    const __m512i *B0_col = reinterpret_cast<const __m512i*>(B);
+    const Index simd_width = width / sizeof(__m512i);
     __m512i zeros = setzero_si<__m512i>();
     const __m512i a = set1_epi8<__m512i>(1);
     // Go over 8 columns of B at a time.
-    for (Index B0_colidx = 0; B0_colidx != B_cols; B0_col += 8 * simd_width, B0_colidx += 8) {
+#pragma omp for
+    for (Index B0_colidx = 0; B0_colidx < B_cols; B0_colidx += 8) {
+      const __m512i *B0_col = reinterpret_cast<const __m512i*>(B) + B0_colidx * simd_width;
       const __m512i *B_live = B0_col; //In order to make the code look as much as possible as the above function
       const __m512i *B_end = B_live + simd_width*8;
 

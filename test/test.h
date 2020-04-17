@@ -38,7 +38,9 @@ template <typename Type>
 void CompareEps(const Type* reference, const Type* actual, Index size, Type epsilon) {
   for (Index i = 0; i < size; ++i) {
     INFO("Inaccurate at " << i << ' ' << reference[i] << ' ' << actual[i]);
-    CHECK(fabs(reference[i] - actual[i]) < epsilon);
+    // Ratio to maximum value.
+    float threshold = epsilon * std::max<float>(0.01f, fabsf(reference[i]));
+    CHECK(fabsf(reference[i] - actual[i]) < threshold);
   }
 }
 
@@ -104,7 +106,7 @@ void Multiply(const TypeA* A, const TypeB* B, TypeC* C, Index A_rows, Index widt
 
 // Matrix rearragement
 template <typename Type>
-void Rearragement(const Type* input, Type* output, int simd, int unroll, Index rows, Index cols) {
+void Rearragement(const Type* input, Type* output, Index simd, Index unroll, Index rows, Index cols) {
   for (Index c = 0; c < cols; c += unroll) {
     for (Index r = 0; r < rows; r += simd) {
       for (Index i = 0; i < unroll; ++i)

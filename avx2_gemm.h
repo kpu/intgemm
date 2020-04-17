@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <stdint.h>
+#include <cstring>
 
 namespace intgemm {
 
@@ -117,7 +118,7 @@ class QuantizeTile8 {
 
     INTGEMM_AVX2 Register ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) const {
       const float* inputs[4];
-      for (int i = 0; i < sizeof(inputs) / sizeof(inputs[0]); ++i) {
+      for (Index i = 0; i < sizeof(inputs) / sizeof(inputs[0]); ++i) {
         while (cols_left < sizeof(Register) / sizeof(float)) {
           input += cols * (row_step - 1);
           cols_left += cols;
@@ -135,7 +136,6 @@ class QuantizeTile8 {
       return Tile(input, input + 2 * cols, input + 16 * cols, input + 18 * cols);
     }
 
-  private:
     INTGEMM_AVX2 inline __m256i Tile(const float *input0, const float *input1, const float *input2, const float *input3) const {
       // Looking at the assembly, gcc has pulled this outside the loops calling this.
       const __m256i neg127 = _mm256_set1_epi8(-127);
@@ -159,6 +159,7 @@ class QuantizeTile8 {
       return _mm256_permutevar8x32_epi32(packed, shuffle_param);
     }
 
+  private:
     //A version that produces uint8_ts
     INTGEMM_AVX2 inline __m256i TileU(const float *input0, const float *input1, const float *input2, const float *input3) const {
       // Looking at the assembly, gcc has pulled this outside the loops calling this.
@@ -191,6 +192,8 @@ class QuantizeTile8 {
 // Technically only requires AVX
 INTGEMM_MAXABSOLUTE(__m256, INTGEMM_AVX2)
 
+INTGEMM_GETQUANTIZERSTD(__m256, INTGEMM_AVX2)
+
 } // namespace
 
 struct AVX2_8bit {
@@ -200,17 +203,10 @@ struct AVX2_8bit {
   INTGEMM_AVX2 static inline void PrepareA(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
     Quantize(input, output, quant_mult, rows * cols);
   }
-
-  // Just quantize everything in order.
-  INTGEMM_AVX2 static void Quantize(const float *input, int8_t *output, float quant_mult, Index size) {
-    assert(size % 32 == 0);
-    assert(reinterpret_cast<uintptr_t>(input) % 32 == 0);
-    avx2::QuantizeTile8 q(quant_mult);
-    const float *end = input + size;
-    for (; input != end; input += 32, output += 32) {
-      *reinterpret_cast<__m256i*>(output) = q.Consecutive(input);
-    }
-  }
+ private:
+  INTGEMM_QUANTIZE_THREAD(INTGEMM_AVX2, __m256i, avx2)
+ public:
+  INTGEMM_QUANTIZE(INTGEMM_AVX2, __m256i, avx2)
 
   // Currently A is prepared by quantization but this could theoretically change.
   INTGEMM_AVX2 static inline void PrepareA(const float *input, uint8_t *output, float quant_mult, Index rows, Index cols) {
@@ -245,7 +241,7 @@ struct AVX2_8bit {
   INTGEMM_MULTIPLY8SHIFT(__m256i, INTGEMM_AVX2, CPUType::AVX2)
 
   INTGEMM_PREPAREBIASFOR8(__m256i, INTGEMM_AVX2, CPUType::AVX2)
-
+  
   constexpr static const char *const kName = "8-bit AVX2";
 
   static const CPUType kUses = CPUType::AVX2;

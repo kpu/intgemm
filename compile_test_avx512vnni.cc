@@ -19,11 +19,13 @@ bool Foo() {
 }
 
 int main() {
-  return Foo() &&
-#ifdef __INTEL_COMPILER
-    _may_i_use_cpu_feature(_FEATURE_AVX512_VNNI)
+  return Foo()
+#if defined(__GNUC__) || defined(__clang__)
+    // uses cpuid
+#elif defined(__INTEL_COMPILER)
+    && _may_i_use_cpu_feature(_FEATURE_AVX512_VNNI)
 #else
-    __builtin_cpu_supports("avx512vnni")
+    && __builtin_cpu_supports("avx512vnni")
 #endif
     ;
 }

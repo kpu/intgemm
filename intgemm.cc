@@ -2,7 +2,7 @@
 
 namespace intgemm {
 
-float Unsupported_MaxAbsolute(const float *begin, const float *end) {
+float Unsupported_MaxAbsolute(const float * /*begin*/, const float * /*end*/) {
   throw UnsupportedCPU();
 }
 
@@ -36,12 +36,20 @@ const CPUType kCPU = ChooseCPU(CPUType::AVX512VNNI, CPUType::AVX512BW, CPUType::
 
 float (*MaxAbsolute)(const float *begin, const float *end) = ChooseCPU(avx512f::MaxAbsolute, avx512f::MaxAbsolute, avx2::MaxAbsolute, sse2::MaxAbsolute, sse2::MaxAbsolute, Unsupported_MaxAbsolute);
 
+MeanStd (*GetQuantizerStd)(const float *begin, const float *end) = ChooseCPU(avx512f::GetQuantizerStd, avx512f::GetQuantizerStd, avx2::GetQuantizerStd, sse2::GetQuantizerStd, sse2::GetQuantizerStd, sse2::GetQuantizerStd);
+
+constexpr const char *const Unsupported_16bit::kName;
+constexpr const char *const Unsupported_8bit::kName;
 constexpr const char *const SSE2_16bit::kName;
 constexpr const char *const SSSE3_8bit::kName;
 constexpr const char *const AVX2_8bit::kName;
 constexpr const char *const AVX2_16bit::kName;
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 constexpr const char *const AVX512_8bit::kName;
-constexpr const char *const AVX512VNNI_8bit::kName;
 constexpr const char *const AVX512_16bit::kName;
+#endif
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
+constexpr const char *const AVX512VNNI_8bit::kName;
+#endif
 
 }

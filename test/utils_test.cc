@@ -41,6 +41,12 @@ struct StaticLoopTest {
   }
 };
 
+TEST_CASE("Static loop (N = 0)",) {
+  Index result = 128;
+  StaticLoop<StaticLoopTest, MakeStaticLoopIterator<0>>(result);
+  CHECK(result == 128);
+}
+
 TEST_CASE("Static loop (N = 1)",) {
   Index result = 128;
   StaticLoop<StaticLoopTest, MakeStaticLoopIterator<1>>(result);

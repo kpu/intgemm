@@ -21,7 +21,7 @@ void kernel_quantize_test() {
   auto quant_mult = set1_ps<input_vec_t>(2.f);
 
   *output.template as<output_vec_t>() = kernels::quantize(*input.template as<input_vec_t>(), quant_mult);
-  for (auto i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == int(i*2.f));
 }
 
@@ -31,7 +31,7 @@ KERNEL_TEST_CASE("quantize SSE2") { return kernel_quantize_test<CPUType::SSE2>()
 template INTGEMM_AVX2 void kernel_quantize_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("quantize AVX2") { return kernel_quantize_test<CPUType::AVX2>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_quantize_test<CPUType::AVX512BW>();
 KERNEL_TEST_CASE("quantize AVX512BW") { return kernel_quantize_test<CPUType::AVX512BW>(); }
 #endif

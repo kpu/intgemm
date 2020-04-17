@@ -20,14 +20,14 @@ void kernel_tanh_test() {
   std::generate(input.begin(), input.end(), [] () { static int n = -int(VECTOR_LENGTH / 2); return n++ / float(VECTOR_LENGTH / 2); });
 
   *output.template as<vec_t>() = kernels::tanh(*input.template as<vec_t>());
-  for (auto i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK_EPS(output[i], tanh(input[i]), 0.001f);
 }
 
 template INTGEMM_AVX2 void kernel_tanh_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("tanh AVX2") { return kernel_tanh_test<CPUType::AVX2>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_tanh_test<CPUType::AVX512BW>();
 KERNEL_TEST_CASE("tanh AVX512BW") { return kernel_tanh_test<CPUType::AVX512BW>(); }
 #endif

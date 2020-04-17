@@ -3,6 +3,7 @@
 #include "intgemm_config.h"
 #include "types.h"
 
+#include <tmmintrin.h>
 #include <emmintrin.h>
 #include <immintrin.h>
 #include <xmmintrin.h>
@@ -381,7 +382,7 @@ INTGEMM_AVX2 static inline __m256i xor_si(__m256i a, __m256i b) {
  * AVX512
  *
  */
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 
 INTGEMM_AVX512BW static inline __m512i abs_epi8(__m512i arg) {
   return _mm512_abs_epi8(arg);

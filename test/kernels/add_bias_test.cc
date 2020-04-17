@@ -22,7 +22,7 @@ void kernel_add_bias_test() {
   std::fill(bias.begin(), bias.end(), 100);
 
   *output.template as<vec_t>() = kernels::add_bias(*input.template as<vec_t>(), bias.begin(), 0);
-  for (auto i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == ElemType_(100 + i));
 }
 
@@ -48,7 +48,7 @@ KERNEL_TEST_CASE("add_bias/int AVX2") { return kernel_add_bias_test<CPUType::AVX
 KERNEL_TEST_CASE("add_bias/float AVX2") { return kernel_add_bias_test<CPUType::AVX2, float>(); }
 KERNEL_TEST_CASE("add_bias/double AVX2") { return kernel_add_bias_test<CPUType::AVX2, double>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_add_bias_test<CPUType::AVX512BW, int8_t>();
 template INTGEMM_AVX512BW void kernel_add_bias_test<CPUType::AVX512BW, int16_t>();
 template INTGEMM_AVX512BW void kernel_add_bias_test<CPUType::AVX512BW, int>();

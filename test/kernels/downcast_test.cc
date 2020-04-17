@@ -22,7 +22,7 @@ void kernel_downcast32to8_test() {
   *output.template as<vi>() = kernels::downcast32to8(
     input.template as<vi>()[0], input.template as<vi>()[1],
     input.template as<vi>()[2], input.template as<vi>()[3]);
-  for (int i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == int8_t(input[i]));
 }
 
@@ -32,7 +32,7 @@ KERNEL_TEST_CASE("downcast32to8 SSE2") { return kernel_downcast32to8_test<CPUTyp
 template INTGEMM_AVX2 void kernel_downcast32to8_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("downcast32to8 AVX2") { return kernel_downcast32to8_test<CPUType::AVX2>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_downcast32to8_test<CPUType::AVX512BW>();
 KERNEL_TEST_CASE("downcast32to8 AVX512BW") { return kernel_downcast32to8_test<CPUType::AVX512BW>(); }
 #endif
@@ -52,7 +52,7 @@ void kernel_downcast32to16_test() {
 
   *output.template as<vi>() = kernels::downcast32to16(
     input.template as<vi>()[0], input.template as<vi>()[1]);
-  for (int i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == int16_t(input[i]));
 }
 
@@ -62,7 +62,7 @@ KERNEL_TEST_CASE("downcast32to16 SSE2") { return kernel_downcast32to16_test<CPUT
 template INTGEMM_AVX2 void kernel_downcast32to16_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("downcast32to16 AVX2") { return kernel_downcast32to16_test<CPUType::AVX2>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_downcast32to16_test<CPUType::AVX512BW>();
 KERNEL_TEST_CASE("downcast32to16 AVX512BW") { return kernel_downcast32to16_test<CPUType::AVX512BW>(); }
 #endif
@@ -82,7 +82,7 @@ void kernel_downcast16to8_test() {
 
   *output.template as<vi>() = kernels::downcast16to8(
     input.template as<vi>()[0], input.template as<vi>()[1]);
-  for (int i = 0; i < output.size(); ++i)
+  for (std::size_t i = 0; i < output.size(); ++i)
     CHECK(output[i] == int8_t(input[i]));
 }
 
@@ -92,7 +92,7 @@ KERNEL_TEST_CASE("downcast16to8 SSE2") { return kernel_downcast16to8_test<CPUTyp
 template INTGEMM_AVX2 void kernel_downcast16to8_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("downcast16to8 AVX2") { return kernel_downcast16to8_test<CPUType::AVX2>(); }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_downcast16to8_test<CPUType::AVX512BW>();
 KERNEL_TEST_CASE("downcast16to8 AVX512BW") { return kernel_downcast16to8_test<CPUType::AVX512BW>(); }
 #endif

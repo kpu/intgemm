@@ -51,7 +51,7 @@
 #include "avx512_gemm.h"
 #include "avx512vnni_gemm.h"
 
-#if defined(__GNUC__) && defined(INTGEMM_COMPILER_SUPPORTS_AVX512)
+#if defined(__GNUC__) || defined(__clang__)
 #include "cpuid.h"
 #endif
 
@@ -118,15 +118,19 @@ struct Unsupported_8bit {
   static void Multiply8Shift(const uint8_t *, const int8_t *, Index, Index, Index, Callback) {
     throw UnsupportedCPU();
   }
+
   constexpr static const char *const kName = "8-bit Unsupported";
 };
 
-#ifndef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifndef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 // These won't ever be called in this capacity, but it does let the code below compile.
 typedef Unsupported_16bit AVX512_16bit;
 typedef Unsupported_8bit AVX512_8bit;
 namespace avx512f {
-static inline float MaxAbsolute(const float *begin, const float *end) {
+static inline float MaxAbsolute(const float * /*begin*/, const float * /*end*/) {
+  throw UnsupportedCPU();
+}
+static inline MeanStd MaxAbsolute(const float * /*begin*/, const float * /*end*/) {
   throw UnsupportedCPU();
 }
 } //namespace
@@ -137,57 +141,76 @@ static inline float MaxAbsolute(const float *begin, const float *end) {
 typedef Unsupported_8bit AVX512VNNI_8bit;
 #endif
 
-
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
-// gcc 5.4.0 bizarrely supports avx512bw targets but not __builtin_cpu_supports("avx512bw").  So implement it manually.
-inline bool CheckAVX512BW() {
-  __builtin_cpu_init ();
-#ifdef __INTEL_COMPILER
-  return _may_i_use_cpu_feature(_FEATURE_AVX512BW)
-#elif __GNUC__
-  unsigned int m = __get_cpuid_max(0, NULL);
-  if (m < 7) return false;
-  unsigned int eax, ebx, ecx, edx;
-  __cpuid_count(7, 0, eax, ebx, ecx, edx);
-  const unsigned int avx512bw_bit = (1 << 30);
-  return ebx & avx512bw_bit;
-#else
-  return __builtin_cpu_supports("avx512bw");
-#endif
-}
-#endif
-
 /* Returns:
  * axx512vnni if the CPU supports AVX512VNNI
  *
  * avx512bw if the CPU supports AVX512BW
  *
  * avx2 if the CPU supports AVX2
- * 
+ *
  * ssse3 if the CPU supports SSSE3 (this distinction from SSE2 matters for 8-bit)
- * 
+ *
  * sse2 if the CPU supports SSE2
  *
  * unsupported otherwise
  */
-template <class T> T ChooseCPU(T avx512vnni, T avx512bw, T avx2, T ssse3, T sse2, T unsupported) {
-  __builtin_cpu_init ();
+template <class T> T ChooseCPU(T
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
+    avx512vnni
+#endif
+    , T 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
+    avx512bw
+#endif
+    , T avx2, T ssse3, T sse2, T unsupported) {
+  /* If intgemm is compiled by gcc 6.4.1 then dlopened into an executable
+   * compiled by gcc 7.3.0, there will be a undefined symbol __cpu_info.
+   * Work around this by calling the intrinsics more directly instead of
+   * __builtin_cpu_supports.
+   *
+   * clang 6.0.0-1ubuntu2 supports vnni but doesn't have
+   *   __builtin_cpu_supports("avx512vnni")
+   * so use the hand-coded CPUID for clang.
+   */
+#if defined(__GNUC__) || defined(__clang__)
+  unsigned int m = __get_cpuid_max(0, NULL);
+  unsigned int eax, ebx, ecx, edx;
+  if (m >= 7) {
+    __cpuid_count(7, 0, eax, ebx, ecx, edx);
+#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
+    if (ecx & (1 << 11)) return avx512vnni;
+#  endif
+#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
+    if (ebx & (1 << 30)) return avx512bw;
+#  endif
+    if (ebx & (1 << 5)) return avx2;
+  }
+  if (m >= 1) {
+    __cpuid_count(1, 0, eax, ebx, ecx, edx);
+    if (ecx & (1 << 9)) return ssse3;
+    if (edx & (1 << 26)) return sse2;
+  }
+  return unsupported;
+#else // not gcc or clang.
+  __builtin_cpu_init();
+#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
   if (
-#ifdef __INTEL_COMPILER
+#    ifdef __INTEL_COMPILER
       _may_i_use_cpu_feature(_FEATURE_AVX512_VNNI)
-#else
+#    else
       __builtin_cpu_supports("avx512vnni")
-#endif
-      ) {
-    return avx512vnni;
-  }
-#endif
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
-  if (CheckAVX512BW()) {
-    return avx512bw;
-  }
-#endif
+#    endif
+      ) return vnni;
+#  endif
+#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
+  if (
+#    ifdef __INTEL_COMPILER
+      _may_i_use_cpu_feature(_FEATURE_AVX512BW)
+#    else
+      __builtin_cpu_supports("avx512bw")
+#    endif
+      ) return avx512bw;
+#  endif
   if (__builtin_cpu_supports("avx2")) {
     return avx2;
   } else if (__builtin_cpu_supports("ssse3")) {
@@ -197,6 +220,7 @@ template <class T> T ChooseCPU(T avx512vnni, T avx512bw, T avx2, T ssse3, T sse2
   } else {
     return unsupported;
   }
+#endif
 }
 
 struct TileInfo {
@@ -274,7 +298,7 @@ struct Int8 {
   static void MultiplyCustomTile(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
     MultiplyImpl<TileRows, TileColumnsMultiplier, Callback>::run(A, B, A_rows, width, B_cols, callback);
   }
-  
+
   static const char *const kName;
 
 private:
@@ -291,15 +315,21 @@ private:
 
 template <Index TileColumnsMultiplier>
 void (*Int8::PrepareBImpl<TileColumnsMultiplier>::run)(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) = ChooseCPU(
-  AVX512VNNI_8bit::PrepareB<TileColumnsMultiplier>, AVX512_8bit::PrepareB<TileColumnsMultiplier>,
-  AVX2_8bit::PrepareB<TileColumnsMultiplier>, SSSE3_8bit::PrepareB<TileColumnsMultiplier>,
-  SSSE3_8bit::PrepareB<TileColumnsMultiplier>, Unsupported_8bit::PrepareB<TileColumnsMultiplier>);
+  AVX512VNNI_8bit::PrepareB<TileColumnsMultiplier>,
+  AVX512_8bit::PrepareB<TileColumnsMultiplier>,
+  AVX2_8bit::PrepareB<TileColumnsMultiplier>,
+  SSSE3_8bit::PrepareB<TileColumnsMultiplier>,
+  SSSE3_8bit::PrepareB<TileColumnsMultiplier>,
+  Unsupported_8bit::PrepareB<TileColumnsMultiplier>);
 
 template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
 void (*Int8::MultiplyImpl<TileRows, TileColumnsMultiplier, Callback>::run)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(
-  AVX512VNNI_8bit::Multiply<TileRows, TileColumnsMultiplier, Callback>, AVX512_8bit::Multiply<TileRows, TileColumnsMultiplier, Callback>,
-  AVX2_8bit::Multiply<TileRows, TileColumnsMultiplier, Callback>, SSSE3_8bit::Multiply<TileRows, TileColumnsMultiplier, Callback>,
-  SSSE3_8bit::Multiply<TileRows, TileColumnsMultiplier, Callback>, Unsupported_8bit::Multiply<TileRows, TileColumnsMultiplier, Callback>);
+  OMPParallelWrap<TileRows, TileColumnsMultiplier, AVX512VNNI_8bit, Callback>,
+  OMPParallelWrap<TileRows, TileColumnsMultiplier, AVX512_8bit, Callback>,
+  OMPParallelWrap<TileRows, TileColumnsMultiplier, AVX2_8bit, Callback>,
+  OMPParallelWrap<TileRows, TileColumnsMultiplier, SSSE3_8bit, Callback>,
+  Unsupported_8bit::Multiply<TileRows, TileColumnsMultiplier, Callback>,
+  Unsupported_8bit::Multiply<TileRows, TileColumnsMultiplier, Callback>);
 
 /*
  * 8-bit matrix multiplication with shifting A by 127
@@ -381,11 +411,14 @@ private:
   };
 };
 
-template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
+template <Index TileRows, Index TileColumnsMultiplier, class Callback>
 void (*Int8Shift::MultiplyImpl<TileRows, TileColumnsMultiplier, Callback>::run)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(
-  AVX512VNNI_8bit::Multiply8Shift<TileRows, TileColumnsMultiplier, Callback>, AVX512_8bit::Multiply8Shift<TileRows, TileColumnsMultiplier, Callback>,
-  AVX2_8bit::Multiply8Shift<TileRows, TileColumnsMultiplier, Callback>, SSSE3_8bit::Multiply8Shift<TileRows, TileColumnsMultiplier, Callback>,
-  SSSE3_8bit::Multiply8Shift<TileRows, TileColumnsMultiplier, Callback>, Unsupported_8bit::Multiply8Shift<TileRows, TileColumnsMultiplier, Callback>);
+    OMPParallelWrap8Shift<TileRows, TileColumnsMultiplier, AVX512VNNI_8bit, Callback>,
+    OMPParallelWrap8Shift<TileRows, TileColumnsMultiplier, AVX512_8bit, Callback>,
+    OMPParallelWrap8Shift<TileRows, TileColumnsMultiplier, AVX2_8bit, Callback>,
+    OMPParallelWrap8Shift<TileRows, TileColumnsMultiplier, SSSE3_8bit, Callback>, 
+    Unsupported_8bit::Multiply8Shift<TileRows, TileColumnsMultiplier, Callback>,
+    Unsupported_8bit::Multiply8Shift<TileRows, TileColumnsMultiplier, Callback>);
 
 template <class Callback>
 void (*Int8Shift::PrepareBiasImpl<Callback>::run)(const int8_t *B, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512VNNI_8bit::PrepareBias<Callback>, AVX512_8bit::PrepareBias<Callback>, AVX2_8bit::PrepareBias<Callback>, SSSE3_8bit::PrepareBias<Callback>, SSSE3_8bit::PrepareBias<Callback>, Unsupported_8bit::PrepareBias);
@@ -478,14 +511,20 @@ void (*Int16::PrepareBImpl<TileColumnsMultiplier>::run)(const float *input, int1
 
 template <Index TileRows, Index TileColumnsMultiplier, typename Callback>
 void (*Int16::MultiplyImpl<TileRows, TileColumnsMultiplier, Callback>::run)(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(
-  AVX512_16bit::Multiply<TileRows, TileColumnsMultiplier, Callback> /*TODO VNNI 16-bit. */, AVX512_16bit::Multiply<TileRows, TileColumnsMultiplier, Callback>,
-  AVX2_16bit::Multiply<TileRows, TileColumnsMultiplier, Callback>, SSE2_16bit::Multiply<TileRows, TileColumnsMultiplier, Callback>,
-  SSE2_16bit::Multiply<TileRows, TileColumnsMultiplier, Callback>, Unsupported_16bit::Multiply<TileRows, TileColumnsMultiplier, Callback>);
+  OMPParallelWrap<TileRows, TileColumnsMultiplier, AVX512_16bit, Callback> /*TODO VNNI 16-bit. */, 
+  OMPParallelWrap<TileRows, TileColumnsMultiplier, AVX512_16bit, Callback>, 
+  OMPParallelWrap<TileRows, TileColumnsMultiplier, AVX2_16bit, Callback>, 
+  OMPParallelWrap<TileRows, TileColumnsMultiplier, SSE2_16bit, Callback>, 
+  OMPParallelWrap<TileRows, TileColumnsMultiplier, SSE2_16bit, Callback>, 
+  Unsupported_16bit::Multiply<TileRows, TileColumnsMultiplier,Callback>);
 
 extern const CPUType kCPU;
 
 // Get the maximum absolute value of an array of floats. The number of floats must be a multiple of 16 and 64-byte aligned.
 extern float (*MaxAbsolute)(const float *begin, const float *end);
+
+// Get a Quantization value that is equant to the mean of the data +N standard deviations. Use 2 by default
+extern MeanStd (*GetQuantizerStd)(const float *begin, const float *end);
 
 
 } // namespace intgemm

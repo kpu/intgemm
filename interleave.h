@@ -29,14 +29,7 @@ INTGEMM_INTERLEAVE_N(target, type, 64)
 
 INTGEMM_INTERLEAVE(INTGEMM_SSE2, __m128i)
 INTGEMM_INTERLEAVE(INTGEMM_AVX2, __m256i)
-
-INTGEMM_AVX2 static inline void Interleave128(__m256i& first, __m256i& second) {
-  auto temp = _mm256_permute2f128_si256(first, second, 0x20);
-  second = _mm256_permute2f128_si256(first, second, 0x31);
-  first = temp;
-}
-
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 INTGEMM_INTERLEAVE(INTGEMM_AVX512BW, __m512i)
 #endif
 
@@ -52,7 +45,7 @@ target static inline void Swap(Register &a, Register &b) { \
 
 INTGEMM_SWAP(INTGEMM_SSE2, __m128i)
 INTGEMM_SWAP(INTGEMM_AVX2, __m256i)
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_SWAP(INTGEMM_AVX512BW, __m512i)
 #endif
@@ -105,7 +98,7 @@ target static inline void Transpose16InLane(Register &r0, Register &r1, Register
 
 INTGEMM_TRANSPOSE16(INTGEMM_SSE2, __m128i)
 INTGEMM_TRANSPOSE16(INTGEMM_AVX2, __m256i)
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_TRANSPOSE16(INTGEMM_AVX512BW, __m512i)
 #endif
@@ -302,10 +295,9 @@ target static inline void PrepareBQuantizedTransposed(const Integer* input, Inte
 target static inline void PrepareBTransposed(const float* input, Integer* output, float quant_mult, Index cols, Index rows) { \
   using Register = typename Quantizer::Register; \
   const Index RegisterElemsInt = sizeof(Register) / sizeof(Integer); \
-  const Index RegisterElemsFloat = sizeof(Register) / sizeof(float); \
   const Index kColStride = 8; \
   \
-  assert(cols % RegisterElemsFloat == 0); \
+  assert(cols % (sizeof(Register) / sizeof(float)) == 0); \
   assert(rows % kColStride == 0); \
   assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0); \
   assert(reinterpret_cast<uintptr_t>(output) % sizeof(Register) == 0); \

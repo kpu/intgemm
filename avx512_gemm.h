@@ -2,7 +2,7 @@
 
 #include "intgemm_config.h"
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 
 #include "interleave.h"
 #include "kernels.h"
@@ -108,7 +108,7 @@ class QuantizeTile8 {
       static const __m512i shuffle_param = _mm512_set_epi32(15, 11, 7, 3, 14, 10, 6, 2, 13, 9, 5, 1, 12, 8, 4, 0);
 
       const float* inputs[4];
-      for (int i = 0; i < sizeof(inputs) / sizeof(inputs[0]); ++i) {
+      for (Index i = 0; i < sizeof(inputs) / sizeof(inputs[0]); ++i) {
         while (cols_left < sizeof(Register) / sizeof(float)) {
           input += cols * (row_step - 1);
           cols_left += cols;
@@ -158,6 +158,8 @@ class QuantizeTile8 {
 
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_MAXABSOLUTE(__m512, INTGEMM_AVX512BW)
+
+INTGEMM_GETQUANTIZERSTD(__m512, INTGEMM_AVX512BW)
 
 } // namespace
 
@@ -224,22 +226,51 @@ struct AVX512_8bit {
     Quantize(input, output, quant_mult, rows * cols);
   }
 
+ private:
+  /* g++ (Ubuntu 7.4.0-1ubuntu1~18.04.1) 7.4.0 does not carry target attributes
+   * to the hidden function it creates in implementing #pragma omp parallel for.
+   * So intrinstics were not working inside the for loop when compiled with
+   * OMP. Also, passing register types across #pragma omp parallel for
+   * generated an internal compiler error.
+   * The problem does not occur in g++-8 (Ubuntu 8.3.0-6ubuntu1~18.04.1) 8.3.0.
+   * As a workaround, I split into #pragma omp parallel with boring types
+   * passed across the boundary then call this function with target attributes.
+   */
+  INTGEMM_AVX512BW static void QuantizeThread(const float *input, int8_t *output, float quant_mult, std::size_t count) {
+    const __m512i neg127 = _mm512_set1_epi32(-127);
+    const __m512 quant_mult_reg = _mm512_set1_ps(quant_mult);
+    const std::size_t kBatch = sizeof(__m512i) / sizeof(float);
+#pragma omp for
+    for (std::size_t i = 0; i < count; i += kBatch) {
+      __m512i asint = avx512f::QuantizerGrab(input + i, quant_mult_reg);
+      asint = _mm512_max_epi32(asint, neg127);
+      // There doesn't seem to be an unmasked version.
+      _mm512_mask_cvtsepi32_storeu_epi8(output + i, 0xffff, asint);
+    }
+  }
+
+ public:
   // Technically output can be unaligned in Quantize.
   // But then it will need to be aligned for Multiply.
   // Convert to 8-bit signed integers.
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
   INTGEMM_AVX512BW static void Quantize(const float *input, int8_t *output, float quant_mult, Index size) {
-    assert(size % 16 == 0);
-    assert(reinterpret_cast<uintptr_t>(input) % 64 == 0);
+    assert(reinterpret_cast<uintptr_t>(input) % sizeof(__m512i) == 0);
+    const std::size_t kBatch = sizeof(__m512i) / sizeof(float);
+    std::size_t fast_size = (size & ~(kBatch - 1));
+    const float *fast_input_end = input + fast_size;
+    int8_t *fast_output_end = output + fast_size;
+#pragma omp parallel
+    {
+      QuantizeThread(input, output, quant_mult, fast_size);
+    }
+    std::size_t overhang = size & (kBatch - 1);
+    if (!overhang) return; // We needed a branch anyway for the empty case.
     const __m512i neg127 = _mm512_set1_epi32(-127);
     const __m512 quant_mult_reg = _mm512_set1_ps(quant_mult);
-    const float *end = input + size;
-    for (; input < end; input += 16, output += 16) {
-      __m512i asint = avx512f::QuantizerGrab(input, quant_mult_reg);
-      asint = _mm512_max_epi32(asint, neg127);
-      // There doesn't seem to be an unmasked version.
-      _mm512_mask_cvtsepi32_storeu_epi8(output, 0xffff, asint);
-    }
+    __m512i asint = avx512f::QuantizerGrab(fast_input_end, quant_mult_reg);
+    asint = _mm512_max_epi32(asint, neg127);
+    _mm512_mask_cvtsepi32_storeu_epi8(fast_output_end, (1 << overhang) - 1, asint);
   }
 
   // Preparing A for the signed/unsigned multiplication. Using add 127
@@ -256,18 +287,16 @@ struct AVX512_8bit {
   INTGEMM_AVX512BW static void QuantizeU(const float *input, uint8_t *output, float quant_mult, Index size) {
     assert(size % 16 == 0);
     assert(reinterpret_cast<uintptr_t>(input) % 64 == 0);
-    const __m512i neg127 = _mm512_set1_epi32(-127);
-    const __m128i pos127 = _mm_set1_epi8(127);
+    const __m512i pos127 = _mm512_set1_epi32(127);
+    const __m512i zero = _mm512_setzero_si512();
     const __m512 quant_mult_reg = _mm512_set1_ps(quant_mult);
     const float *end = input + size;
     for (; input < end; input += 16, output += 16) {
       __m512i asint = avx512f::QuantizerGrab(input, quant_mult_reg);
-      asint = _mm512_max_epi32(asint, neg127);
-
-      //First convert to 8 bit then add and finally store,
-      //because _mm512_mask_cvtsepi32_storeu_epi8 saturates to signed
-      __m128i as8bit = _mm512_cvtsepi32_epi8(asint);
-      *reinterpret_cast<__m128i*>(output) = _mm_add_epi8(as8bit, pos127);
+      asint = _mm512_min_epi32(asint, pos127);
+      asint = _mm512_add_epi32(asint, pos127);
+      asint = _mm512_max_epi32(asint, zero);
+      _mm512_mask_cvtusepi32_storeu_epi8(output, 0xffff, asint);
     }
   }
 
@@ -301,12 +330,13 @@ struct AVX512_8bit {
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0);
     // There's 8 results for INTGEMM_AVX2 to handle.
     auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
-    const int simd_width = width / sizeof(Register);
-    const Register *B0_col = reinterpret_cast<const Register*>(B);
+    const Index simd_width = width / sizeof(Register);
     // Added for AVX512.
     Register zeros = setzero_si<Register>();
     // Go over 8 columns of B at a time.
-    for (Index B0_colidx = 0; B0_colidx != B_cols; B0_col += 8 * simd_width, B0_colidx += 8) {
+#pragma omp for
+    for (Index B0_colidx = 0; B0_colidx < B_cols; B0_colidx += 8) {
+      const Register *B0_col = reinterpret_cast<const Register*>(B) + B0_colidx * simd_width;
       // Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.
       for (Index A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) {
         // Iterate over shared (inner) dimension.

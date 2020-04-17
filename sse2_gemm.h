@@ -53,6 +53,8 @@ class QuantizeTile16 {
 
 INTGEMM_MAXABSOLUTE(__m128, INTGEMM_SSE2)
 
+INTGEMM_GETQUANTIZERSTD(__m128, INTGEMM_SSE2)
+
 } //namespace
 // This should be pure INTGEMM_SSE2 (and below).
 struct SSE2_16bit {

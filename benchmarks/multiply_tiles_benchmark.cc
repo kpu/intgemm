@@ -76,7 +76,7 @@ int main(int argc, char** argv) {
   std::vector<std::string> selected_archs;
   for (int i = 2; i < argc; ++i) {
     bool found = false;
-    for (int j = 0; j < sizeof(available_archs) / sizeof(available_archs[0]) && !found; ++j) {
+    for (std::size_t j = 0; j < sizeof(available_archs) / sizeof(available_archs[0]) && !found; ++j) {
       if (available_archs[j].compare(argv[i]) == 0) {
         selected_archs.push_back(argv[i]);
         found = true;
@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
 #define ARCH_BENCHMARK_IMPL(arch, A_rows, width, B_cols) \
   if (selected_archs[i].compare(#arch) == 0) { StaticLoop<BenchmarkLoop<arch>, MakeStaticLoopIterator<TestCasesN>>((A_rows), (width), (B_cols), repeats); }
 
-  for (int i  = 0; i < selected_archs.size(); ++i) {
+  for (std::size_t i  = 0; i < selected_archs.size(); ++i) {
     ARCH_BENCHMARK_IMPL(SSSE3_8bit, 768, 768, 768)
     ARCH_BENCHMARK_IMPL(SSE2_16bit, 768, 768, 768)
     ARCH_BENCHMARK_IMPL(AVX2_8bit, 768, 768, 768)

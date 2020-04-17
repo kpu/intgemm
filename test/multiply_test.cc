@@ -31,7 +31,7 @@ INTGEMM_SSE2 TEST_CASE("Transpose 16", "[transpose]") {
   __m128i *t = input.as<__m128i>();
   Transpose16InLane(t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7]);
 
-  for (int16_t i = 0; i < input.size(); ++i) {
+  for (std::size_t i = 0; i < input.size(); ++i) {
   	CHECK_MESSAGE(ref[i] == input[i], "16-bit transpose failure at: " << i << ": " << ref[i] << " != " << input[i]);
   }
 }
@@ -49,7 +49,7 @@ INTGEMM_SSSE3 TEST_CASE("Transpose 8", "[transpose]") {
   __m128i *t = input.as<__m128i>();
   Transpose8InLane(t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7], t[8], t[9], t[10], t[11], t[12], t[13], t[14], t[15]);
 
-  for (int i = 0; i < input.size(); ++i) {
+  for (std::size_t i = 0; i < input.size(); ++i) {
     CHECK_MESSAGE(ref[i] == input[i], "8-bit transpose failure at " << i << ": " << (int16_t)ref[i] << " != " << (int16_t)input[i]);
   }
 }
@@ -82,7 +82,7 @@ template <class Routine> void TestPrepare(Index rows = 32, Index cols = 16) {
 
 TEST_CASE("Prepare AVX512", "[prepare]") {
   if (kCPU < CPUType::AVX512BW) return;
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 	TestPrepare<AVX512_8bit>(64, 8);
 	TestPrepare<AVX512_8bit>(256, 32);
     TestPrepare<AVX512_16bit>(64, 8);
@@ -121,7 +121,7 @@ template <class Routine> void TestSelectColumnsB(Index rows = 64, Index cols = 1
   AlignedVector<Integer> prepared(input.size());
   Routine::template PrepareB<1>(input.begin(), prepared.begin(), 1, rows, cols);
 
-  int kSelectCols = 24;
+  const int kSelectCols = 24;
   Index select_cols[kSelectCols];
   std::uniform_int_distribution<Index> col_dist(0, cols - 1);
   for (auto& it : select_cols) {
@@ -147,7 +147,7 @@ template <class Routine> void TestSelectColumnsB(Index rows = 64, Index cols = 1
 
 TEST_CASE("SelectColumnsB AVX512", "[select]") {
   if (kCPU < CPUType::AVX512BW) return;
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
     TestSelectColumnsB<AVX512_8bit>();
     TestSelectColumnsB<AVX512_16bit>(256, 256);
 #endif
@@ -194,18 +194,20 @@ void CompareMaxAbs(const float *begin, const float *end, float test) {
 template <float (*Backend) (const float *, const float *)> void TestMaxAbsolute() {
   std::mt19937 gen;
   std::uniform_real_distribution<float> dist(-8.0, 8.0);
-  AlignedVector<float> test(64);
-  // 64 tries.
-  for (int t = 0; t < 64; ++t) {
-    // Fill with [-8, 8).
-    for (auto& it : test) {
-      it = dist(gen);
+  const std::size_t kLengthMax = 65;
+  AlignedVector<float> test(kLengthMax);
+  for (std::size_t len = 1; len < kLengthMax; ++len) {
+    for (std::size_t t = 0; t < len; ++t) {
+      // Fill with [-8, 8).
+      for (auto& it : test) {
+        it = dist(gen);
+      }
+      CompareMaxAbs(test.begin(), test.begin() + len, Backend(test.begin(), test.begin() + len));
+      test[t] = -32.0;
+      CompareMaxAbs(test.begin(), test.begin() + len, Backend(test.begin(), test.begin() + len));
+      test[t] = 32.0;
+      CompareMaxAbs(test.begin(), test.begin() + len, Backend(test.begin(), test.begin() + len));
     }
-    CompareMaxAbs(test.begin(), test.end(), Backend(test.begin(), test.end()));
-    test[t] = -32.0;
-    CompareMaxAbs(test.begin(), test.end(), Backend(test.begin(), test.end()));
-    test[t] = 32.0;
-    CompareMaxAbs(test.begin(), test.end(), Backend(test.begin(), test.end()));
   }
 }
 
@@ -221,7 +223,7 @@ TEST_CASE("MaxAbsolute AVX2", "[max]") {
 
 TEST_CASE("MaxAbsolute AVX512F", "[max]") {
   if (kCPU < CPUType::AVX512BW) return;
-  #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+  #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
   TestMaxAbsolute<avx512f::MaxAbsolute>();
   #endif
 }
@@ -266,7 +268,7 @@ template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_co
   for (auto& it : B) {
     it = dist(gen);
   }
-  
+
   float quant_mult = (sizeof(Integer) == 2) ? 1024 : 64;
   float unquant_mult = 1.0/(quant_mult*quant_mult);
 
@@ -276,7 +278,7 @@ template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_co
   Routine::template PrepareB<1>(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
 
   AlignedVector<float> test_C(A_rows * B_cols);
-  Routine::template Multiply<1, 1>(A_prep.begin(), B_prep.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndWrite(unquant_mult, test_C.begin()));
+  OMPParallelWrap<1, 1, Routine>(A_prep.begin(), B_prep.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndWrite(unquant_mult, test_C.begin()));
   // Routine::template Multiply<1, 1>(A_prep.begin(), B_prep.begin(), A_rows, width, B_cols, callbacks::Sequence(
   //   callbacks::Unquantize(unquant_mult),
   //   callbacks::Write<float>(test_C.begin())
@@ -286,12 +288,12 @@ template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_co
   Routine::Quantize(B.begin(), B_quant.begin(), quant_mult, B.size());
   AlignedVector<float> slowint_C(test_C.size());
   // Assuming A is just quantization here.
-  references::Multiply(A_prep.begin(), B_quant.begin(), slowint_C.begin(), A_rows, width, B_cols, [&](int32_t sum, const callbacks::OutputBufferInfo& info) {
+  references::Multiply(A_prep.begin(), B_quant.begin(), slowint_C.begin(), A_rows, width, B_cols, [&](int32_t sum, const callbacks::OutputBufferInfo&) {
     return sum * unquant_mult;
   });
 
   AlignedVector<float> float_C(test_C.size());
-  references::Multiply(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols, [&](float sum, const callbacks::OutputBufferInfo& info) {
+  references::Multiply(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols, [&](float sum, const callbacks::OutputBufferInfo&) {
     return sum;
   });
 
@@ -432,7 +434,7 @@ TEST_CASE ("Multiply AVX2 16bit with bias", "[biased_multiply]") {
   TestMultiplyBias<AVX2_16bit>(200, 256, 256, .1, 1, 0.01);
 }
 
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
   TEST_CASE ("Multiply AVX512 8bit", "[multiply]") {
     if (kCPU < CPUType::AVX512BW) return;
     TestMultiply<AVX512_8bit>(8, 256, 256, 0, 0.25, 0.062);

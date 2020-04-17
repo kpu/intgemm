@@ -54,7 +54,7 @@ bool Test(Index A_rows, Index width, Index B_cols, float quant_mult) {
   Backend::template Multiply<TileRows, TileColumnsMultiplier>(A_quantized.begin(), B_prepared.begin(), A_rows, width, B_cols, callbacks::Write<int32_t>(output.begin()));
 
   references::Quantize(B.begin(), B_quantized.begin(), quant_mult, B_quantized.size());
-  references::Multiply(A_quantized.begin(), B_quantized.begin(), reference.begin(), A_rows, width, B_cols, [&](int32_t sum, const callbacks::OutputBufferInfo& info) {
+  references::Multiply(A_quantized.begin(), B_quantized.begin(), reference.begin(), A_rows, width, B_cols, [&](int32_t sum, const callbacks::OutputBufferInfo&) {
     return sum;
   });
 
@@ -81,7 +81,7 @@ bool TestShift(Index A_rows, Index width, Index B_cols, float quant_mult) {
   Backend::template Multiply8Shift<TileRows, TileColumnsMultiplier>(A_quantized.begin(), B_prepared.begin(), A_rows, width, B_cols, callbacks::Write<int32_t>(output.begin()));
 
   references::Quantize(B.begin(), B_quantized.begin(), quant_mult, B_quantized.size());
-  references::Multiply(A_quantized.begin(), B_quantized.begin(), reference.begin(), A_rows, width, B_cols, [&](int32_t sum, const callbacks::OutputBufferInfo& info) {
+  references::Multiply(A_quantized.begin(), B_quantized.begin(), reference.begin(), A_rows, width, B_cols, [&](int32_t sum, const callbacks::OutputBufferInfo&) {
     return sum;
   });
 
