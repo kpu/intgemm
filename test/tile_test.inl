@@ -225,6 +225,7 @@ TEST_CASE("MultiplyNoOverhang Tiled Signed8 " INTGEMM_TEST_NAME, "[tile]") {
   TestMultiplyNoOverhangShapes<InnerTile<3, Signed8> >();
   TestMultiplyNoOverhangShapes<MatrixTile<3, 3, Signed8> >();
   TestMultiplyNoOverhangShapes<InnerTile<2, MatrixTile<3, 3, Signed8> > >();
+  TestMultiplyNoOverhangShapes<MatrixTile<4, 4, InnerTile<3, Signed8> > >();
 }
 
 #endif
