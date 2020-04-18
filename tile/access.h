@@ -20,6 +20,19 @@ template <class T> class RowMajorAccess {
     const Content &Front() const { return *data_; }
     Content &Front() { return *data_; }
 
+    // TODO: SLOW.  This is here for testing.
+    template <Index A_rows, Index B_cols> void Write(const __m128i *from) { Write<A_rows, B_cols>(reinterpret_cast<const T*>(from)); }
+    template <Index A_rows, Index B_cols> void Write(const __m256i *from) { Write<A_rows, B_cols>(reinterpret_cast<const T*>(from)); }
+    template <Index A_rows, Index B_cols> void Write(const __m512i *from) { Write<A_rows, B_cols>(reinterpret_cast<const T*>(from)); }
+
+    template <Index A_rows, Index B_cols> void Write(const T *from) {
+      for (Index i = 0; i < A_rows; ++i) {
+        for (Index j = 0; j < B_cols; ++j) {
+          data_[i * cols_ + j] = from[i * B_cols + j];
+        }
+      }
+    }
+
   private:
     Content *data_;
     Index cols_;
@@ -67,6 +80,11 @@ template <class AT, class BT, class CT> class Access {
     Access CAdd(Index row, Index col) const {
       return Access(a_, b_, c_.Add(row, col));
     }
+
+    const A &AAccessor() const { return a_; }
+    const B &BAccessor() const { return b_; }
+    const C &CAccessor() const { return c_; }
+    C &CAccessor() { return c_; }
 
     AContent &AFront() { return a_.Front(); }
     const AContent &AFront() const { return a_.Front(); }

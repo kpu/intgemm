@@ -39,6 +39,7 @@ template <Index Valid, class Op, class Folder> INTGEMM_TARGET static inline void
 /* These Folder structs say how to interweave even pairs of regiers and
  * fold an odd register over itself.  Folding an odd register over itself is
  * slightly faster than doing an even fold with garbage. */
+// TODO: _mm_hadd_epi32 for SSSE3 and _mm256_hadd_epi32 for AVX2
 struct Reduce32Folder {
   INTGEMM_TARGET static inline RegisterPair Even(Register first, Register second) {
     return RegisterPair { unpackhi_epi32(first, second), unpacklo_epi32(first, second) };
@@ -172,8 +173,7 @@ template <class Op> struct ReduceOverhang<3, Op> {
 
 #endif
 
-/* The only public function: horizontally reduce registers with 32-bit values.
- */
+/* Public function: horizontally reduce registers with 32-bit values. */
 template <Index Valid, class Op> INTGEMM_TARGET static inline void Reduce32(Register *regs) {
   GenericReduce<Valid, Op, Reduce32Folder>(regs);
   GenericReduce<(Valid + 1) / 2, Op, Reduce64Folder>(regs);

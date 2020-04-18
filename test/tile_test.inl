@@ -22,7 +22,6 @@
 #error "Included without expected architecture"
 #endif
 
-
 namespace intgemm {
 namespace INTGEMM_ARCH {
 
@@ -100,6 +99,121 @@ TEST_CASE("Reduce " INTGEMM_TEST_NAME, "[tile]") {
   if (kCPU < CPUType::INTGEMM_ARCH) return;
   StaticLoop<Reduce32Test, MakeStaticLoopIterator<33>>();
 }
+
+// Replicate the saturation behavior of the Signed8 kernel with 16-bit accumulation.
+template <class Access> void Signed8ReferenceMult(Access access, Tile problem) {
+  assert(!problem.inner % 2);
+  for (Index a_row = 0; a_row < problem.A_rows; ++a_row) {
+    for (Index b_col = 0; b_col < problem.B_cols; ++b_col) {
+      Access acc = access.AAdd(a_row, 0).BAdd(0, b_col).CAdd(a_row, b_col);
+      // For VNNI, just do it accurately.
+#ifdef INTGEMM_THIS_IS_AVX512VNNI
+      acc.CFront() = 0;
+      for (Index inner = 0; inner < problem.inner; ++inner) {
+        Access innermost = acc.AAdd(0, inner).BAdd(inner, 0);
+        acc.CFront() += static_cast<int32_t>(innermost.AFront()) * static_cast<int32_t>(innermost.BFront());
+      }
+#else
+      // For non-VNNI, do the saturation stuff.
+      int16_t accumulators[sizeof(Register) / sizeof(int16_t)] = {0};
+      for (Index inner = 0; inner < problem.inner; inner += 2) {
+        Access innermost = acc.AAdd(0, inner).BAdd(inner, 0);
+        int32_t product = static_cast<int32_t>(innermost.AFront()) * static_cast<int32_t>(innermost.BFront());
+        innermost = innermost.AAdd(0, 1).BAdd(1, 0);
+        product += static_cast<int32_t>(innermost.AFront()) * static_cast<int32_t>(innermost.BFront());
+        // Saturate to 16-bit for maddubs.
+        if (product > 32767) product = 32767;
+        if (product < -32768) product = -32768;
+        int16_t &accum = accumulators[(inner / 2) % (sizeof(Register) / sizeof(int16_t))];
+        // Saturating accumlation.
+        product += static_cast<int32_t>(accum);
+        if (product > 32767) product = 32767;
+        if (product < -32768) product = -32768;
+        accum = static_cast<int16_t>(product);
+      }
+      acc.CFront() = 0;
+      for (Index i = 0; i < sizeof(Register) / sizeof(int16_t); ++i) {
+        acc.CFront() += static_cast<int32_t>(accumulators[i]);
+      }
+#endif
+    }
+  }
+}
+
+void DumpMatrix(int8_t *m, Index rows, Index cols) {
+  std::cerr << rows << 'x' << cols << '\n';
+  for (Index i = 0; i < rows; ++i) {
+    for (Index j = 0; j < cols; ++j) {
+      std::cerr << (int16_t)m[i * cols + j] << ' ';
+    }
+    std::cerr << '\n';
+  }
+}
+
+#ifndef INTGEMM_THIS_IS_SSE2
+template <class Kernel> void TestMultiplyNoOverhang(Tile shape) {
+  // These are sanity checks on the arguments, not the code.
+  CHECK(shape.A_rows % Kernel::kTile.A_rows == 0);
+  CHECK(shape.inner % Kernel::kTile.inner == 0);
+  CHECK(shape.B_cols % Kernel::kTile.B_cols == 0);
+
+  AlignedVector<int8_t> A(shape.A_rows * shape.inner);
+  AlignedVector<int8_t> B(shape.inner * shape.B_cols);
+  std::mt19937 gen;
+  std::uniform_int_distribution<int8_t> dist(-127,127);
+  for (int8_t &it : A) it = dist(gen);
+  for (int8_t &it : B) it = dist(gen);
+
+  AlignedVector<int32_t> C_reference(shape.A_rows * shape.B_cols);
+  typedef Access<RowMajorAccess<int8_t>, ColMajorAccess<int8_t>, RowMajorAccess<int32_t> > AccessT;
+  AccessT ref_access(
+      RowMajorAccess<int8_t>(A.begin(), shape.inner),
+      ColMajorAccess<int8_t>(B.begin(), shape.inner),
+      RowMajorAccess<int32_t>(C_reference.begin(), shape.B_cols));
+  Signed8ReferenceMult<AccessT>(ref_access, shape);
+
+  AlignedVector<int32_t> C_test(shape.A_rows * shape.B_cols);
+  AccessT test_access(
+      RowMajorAccess<int8_t>(A.begin(), shape.inner),
+      ColMajorAccess<int8_t>(B.begin(), shape.inner),
+      RowMajorAccess<int32_t>(C_test.begin(), shape.B_cols));
+  MultiplyNoOverhang<AccessT, Kernel>(test_access, shape);
+  bool failed = false;
+  for (Index i = 0; i < shape.A_rows; ++i) {
+    for (Index j = 0; j < shape.B_cols; ++j) {
+      CHECK(C_reference[i * shape.B_cols + j] == C_test[i * shape.B_cols + j]);
+      if (C_reference[i * shape.B_cols + j] != C_test[i * shape.B_cols + j])
+        failed = true;
+    }
+  }
+  if (failed) {
+    std::cerr << "Failed A is ";
+    DumpMatrix(A.begin(), shape.A_rows, shape.inner);
+    std::cerr << "Failed B is ";
+    DumpMatrix(B.begin(), shape.inner, shape.B_cols);
+  }
+}
+
+TEST_CASE("MultiplyNoOverhang Signed8 " INTGEMM_TEST_NAME, "[tile]") {
+  if (kCPU < CPUType::INTGEMM_ARCH) return;
+  // Test small multiples.
+  TestMultiplyNoOverhang<Signed8>(Tile{1,sizeof(Register),1});
+  TestMultiplyNoOverhang<Signed8>(Tile{2, sizeof(Register), 1});
+  TestMultiplyNoOverhang<Signed8>(Tile{1, 2 * sizeof(Register),1});
+  TestMultiplyNoOverhang<Signed8>(Tile{1, sizeof(Register), 2});
+  TestMultiplyNoOverhang<Signed8>(Tile{2, 2 * sizeof(Register), 2});
+  // Try a bunch of shapes!
+  Tile shape;
+  for (shape.A_rows = 0; shape.A_rows <= 33; ++shape.A_rows) {
+    for (shape.inner = 0; shape.inner <= 9 * sizeof(Register); shape.inner += sizeof(Register)) {
+      for (shape.B_cols = 0; shape.B_cols <= 33; ++shape.B_cols) {
+        TestMultiplyNoOverhang<Signed8>(shape);
+      }
+    }
+  }
+}
+
+#endif
 
 } // namespace INTGEMM_ARCH
 } // namespace intgemm
