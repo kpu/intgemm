@@ -194,23 +194,37 @@ template <class Kernel> void TestMultiplyNoOverhang(Tile shape) {
   }
 }
 
-TEST_CASE("MultiplyNoOverhang Signed8 " INTGEMM_TEST_NAME, "[tile]") {
-  if (kCPU < CPUType::INTGEMM_ARCH) return;
-  // Test small multiples.
-  TestMultiplyNoOverhang<Signed8>(Tile{1,sizeof(Register),1});
-  TestMultiplyNoOverhang<Signed8>(Tile{2, sizeof(Register), 1});
-  TestMultiplyNoOverhang<Signed8>(Tile{1, 2 * sizeof(Register),1});
-  TestMultiplyNoOverhang<Signed8>(Tile{1, sizeof(Register), 2});
-  TestMultiplyNoOverhang<Signed8>(Tile{2, 2 * sizeof(Register), 2});
+template <class Kernel> void TestMultiplyNoOverhangShapes() {
+  Tile shape = Kernel::kTile;
+  // Minimum size.
+  TestMultiplyNoOverhang<Signed8>(shape);
+  // Multiples on each dimension.
+  TestMultiplyNoOverhang<Signed8>(Tile{shape.A_rows * 2, shape.inner, shape.B_cols});
+  TestMultiplyNoOverhang<Signed8>(Tile{shape.A_rows, shape.inner * 2, shape.B_cols});
+  TestMultiplyNoOverhang<Signed8>(Tile{shape.A_rows, shape.inner, shape.B_cols * 2});
+  TestMultiplyNoOverhang<Signed8>(Tile{shape.A_rows * 2, shape.inner * 2, shape.B_cols * 2});
   // Try a bunch of shapes!
-  Tile shape;
-  for (shape.A_rows = 0; shape.A_rows <= 33; ++shape.A_rows) {
-    for (shape.inner = 0; shape.inner <= 9 * sizeof(Register); shape.inner += sizeof(Register)) {
-      for (shape.B_cols = 0; shape.B_cols <= 33; ++shape.B_cols) {
+  for (shape.A_rows = 0; shape.A_rows <= Kernel::kTile.A_rows * 9; shape.A_rows += Kernel::kTile.A_rows) {
+    for (shape.inner = 0; shape.inner <= Kernel::kTile.inner * 9; shape.inner += Kernel::kTile.inner) {
+      for (shape.B_cols = 0; shape.B_cols <= Kernel::kTile.B_cols * 9; shape.B_cols += Kernel::kTile.B_cols) {
         TestMultiplyNoOverhang<Signed8>(shape);
       }
     }
   }
+}
+
+TEST_CASE("MultiplyNoOverhang Signed8 " INTGEMM_TEST_NAME, "[tile]") {
+  if (kCPU < CPUType::INTGEMM_ARCH) return;
+  TestMultiplyNoOverhangShapes<Signed8>();
+}
+
+TEST_CASE("MultiplyNoOverhang Tiled Signed8 " INTGEMM_TEST_NAME, "[tile]") {
+  if (kCPU < CPUType::INTGEMM_ARCH) return;
+  TestMultiplyNoOverhangShapes<InnerTile<1, Signed8> >();
+  TestMultiplyNoOverhangShapes<InnerTile<2, Signed8> >();
+  TestMultiplyNoOverhangShapes<InnerTile<3, Signed8> >();
+  TestMultiplyNoOverhangShapes<MatrixTile<3, 3, Signed8> >();
+  TestMultiplyNoOverhangShapes<InnerTile<2, MatrixTile<3, 3, Signed8> > >();
 }
 
 #endif
