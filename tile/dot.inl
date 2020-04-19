@@ -177,7 +177,7 @@ struct Signed16 {
   };
 };
 
-// Unroll an arbitrary amount of 
+// Statically unroll a kernel into a larger tile.
 // Can't have Tile as a value until C++20.
 template <Index A_rows, Index inner, Index B_cols, class Backend> struct UnrollKernel {
   template <class Access> INTGEMM_TARGET __attribute__((flatten)) static inline void Run(Access access) {
