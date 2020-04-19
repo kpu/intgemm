@@ -34,19 +34,25 @@
 
 namespace intgemm {
 
+namespace SSE2 { struct RegisterPair { Register hi; Register lo; }; }
+namespace AVX2 { struct RegisterPair { Register hi; Register lo; }; }
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
+namespace AVX512BW { struct RegisterPair { Register hi; Register lo; }; }
+#endif
+
 // Op argument appropriate for summing 32-bit integers.
 struct Sum32Op {
-  INTGEMM_SSE2 static inline __m128i Run(__m128i first, __m128i second) {
-    return add_epi32(first, second);
+  INTGEMM_SSE2 static inline __m128i Run(SSE2::RegisterPair regs) {
+    return add_epi32(regs.hi, regs.lo);
   }
 
-  INTGEMM_AVX2 static inline __m256i Run(__m256i first, __m256i second) {
-    return add_epi32(first, second);
+  INTGEMM_AVX2 static inline __m256i Run(AVX2::RegisterPair regs) {
+    return add_epi32(regs.hi, regs.lo);
   }
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-  INTGEMM_AVX512BW static inline __m512i Run(__m512i first, __m512i second) {
-    return add_epi32(first, second);
+  INTGEMM_AVX512BW static inline __m512i Run(AVX512BW::RegisterPair regs) {
+    return add_epi32(regs.hi, regs.lo);
   }
 #endif
 };
