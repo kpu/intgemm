@@ -18,6 +18,32 @@
 #define INTGEMM_TARGET INTGEMM_SSE2
 #endif
 
+namespace intgemm {
+namespace INTGEMM_ARCH {
+
+/* When Register is used as a template argument, gcc warns
+ * warning: ignoring attributes on template argument ‘Register’ {aka ‘__vector(8) long long int’} [-Wignored-attributes]
+ * So here is a class that doesn't warn.
+ */
+class RegisterRowMajorAccess {
+  public:
+    typedef Register Content;
+
+    RegisterRowMajorAccess(Content *data, Index cols)
+      : data_(data), cols_(cols) {}
+
+    RegisterRowMajorAccess Add(Index row, Index col) const {
+      return RegisterRowMajorAccess(data_ + row * cols_ + col, cols_);
+    }
+
+    const Content &Front() const { return *data_; }
+    Content &Front() { return *data_; }
+
+  private:
+    Content *data_;
+    Index cols_;
+};
+
 /* gcc _mm512_dpbusds_epi32 is slow because it inserts spurious vmovdqa64 instructions.
  * Simple test program:
  * #include <immintrin.h>
@@ -53,33 +79,18 @@
  * I use:
  *   asm ("vpdpbusds %2, %1, %0" : "+x"(c) : "x"(a), "mx"(b));
  * and that works better in the test program.
+ *
+ * clang 9.0.1 deals with this fine.
  */
-
-namespace intgemm {
-namespace INTGEMM_ARCH {
-
-/* When Register is used as a template argument, gcc warns
- * warning: ignoring attributes on template argument ‘Register’ {aka ‘__vector(8) long long int’} [-Wignored-attributes]
- * So here is a class that doesn't warn.
- */
-class RegisterRowMajorAccess {
-  public:
-    typedef Register Content;
-
-    RegisterRowMajorAccess(Content *data, Index cols)
-      : data_(data), cols_(cols) {}
-
-    RegisterRowMajorAccess Add(Index row, Index col) const {
-      return RegisterRowMajorAccess(data_ + row * cols_ + col, cols_);
-    }
-
-    const Content &Front() const { return *data_; }
-    Content &Front() { return *data_; }
-
-  private:
-    Content *data_;
-    Index cols_;
-};
+#ifdef INTGEMM_THIS_IS_AVX512VNNI
+INTGEMM_TARGET static inline void VNNI8(Register &c, Register a, Register b) {
+#if defined(__GNUC__) && !defined(__clang__) && !defined(__INTEL_COMPILER)
+    asm ("vpdpbusds %2, %1, %0" : "+x"(c) : "x"(a), "mx"(b));
+#else
+    c = _mm512_dpbusds_epi32(c, a, b);
+#endif
+}
+#endif
 
 // 8-bit integer multiplication unsigned A * signed B.
 #if !defined(INTGEMM_THIS_IS_SSE2) // No int8 on SSE2.
@@ -88,11 +99,7 @@ struct Shifted8 {
     const Register &a = reinterpret_cast<const Register&>(access.AFront());
     const Register &b = reinterpret_cast<const Register&>(access.BFront());
 #ifdef INTGEMM_THIS_IS_AVX512VNNI
-#ifdef __GNUC__
-    asm ("vpdpbusds %2, %1, %0" : "+x"(access.CFront()) : "x"(a), "mx"(b));
-#else
-    access.CFront() = _mm512_dpbusds_epi32(access.CFront(), a, b);
-#endif
+    VNNI8(access.CFront(), a, b);
 #else
     const Register ones = set1_epi16<Register>(1);
     Register mult = maddubs_epi16(a, b);
@@ -130,11 +137,7 @@ struct Signed8 {
 
     // c += |a| * b_signed
 #if defined(INTGEMM_THIS_IS_AVX512VNNI)
-#ifdef __GNUC__
-    asm ("vpdpbusds %2, %1, %0" : "+x"(access.CFront()) : "x"(a_positive), "mx"(b_signed));
-#else
-    access.CFront() = _mm512_dpbusds_epi32(access.CFront(), a_positive, b_signed);
-#endif
+    VNNI8(access.CFront(), a_positive, b_signed);
 #else
     Register mult = maddubs_epi16(a_positive, b_signed);
     access.CFront() = adds_epi16(access.CFront(), mult);
