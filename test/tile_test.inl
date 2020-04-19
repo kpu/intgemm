@@ -63,41 +63,42 @@ TEST_CASE("Basic Tile " INTGEMM_TEST_NAME, "[tile]") {
 }
 #endif
 
-struct Reduce32Test {
-  template <typename Iterator> INTGEMM_TARGET static void body() {
-    constexpr Index Valid = Iterator::template I<0>();
-    // A zero-length array is a compiler error, so force it to be longer.
-    constexpr Index ArrayLen = Valid ? Valid : 1;
-    const std::size_t kReduce = sizeof(Register) / sizeof(int32_t);
-    Register regs[ArrayLen];
-    std::mt19937 gen;
-    std::uniform_int_distribution<int32_t> dist(std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::max());
-    int32_t reference[ArrayLen];
-    // Do 20 different loops of random numbers.
-    for (Index attempt = 0; attempt < 20; ++attempt) {
-      memset(reference, 0, sizeof(reference));
-      for (Index i = 0; i < Valid; ++i) {
-        int32_t temp[kReduce];
-        for (std::size_t j = 0; j < kReduce; ++j) {
-          temp[j] = dist(gen);
-          reference[i] += temp[j];
-        }
-        memcpy(&regs[i], temp, sizeof(Register));
+template <Index Valid> INTGEMM_TARGET static void Reduce32Test() {
+  // A zero-length array is a compiler error, so force it to be longer.
+  constexpr Index ArrayLen = Valid ? Valid : 1;
+  const std::size_t kReduce = sizeof(Register) / sizeof(int32_t);
+  Register regs[ArrayLen];
+  std::mt19937 gen;
+  std::uniform_int_distribution<int32_t> dist(std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::max());
+  int32_t reference[ArrayLen];
+  // Do 20 different loops of random numbers.
+  for (Index attempt = 0; attempt < 20; ++attempt) {
+    memset(reference, 0, sizeof(reference));
+    for (Index i = 0; i < Valid; ++i) {
+      int32_t temp[kReduce];
+      for (std::size_t j = 0; j < kReduce; ++j) {
+        temp[j] = dist(gen);
+        reference[i] += temp[j];
       }
-      // Decay type for template.
-      Register *indirect = regs;
-      Reduce32<Valid, Sum32Op>(indirect);
-      const int32_t *test = reinterpret_cast<const int32_t*>(regs);
-      for (Index i = 0; i < Valid; ++i) {
-        CHECK(test[i] == reference[i]);
-      }
+      memcpy(&regs[i], temp, sizeof(Register));
+    }
+    // Decay type for template.
+    Register *indirect = regs;
+    Reduce32<Valid, Sum32Op>(indirect);
+    const int32_t *test = reinterpret_cast<const int32_t*>(regs);
+    for (Index i = 0; i < Valid; ++i) {
+      CHECK(test[i] == reference[i]);
     }
   }
-};
+}
+
+template <std::size_t... i> void Reduce32TestLoop(index_sequence<i...>) {
+  unordered_unfurl((Reduce32Test<i>(), 0)...);
+}
 
 TEST_CASE("Reduce " INTGEMM_TEST_NAME, "[tile]") {
   if (kCPU < CPUType::INTGEMM_ARCH) return;
-  StaticLoop<Reduce32Test, MakeStaticLoopIterator<33>>();
+  Reduce32TestLoop(make_index_sequence<33>());
 }
 
 // Replicate the saturation behavior of the Signed8 kernel with 16-bit accumulation.
