@@ -1,5 +1,6 @@
 #pragma once
 #include "intgemm_config.h"
+#include <cstddef>
 #include <exception>
 #include <immintrin.h>
 
