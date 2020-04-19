@@ -44,7 +44,7 @@ struct Reduce32Folder {
   }
   INTGEMM_TARGET static inline RegisterPair Odd(Register reg) {
     // For the odd case, shuffle to form 0 g 0 g where g is garbage and 0 is accumlated.
-    return RegisterPair { reg, shuffle_epi32(reg, 0x31) };
+    return RegisterPair { reg, shuffle_epi32<0x31>(reg) };
   }
   INTGEMM_TARGET static inline Register OddUpcast(Register reg) { return reg; }
 };
@@ -55,7 +55,7 @@ struct Reduce64Folder {
   }
   INTGEMM_TARGET static inline RegisterPair Odd(Register reg) {
     // For the odd case, shuffle to form 0 g where g is garbage and 0 is accumlated.
-    return RegisterPair { reg, shuffle_epi32(reg, 3 * 4 + 2) };
+    return RegisterPair { reg, shuffle_epi32<3 * 4 + 2>(reg) };
   }
   INTGEMM_TARGET static inline Register OddUpcast(Register reg) { return reg; }
 };
