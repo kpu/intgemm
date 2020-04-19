@@ -5,7 +5,8 @@
 
 namespace intgemm {
 
-// Function to absorb arguments from integer sequences.
+// Function to absorb arguments from C++11 template unpacking
+// Usage: unordered_unfurl(T...);
 template<typename... Args> void unordered_unfurl(Args&&...) {}
 
 // C++11 implementation of C++14's make_index_sequence.
