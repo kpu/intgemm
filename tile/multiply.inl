@@ -19,20 +19,19 @@ namespace intgemm {
 namespace INTGEMM_ARCH {
 
 // Upcast 16 to 32 if needed.
-template <class T> INTGEMM_TARGET static inline void SumTo32(Register &reg);
-template <> INTGEMM_TARGET inline void SumTo32<int16_t>(Register &reg) {
-  reg = madd_epi16(reg, set1_epi16<Register>(1));
-}
-template <> INTGEMM_TARGET inline void SumTo32<int32_t>(Register &) {}
-
-template <class T> struct SumTo32Body {
+template <class T> struct SumTo32Body;
+template <> struct SumTo32Body<int16_t> {
   template <class Iterator> INTGEMM_TARGET static inline void body(Register *regs) {
-    SumTo32<T>(regs[Iterator::template I<0>()]);
+    Register &reg = regs[Iterator::template I<0>()];
+    reg = madd_epi16(reg, set1_epi16<Register>(1));
   }
+};
+template <> struct SumTo32Body<int32_t> {
+  template <class Iterator> INTGEMM_TARGET static inline void body(Register *) {}
 };
 
 /* Multiply assuming the matrix sizes are a multiple of the kernel size. */
-template <class AccessT, class Kernel> INTGEMM_TARGET static inline void MultiplyNoOverhang(AccessT access, const Tile shape) {
+template <class AccessT, class Kernel> INTGEMM_TARGET __attribute__((flatten)) static inline void MultiplyNoOverhang(AccessT access, const Tile shape) {
   assert(shape.A_rows % Kernel::kTile.A_rows == 0);
   assert(shape.inner % Kernel::kTile.inner == 0);
   assert(shape.B_cols % Kernel::kTile.B_cols == 0);

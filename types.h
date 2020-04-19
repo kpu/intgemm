@@ -49,9 +49,6 @@ enum class CPUType {
 extern const CPUType kCPU;
 
 struct Tile {
-/*  Tile() {}
-  Tile(Index in_A_rows, Index in_inner, Index in_B_cols)
-    : A_rows(in_A_rows), inner(in_inner), B_cols(in_B_cols) {} */
   Index A_rows, inner, B_cols;
 };
 

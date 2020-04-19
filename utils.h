@@ -1,8 +1,32 @@
 #pragma once
 
+#include "types.h"
 #include <tuple>
 
 namespace intgemm {
+
+// Function to absorb arguments from integer sequences.
+template<typename... Args> void unordered_unfurl(Args&&...) {}
+
+// C++11 implementation of C++14's make_index_sequence.
+// This is a bugfix from a stackoverflow post that did [0, N] while the standard does [0, N).
+// https://stackoverflow.com/questions/52844615/is-that-possible-to-have-a-for-loop-in-compile-time-with-runtime-or-even-compile
+template <size_t... Is>
+struct index_sequence{};
+
+namespace detail {
+    template <size_t I,size_t...Is>
+    struct make_index_sequence_impl : make_index_sequence_impl<I-1,I-1,Is...> {};
+
+    template <size_t...Is>
+    struct make_index_sequence_impl<0,Is...>
+    {
+        using type = index_sequence<Is...>;
+    };
+}
+
+template<size_t N>
+using make_index_sequence = typename detail::make_index_sequence_impl<N>::type;
 
 /*
  * Sequence of unsigned integers

@@ -44,7 +44,7 @@ INTGEMM_TARGET void OneIteration() {
       InputA(A.begin(), sizeof(Register)),
       InputB(B.begin(), sizeof(Register)),
       Output(reinterpret_cast<Register*>(C.begin()), 1));
-  MatrixTile<1, 1, Shifted8>::Run(access);
+  UnrollKernel<1, 1, 1, Shifted8>::Run(access);
 
   const std::size_t kStride = sizeof(int32_t) / sizeof(int8_t);
   for (std::size_t i = 0; i < sizeof(Register) / sizeof(int32_t); ++i) {
@@ -218,14 +218,16 @@ TEST_CASE("MultiplyNoOverhang Signed8 " INTGEMM_TEST_NAME, "[tile]") {
   TestMultiplyNoOverhangShapes<Signed8>();
 }
 
-TEST_CASE("MultiplyNoOverhang Tiled Signed8 " INTGEMM_TEST_NAME, "[tile]") {
+TEST_CASE("MultiplyNoOverhang Unrolled Signed8 " INTGEMM_TEST_NAME, "[tile]") {
   if (kCPU < CPUType::INTGEMM_ARCH) return;
-  TestMultiplyNoOverhangShapes<InnerTile<1, Signed8> >();
-  TestMultiplyNoOverhangShapes<InnerTile<2, Signed8> >();
-  TestMultiplyNoOverhangShapes<InnerTile<3, Signed8> >();
-  TestMultiplyNoOverhangShapes<MatrixTile<3, 3, Signed8> >();
-  TestMultiplyNoOverhangShapes<InnerTile<2, MatrixTile<3, 3, Signed8> > >();
-  TestMultiplyNoOverhangShapes<MatrixTile<4, 4, InnerTile<3, Signed8> > >();
+  TestMultiplyNoOverhangShapes<UnrollKernel<1, 1, 1, Signed8> >();
+
+  TestMultiplyNoOverhangShapes<UnrollKernel<2, 1, 1, Signed8> >();
+  TestMultiplyNoOverhangShapes<UnrollKernel<1, 2, 1, Signed8> >();
+  TestMultiplyNoOverhangShapes<UnrollKernel<1, 1, 2, Signed8> >();
+
+  TestMultiplyNoOverhangShapes<UnrollKernel<2, 2, 2, Signed8> >();
+  TestMultiplyNoOverhangShapes<UnrollKernel<4, 4, 3, Signed8> >();
 }
 
 #endif
