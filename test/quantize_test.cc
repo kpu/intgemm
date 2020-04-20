@@ -30,10 +30,14 @@ void QuantizeRef(const float *input, int8_t *output, float quant_mult, std::size
   }
 }
 
-MeanStd QuantizerStddRef(AlignedVector<float>& vals, int num_items) {
+MeanStd VectorMeanStd(AlignedVector<float>& vals, int num_items, bool absolute) {
   float normal_sums = 0;
   float squares_sum = 0;
-  std::for_each(vals.begin(), vals.end(), [&] (float n) {normal_sums+=n;});
+  if (absolute) {
+    std::for_each(vals.begin(), vals.end(), [&] (float n) {normal_sums+=abs(n);});
+  } else {
+    std::for_each(vals.begin(), vals.end(), [&] (float n) {normal_sums+=n;});
+  }
   std::for_each(vals.begin(), vals.end(), [&] (float n) {squares_sum+=n*n;});
 
   MeanStd ret;
@@ -42,8 +46,8 @@ MeanStd QuantizerStddRef(AlignedVector<float>& vals, int num_items) {
   return ret;
 }
 
-template <MeanStd (*Backend) (const float *, const float *)>
-void testQuantizerStd(int num_items) {
+template <MeanStd (*Backend) (const float *, const float *, bool)>
+void testVectorMeanStd(int num_items, bool absolute=false) {
   std::mt19937 gen;
   std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
   AlignedVector<float> inputVec(num_items);
@@ -52,15 +56,15 @@ void testQuantizerStd(int num_items) {
     it = dist(gen);
   }
 
-  MeanStd reference = QuantizerStddRef(inputVec, num_items);
-  MeanStd fast = Backend(inputVec.begin(), inputVec.end());
+  MeanStd reference = VectorMeanStd(inputVec, num_items, absolute);
+  MeanStd fast = Backend(inputVec.begin(), inputVec.end(), absolute);
 
   float meanDifference = fabs(reference.mean - fast.mean);
   float stdDifference = fabs(reference.stddev - fast.stddev);
   float eps = 0.00002; //Accumulating horizontal sums can lead to errors.
 
-  CHECK_MESSAGE(meanDifference <= eps, "Reference mean: " << reference.mean << " actual: " << fast.mean);// /*Backend::kName << */" Mismatch:\n" << "Reference: " << reference << " Fast: " << fast << std::endl);
-  CHECK_MESSAGE(stdDifference <= eps, "Reference stddev: " << reference.stddev << " actual: " << fast.stddev);
+  CHECK_MESSAGE(meanDifference <= eps, "Items: " << num_items << " Absolute: " << absolute << " Reference mean: " << reference.mean << " actual: " << fast.mean);
+  CHECK_MESSAGE(stdDifference <= eps, "Items: " << num_items << " Absolute: " << absolute << " Reference mean: " << reference.stddev << " actual: " << fast.stddev);
 
 }
 
@@ -128,53 +132,53 @@ TEST_CASE ("Quantize AVX2", "[quantize]") {
   }
 #endif
 
-TEST_CASE("QuantizeStd SSSE3", "[quantizerSTD]") {
+TEST_CASE("QuantizeStd SSSE3", "[VectorMeanStd]") {
   if (kCPU < CPUType::SSSE3) return;
-  testQuantizerStd<sse2::GetQuantizerStd>(64);
-  testQuantizerStd<sse2::GetQuantizerStd>(64);
-  testQuantizerStd<sse2::GetQuantizerStd>(256);
-  testQuantizerStd<sse2::GetQuantizerStd>(256);
-  testQuantizerStd<sse2::GetQuantizerStd>(2048);
-  testQuantizerStd<sse2::GetQuantizerStd>(2048);
-  testQuantizerStd<sse2::GetQuantizerStd>(65536);
-  testQuantizerStd<sse2::GetQuantizerStd>(65536);
-  testQuantizerStd<sse2::GetQuantizerStd>(81920);
-  testQuantizerStd<sse2::GetQuantizerStd>(81920);
-  testQuantizerStd<sse2::GetQuantizerStd>(120832);
-  testQuantizerStd<sse2::GetQuantizerStd>(120832);
+  testVectorMeanStd<sse2::VectorMeanStd>(64);
+  testVectorMeanStd<sse2::VectorMeanStd>(64, true);
+  testVectorMeanStd<sse2::VectorMeanStd>(256);
+  testVectorMeanStd<sse2::VectorMeanStd>(256, true);
+  testVectorMeanStd<sse2::VectorMeanStd>(2048);
+  testVectorMeanStd<sse2::VectorMeanStd>(2048, true);
+  testVectorMeanStd<sse2::VectorMeanStd>(65536);
+  testVectorMeanStd<sse2::VectorMeanStd>(65536, true);
+  testVectorMeanStd<sse2::VectorMeanStd>(81920);
+  testVectorMeanStd<sse2::VectorMeanStd>(81920, true);
+  testVectorMeanStd<sse2::VectorMeanStd>(120832);
+  testVectorMeanStd<sse2::VectorMeanStd>(120832, true);
 }
 
-TEST_CASE("QuantizeStd AVX2", "[quantizerSTD]") {
+TEST_CASE("QuantizeStd AVX2", "[VectorMeanStd]") {
   if (kCPU < CPUType::AVX2) return;
-  testQuantizerStd<avx2::GetQuantizerStd>(64);
-  testQuantizerStd<avx2::GetQuantizerStd>(64);
-  testQuantizerStd<avx2::GetQuantizerStd>(256);
-  testQuantizerStd<avx2::GetQuantizerStd>(256);
-  testQuantizerStd<avx2::GetQuantizerStd>(2048);
-  testQuantizerStd<avx2::GetQuantizerStd>(2048);
-  testQuantizerStd<avx2::GetQuantizerStd>(65536);
-  testQuantizerStd<avx2::GetQuantizerStd>(65536);
-  testQuantizerStd<avx2::GetQuantizerStd>(81920);
-  testQuantizerStd<avx2::GetQuantizerStd>(81920);
-  testQuantizerStd<avx2::GetQuantizerStd>(120832);
-  testQuantizerStd<avx2::GetQuantizerStd>(120832);
+  testVectorMeanStd<avx2::VectorMeanStd>(64);
+  testVectorMeanStd<avx2::VectorMeanStd>(64, true);
+  testVectorMeanStd<avx2::VectorMeanStd>(256);
+  testVectorMeanStd<avx2::VectorMeanStd>(256, true);
+  testVectorMeanStd<avx2::VectorMeanStd>(2048);
+  testVectorMeanStd<avx2::VectorMeanStd>(2048, true);
+  testVectorMeanStd<avx2::VectorMeanStd>(65536);
+  testVectorMeanStd<avx2::VectorMeanStd>(65536, true);
+  testVectorMeanStd<avx2::VectorMeanStd>(81920);
+  testVectorMeanStd<avx2::VectorMeanStd>(81920, true);
+  testVectorMeanStd<avx2::VectorMeanStd>(120832);
+  testVectorMeanStd<avx2::VectorMeanStd>(120832, true);
 }
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-TEST_CASE("QuantizeStd AVX512", "[quantizerSTD]") {
+TEST_CASE("QuantizeStd AVX512", "[VectorMeanStd]") {
   if (kCPU < CPUType::AVX512BW) return;
-  testQuantizerStd<avx512f::GetQuantizerStd>(64);
-  testQuantizerStd<avx512f::GetQuantizerStd>(64);
-  testQuantizerStd<avx512f::GetQuantizerStd>(256);
-  testQuantizerStd<avx512f::GetQuantizerStd>(256);
-  testQuantizerStd<avx512f::GetQuantizerStd>(2048);
-  testQuantizerStd<avx512f::GetQuantizerStd>(2048);
-  testQuantizerStd<avx512f::GetQuantizerStd>(65536);
-  testQuantizerStd<avx512f::GetQuantizerStd>(65536);
-  testQuantizerStd<avx512f::GetQuantizerStd>(81920);
-  testQuantizerStd<avx512f::GetQuantizerStd>(81920);
-  testQuantizerStd<avx512f::GetQuantizerStd>(120832);
-  testQuantizerStd<avx512f::GetQuantizerStd>(120832);
+  testVectorMeanStd<avx512f::VectorMeanStd>(64);
+  testVectorMeanStd<avx512f::VectorMeanStd>(64, true);
+  testVectorMeanStd<avx512f::VectorMeanStd>(256);
+  testVectorMeanStd<avx512f::VectorMeanStd>(256, true);
+  testVectorMeanStd<avx512f::VectorMeanStd>(2048);
+  testVectorMeanStd<avx512f::VectorMeanStd>(2048, true);
+  testVectorMeanStd<avx512f::VectorMeanStd>(65536);
+  testVectorMeanStd<avx512f::VectorMeanStd>(65536, true);
+  testVectorMeanStd<avx512f::VectorMeanStd>(81920);
+  testVectorMeanStd<avx512f::VectorMeanStd>(81920, true);
+  testVectorMeanStd<avx512f::VectorMeanStd>(120832);
+  testVectorMeanStd<avx512f::VectorMeanStd>(120832, true);
 }
 #endif
 
