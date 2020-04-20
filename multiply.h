@@ -521,7 +521,8 @@ template <Index TileRows, Index TileColumnsMultiplier, class Backend, class Call
 #pragma omp parallel
   Backend::template Multiply<TileRows, TileColumnsMultiplier, Callback>(A, B, A_rows, width, B_cols, callback);
 }
-template <Index TileRows, Index TileColumnsMultiplier, class Backend, class Callback> static inline void OMPParallelWrap8Shift(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
+
+template <Index TileRows, Index TileColumnsMultiplier, class Backend, class Callback> static inline void OMPParallelWrap8Shift(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
 #pragma omp parallel
   Backend::template Multiply8Shift<TileRows, TileColumnsMultiplier, Callback>(A, B, A_rows, width, B_cols, callback);
 }
