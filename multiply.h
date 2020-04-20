@@ -665,9 +665,9 @@ target static inline float MaxAbsolute(const float *begin_float, const float *en
   return ret; \
 } \
 
-#define INTGEMM_GETQUANTIZERSTD(Register, target) \
-target static inline MeanStd QuantizerStd(const float *begin_float, const float *end_float, bool absolute) { \
-  /* Finds a quantizer value that is a certain number of standard deviations of the mean */ \
+#define INTGEMM_EUCLIDEANNORM(Register, target) \
+target static inline MeanStd EuclideanNorm(const float *begin_float, const float *end_float, bool absolute) { \
+  /* Computes the euclidean norm and returns the mean and the standard deviation. Optionally it can be the mean and standard deviation in absolute terms. */ \
   assert(end_float > begin_float); \
   assert((end_float - begin_float) % (sizeof(Register) / sizeof(float)) == 0); \
   size_t num_items = end_float - begin_float; \
@@ -675,14 +675,20 @@ target static inline MeanStd QuantizerStd(const float *begin_float, const float 
   const Register *end = reinterpret_cast<const Register*>(end_float); \
   Register squares = set1_ps<Register>(0); \
   Register sums = set1_ps<Register>(0); \
-  const Register mask = set1_ps<Register>(-0.f); \
-  for (; begin != end; begin++) { \
-    Register vec = *begin; \
-    if (absolute) { \
-      vec = andnot_ps(mask, vec); \
+  if (absolute) { \
+    const Register mask = set1_ps<Register>(-0.f); \
+    for (; begin != end; begin++) { \
+      Register vec = *begin; \
+        vec = andnot_ps(mask, vec); \
+      squares = add_ps(squares, mul_ps(vec, vec)); \
+      sums = add_ps(sums, vec); \
     } \
-    squares = add_ps(squares, mul_ps(vec, vec)); \
-    sums = add_ps(sums, vec); \
+  } else { \
+    for (; begin != end; begin++) { \
+      Register vec = *begin; \
+      squares = add_ps(squares, mul_ps(vec, vec)); \
+      sums = add_ps(sums, vec); \
+    } \
   } \
   float squares_sum = horizontalSum(squares); \
   float normal_sums = horizontalSum(sums); \

@@ -420,10 +420,10 @@ extern const CPUType kCPU;
 extern float (*MaxAbsolute)(const float *begin, const float *end);
 
 // Get a Quantization value that is equant to the mean of the data +N standard deviations. Use 2 by default
-extern MeanStd (*QuantizerStd)(const float *begin, const float *end, bool);
+extern MeanStd (*EuclideanNorm)(const float *begin, const float *end, bool);
 
 static inline MeanStd GetQuantizerStd(const float * begin, const float * end, bool absolute=false) {
-  return QuantizerStd(begin, end, absolute);
+  return EuclideanNorm(begin, end, absolute);
 }
 
 
