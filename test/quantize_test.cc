@@ -30,7 +30,7 @@ void QuantizeRef(const float *input, int8_t *output, float quant_mult, std::size
   }
 }
 
-MeanStd EuclideanNorm(AlignedVector<float>& vals, int num_items, bool absolute) {
+MeanStd VectorMeanStd(AlignedVector<float>& vals, int num_items, bool absolute) {
   float normal_sums = 0;
   float squares_sum = 0;
   if (absolute) {
@@ -47,7 +47,7 @@ MeanStd EuclideanNorm(AlignedVector<float>& vals, int num_items, bool absolute) 
 }
 
 template <MeanStd (*Backend) (const float *, const float *, bool)>
-void testEuclideanNorm(int num_items, bool absolute=false) {
+void testVectorMeanStd(int num_items, bool absolute=false) {
   std::mt19937 gen;
   std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
   AlignedVector<float> inputVec(num_items);
@@ -56,7 +56,7 @@ void testEuclideanNorm(int num_items, bool absolute=false) {
     it = dist(gen);
   }
 
-  MeanStd reference = EuclideanNorm(inputVec, num_items, absolute);
+  MeanStd reference = VectorMeanStd(inputVec, num_items, absolute);
   MeanStd fast = Backend(inputVec.begin(), inputVec.end(), absolute);
 
   float meanDifference = fabs(reference.mean - fast.mean);
@@ -132,53 +132,53 @@ TEST_CASE ("Quantize AVX2", "[quantize]") {
   }
 #endif
 
-TEST_CASE("QuantizeStd SSSE3", "[EuclideanNorm]") {
+TEST_CASE("QuantizeStd SSSE3", "[VectorMeanStd]") {
   if (kCPU < CPUType::SSSE3) return;
-  testEuclideanNorm<sse2::EuclideanNorm>(64);
-  testEuclideanNorm<sse2::EuclideanNorm>(64, true);
-  testEuclideanNorm<sse2::EuclideanNorm>(256);
-  testEuclideanNorm<sse2::EuclideanNorm>(256, true);
-  testEuclideanNorm<sse2::EuclideanNorm>(2048);
-  testEuclideanNorm<sse2::EuclideanNorm>(2048, true);
-  testEuclideanNorm<sse2::EuclideanNorm>(65536);
-  testEuclideanNorm<sse2::EuclideanNorm>(65536, true);
-  testEuclideanNorm<sse2::EuclideanNorm>(81920);
-  testEuclideanNorm<sse2::EuclideanNorm>(81920, true);
-  testEuclideanNorm<sse2::EuclideanNorm>(120832);
-  testEuclideanNorm<sse2::EuclideanNorm>(120832, true);
+  testVectorMeanStd<sse2::VectorMeanStd>(64);
+  testVectorMeanStd<sse2::VectorMeanStd>(64, true);
+  testVectorMeanStd<sse2::VectorMeanStd>(256);
+  testVectorMeanStd<sse2::VectorMeanStd>(256, true);
+  testVectorMeanStd<sse2::VectorMeanStd>(2048);
+  testVectorMeanStd<sse2::VectorMeanStd>(2048, true);
+  testVectorMeanStd<sse2::VectorMeanStd>(65536);
+  testVectorMeanStd<sse2::VectorMeanStd>(65536, true);
+  testVectorMeanStd<sse2::VectorMeanStd>(81920);
+  testVectorMeanStd<sse2::VectorMeanStd>(81920, true);
+  testVectorMeanStd<sse2::VectorMeanStd>(120832);
+  testVectorMeanStd<sse2::VectorMeanStd>(120832, true);
 }
 
-TEST_CASE("QuantizeStd AVX2", "[EuclideanNorm]") {
+TEST_CASE("QuantizeStd AVX2", "[VectorMeanStd]") {
   if (kCPU < CPUType::AVX2) return;
-  testEuclideanNorm<avx2::EuclideanNorm>(64);
-  testEuclideanNorm<avx2::EuclideanNorm>(64, true);
-  testEuclideanNorm<avx2::EuclideanNorm>(256);
-  testEuclideanNorm<avx2::EuclideanNorm>(256, true);
-  testEuclideanNorm<avx2::EuclideanNorm>(2048);
-  testEuclideanNorm<avx2::EuclideanNorm>(2048, true);
-  testEuclideanNorm<avx2::EuclideanNorm>(65536);
-  testEuclideanNorm<avx2::EuclideanNorm>(65536, true);
-  testEuclideanNorm<avx2::EuclideanNorm>(81920);
-  testEuclideanNorm<avx2::EuclideanNorm>(81920, true);
-  testEuclideanNorm<avx2::EuclideanNorm>(120832);
-  testEuclideanNorm<avx2::EuclideanNorm>(120832, true);
+  testVectorMeanStd<avx2::VectorMeanStd>(64);
+  testVectorMeanStd<avx2::VectorMeanStd>(64, true);
+  testVectorMeanStd<avx2::VectorMeanStd>(256);
+  testVectorMeanStd<avx2::VectorMeanStd>(256, true);
+  testVectorMeanStd<avx2::VectorMeanStd>(2048);
+  testVectorMeanStd<avx2::VectorMeanStd>(2048, true);
+  testVectorMeanStd<avx2::VectorMeanStd>(65536);
+  testVectorMeanStd<avx2::VectorMeanStd>(65536, true);
+  testVectorMeanStd<avx2::VectorMeanStd>(81920);
+  testVectorMeanStd<avx2::VectorMeanStd>(81920, true);
+  testVectorMeanStd<avx2::VectorMeanStd>(120832);
+  testVectorMeanStd<avx2::VectorMeanStd>(120832, true);
 }
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-TEST_CASE("QuantizeStd AVX512", "[EuclideanNorm]") {
+TEST_CASE("QuantizeStd AVX512", "[VectorMeanStd]") {
   if (kCPU < CPUType::AVX512BW) return;
-  testEuclideanNorm<avx512f::EuclideanNorm>(64);
-  testEuclideanNorm<avx512f::EuclideanNorm>(64, true);
-  testEuclideanNorm<avx512f::EuclideanNorm>(256);
-  testEuclideanNorm<avx512f::EuclideanNorm>(256, true);
-  testEuclideanNorm<avx512f::EuclideanNorm>(2048);
-  testEuclideanNorm<avx512f::EuclideanNorm>(2048, true);
-  testEuclideanNorm<avx512f::EuclideanNorm>(65536);
-  testEuclideanNorm<avx512f::EuclideanNorm>(65536, true);
-  testEuclideanNorm<avx512f::EuclideanNorm>(81920);
-  testEuclideanNorm<avx512f::EuclideanNorm>(81920, true);
-  testEuclideanNorm<avx512f::EuclideanNorm>(120832);
-  testEuclideanNorm<avx512f::EuclideanNorm>(120832, true);
+  testVectorMeanStd<avx512f::VectorMeanStd>(64);
+  testVectorMeanStd<avx512f::VectorMeanStd>(64, true);
+  testVectorMeanStd<avx512f::VectorMeanStd>(256);
+  testVectorMeanStd<avx512f::VectorMeanStd>(256, true);
+  testVectorMeanStd<avx512f::VectorMeanStd>(2048);
+  testVectorMeanStd<avx512f::VectorMeanStd>(2048, true);
+  testVectorMeanStd<avx512f::VectorMeanStd>(65536);
+  testVectorMeanStd<avx512f::VectorMeanStd>(65536, true);
+  testVectorMeanStd<avx512f::VectorMeanStd>(81920);
+  testVectorMeanStd<avx512f::VectorMeanStd>(81920, true);
+  testVectorMeanStd<avx512f::VectorMeanStd>(120832);
+  testVectorMeanStd<avx512f::VectorMeanStd>(120832, true);
 }
 #endif
 

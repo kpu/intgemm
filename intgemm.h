@@ -128,7 +128,7 @@ namespace avx512f {
 static inline float MaxAbsolute(const float * /*begin*/, const float * /*end*/) {
   throw UnsupportedCPU();
 }
-static inline MeanStd QuantizerStd(const float * /*begin*/, const float * /*end*/, bool) {
+static inline MeanStd EuclideanNorm(const float * /*begin*/, const float * /*end*/, bool) {
   throw UnsupportedCPU();
 }
 } //namespace
@@ -420,10 +420,12 @@ extern const CPUType kCPU;
 extern float (*MaxAbsolute)(const float *begin, const float *end);
 
 // Get a Quantization value that is equant to the mean of the data +N standard deviations. Use 2 by default
-extern MeanStd (*EuclideanNorm)(const float *begin, const float *end, bool);
+extern MeanStd (*VectorMeanStd)(const float *begin, const float *end, bool);
 
-static inline MeanStd GetQuantizerStd(const float * begin, const float * end, bool absolute=false) {
-  return EuclideanNorm(begin, end, absolute);
+/* Returns the Mean and the Standard deviation of a vector. 
+ * If "absolute" is set to true, it computes the mean and the standard deviation of the absolute values of the vector */
+static inline MeanStd GetVectorMeanStd(const float * begin, const float * end, bool absolute=false) {
+  return VectorMeanStd(begin, end, absolute);
 }
 
 
