@@ -8,6 +8,15 @@
 
 namespace intgemm {
 
+// Workaround extra vmovdqa64 https://gcc.gnu.org/bugzilla/show_bug.cgi?id=94663
+INTGEMM_AVX512VNNI static inline void VNNI8(__m512i &c, __m512i a, __m512i b) {
+#if defined(__GNUC__) && !defined(__clang__) && !defined(__INTEL_COMPILER)
+    asm ("vpdpbusds %2, %1, %0" : "+x"(c) : "x"(a), "mx"(b));
+#else
+    c = _mm512_dpbusds_epi32(c, a, b);
+#endif
+}
+
 struct AVX512VNNI_8bit : public AVX512_8bit {
   template <typename Callback>
   INTGEMM_AVX512VNNI static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
@@ -18,10 +27,11 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0);
     auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
     const int simd_width = width / sizeof(Register);
-    const Register *B0_col = reinterpret_cast<const Register*>(B);
     Register zeros = setzero_si<Register>();
     // Go over 8 columns of B at a time.
-    for (Index B0_colidx = 0; B0_colidx != B_cols; B0_col += 8 * simd_width, B0_colidx += 8) {
+#pragma omp for
+    for (Index B0_colidx = 0; B0_colidx < B_cols; B0_colidx += 8) {
+      const Register *B0_col = reinterpret_cast<const Register*>(B) + B0_colidx * simd_width;
       // Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.
       for (Index A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) {
         // Iterate over shared (inner) dimension.
@@ -53,14 +63,14 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
           b5 = _mm512_mask_sub_epi8(b5, neg_mask, zeros, b5);
           b6 = _mm512_mask_sub_epi8(b6, neg_mask, zeros, b6);
           b7 = _mm512_mask_sub_epi8(b7, neg_mask, zeros, b7);
-          sum0 = _mm512_dpbusds_epi32(sum0, a_positive, b0);
-          sum1 = _mm512_dpbusds_epi32(sum1, a_positive, b1);
-          sum2 = _mm512_dpbusds_epi32(sum2, a_positive, b2);
-          sum3 = _mm512_dpbusds_epi32(sum3, a_positive, b3);
-          sum4 = _mm512_dpbusds_epi32(sum4, a_positive, b4);
-          sum5 = _mm512_dpbusds_epi32(sum5, a_positive, b5);
-          sum6 = _mm512_dpbusds_epi32(sum6, a_positive, b6);
-          sum7 = _mm512_dpbusds_epi32(sum7, a_positive, b7);
+          VNNI8(sum0, a_positive, b0);
+          VNNI8(sum1, a_positive, b1);
+          VNNI8(sum2, a_positive, b2);
+          VNNI8(sum3, a_positive, b3);
+          VNNI8(sum4, a_positive, b4);
+          VNNI8(sum5, a_positive, b5);
+          VNNI8(sum6, a_positive, b6);
+          VNNI8(sum7, a_positive, b7);
         }
         Register pack0123 = Pack0123(sum0, sum1, sum2, sum3);
         Register pack4567 = Pack0123(sum4, sum5, sum6, sum7);
@@ -79,10 +89,11 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0);
     auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
     const int simd_width = width / sizeof(Register);
-    const Register *B0_col = reinterpret_cast<const Register*>(B);
     Register zeros = setzero_si<Register>();
     // Go over 8 columns of B at a time.
-    for (Index B0_colidx = 0; B0_colidx != B_cols; B0_col += 8 * simd_width, B0_colidx += 8) {
+#pragma omp for
+    for (Index B0_colidx = 0; B0_colidx < B_cols; B0_colidx += 8) {
+      const Register *B0_col = reinterpret_cast<const Register*>(B) + B0_colidx * simd_width;
       // Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.
       for (Index A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) {
         // Iterate over shared (inner) dimension.
@@ -94,14 +105,14 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
         for (; A_live != A_end; ++A_live, B_live += 8) {
           Register a = *A_live;
           //MultiplyAdd
-          sum0 = _mm512_dpbusds_epi32(sum0, a, *B_live);
-          sum1 = _mm512_dpbusds_epi32(sum1, a, *(B_live + 1));
-          sum2 = _mm512_dpbusds_epi32(sum2, a, *(B_live + 2));
-          sum3 = _mm512_dpbusds_epi32(sum3, a, *(B_live + 3));
-          sum4 = _mm512_dpbusds_epi32(sum4, a, *(B_live + 4));
-          sum5 = _mm512_dpbusds_epi32(sum5, a, *(B_live + 5));
-          sum6 = _mm512_dpbusds_epi32(sum6, a, *(B_live + 6));
-          sum7 = _mm512_dpbusds_epi32(sum7, a, *(B_live + 7));
+          VNNI8(sum0, a, *B_live);
+          VNNI8(sum1, a, *(B_live + 1));
+          VNNI8(sum2, a, *(B_live + 2));
+          VNNI8(sum3, a, *(B_live + 3));
+          VNNI8(sum4, a, *(B_live + 4));
+          VNNI8(sum5, a, *(B_live + 5));
+          VNNI8(sum6, a, *(B_live + 6));
+          VNNI8(sum7, a, *(B_live + 7));
         }
         Register pack0123 = Pack0123(sum0, sum1, sum2, sum3);
         Register pack4567 = Pack0123(sum4, sum5, sum6, sum7);
@@ -119,11 +130,12 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0);
     auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
     const int simd_width = width / sizeof(Register);
-    const Register *B0_col = reinterpret_cast<const Register*>(B);
     Register zeros = setzero_si<Register>();
     const Register a = set1_epi8<Register>(1);
     // Go over 8 columns of B at a time.
-    for (Index B0_colidx = 0; B0_colidx != B_cols; B0_col += 8 * simd_width, B0_colidx += 8) {
+#pragma omp for
+    for (Index B0_colidx = 0; B0_colidx < B_cols; B0_colidx += 8) {
+      const Register *B0_col = reinterpret_cast<const Register*>(B) + B0_colidx * simd_width;
       const Register *B_live = B0_col; //In order to make the code look as much as possible as the above function
       const Register *B_end = B_live + simd_width*8;
 
@@ -131,14 +143,14 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
       Register sum0 = zeros, sum1 = zeros, sum2 = zeros, sum3 = zeros, sum4 = zeros, sum5 = zeros, sum6 = zeros, sum7 = zeros;
       for (; B_live != B_end; B_live += 8) {
         // Retrieve the conveniently consecutive values of B.
-        sum0 = _mm512_dpbusds_epi32(sum0, a, *B_live);
-        sum1 = _mm512_dpbusds_epi32(sum1, a, *(B_live + 1));
-        sum2 = _mm512_dpbusds_epi32(sum2, a, *(B_live + 2));
-        sum3 = _mm512_dpbusds_epi32(sum3, a, *(B_live + 3));
-        sum4 = _mm512_dpbusds_epi32(sum4, a, *(B_live + 4));
-        sum5 = _mm512_dpbusds_epi32(sum5, a, *(B_live + 5));
-        sum6 = _mm512_dpbusds_epi32(sum6, a, *(B_live + 6));
-        sum7 = _mm512_dpbusds_epi32(sum7, a, *(B_live + 7));
+        VNNI8(sum0, a, *B_live);
+        VNNI8(sum1, a, *(B_live + 1));
+        VNNI8(sum2, a, *(B_live + 2));
+        VNNI8(sum3, a, *(B_live + 3));
+        VNNI8(sum4, a, *(B_live + 4));
+        VNNI8(sum5, a, *(B_live + 5));
+        VNNI8(sum6, a, *(B_live + 6));
+        VNNI8(sum7, a, *(B_live + 7));
       }
       Register pack0123 = Pack0123(sum0, sum1, sum2, sum3);
       Register pack4567 = Pack0123(sum4, sum5, sum6, sum7);

@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdlib>
+#include <new>
 #include <stdlib.h>
 
 // 64-byte aligned simple vector.
@@ -10,11 +11,9 @@ template <class T> class AlignedVector {
   public:
     explicit AlignedVector(std::size_t size)
       : size_(size) {
-     #ifdef __APPLE__
-      posix_memalign(reinterpret_cast<void **>(&mem_), 64, size * sizeof(T));
-     #else
-      mem_ = reinterpret_cast<T*>(aligned_alloc(64, (size * sizeof(T) + 63) & ~63)); // pedantic requirements for memory size on aligned_alloc in case it's not just a call to posix_memalign
-     #endif
+      if (posix_memalign(reinterpret_cast<void **>(&mem_), 64, size * sizeof(T))) {
+        throw std::bad_alloc();
+      }
     }
 
     AlignedVector(const AlignedVector&) = delete;
