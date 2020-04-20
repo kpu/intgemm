@@ -635,7 +635,7 @@ template <class Callback, class Backend, class Integer = typename Backend::Integ
 #pragma omp parallel
   Backend::template Multiply<Callback>(A, B, A_rows, width, B_cols, callback);
 }
-template <class Callback, class Backend> static inline void OMPParallelWrap8Shift(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
+template <class Callback, class Backend> static inline void OMPParallelWrap8Shift(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
 #pragma omp parallel
   Backend::template Multiply8Shift<Callback>(A, B, A_rows, width, B_cols, callback);
 }
