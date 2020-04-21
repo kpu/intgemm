@@ -57,6 +57,9 @@ INTGEMM_SSE2 static inline __m128 add_ps(__m128 a, __m128 b) {
 INTGEMM_SSE2 static inline __m128 and_ps(__m128 first, __m128 second) {
   return _mm_and_ps(first, second);
 }
+INTGEMM_SSE2 static inline __m128 andnot_ps(__m128 a, __m128 b) {
+  return _mm_andnot_ps(a, b);
+}
 INTGEMM_SSE2 static inline __m128i and_si(__m128i a, __m128i b) {
   return _mm_and_si128(a, b);
 }
@@ -233,6 +236,9 @@ INTGEMM_AVX2 static inline __m256 add_ps(__m256 a, __m256 b) {
 }
 INTGEMM_AVX2 static inline __m256 and_ps(__m256 first, __m256 second) {
   return _mm256_and_ps(first, second);
+}
+INTGEMM_AVX2 static inline __m256 andnot_ps(__m256 a, __m256 b) {
+  return _mm256_andnot_ps(a, b);
 }
 INTGEMM_AVX2 static inline __m256i and_si(__m256i a, __m256i b) {
   return _mm256_and_si256(a, b);
@@ -413,6 +419,9 @@ INTGEMM_AVX512BW static inline __m512 add_ps(__m512 a, __m512 b) {
 }
 INTGEMM_AVX512DQ static inline __m512 and_ps(__m512 first, __m512 second) {
   return _mm512_and_ps(first, second);
+}
+INTGEMM_AVX512DQ static inline __m512 andnot_ps(__m512 a, __m512 b) {
+  return _mm512_andnot_ps(a, b);
 }
 INTGEMM_AVX512BW static inline __m512i and_si(__m512i a, __m512i b) {
   return _mm512_and_si512(a, b);
