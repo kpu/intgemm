@@ -269,10 +269,14 @@ TEMPLATE_TEST_CASE("MultiplyNoOverhang Unrolled Signed8 " INTGEMM_TEST_NAME, "[t
     (UnrollKernel<1, 1, 31, Signed8>),
     (UnrollKernel<1, 1, 32, Signed8>),
     (UnrollKernel<2, 1, 1, Signed8>),
+    (UnrollKernel<2, 1, 2, Signed8>),
     (UnrollKernel<3, 1, 1, Signed8>),
+    (UnrollKernel<3, 1, 3, Signed8>),
     (UnrollKernel<4, 1, 1, Signed8>),
     (UnrollKernel<5, 1, 1, Signed8>),
-    (UnrollKernel<17, 1, 1, Signed8>)
+    (UnrollKernel<15, 1, 1, Signed8>),
+    (UnrollKernel<16, 1, 1, Signed8>)
+//    (UnrollKernel<17, 1, 1, Signed8>)
     ) {
   if (kCPU < CPUType::INTGEMM_ARCH) return;
   TestMultiplyNoOverhangShapes<TestType>();
