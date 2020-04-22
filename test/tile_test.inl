@@ -219,17 +219,38 @@ TEST_CASE("MultiplyNoOverhang Signed8 " INTGEMM_TEST_NAME, "[tile]") {
   TestMultiplyNoOverhangShapes<Signed8>();
 }
 
-TEST_CASE("MultiplyNoOverhang Unrolled Signed8 " INTGEMM_TEST_NAME, "[tile]") {
+// Annoyingly, catch's cross-product stuff requires the first argument be a type, which is pretty useless for a cross-product of integers.
+TEMPLATE_TEST_CASE("MultiplyNoOverhang Unrolled Signed8 " INTGEMM_TEST_NAME, "[tile]",
+    (UnrollKernel<1, 1, 1, Signed8>),
+    (UnrollKernel<1, 1, 2, Signed8>),
+    (UnrollKernel<1, 1, 3, Signed8>),
+    (UnrollKernel<1, 1, 4, Signed8>),
+    (UnrollKernel<1, 1, 5, Signed8>),
+    (UnrollKernel<1, 1, 6, Signed8>),
+    (UnrollKernel<1, 1, 7, Signed8>),
+    (UnrollKernel<1, 1, 8, Signed8>),
+    (UnrollKernel<1, 1, 9, Signed8>),
+    (UnrollKernel<1, 1, 10, Signed8>),
+    (UnrollKernel<1, 1, 11, Signed8>),
+    (UnrollKernel<1, 1, 12, Signed8>),
+    (UnrollKernel<1, 1, 13, Signed8>),
+    (UnrollKernel<1, 1, 14, Signed8>),
+    (UnrollKernel<1, 1, 15, Signed8>),
+    (UnrollKernel<1, 1, 16, Signed8>),
+    (UnrollKernel<1, 1, 17, Signed8>),
+    (UnrollKernel<1, 1, 18, Signed8>),
+    (UnrollKernel<1, 1, 19, Signed8>),
+    (UnrollKernel<1, 1, 31, Signed8>),
+    (UnrollKernel<1, 1, 32, Signed8>),
+    (UnrollKernel<1, 2, 1, Signed8>),
+    (UnrollKernel<2, 1, 1, Signed8>),
+    (UnrollKernel<3, 1, 1, Signed8>),
+    (UnrollKernel<4, 1, 1, Signed8>),
+    (UnrollKernel<5, 1, 1, Signed8>),
+    (UnrollKernel<17, 1, 1, Signed8>)
+    ) {
   if (kCPU < CPUType::INTGEMM_ARCH) return;
-  TestMultiplyNoOverhangShapes<UnrollKernel<1, 1, 1, Signed8> >();
-  TestMultiplyNoOverhangShapes<UnrollKernel<1, 1, 4, Signed8> >();
-
-  TestMultiplyNoOverhangShapes<UnrollKernel<2, 1, 1, Signed8> >();
-  TestMultiplyNoOverhangShapes<UnrollKernel<1, 2, 1, Signed8> >();
-  TestMultiplyNoOverhangShapes<UnrollKernel<1, 1, 2, Signed8> >();
-
-  TestMultiplyNoOverhangShapes<UnrollKernel<2, 2, 2, Signed8> >();
-  TestMultiplyNoOverhangShapes<UnrollKernel<4, 4, 3, Signed8> >();
+  TestMultiplyNoOverhangShapes<TestType>();
 }
 
 #endif
