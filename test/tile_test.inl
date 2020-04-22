@@ -198,17 +198,17 @@ template <class Kernel> void TestMultiplyNoOverhang(Tile shape) {
 template <class Kernel> void TestMultiplyNoOverhangShapes() {
   Tile shape = Kernel::kTile;
   // Minimum size.
-  TestMultiplyNoOverhang<Signed8>(shape);
+  TestMultiplyNoOverhang<Kernel>(shape);
   // Multiples on each dimension.
-  TestMultiplyNoOverhang<Signed8>(Tile{shape.A_rows * 2, shape.inner, shape.B_cols});
-  TestMultiplyNoOverhang<Signed8>(Tile{shape.A_rows, shape.inner * 2, shape.B_cols});
-  TestMultiplyNoOverhang<Signed8>(Tile{shape.A_rows, shape.inner, shape.B_cols * 2});
-  TestMultiplyNoOverhang<Signed8>(Tile{shape.A_rows * 2, shape.inner * 2, shape.B_cols * 2});
+  TestMultiplyNoOverhang<Kernel>(Tile{shape.A_rows * 2, shape.inner, shape.B_cols});
+  TestMultiplyNoOverhang<Kernel>(Tile{shape.A_rows, shape.inner * 2, shape.B_cols});
+  TestMultiplyNoOverhang<Kernel>(Tile{shape.A_rows, shape.inner, shape.B_cols * 2});
+  TestMultiplyNoOverhang<Kernel>(Tile{shape.A_rows * 2, shape.inner * 2, shape.B_cols * 2});
   // Try a bunch of shapes!
   for (shape.A_rows = 0; shape.A_rows <= Kernel::kTile.A_rows * 9; shape.A_rows += Kernel::kTile.A_rows) {
     for (shape.inner = 0; shape.inner <= Kernel::kTile.inner * 9; shape.inner += Kernel::kTile.inner) {
       for (shape.B_cols = 0; shape.B_cols <= Kernel::kTile.B_cols * 9; shape.B_cols += Kernel::kTile.B_cols) {
-        TestMultiplyNoOverhang<Signed8>(shape);
+        TestMultiplyNoOverhang<Kernel>(shape);
       }
     }
   }
@@ -222,6 +222,7 @@ TEST_CASE("MultiplyNoOverhang Signed8 " INTGEMM_TEST_NAME, "[tile]") {
 TEST_CASE("MultiplyNoOverhang Unrolled Signed8 " INTGEMM_TEST_NAME, "[tile]") {
   if (kCPU < CPUType::INTGEMM_ARCH) return;
   TestMultiplyNoOverhangShapes<UnrollKernel<1, 1, 1, Signed8> >();
+  TestMultiplyNoOverhangShapes<UnrollKernel<1, 1, 4, Signed8> >();
 
   TestMultiplyNoOverhangShapes<UnrollKernel<2, 1, 1, Signed8> >();
   TestMultiplyNoOverhangShapes<UnrollKernel<1, 2, 1, Signed8> >();
