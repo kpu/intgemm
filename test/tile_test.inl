@@ -219,8 +219,34 @@ TEST_CASE("MultiplyNoOverhang Signed8 " INTGEMM_TEST_NAME, "[tile]") {
   TestMultiplyNoOverhangShapes<Signed8>();
 }
 
+// Due to unordered_unfurl in dot.inl, the inner dimension can change order.
+// That impacts saturation.  Then the test doesn't mach reference on arches
+// that use 16-bit saturating accumlation.  So we only test inner unrolling on
+// VNNI.
+#ifdef INTGEMM_THIS_IS_AVX512VNNI
+TEST_CASE("MultiplyNoOverhang inner unroll " INTGEMM_TEST_NAME, "[tile][multiply]") {
+  if (kCPU < CPUType::INTGEMM_ARCH) return;
+  typedef UnrollKernel<1, 2, 1, Signed8> Kernel;
+  Tile shape = {1, sizeof(Register) * 2, 1};
+  TestMultiplyNoOverhang<Kernel>(shape);
+  TestMultiplyNoOverhang<Kernel>({1, sizeof(Register) * 4, 1});
+  TestMultiplyNoOverhangShapes<Kernel>();
+}
+#endif
+
+// If the inner dimension is just twice, then there isn't any non-determinism in saturation order.
+TEST_CASE("MultiplyNoOverhang simple inner unroll " INTGEMM_TEST_NAME, "[tile][multiply]") {
+  if (kCPU < CPUType::INTGEMM_ARCH) return;
+  typedef UnrollKernel<1, 2, 1, Signed8> Kernel;
+  static_assert(1 == Kernel::kTile.A_rows, "A_rows matches on unrolled kernel");
+  static_assert(sizeof(Register) * 2 == Kernel::kTile.inner, "inner matches on kernel unrolled 2x");
+  static_assert(1 == Kernel::kTile.B_cols, "B_cols matches on kernel unrolled");
+  TestMultiplyNoOverhang<Kernel>({1, sizeof(Register) * 2, 1});
+  TestMultiplyNoOverhang<Kernel>({5, sizeof(Register) * 2, 7});
+}
+
 // Annoyingly, catch's cross-product stuff requires the first argument be a type, which is pretty useless for a cross-product of integers.
-TEMPLATE_TEST_CASE("MultiplyNoOverhang Unrolled Signed8 " INTGEMM_TEST_NAME, "[tile]",
+TEMPLATE_TEST_CASE("MultiplyNoOverhang Unrolled Signed8 " INTGEMM_TEST_NAME, "[tile][multiply]",
     (UnrollKernel<1, 1, 1, Signed8>),
     (UnrollKernel<1, 1, 2, Signed8>),
     (UnrollKernel<1, 1, 3, Signed8>),
@@ -242,7 +268,6 @@ TEMPLATE_TEST_CASE("MultiplyNoOverhang Unrolled Signed8 " INTGEMM_TEST_NAME, "[t
     (UnrollKernel<1, 1, 19, Signed8>),
     (UnrollKernel<1, 1, 31, Signed8>),
     (UnrollKernel<1, 1, 32, Signed8>),
-    (UnrollKernel<1, 2, 1, Signed8>),
     (UnrollKernel<2, 1, 1, Signed8>),
     (UnrollKernel<3, 1, 1, Signed8>),
     (UnrollKernel<4, 1, 1, Signed8>),
