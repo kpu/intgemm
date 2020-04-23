@@ -62,7 +62,7 @@ if(INTGEMM_DONT_BUILD_TESTS)
   return()
 endif()
 
-foreach(exe benchmark biasmultiply benchmark_quantizer)
+foreach(exe benchmark biasmultiply benchmark_quantizer benchmark_tile)
   add_executable(${exe} benchmarks/${exe}.cc)
   target_link_libraries(${exe} intgemm)
 endforeach()
