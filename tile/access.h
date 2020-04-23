@@ -65,7 +65,9 @@ template <class T> class RowMajorAccess {
       __m512i offsets = Offsets<B_cols, B_cols - ColRemain>();
       // We might be at the end of the data, in which case a mask is needed.
       constexpr Index remaining = (A_rows - 1) * B_cols + ColRemain;
-      _mm512_mask_i32scatter_epi32(data_ - (B_cols - ColRemain), static_cast<__mmask16>(1 << remaining) - 1, offsets, *from, sizeof(int32_t));
+      // Compilers seem to complain a lot about shifting past the end :-(
+      constexpr __mmask16 mask = (remaining >= 16) ? 0xffff : (static_cast<__mmask16>(1 << remaining) - 1);
+      _mm512_mask_i32scatter_epi32(data_ - (B_cols - ColRemain), mask, offsets, *from, sizeof(int32_t));
       // We just wrote 16 values: ColRemain, the next row (all or partial), possibly the next etc.
       // 16 - ColRemain of the next row and whatever followed.
       constexpr Index Wrote = ((remaining < 16) ? remaining : 16);
