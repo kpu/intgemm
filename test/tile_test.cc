@@ -5,6 +5,8 @@
 #include "../tile/reduce.h"
 #include "test.h"
 
+#include "test_matrices.h"
+
 #include <random>
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
