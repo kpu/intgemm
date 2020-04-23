@@ -51,6 +51,7 @@ extern const CPUType kCPU;
 
 struct Tile {
   Index A_rows, inner, B_cols;
+  constexpr bool empty() const { return !A_rows || !inner || !B_cols; }
 };
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
