@@ -232,7 +232,7 @@ TEST_CASE("MultiplyNoOverhang inner unroll " INTGEMM_TEST_NAME, "[tile][multiply
   TestMultiplyNoOverhang<Kernel>({1, sizeof(Register) * 4, 1});
   TestMultiplyNoOverhangShapes<Kernel>();
 }
-#endif
+#endif // INTGEMM_THIS_IS_AVX512VNNI
 
 // If the inner dimension is just twice, then there isn't any non-determinism in saturation order.
 TEST_CASE("MultiplyNoOverhang simple inner unroll " INTGEMM_TEST_NAME, "[tile][multiply]") {
@@ -293,7 +293,7 @@ TEMPLATE_TEST_CASE("MultiplyNoOverhang Unrolled Signed8 " INTGEMM_TEST_NAME, "[t
   TestMultiplyNoOverhangShapes<TestType>();
 }
 
-#endif
+#endif // no INTGEMM_THIS_IS_SSE2
 
 } // namespace INTGEMM_ARCH
 } // namespace intgemm
