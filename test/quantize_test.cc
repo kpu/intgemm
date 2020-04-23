@@ -34,7 +34,7 @@ MeanStd VectorMeanStd(AlignedVector<float>& vals, int num_items, bool absolute) 
   float normal_sums = 0;
   float squares_sum = 0;
   if (absolute) {
-    std::for_each(vals.begin(), vals.end(), [&] (float n) {normal_sums+=abs(n);});
+    std::for_each(vals.begin(), vals.end(), [&] (float n) {normal_sums+=std::abs(n);});
   } else {
     std::for_each(vals.begin(), vals.end(), [&] (float n) {normal_sums+=n;});
   }
