@@ -151,48 +151,55 @@ void DumpMatrix(int8_t *m, Index rows, Index cols) {
   }
 }
 
+struct TestMatrices {
+  typedef Access<RowMajorAccess<int8_t>, ColMajorAccess<int8_t>, RowMajorAccess<int32_t> > AccessT;
+
+  TestMatrices(Tile shape_in) :
+    shape(shape_in),
+    A(shape.A_rows * shape.inner),
+    B(shape.inner * shape.B_cols),
+    C_reference(shape.A_rows * shape.B_cols) {
+
+    std::mt19937 gen;
+    std::uniform_int_distribution<int8_t> dist(-127,127);
+    for (int8_t &it : A) it = dist(gen);
+    for (int8_t &it : B) it = dist(gen);
+
+    AccessT ref_access(
+        RowMajorAccess<int8_t>(A.begin(), shape.inner),
+        ColMajorAccess<int8_t>(B.begin(), shape.inner),
+        RowMajorAccess<int32_t>(C_reference.begin(), shape.B_cols));
+    Signed8ReferenceMult<AccessT>(ref_access, shape);
+  }
+
+  AccessT AccessTest(AlignedVector<int32_t> &C_test) {
+    return AccessT(
+      RowMajorAccess<int8_t>(A.begin(), shape.inner),
+      ColMajorAccess<int8_t>(B.begin(), shape.inner),
+      RowMajorAccess<int32_t>(C_test.begin(), shape.B_cols));
+  }
+
+  Tile shape;
+  AlignedVector<int8_t> A;
+  AlignedVector<int8_t> B;
+  AlignedVector<int32_t> C_reference;
+};
+
 #ifndef INTGEMM_THIS_IS_SSE2
 template <class Kernel> void TestMultiplyNoOverhang(Tile shape) {
   // These are sanity checks on the arguments, not the code.
   CHECK(shape.A_rows % Kernel::kTile.A_rows == 0);
   CHECK(shape.inner % Kernel::kTile.inner == 0);
   CHECK(shape.B_cols % Kernel::kTile.B_cols == 0);
-
-  AlignedVector<int8_t> A(shape.A_rows * shape.inner);
-  AlignedVector<int8_t> B(shape.inner * shape.B_cols);
-  std::mt19937 gen;
-  std::uniform_int_distribution<int8_t> dist(-127,127);
-  for (int8_t &it : A) it = dist(gen);
-  for (int8_t &it : B) it = dist(gen);
-
-  AlignedVector<int32_t> C_reference(shape.A_rows * shape.B_cols);
-  typedef Access<RowMajorAccess<int8_t>, ColMajorAccess<int8_t>, RowMajorAccess<int32_t> > AccessT;
-  AccessT ref_access(
-      RowMajorAccess<int8_t>(A.begin(), shape.inner),
-      ColMajorAccess<int8_t>(B.begin(), shape.inner),
-      RowMajorAccess<int32_t>(C_reference.begin(), shape.B_cols));
-  Signed8ReferenceMult<AccessT>(ref_access, shape);
-
+  TestMatrices t(shape);
   AlignedVector<int32_t> C_test(shape.A_rows * shape.B_cols);
-  AccessT test_access(
-      RowMajorAccess<int8_t>(A.begin(), shape.inner),
-      ColMajorAccess<int8_t>(B.begin(), shape.inner),
-      RowMajorAccess<int32_t>(C_test.begin(), shape.B_cols));
-  MultiplyNoOverhang<AccessT, Kernel>(test_access, shape);
-  bool failed = false;
-  for (Index i = 0; i < shape.A_rows; ++i) {
+  MultiplyNoOverhang<TestMatrices::AccessT, Kernel>(t.AccessTest(C_test), shape);
+  CHECK(!memcmp(t.C_reference.begin(), C_test.begin(), shape.A_rows * shape.B_cols));
+/*  for (Index i = 0; i < shape.A_rows; ++i) {
     for (Index j = 0; j < shape.B_cols; ++j) {
-      CHECK(C_reference[i * shape.B_cols + j] == C_test[i * shape.B_cols + j]);
-      if (C_reference[i * shape.B_cols + j] != C_test[i * shape.B_cols + j])
-        failed = true;
+      CHECK(t.C_reference[i * shape.B_cols + j] == C_test[i * shape.B_cols + j]);
     }
-  }
-  if (failed) {
-    std::cerr << "Failed A is ";
-    DumpMatrix(A.begin(), shape.A_rows, shape.inner);
-    std::cerr << "Failed B is ";
-    DumpMatrix(B.begin(), shape.inner, shape.B_cols);
-  }
+  }*/
 }
 
 template <class Kernel> void TestMultiplyNoOverhangShapes() {
@@ -291,6 +298,19 @@ TEMPLATE_TEST_CASE("MultiplyNoOverhang Unrolled Signed8 " INTGEMM_TEST_NAME, "[t
     ) {
   if (kCPU < CPUType::INTGEMM_ARCH) return;
   TestMultiplyNoOverhangShapes<TestType>();
+}
+
+TEST_CASE("Multiply " INTGEMM_TEST_NAME, "[tile][multiply]") {
+  if (kCPU < CPUType::INTGEMM_ARCH) return;
+  Tile shape{1, sizeof(Register), 1};
+  for (shape.A_rows = 1; shape.A_rows < 33; ++shape.A_rows) {
+    for (shape.B_cols = 1; shape.B_cols < 33; ++shape.B_cols) {
+      TestMatrices t(shape);
+      AlignedVector<int32_t> C_test(shape.A_rows * shape.B_cols);
+      Multiply<TestMatrices::AccessT, Signed8, 7, 3>(t.AccessTest(C_test), shape);
+      CHECK(!memcmp(t.C_reference.begin(), C_test.begin(), shape.A_rows * shape.B_cols));
+    }
+  }
 }
 
 #endif // no INTGEMM_THIS_IS_SSE2
