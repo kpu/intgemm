@@ -245,6 +245,12 @@ TEST_CASE("MultiplyNoOverhang simple inner unroll " INTGEMM_TEST_NAME, "[tile][m
   TestMultiplyNoOverhang<Kernel>({5, sizeof(Register) * 2, 7});
 }
 
+TEST_CASE("MultiplyNoOverhang Simple 17 rows " INTGEMM_TEST_NAME, "[tile][multiply]") {
+  if (kCPU < CPUType::INTGEMM_ARCH) return;
+  typedef UnrollKernel<17, 1, 1, Signed8> Kernel;
+  TestMultiplyNoOverhang<Kernel>({17, sizeof(Register), 1});
+}
+
 // Annoyingly, catch's cross-product stuff requires the first argument be a type, which is pretty useless for a cross-product of integers.
 TEMPLATE_TEST_CASE("MultiplyNoOverhang Unrolled Signed8 " INTGEMM_TEST_NAME, "[tile][multiply]",
     (UnrollKernel<1, 1, 1, Signed8>),
@@ -270,13 +276,18 @@ TEMPLATE_TEST_CASE("MultiplyNoOverhang Unrolled Signed8 " INTGEMM_TEST_NAME, "[t
     (UnrollKernel<1, 1, 32, Signed8>),
     (UnrollKernel<2, 1, 1, Signed8>),
     (UnrollKernel<2, 1, 2, Signed8>),
+    (UnrollKernel<2, 1, 3, Signed8>),
     (UnrollKernel<3, 1, 1, Signed8>),
     (UnrollKernel<3, 1, 3, Signed8>),
     (UnrollKernel<4, 1, 1, Signed8>),
     (UnrollKernel<5, 1, 1, Signed8>),
+    (UnrollKernel<6, 1, 4, Signed8>),
+    (UnrollKernel<7, 1, 3, Signed8>),
+    (UnrollKernel<7, 1, 4, Signed8>),
     (UnrollKernel<15, 1, 1, Signed8>),
-    (UnrollKernel<16, 1, 1, Signed8>)
-//    (UnrollKernel<17, 1, 1, Signed8>)
+    (UnrollKernel<15, 1, 2, Signed8>),
+    (UnrollKernel<16, 1, 1, Signed8>),
+    (UnrollKernel<17, 1, 1, Signed8>)
     ) {
   if (kCPU < CPUType::INTGEMM_ARCH) return;
   TestMultiplyNoOverhangShapes<TestType>();
