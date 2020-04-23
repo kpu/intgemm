@@ -194,7 +194,7 @@ template <class Kernel> void TestMultiplyNoOverhang(Tile shape) {
   TestMatrices t(shape);
   AlignedVector<int32_t> C_test(shape.A_rows * shape.B_cols);
   MultiplyNoOverhang<TestMatrices::AccessT, Kernel>(t.AccessTest(C_test), shape);
-  CHECK(!memcmp(t.C_reference.begin(), C_test.begin(), shape.A_rows * shape.B_cols));
+  CHECK(!memcmp(t.C_reference.begin(), C_test.begin(), shape.A_rows * shape.B_cols * sizeof(int32_t)));
 /*  for (Index i = 0; i < shape.A_rows; ++i) {
     for (Index j = 0; j < shape.B_cols; ++j) {
       CHECK(t.C_reference[i * shape.B_cols + j] == C_test[i * shape.B_cols + j]);
@@ -308,7 +308,10 @@ TEST_CASE("Multiply " INTGEMM_TEST_NAME, "[tile][multiply]") {
       TestMatrices t(shape);
       AlignedVector<int32_t> C_test(shape.A_rows * shape.B_cols);
       Multiply<TestMatrices::AccessT, Signed8, 7, 3>(t.AccessTest(C_test), shape);
-      CHECK(!memcmp(t.C_reference.begin(), C_test.begin(), shape.A_rows * shape.B_cols));
+      CHECK(!memcmp(t.C_reference.begin(), C_test.begin(), shape.A_rows * shape.B_cols * sizeof(int32_t)));
+      memset(C_test.begin(), 0, shape.A_rows * shape.B_cols);
+      Multiply<TestMatrices::AccessT, Signed8, 4, 5>(t.AccessTest(C_test), shape);
+      CHECK(!memcmp(t.C_reference.begin(), C_test.begin(), shape.A_rows * shape.B_cols * sizeof(int32_t)));
     }
   }
 }
