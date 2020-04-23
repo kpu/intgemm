@@ -56,6 +56,14 @@ template <class AccessT, class Kernel> INTGEMM_TARGET __attribute__((flatten)) s
   }
 }
 
+/* Multiply matrices without being a multiple of an unrolled kernel size.  The
+ * inner dimension still needs to be a multiple of sizeof(Register) for int8_t
+ * or sizeof(Register) / 2 for int16_t.
+ * Kernel should be a small kernel like Shifted8 or Signed8; this function will
+ * unroll.
+ * A_rows and B_cols specify the unrolled kernel size to use for most of the
+ * multiply; these impact speed but not output.
+ */
 template <class Access, class Kernel, Index A_rows, Index B_cols> INTGEMM_TARGET static inline void Multiply(Access access, const Tile shape) {
   // Still has to be a multiple of the underlying Kernel, but usually that's just 1 x sizeof(Register) x 1.
   assert(shape.A_rows % Kernel::kTile.A_rows == 0);
