@@ -51,8 +51,7 @@ template <class AccessT, class Kernel> INTGEMM_TARGET __attribute__((flatten)) s
       Sum16To32(c_regs, typename Kernel::Packed::C(), make_index_sequence<Outputs>());
       // Horizontally add 32-bit values.
       Reduce32<Outputs, Sum32Op>(c_regs);
-      // col_row.CAccessor().template Write<Kernel::kTile.A_rows, Kernel::kTile.B_cols>(c_regs);
-      WriteCallback::template Run<Kernel::kTile.A_rows, Kernel::kTile.B_cols>(col_row.CAccessor(), c_regs);
+      col_row.CAccessor().template Write<Kernel::kTile.A_rows, Kernel::kTile.B_cols>(c_regs);
     }
   }
 }

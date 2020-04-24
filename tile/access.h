@@ -3,20 +3,21 @@
 #include <type_traits>
 
 #include "../types.h"
+#include "callbacks.h"
 
 namespace intgemm {
 
 // See also: RegisterRowMajorAccess is RowMajorAccess<Register> but without the
 // compiler warning.  That is defined in dot.h.
-template <class T> class RowMajorAccess {
+template <class T, class Callback> class CallbackRowMajorAccess {
   public:
     typedef T Content;
 
-    RowMajorAccess(Content *data, Index cols)
-      : data_(data), cols_(cols) {}
+    CallbackRowMajorAccess(Content *data, Index cols, const typename Callback::Config& callback_config = {})
+      : data_(data), cols_(cols), callback_config_(callback_config) {}
 
-    RowMajorAccess<Content> Add(Index row, Index col) const {
-      return RowMajorAccess<Content>(data_ + row * cols_ + col, cols_);
+    CallbackRowMajorAccess<Content, Callback> Add(Index row, Index col) const {
+      return CallbackRowMajorAccess<Content, Callback>(data_ + row * cols_ + col, cols_, callback_config_);
     }
 
     Index Cols() const { return cols_; }
@@ -24,10 +25,27 @@ template <class T> class RowMajorAccess {
     const Content &Front() const { return *data_; }
     Content &Front() { return *data_; }
 
+    template <Index A_rows, Index B_cols>
+    void Write(const __m128i *from) {
+      Callback::template Run<A_rows, B_cols>(*this, from, callback_config_);
+    }
+    template <Index A_rows, Index B_cols>
+    void Write(const __m256i *from) {
+      Callback::template Run<A_rows, B_cols>(*this, from, callback_config_);
+    }
+    template <Index A_rows, Index B_cols>
+    void Write(const __m512i *from) {
+      Callback::template Run<A_rows, B_cols>(*this, from, callback_config_);
+    }
+
   private:
     Content *data_;
     Index cols_;
+    typename Callback::Config callback_config_;
 };
+
+template <class T>
+using RowMajorAccess = CallbackRowMajorAccess<T, WriteCallback>;
 
 template <class T> class ColMajorAccess {
   public:
