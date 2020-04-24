@@ -39,4 +39,38 @@ struct TestMatrices8 {
   AlignedVector<int32_t> C;
 };
 
+struct TestMatricesUnquantizeAndWriteRowMajorAccess {
+  typedef Access<RowMajorAccess<int8_t>, ColMajorAccess<int8_t>, UnquantizeAndWriteRowMajorAccess<float>> AccessT;
+
+  explicit TestMatricesUnquantizeAndWriteRowMajorAccess(Tile shape_in, float unquant_mult) :
+    shape(shape_in),
+    A(shape.A_rows * shape.inner),
+    B(shape.inner * shape.B_cols),
+    C(shape.A_rows * shape.B_cols),
+    unquant_mult_(unquant_mult) {
+
+    std::mt19937 gen;
+    std::uniform_int_distribution<int8_t> dist(-127,127);
+    for (int8_t &it : A) it = dist(gen);
+    for (int8_t &it : B) it = dist(gen);
+    // C is uninitialized.
+  }
+
+  AccessT Accessor() {
+    return AccessT(
+      RowMajorAccess<int8_t>(A.begin(), shape.inner),
+      ColMajorAccess<int8_t>(B.begin(), shape.inner),
+      UnquantizeAndWriteRowMajorAccess<float>(C.begin(), shape.B_cols, {unquant_mult_}));
+  }
+
+  Tile shape;
+  AlignedVector<int8_t> A;
+  AlignedVector<int8_t> B;
+  // Uninitialized; for using tests to write to.
+  AlignedVector<float> C;
+
+private:
+  float unquant_mult_;
+};
+
 } // namespace intgemm
