@@ -1,6 +1,7 @@
 #pragma once
 
 #include "access.h"
+#include "callbacks.h"
 #include "dot.h"
 #include "reduce.h"
 #include "../types.h"
