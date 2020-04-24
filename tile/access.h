@@ -47,6 +47,9 @@ template <class T, class Callback> class CallbackRowMajorAccess {
 template <class T>
 using RowMajorAccess = CallbackRowMajorAccess<T, WriteCallback>;
 
+template <class T>
+using UnquantizeAndWriteRowMajorAccess = CallbackRowMajorAccess<T, UnquantizeAndWriteCallback>;
+
 template <class T> class ColMajorAccess {
   public:
     typedef T Content;
