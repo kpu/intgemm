@@ -45,6 +45,7 @@ INTGEMM_AVX512BW inline __m512i QuantizerGrab(const float *input, const __m512 q
 
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_SELECT_COL_B(INTGEMM_AVX512BW, __m512i)
+INTGEMM_SELECT_COL_B_COLUMN_MAJOR(INTGEMM_AVX512BW, __m512i)
 
 // For PrepareB we want to read 8 columns at a time.  When converting 32-bit
 // floats to 8-bit values, that's 32 bytes of floats.  But AVX512 is 64 bytes
@@ -208,6 +209,9 @@ struct AVX512_16bit {
   INTGEMM_AVX512BW static void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     avx512f::SelectColumnsOfB((const __m512i*)input, (__m512i*)output, rows * 2, cols_begin, cols_end);
   }
+  INTGEMM_AVX512BW static void SelectColumnsB_ColumnMajor(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
+    avx512f::SelectColumnsOfB_ColumnMajor((const __m512i*)input, (__m512i*)output, rows * 2, cols_begin, cols_end);
+  }
 
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
   INTGEMM_MULTIPLY16(__m512i, INTGEMM_AVX512BW, CPUType::AVX2)
@@ -315,6 +319,9 @@ struct AVX512_8bit {
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
   INTGEMM_AVX512BW static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     avx512f::SelectColumnsOfB((const __m512i*)input, (__m512i*)output, rows, cols_begin, cols_end);
+  }
+  INTGEMM_AVX512BW static void SelectColumnsB_ColumnMajor(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
+    avx512f::SelectColumnsOfB_ColumnMajor((const __m512i*)input, (__m512i*)output, rows, cols_begin, cols_end);
   }
 
   // Special AVX512 implementation due to having 32 registers (so I don't have to

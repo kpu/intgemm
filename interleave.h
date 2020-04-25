@@ -314,4 +314,17 @@ target static inline void SelectColumnsOfB(const Register *input, Register *outp
   } \
 }
 
+#define INTGEMM_SELECT_COL_B_COLUMN_MAJOR(target, Register) \
+target static inline void SelectColumnsOfB_ColumnMajor(const Register *input, Register *output, Index rows_bytes /* number of bytes in a row */, const Index *cols_begin, const Index *cols_end) { \
+  assert(rows_bytes % sizeof(Register) == 0); \
+  assert((cols_end - cols_begin) % 8 == 0);  \
+  /* Do columns for multiples of 8.*/ \
+  int register_rows = rows_bytes / sizeof(Register); \
+  for (; cols_begin != cols_end; ++cols_begin) { \
+    const Register *it = input + (*cols_begin & 7) * register_rows; \
+    for (int r = 0; r < register_rows; ++r) \
+      *output++ = *it++; \
+  } \
+}
+
 } // namespace intgemm
