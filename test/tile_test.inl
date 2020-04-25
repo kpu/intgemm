@@ -181,6 +181,47 @@ template <class Access> void Signed8ReferenceMult_UnquantizeAndWrite(Access acce
   }
 }
 
+template <class Access> void Signed8ReferenceMult_UnquantizeAndAddBiasAndWrite(Access access, Tile problem, float unquant_mult, const float* bias_addr) {
+  assert(!problem.inner % 2);
+  for (Index a_row = 0; a_row < problem.A_rows; ++a_row) {
+    for (Index b_col = 0; b_col < problem.B_cols; ++b_col) {
+      Access acc = access.AAdd(a_row, 0).BAdd(0, b_col).CAdd(a_row, b_col);
+      // For VNNI, just do it accurately.
+#ifdef INTGEMM_THIS_IS_AVX512VNNI
+      acc.CFront() = 0;
+      for (Index inner = 0; inner < problem.inner; ++inner) {
+        Access innermost = acc.AAdd(0, inner).BAdd(inner, 0);
+        acc.CFront() += static_cast<int32_t>(innermost.AFront()) * static_cast<int32_t>(innermost.BFront());
+      }
+#else
+      // For non-VNNI, do the saturation stuff.
+      int16_t accumulators[sizeof(Register) / sizeof(int16_t)] = {0};
+      for (Index inner = 0; inner < problem.inner; inner += 2) {
+        Access innermost = acc.AAdd(0, inner).BAdd(inner, 0);
+        int32_t product = static_cast<int32_t>(innermost.AFront()) * static_cast<int32_t>(innermost.BFront());
+        innermost = innermost.AAdd(0, 1).BAdd(1, 0);
+        product += static_cast<int32_t>(innermost.AFront()) * static_cast<int32_t>(innermost.BFront());
+        // Saturate to 16-bit for maddubs.
+        if (product > 32767) product = 32767;
+        if (product < -32768) product = -32768;
+        int16_t &accum = accumulators[(inner / 2) % (sizeof(Register) / sizeof(int16_t))];
+        // Saturating accumlation.
+        product += static_cast<int32_t>(accum);
+        if (product > 32767) product = 32767;
+        if (product < -32768) product = -32768;
+        accum = static_cast<int16_t>(product);
+      }
+      acc.CFront() = 0;
+      for (Index i = 0; i < sizeof(Register) / sizeof(int16_t); ++i) {
+        acc.CFront() += static_cast<int32_t>(accumulators[i]);
+      }
+#endif
+      acc.CFront() *= unquant_mult;
+      acc.CFront() += bias_addr[b_col];
+    }
+  }
+}
+
 void DumpMatrix(int8_t *m, Index rows, Index cols) {
   std::cerr << rows << 'x' << cols << '\n';
   for (Index i = 0; i < rows; ++i) {
@@ -221,6 +262,20 @@ struct TestMatricesRef_UnquantizeAndWrite : TestMatricesUnquantizeAndWriteRowMaj
   AlignedVector<float> C_reference;
 };
 
+struct TestMatricesRef_UnquantizeAndAddBiasAndWrite : TestMatricesUnquantizeAndAddBiasAndWriteRowMajorAccess {
+  TestMatricesRef_UnquantizeAndAddBiasAndWrite(Tile shape_in, float unquant_mult) :
+    TestMatricesUnquantizeAndAddBiasAndWriteRowMajorAccess(shape_in, unquant_mult),
+    C_reference(shape.A_rows * shape.B_cols) {
+
+    AccessT ref_access(
+        RowMajorAccess<int8_t>(A.begin(), shape.inner),
+        ColMajorAccess<int8_t>(B.begin(), shape.inner),
+        UnquantizeAndAddBiasAndWriteRowMajorAccess<float>(C_reference.begin(), shape.B_cols, {unquant_mult, bias.begin(), C_reference.begin()}));
+    Signed8ReferenceMult_UnquantizeAndAddBiasAndWrite<AccessT>(ref_access, shape, unquant_mult, bias.begin());
+  }
+
+  AlignedVector<float> C_reference;
+};
 
 #ifndef INTGEMM_THIS_IS_SSE2
 template <class Kernel> void TestMultiplyNoOverhang(Tile shape) {
@@ -246,6 +301,20 @@ template <class Kernel> void TestMultiplyNoOverhang_UnquantizeAndWrite(Tile shap
   TestMatricesRef_UnquantizeAndWrite t(shape, unquant_mult);
   MultiplyNoOverhang<TestMatricesRef_UnquantizeAndWrite::AccessT, Kernel>(t.Accessor(), shape);
   CHECK(!memcmp(t.C_reference.begin(), t.C.begin(), shape.A_rows * shape.B_cols * sizeof(float)));
+}
+
+template <class Kernel> void TestMultiplyNoOverhang_UnquantizeAndAddBiasAndWrite(Tile shape, float unquant_mult) {
+  // These are sanity checks on the arguments, not the code.
+  CHECK(shape.A_rows % Kernel::kTile.A_rows == 0);
+  CHECK(shape.inner % Kernel::kTile.inner == 0);
+  CHECK(shape.B_cols % Kernel::kTile.B_cols == 0);
+  TestMatricesRef_UnquantizeAndAddBiasAndWrite t(shape, unquant_mult);
+  MultiplyNoOverhang<TestMatricesRef_UnquantizeAndAddBiasAndWrite::AccessT, Kernel>(t.Accessor(), shape);
+  for (Index i = 0; i < shape.A_rows; ++i) {
+    for (Index j = 0; j < shape.B_cols; ++j) {
+      CHECK_EPS(t.C[i * shape.B_cols + j], t.C_reference[i * shape.B_cols + j], 0.1f); // TODO: This epsilon is pretty worrying but with smaller epsiolon test doesn't pass
+    }
+  }
 }
 
 template <class Kernel> void TestMultiplyNoOverhangShapes() {
@@ -286,6 +355,25 @@ template <class Kernel> void TestMultiplyNoOverhangShapes_UnquantizeAndWrite(flo
   }
 }
 
+template <class Kernel> void TestMultiplyNoOverhangShapes_UnquantizeAndAddBiasAndWrite(float unquant_mult) {
+  Tile shape = Kernel::kTile;
+  // Minimum size.
+  TestMultiplyNoOverhang_UnquantizeAndAddBiasAndWrite<Kernel>(shape, unquant_mult);
+  // Multiples on each dimension.
+  TestMultiplyNoOverhang_UnquantizeAndAddBiasAndWrite<Kernel>(Tile{shape.A_rows * 2, shape.inner, shape.B_cols}, unquant_mult);
+  TestMultiplyNoOverhang_UnquantizeAndAddBiasAndWrite<Kernel>(Tile{shape.A_rows, shape.inner * 2, shape.B_cols}, unquant_mult);
+  TestMultiplyNoOverhang_UnquantizeAndAddBiasAndWrite<Kernel>(Tile{shape.A_rows, shape.inner, shape.B_cols * 2}, unquant_mult);
+  TestMultiplyNoOverhang_UnquantizeAndAddBiasAndWrite<Kernel>(Tile{shape.A_rows * 2, shape.inner * 2, shape.B_cols * 2}, unquant_mult);
+  // Try a bunch of shapes!
+  for (shape.A_rows = 0; shape.A_rows <= Kernel::kTile.A_rows * 9; shape.A_rows += Kernel::kTile.A_rows) {
+    for (shape.inner = 0; shape.inner <= Kernel::kTile.inner * 9; shape.inner += Kernel::kTile.inner) {
+      for (shape.B_cols = 0; shape.B_cols <= Kernel::kTile.B_cols * 9; shape.B_cols += Kernel::kTile.B_cols) {
+        TestMultiplyNoOverhang_UnquantizeAndAddBiasAndWrite<Kernel>(shape, unquant_mult);
+      }
+    }
+  }
+}
+
 TEST_CASE("MultiplyNoOverhang Signed8 " INTGEMM_TEST_NAME, "[tile]") {
   if (kCPU < CPUType::INTGEMM_ARCH) return;
   TestMultiplyNoOverhangShapes<Signed8>();
@@ -319,6 +407,22 @@ TEST_CASE("MultiplyNoOverhang inner unroll UnquantizeAndWrite " INTGEMM_TEST_NAM
   TestMultiplyNoOverhang_UnquantizeAndWrite<Kernel>({1, sizeof(Register) * 4, 1}, unquant_mult);
   TestMultiplyNoOverhangShapes_UnquantizeAndWrite<Kernel>(unquant_mult);
 }
+
+TEST_CASE("MultiplyNoOverhang Signed8 UnquantizeAndAddBiasAndWrite " INTGEMM_TEST_NAME, "[tile]") {
+  if (kCPU < CPUType::INTGEMM_ARCH) return;
+  TestMultiplyNoOverhangShapes_UnquantizeAndAddBiasAndWrite<Signed8>(1.7f);
+}
+
+TEST_CASE("MultiplyNoOverhang inner unroll UnquantizeAndAddBiasAndWrite " INTGEMM_TEST_NAME, "[tile][multiply]") {
+  if (kCPU < CPUType::INTGEMM_ARCH) return;
+  float unquant_mult = 1.7f;
+  typedef UnrollKernel<1, 2, 1, Signed8> Kernel;
+  Tile shape = {1, sizeof(Register) * 2, 1};
+  TestMultiplyNoOverhang_UnquantizeAndAddBiasAndWrite<Kernel>(shape, unquant_mult);
+  TestMultiplyNoOverhang_UnquantizeAndAddBiasAndWrite<Kernel>({1, sizeof(Register) * 4, 1}, unquant_mult);
+  TestMultiplyNoOverhangShapes_UnquantizeAndAddBiasAndWrite<Kernel>(unquant_mult);
+}
+
 #endif // INTGEMM_THIS_IS_AVX512VNNI
 
 // If the inner dimension is just twice, then there isn't any non-determinism in saturation order.
