@@ -52,6 +52,9 @@ extern const CPUType kCPU;
 struct Tile {
   Index A_rows, inner, B_cols;
   constexpr bool empty() const { return !A_rows || !inner || !B_cols; }
+  constexpr bool operator==(const Tile other) const {
+    return A_rows == other.A_rows && inner == other.inner && B_cols == other.B_cols;
+  }
 };
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
