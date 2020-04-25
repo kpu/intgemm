@@ -263,7 +263,7 @@ class UnquantizeAndAddBiasAndWriteCallback {
     template <Index A_rows, Index B_cols, Index ColRemain, typename Access> INTGEMM_AVX512BW
       static typename std::enable_if<A_rows && B_cols && (ColRemain == 0)>::type
       RunImpl(Access access, const __m512i *from, const Config& config) {
-      RunImpl<A_rows - 1, B_cols, B_cols>(access.Add(1, -B_cols), from, config);
+      //RunImpl<A_rows - 1, B_cols, B_cols>(access.Add(1, -B_cols), from, config);
     }
 
     // On the last row, finish the last write with a mask.

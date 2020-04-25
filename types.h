@@ -34,7 +34,7 @@ class UnsupportedCPU : public std::exception {
     }
 };
 
-typedef std::size_t Index;
+typedef unsigned int Index;
 
 // If you want to detect the CPU and dispatch yourself, here's what to use:
 enum class CPUType {
