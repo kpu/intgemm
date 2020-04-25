@@ -206,6 +206,20 @@ template <Index A_rows, Index inner, Index B_cols, class Backend> struct UnrollK
   }
 };
 
+class Constant1sAccess {
+  public:
+    typedef int8_t Content;
+    Constant1sAccess() : reg_(set1_epi8<Register>(1)) {}
+    Constant1sAccess Add(Index, Index) const {
+      return *this;
+    }
+    const Content &Front() const {
+      return reinterpret_cast<const Content&>(reg_);
+    }
+  private:
+    Register reg_;
+};
+
 } // namespace INTGEMM_ARCH
 } // namespace
 
