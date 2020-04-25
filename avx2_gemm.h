@@ -18,6 +18,7 @@ INTGEMM_AVX2 inline __m256i QuantizerGrab(const float *input, const __m256 quant
 }
 
 INTGEMM_SELECT_COL_B(INTGEMM_AVX2, __m256i)
+INTGEMM_SELECT_COL_B_COLUMN_MAJOR(INTGEMM_AVX2, __m256i)
 
 class QuantizeTile16 {
   public:
@@ -88,6 +89,10 @@ struct AVX2_16bit {
 
   INTGEMM_AVX2 static void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     avx2::SelectColumnsOfB((const __m256i*)input, (__m256i*)output, rows * 2, cols_begin, cols_end);
+  }
+
+  INTGEMM_AVX2 static void SelectColumnsB_ColumnMajor(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
+    avx2::SelectColumnsOfB_ColumnMajor((const __m256i*)input, (__m256i*)output, rows * 2, cols_begin, cols_end);
   }
 
   INTGEMM_MULTIPLY16(__m256i, INTGEMM_AVX2, CPUType::AVX2)
@@ -234,6 +239,10 @@ struct AVX2_8bit {
 
   INTGEMM_AVX2 static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     avx2::SelectColumnsOfB((const __m256i*)input, (__m256i*)output, rows, cols_begin, cols_end);
+  }
+
+  INTGEMM_AVX2 static void SelectColumnsB_ColumnMajor(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
+    avx2::SelectColumnsOfB_ColumnMajor((const __m256i*)input, (__m256i*)output, rows, cols_begin, cols_end);
   }
 
   INTGEMM_MULTIPLY8(__m256i, INTGEMM_AVX2, CPUType::AVX2)

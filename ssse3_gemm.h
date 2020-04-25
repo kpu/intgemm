@@ -20,6 +20,7 @@ INTGEMM_SSSE3 inline __m128i QuantizerGrab(const float *input, const __m128 quan
 }
 
 INTGEMM_SELECT_COL_B(INTGEMM_SSSE3, __m128i)
+INTGEMM_SELECT_COL_B_COLUMN_MAJOR(INTGEMM_SSSE3, __m128i)
 
 class QuantizeTile8 {
   public:
@@ -148,6 +149,9 @@ struct SSSE3_8bit {
 
   INTGEMM_SSSE3 static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     ssse3::SelectColumnsOfB((const __m128i*)input, (__m128i*)output, rows, cols_begin, cols_end);
+  }
+  INTGEMM_SSSE3 static void SelectColumnsB_ColumnsMajor(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
+    ssse3::SelectColumnsOfB_ColumnMajor((const __m128i*)input, (__m128i*)output, rows, cols_begin, cols_end);
   }
 
   INTGEMM_MULTIPLY8(__m128i, INTGEMM_SSSE3, CPUType::SSE2)

@@ -18,6 +18,7 @@ INTGEMM_SSE2 inline __m128i QuantizerGrab(const float *input, const __m128 quant
 }
 
 INTGEMM_SELECT_COL_B(INTGEMM_SSE2, __m128i)
+INTGEMM_SELECT_COL_B_COLUMN_MAJOR(INTGEMM_SSE2, __m128i)
 
 class QuantizeTile16 {
   public:
@@ -87,6 +88,10 @@ struct SSE2_16bit {
   INTGEMM_SSE2 static void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
     //TODO #DEFINE
     sse2::SelectColumnsOfB((const __m128i*)input, (__m128i*)output, rows * 2, cols_begin, cols_end);
+  }
+   INTGEMM_SSE2 static void SelectColumnsB_ColumnMajor(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
+    //TODO #DEFINE
+    sse2::SelectColumnsOfB_ColumnMajor((const __m128i*)input, (__m128i*)output, rows * 2, cols_begin, cols_end);
   }
   INTGEMM_MULTIPLY16(__m128i, INTGEMM_SSE2, CPUType::SSE2)
 
