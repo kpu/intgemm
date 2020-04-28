@@ -67,7 +67,10 @@ template <class T> class RowMajorAccess {
       constexpr Index remaining = (A_rows - 1) * B_cols + ColRemain;
       // Compilers seem to complain a lot about shifting past the end :-(
       constexpr __mmask16 mask = (remaining >= 16) ? 0xffff : (static_cast<__mmask16>(1 << remaining) - 1);
-      _mm512_mask_i32scatter_epi32(data_ - (B_cols - ColRemain), mask, offsets, *from, sizeof(int32_t));
+      // The offsets add B_cols - ColRemain so they can be correct modulo the number of columns.
+      // So we subtract that from the data pointer.
+      int32_t *go_back = data_ - (B_cols - ColRemain);
+      _mm512_mask_i32scatter_epi32(go_back, mask, offsets, *from, sizeof(int32_t));
       // We just wrote 16 values: ColRemain, the next row (all or partial), possibly the next etc.
       // 16 - ColRemain of the next row and whatever followed.
       constexpr Index Wrote = ((remaining < 16) ? remaining : 16);
