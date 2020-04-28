@@ -114,8 +114,8 @@ template <Index A_rows, Index B_cols> static void BenchmarkAndUpdate(Accessor ac
 }
 
 // Size of inner loop to sweep.
-constexpr Index kColsMax = 32;
-constexpr Index kRowsMax = 32;
+constexpr Index kColsMax = 16;
+constexpr Index kRowsMax = 16;
 
 template <std::size_t... Iterator> static inline BestConfig BenchmarkKernels(TestMatrices8::AccessT accessor, Tile shape, index_sequence<Iterator...>) {
   BestConfig ret;
