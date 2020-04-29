@@ -103,7 +103,7 @@ TEST_CASE("Reduce " INTGEMM_TEST_NAME, "[tile]") {
 
 // Replicate the saturation behavior of the Signed8 kernel with 16-bit accumulation.
 template <class Access> void Signed8ReferenceMult(Access access, Tile problem) {
-  assert(!problem.inner % 2);
+  assert(!(problem.inner % 2));
   for (Index a_row = 0; a_row < problem.A_rows; ++a_row) {
     for (Index b_col = 0; b_col < problem.B_cols; ++b_col) {
       Access acc = access.AAdd(a_row, 0).BAdd(0, b_col).CAdd(a_row, b_col);
