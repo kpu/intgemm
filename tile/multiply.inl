@@ -25,7 +25,7 @@ template <std::size_t... i> INTGEMM_TARGET static inline void Sum16To32(Register
 template <std::size_t... i> INTGEMM_TARGET static inline void Sum16To32(Register *, int32_t, index_sequence<i...>) {}
 
 /* Multiply assuming the matrix sizes are a multiple of the kernel size. */
-template <class AccessT, class Kernel> INTGEMM_TARGET __attribute__((flatten)) static inline void MultiplyNoOverhang(AccessT access, const Tile shape) {
+template <class Kernel, class AccessT> INTGEMM_TARGET __attribute__((flatten)) static inline void MultiplyNoOverhang(AccessT access, const Tile shape) {
   assert(shape.A_rows % Kernel::kTile.A_rows == 0);
   assert(shape.inner % Kernel::kTile.inner == 0);
   assert(shape.B_cols % Kernel::kTile.B_cols == 0);
@@ -64,7 +64,7 @@ template <class AccessT, class Kernel> INTGEMM_TARGET __attribute__((flatten)) s
  * A_rows and B_cols specify the unrolled kernel size to use for most of the
  * multiply; these impact speed but not output.
  */
-template <class Access, class Kernel, Index A_rows, Index B_cols> INTGEMM_TARGET static inline void Multiply(Access access, const Tile shape) {
+template <class Kernel, Index A_rows, Index B_cols, class AccessT> INTGEMM_TARGET static inline void Multiply(AccessT access, const Tile shape) {
   // Still has to be a multiple of the underlying Kernel, but usually that's just 1 x sizeof(Register) x 1.
   assert(shape.A_rows % Kernel::kTile.A_rows == 0);
   assert(shape.inner % Kernel::kTile.inner == 0);
@@ -82,13 +82,13 @@ template <class Access, class Kernel, Index A_rows, Index B_cols> INTGEMM_TARGET
     shape.B_cols - overhang.B_cols
   };
   // Top left corner.
-  MultiplyNoOverhang<Access, Big>(access, big_shape);
+  MultiplyNoOverhang<Big>(access, big_shape);
   // Bottom currently including right side.  TODO: unrolled kernel, rather than dumb loop.
-  MultiplyNoOverhang<Access, Kernel>(
+  MultiplyNoOverhang<Kernel>(
       access.AAdd(big_shape.A_rows, 0).CAdd(big_shape.A_rows, 0),
       Tile {overhang.A_rows, shape.inner, shape.B_cols});
   // Right side except bottom.  TODO: unrolled kernel, rather than dumb loop.
-  MultiplyNoOverhang<Access, Kernel>(
+  MultiplyNoOverhang<Kernel>(
       access.BAdd(0, big_shape.B_cols).CAdd(0, big_shape.B_cols),
       Tile {big_shape.A_rows, shape.inner, overhang.B_cols});
 }

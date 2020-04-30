@@ -160,7 +160,7 @@ struct TestMatricesRef : TestMatrices8 {
         RowMajorAccess<int8_t>(A.begin(), shape.inner),
         ColMajorAccess<int8_t>(B.begin(), shape.inner),
         RowMajorAccess<int32_t>(C_reference.begin(), shape.B_cols));
-    Signed8ReferenceMult<AccessT>(ref_access, shape);
+    Signed8ReferenceMult(ref_access, shape);
   }
 
   AlignedVector<int32_t> C_reference;
@@ -173,7 +173,7 @@ template <class Kernel> void TestMultiplyNoOverhang(Tile shape) {
   CHECK(shape.inner % Kernel::kTile.inner == 0);
   CHECK(shape.B_cols % Kernel::kTile.B_cols == 0);
   TestMatricesRef t(shape);
-  MultiplyNoOverhang<TestMatricesRef::AccessT, Kernel>(t.Accessor(), shape);
+  MultiplyNoOverhang<Kernel>(t.Accessor(), shape);
   CHECK(!memcmp(t.C_reference.begin(), t.C.begin(), shape.A_rows * shape.B_cols * sizeof(int32_t)));
 /*  for (Index i = 0; i < shape.A_rows; ++i) {
     for (Index j = 0; j < shape.B_cols; ++j) {
@@ -286,10 +286,10 @@ TEST_CASE("Multiply " INTGEMM_TEST_NAME, "[tile][multiply]") {
   for (shape.A_rows = 1; shape.A_rows < 33; ++shape.A_rows) {
     for (shape.B_cols = 1; shape.B_cols < 33; ++shape.B_cols) {
       TestMatricesRef t(shape);
-      Multiply<TestMatricesRef::AccessT, Signed8, 7, 3>(t.Accessor(), shape);
+      Multiply<Signed8, 7, 3>(t.Accessor(), shape);
       CHECK(!memcmp(t.C_reference.begin(), t.C.begin(), shape.A_rows * shape.B_cols * sizeof(int32_t)));
       memset(t.C.begin(), 0, shape.A_rows * shape.B_cols * sizeof(int32_t));
-      Multiply<TestMatricesRef::AccessT, Signed8, 4, 5>(t.Accessor(), shape);
+      Multiply<Signed8, 4, 5>(t.Accessor(), shape);
       CHECK(!memcmp(t.C_reference.begin(), t.C.begin(), shape.A_rows * shape.B_cols * sizeof(int32_t)));
     }
   }
