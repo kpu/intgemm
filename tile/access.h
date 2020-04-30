@@ -3,6 +3,7 @@
 #include <type_traits>
 
 #include "../types.h"
+#include "../callbacks.h"
 
 namespace intgemm {
 
@@ -12,30 +13,36 @@ template <class T> class RowMajorAccess {
   public:
     typedef T Content;
 
-    RowMajorAccess(Content *data, Index cols)
-      : data_(data), cols_(cols) {}
+    RowMajorAccess(Content *data, Index cols) : RowMajorAccess(data, cols, 0, 0) {}
 
     RowMajorAccess<Content> Add(Index row, Index col) const {
-      return RowMajorAccess<Content>(data_ + row * cols_ + col, cols_);
+      return RowMajorAccess<Content>(data_ + row * cols_ + col, cols_, row_idx_ + row, col_idx_ + col);
     }
 
     const Content &Front() const { return *data_; }
     Content &Front() { return *data_; }
 
     // TODO: SLOW.  This is here for testing.
-    template <Index A_rows, Index B_cols> void Write(const __m128i *from) { SlowWrite<A_rows, B_cols>(reinterpret_cast<const T*>(from)); }
-    template <Index A_rows, Index B_cols> void Write(const __m256i *from) { SlowWrite<A_rows, B_cols>(reinterpret_cast<const T*>(from)); }
-    template <Index A_rows, Index B_cols> void Write(const __m512i *from) {
-      WriteImpl<A_rows, B_cols, B_cols>(from);
+    template <Index A_rows, Index B_cols, typename CallbackImpl> void Write(const __m128i *from, CallbackImpl&) {
+      SlowWrite<A_rows, B_cols>(reinterpret_cast<const T*>(from));
+    }
+    template <Index A_rows, Index B_cols, typename CallbackImpl> void Write(const __m256i *from, CallbackImpl&) {
+      SlowWrite<A_rows, B_cols>(reinterpret_cast<const T*>(from));
+    }
+    template <Index A_rows, Index B_cols, typename CallbackImpl> void Write(const __m512i *from, CallbackImpl& callback_impl) {
+      WriteImpl<A_rows, B_cols, B_cols>(from, callback_impl);
     }
 
   private:
+    RowMajorAccess(Content *data, Index cols, Index row_idx, Index col_idx)
+      : data_(data), cols_(cols), row_idx_(row_idx), col_idx_(col_idx) {}
+
     // If there's a full register to write for a column, do that.
-    template <Index A_rows, Index B_cols, Index ColRemain> INTGEMM_AVX512BW
+    template <Index A_rows, Index B_cols, Index ColRemain, typename CallbackImpl> INTGEMM_AVX512BW
       typename std::enable_if<A_rows && B_cols && (ColRemain >= 16)>::type
-      WriteImpl(const __m512i *from) {
-      _mm512_storeu_si512(data_, *from);
-      Add(0, 16).template WriteImpl<A_rows, B_cols, (ColRemain - 16)>(from + 1);
+      WriteImpl(const __m512i *from, CallbackImpl& callback_impl) {
+      _mm512_storeu_si512(data_, callback_impl(*from, callbacks::OutputBufferInfo(row_idx_, col_idx_, 0, 0)));
+      Add(0, 16).template WriteImpl<A_rows, B_cols, (ColRemain - 16)>(from + 1, callback_impl);
     }
 
     // TODO: test this more, also save it somewhere!  Make sure compiler isn't recreating this every time.
@@ -59,9 +66,9 @@ template <class T> class RowMajorAccess {
     }
 
     // There is a mix of rows in a register and we need a scatter.
-    template <Index A_rows, Index B_cols, Index ColRemain> INTGEMM_AVX512BW
+    template <Index A_rows, Index B_cols, Index ColRemain, typename CallbackImpl> INTGEMM_AVX512BW
       typename std::enable_if<(A_rows > 1) && ColRemain && (ColRemain < 16)>::type
-      WriteImpl(const __m512i *from) {
+      WriteImpl(const __m512i *from, CallbackImpl& callback_impl) {
       __m512i offsets = Offsets<B_cols, B_cols - ColRemain>();
       // We might be at the end of the data, in which case a mask is needed.
       constexpr Index remaining = (A_rows - 1) * B_cols + ColRemain;
@@ -70,33 +77,33 @@ template <class T> class RowMajorAccess {
       // The offsets add B_cols - ColRemain so they can be correct modulo the number of columns.
       // So we subtract that from the data pointer.
       int32_t *go_back = data_ - (B_cols - ColRemain);
-      _mm512_mask_i32scatter_epi32(go_back, mask, offsets, *from, sizeof(int32_t));
+      _mm512_mask_i32scatter_epi32(go_back, mask, offsets, callback_impl(*from, callbacks::OutputBufferInfo(row_idx_, col_idx_, 0, 0)), sizeof(int32_t));
       // We just wrote 16 values: ColRemain, the next row (all or partial), possibly the next etc.
       // 16 - ColRemain of the next row and whatever followed.
       constexpr Index Wrote = ((remaining < 16) ? remaining : 16);
       constexpr Index Position = (B_cols - ColRemain) + Wrote;
       // TODO: more testing on this.
-      Add(Position / B_cols, Position % B_cols - (B_cols - ColRemain)).template WriteImpl<A_rows - (Position / B_cols), B_cols, B_cols - (Position % B_cols)>(from + 1);
+      Add(Position / B_cols, Position % B_cols - (B_cols - ColRemain)).template WriteImpl<A_rows - (Position / B_cols), B_cols, B_cols - (Position % B_cols)>(from + 1, callback_impl);
     }
 
     // At clean end of column, move to next row.
-    template <Index A_rows, Index B_cols, Index ColRemain> INTGEMM_AVX512BW
+    template <Index A_rows, Index B_cols, Index ColRemain, typename CallbackImpl> INTGEMM_AVX512BW
       typename std::enable_if<A_rows && B_cols && (ColRemain == 0)>::type
-      WriteImpl(const __m512i *from) {
-      Add(1, -B_cols).template WriteImpl<A_rows - 1, B_cols, B_cols>(from);
+      WriteImpl(const __m512i *from, CallbackImpl& callback_impl) {
+      Add(1, -B_cols).template WriteImpl<A_rows - 1, B_cols, B_cols>(from, callback_impl);
     }
 
     // On the last row, finish the last write with a mask.
-    template <Index A_rows, Index B_cols, Index ColRemain> INTGEMM_AVX512BW
+    template <Index A_rows, Index B_cols, Index ColRemain, typename CallbackImpl> INTGEMM_AVX512BW
       typename std::enable_if<(A_rows == 1) && B_cols && (ColRemain < 16 && ColRemain > 0)>::type
-      WriteImpl(const __m512i *from) {
-      _mm512_mask_storeu_epi32(data_, (1 << ColRemain) - 1, *from);
+      WriteImpl(const __m512i *from, CallbackImpl& callback_impl) {
+      _mm512_mask_storeu_epi32(data_, (1 << ColRemain) - 1, callback_impl(*from, callbacks::OutputBufferInfo(row_idx_, col_idx_, 0, 0)));
     }
 
     // Nothing to write.
-    template <Index A_rows, Index B_cols, Index ColRemain> INTGEMM_AVX512BW
+    template <Index A_rows, Index B_cols, Index ColRemain, typename CallbackImpl> INTGEMM_AVX512BW
       typename std::enable_if<!A_rows || !B_cols>::type
-      WriteImpl(const __m512i *) {}
+      WriteImpl(const __m512i *, CallbackImpl&) {}
 
     template <Index A_rows, Index B_cols> void SlowWrite(const T *from) {
       for (Index i = 0; i < A_rows; ++i) {
@@ -108,6 +115,8 @@ template <class T> class RowMajorAccess {
 
     Content *data_;
     Index cols_;
+    Index row_idx_;
+    Index col_idx_;
 };
 
 template <class T> class ColMajorAccess {

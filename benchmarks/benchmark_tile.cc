@@ -93,9 +93,9 @@ template <Index A_rows, Index B_cols> static inline double BenchmarkNoOverhang(A
   typedef AVX512VNNI::UnrollKernel<A_rows, 1, B_cols, AVX512VNNI::Shifted8> Kernel;
   // Burn in.
   // TODO: different arches, guard against old compilers, etc.
-  AVX512VNNI::MultiplyNoOverhang<Kernel>(access, shape);
+  AVX512VNNI::MultiplyNoOverhang<Kernel>(access, shape, callbacks::Identity<Accessor::CContent>());
   for (std::size_t t = 0; t < kTries; ++t) {
-    AVX512VNNI::MultiplyNoOverhang<Kernel>(access, shape);
+    AVX512VNNI::MultiplyNoOverhang<Kernel>(access, shape, callbacks::Identity<Accessor::CContent>());
   }
   auto end = std::chrono::steady_clock::now();
   return std::chrono::duration<double>(end - start).count() / kTries;

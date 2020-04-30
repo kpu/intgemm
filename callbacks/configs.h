@@ -20,6 +20,10 @@ struct Dummy {
 };
 
 template <typename Type>
+struct Identity {
+};
+
+template <typename Type>
 struct Write {
   Type* output_addr;
 

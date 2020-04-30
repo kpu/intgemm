@@ -2,25 +2,35 @@
 #if defined(CALLBACKS_THIS_IS_SSE2)
   #define CPU_NAME SSE2
   #define CPU_ATTR INTGEMM_SSE2
+#elif defined(CALLBACKS_THIS_IS_SSSE3)
+  #define CPU_NAME SSSE3
+  #define CPU_ATTR INTGEMM_SSSE3
 #elif defined(CALLBACKS_THIS_IS_AVX2)
   #define CPU_NAME AVX2
   #define CPU_ATTR INTGEMM_AVX2
 #elif defined(CALLBACKS_THIS_IS_AVX512BW)
   #define CPU_NAME AVX512BW
   #define CPU_ATTR INTGEMM_AVX512BW
+#elif defined(CALLBACKS_THIS_IS_AVX512VNNI)
+  #define CPU_NAME AVX512VNNI
+  #define CPU_ATTR INTGEMM_AVX512VNNI
 #else
-  #error "Only SSE2, AVX2 and AVX512BW are supported"
+  #error "Only SSE2, SSSE3, AVX2, AVX512BW and AVX512VNNI are supported"
 #endif
 
-#if defined(CALLBACKS_THIS_IS_SSE2)
-  #define vi vector_t<CPUType::SSE2, int>
-  #define vf vector_t<CPUType::SSE2, float>
-  #define vd vector_t<CPUType::SSE2, double>
-#else
-  #define vi vector_t<CPUType::AVX2, int>
-  #define vf vector_t<CPUType::AVX2, float>
-  #define vd vector_t<CPUType::AVX2, double>
-#endif
+// #if defined(CALLBACKS_THIS_IS_SSE2)
+//   #define vi vector_t<CPUType::SSE2, int>
+//   #define vf vector_t<CPUType::SSE2, float>
+//   #define vd vector_t<CPUType::SSE2, double>
+// #else
+//   #define vi vector_t<CPUType::AVX2, int>
+//   #define vf vector_t<CPUType::AVX2, float>
+//   #define vd vector_t<CPUType::AVX2, double>
+// #endif
+
+#define vi vector_t<CPUType::CPU_NAME, int>
+#define vf vector_t<CPUType::CPU_NAME, float>
+#define vd vector_t<CPUType::CPU_NAME, double>
 
 namespace intgemm {
 namespace callbacks {
@@ -83,6 +93,18 @@ template <> class CallbackImpl<CPUType::CPU_NAME, Dummy> {
 public:
   CPU_ATTR CallbackImpl(const Dummy&) {}
   CPU_ATTR void operator()(vi, const OutputBufferInfo&) {}
+};
+
+/*
+ * Identity
+ */
+template <typename Type>
+class CallbackImpl<CPUType::CPU_NAME, Identity<Type>> {
+public:
+  CPU_ATTR CallbackImpl(const Identity<Type>&) {}
+  CPU_ATTR vector_t<CPUType::CPU_NAME, Type> operator()(vector_t<CPUType::CPU_NAME, Type> input, const OutputBufferInfo&) {
+    return input;
+  }
 };
 
 /*

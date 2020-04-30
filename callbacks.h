@@ -14,6 +14,10 @@
 #include "callbacks/implementations.inl"
 #undef CALLBACKS_THIS_IS_SSE2
 
+#define CALLBACKS_THIS_IS_SSSE3
+#include "callbacks/implementations.inl"
+#undef CALLBACKS_THIS_IS_SSSE3
+
 #define CALLBACKS_THIS_IS_AVX2
 #include "callbacks/implementations.inl"
 #undef CALLBACKS_THIS_IS_AVX2
@@ -24,3 +28,8 @@
 #undef CALLBACKS_THIS_IS_AVX512BW
 #endif
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
+#define CALLBACKS_THIS_IS_AVX512VNNI
+#include "callbacks/implementations.inl"
+#undef CALLBACKS_THIS_IS_AVX512VNNI
+#endif

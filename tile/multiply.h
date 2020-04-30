@@ -3,6 +3,7 @@
 #include "access.h"
 #include "dot.h"
 #include "reduce.h"
+#include "../callbacks.h"
 #include "../types.h"
 
 #include <cassert>

@@ -25,10 +25,13 @@ template <std::size_t... i> INTGEMM_TARGET static inline void Sum16To32(Register
 template <std::size_t... i> INTGEMM_TARGET static inline void Sum16To32(Register *, int32_t, index_sequence<i...>) {}
 
 /* Multiply assuming the matrix sizes are a multiple of the kernel size. */
-template <class Kernel, class AccessT> INTGEMM_TARGET __attribute__((flatten)) static inline void MultiplyNoOverhang(AccessT access, const Tile shape) {
+template <class Kernel, class AccessT, class Callback> INTGEMM_TARGET __attribute__((flatten)) static inline void MultiplyNoOverhang(AccessT access, const Tile shape, Callback callback) {
   assert(shape.A_rows % Kernel::kTile.A_rows == 0);
   assert(shape.inner % Kernel::kTile.inner == 0);
   assert(shape.B_cols % Kernel::kTile.B_cols == 0);
+
+  auto callback_impl = callbacks::CallbackImpl<CPUType::INTGEMM_ARCH, Callback>(callback);
+
   for (Index B_col = 0; B_col < shape.B_cols; B_col += Kernel::kTile.B_cols) {
     AccessT column_adjusted = access.BAdd(0, B_col).CAdd(0, B_col);
     for (Index A_row = 0; A_row < shape.A_rows; A_row += Kernel::kTile.A_rows) {
@@ -51,7 +54,7 @@ template <class Kernel, class AccessT> INTGEMM_TARGET __attribute__((flatten)) s
       Sum16To32(c_regs, typename Kernel::Packed::C(), make_index_sequence<Outputs>());
       // Horizontally add 32-bit values.
       Reduce32<Outputs, Sum32Op>(c_regs);
-      col_row.CAccessor().template Write<Kernel::kTile.A_rows, Kernel::kTile.B_cols>(c_regs);
+      col_row.CAccessor().template Write<Kernel::kTile.A_rows, Kernel::kTile.B_cols>(c_regs, callback_impl);
     }
   }
 }
@@ -64,7 +67,7 @@ template <class Kernel, class AccessT> INTGEMM_TARGET __attribute__((flatten)) s
  * A_rows and B_cols specify the unrolled kernel size to use for most of the
  * multiply; these impact speed but not output.
  */
-template <class Kernel, Index A_rows, Index B_cols, class AccessT> INTGEMM_TARGET static inline void Multiply(AccessT access, const Tile shape) {
+template <class Kernel, Index A_rows, Index B_cols, class Access, class Callback> INTGEMM_TARGET static inline void Multiply(Access access, const Tile shape, Callback callback) {
   // Still has to be a multiple of the underlying Kernel, but usually that's just 1 x sizeof(Register) x 1.
   assert(shape.A_rows % Kernel::kTile.A_rows == 0);
   assert(shape.inner % Kernel::kTile.inner == 0);
@@ -82,15 +85,15 @@ template <class Kernel, Index A_rows, Index B_cols, class AccessT> INTGEMM_TARGE
     shape.B_cols - overhang.B_cols
   };
   // Top left corner.
-  MultiplyNoOverhang<Big>(access, big_shape);
+  MultiplyNoOverhang<Big>(access, big_shape, callback);
   // Bottom currently including right side.  TODO: unrolled kernel, rather than dumb loop.
   MultiplyNoOverhang<Kernel>(
       access.AAdd(big_shape.A_rows, 0).CAdd(big_shape.A_rows, 0),
-      Tile {overhang.A_rows, shape.inner, shape.B_cols});
+      Tile {overhang.A_rows, shape.inner, shape.B_cols}, callback);
   // Right side except bottom.  TODO: unrolled kernel, rather than dumb loop.
   MultiplyNoOverhang<Kernel>(
       access.BAdd(0, big_shape.B_cols).CAdd(0, big_shape.B_cols),
-      Tile {big_shape.A_rows, shape.inner, overhang.B_cols});
+      Tile {big_shape.A_rows, shape.inner, overhang.B_cols}, callback);
 }
 
 } // namespace INTGEMM_ARCH

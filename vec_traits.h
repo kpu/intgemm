@@ -28,6 +28,11 @@ template <> struct vector_s<CPUType::AVX512BW, int16_t> { using type = __m512i; 
 template <> struct vector_s<CPUType::AVX512BW, int> { using type = __m512i; };
 template <> struct vector_s<CPUType::AVX512BW, float> { using type = __m512; };
 template <> struct vector_s<CPUType::AVX512BW, double> { using type = __m512d; };
+template <> struct vector_s<CPUType::AVX512VNNI, int8_t> { using type = __m512i; };
+template <> struct vector_s<CPUType::AVX512VNNI, int16_t> { using type = __m512i; };
+template <> struct vector_s<CPUType::AVX512VNNI, int> { using type = __m512i; };
+template <> struct vector_s<CPUType::AVX512VNNI, float> { using type = __m512; };
+template <> struct vector_s<CPUType::AVX512VNNI, double> { using type = __m512d; };
 
 template <CPUType CPUType_, typename ElemType_>
 using vector_t = typename vector_s<CPUType_, ElemType_>::type;
