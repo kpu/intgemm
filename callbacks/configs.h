@@ -16,9 +16,6 @@ std::tuple<Configs...> Sequence(const Configs&... configs) {
 /*
  * Configs
  */
-struct Dummy {
-};
-
 template <typename Type>
 struct Identity {
 };

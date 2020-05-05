@@ -87,15 +87,6 @@ private:
 };
 
 /*
- * Dummy
- */
-template <> class CallbackImpl<CPUType::CPU_NAME, Dummy> {
-public:
-  CPU_ATTR CallbackImpl(const Dummy&) {}
-  CPU_ATTR void operator()(vi, const OutputBufferInfo&) {}
-};
-
-/*
  * Identity
  */
 template <typename Type>
