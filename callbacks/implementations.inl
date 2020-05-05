@@ -99,22 +99,6 @@ public:
 };
 
 /*
- * Write
- */
-template <typename Type>
-class CallbackImpl<CPUType::CPU_NAME, Write<Type>> {
-public:
-  CPU_ATTR CallbackImpl(const Write<Type>& config) : config(config) {}
-
-  CPU_ATTR void operator()(vector_t<CPUType::CPU_NAME, Type> input, const OutputBufferInfo& info) {
-    kernels::write(input, config.output_addr, info.row_idx * info.cols + info.col_idx);
-  }
-
-private:
-  Write<Type> config;
-};
-
-/*
  * Unquantize
  */
 template <> class CallbackImpl<CPUType::CPU_NAME, Unquantize> {

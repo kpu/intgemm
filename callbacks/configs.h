@@ -20,13 +20,6 @@ template <typename Type>
 struct Identity {
 };
 
-template <typename Type>
-struct Write {
-  Type* output_addr;
-
-  Write(Type* output_addr) : output_addr(output_addr) {}
-};
-
 struct Unquantize {
   float unquant_mult;
 
