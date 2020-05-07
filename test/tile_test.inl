@@ -102,7 +102,7 @@ TEST_CASE("Reduce " INTGEMM_TEST_NAME, "[tile]") {
 }
 
 // Replicate the saturation behavior of the Signed8 kernel with 16-bit accumulation.
-template <class Access> void Signed8ReferenceMult(Access access, Tile problem) {
+template <class Access, typename ScalarCallback> void Signed8ReferenceMult(Access access, Tile problem, ScalarCallback callback) {
   assert(!(problem.inner % 2));
   for (Index a_row = 0; a_row < problem.A_rows; ++a_row) {
     for (Index b_col = 0; b_col < problem.B_cols; ++b_col) {
@@ -137,8 +137,13 @@ template <class Access> void Signed8ReferenceMult(Access access, Tile problem) {
         acc.CFront() += static_cast<int32_t>(accumulators[i]);
       }
 #endif
+      acc.CFront() = callback(acc.CFront());
     }
   }
+}
+
+template <class Access> void Signed8ReferenceMult(Access access, Tile problem) {
+  Signed8ReferenceMult(access, problem, [](typename Access::CContent sum) { return sum; });
 }
 
 void DumpMatrix(int8_t *m, Index rows, Index cols) {
