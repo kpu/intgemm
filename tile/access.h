@@ -77,7 +77,8 @@ template <class T> class RowMajorAccess {
       // The offsets add B_cols - ColRemain so they can be correct modulo the number of columns.
       // So we subtract that from the data pointer.
       int32_t *go_back = data_ - (B_cols - ColRemain);
-      _mm512_mask_i32scatter_epi32(go_back, mask, offsets, callback_impl(*from, callbacks::OutputBufferInfo(row_idx_, col_idx_, 0, 0)), sizeof(int32_t));
+      auto result = reinterpret_cast<__m512i>(callback_impl(*from, callbacks::OutputBufferInfo(row_idx_, col_idx_, 0, 0)));
+      _mm512_mask_i32scatter_epi32(go_back, mask, offsets, result, sizeof(int32_t));
       // We just wrote 16 values: ColRemain, the next row (all or partial), possibly the next etc.
       // 16 - ColRemain of the next row and whatever followed.
       constexpr Index Wrote = ((remaining < 16) ? remaining : 16);
@@ -97,7 +98,8 @@ template <class T> class RowMajorAccess {
     template <Index A_rows, Index B_cols, Index ColRemain, typename CallbackImpl> INTGEMM_AVX512BW
       typename std::enable_if<(A_rows == 1) && B_cols && (ColRemain < 16 && ColRemain > 0)>::type
       WriteImpl(const __m512i *from, CallbackImpl& callback_impl) {
-      _mm512_mask_storeu_epi32(data_, (1 << ColRemain) - 1, callback_impl(*from, callbacks::OutputBufferInfo(row_idx_, col_idx_, 0, 0)));
+      auto result = reinterpret_cast<__m512i>(callback_impl(*from, callbacks::OutputBufferInfo(row_idx_, col_idx_, 0, 0)));
+      _mm512_mask_storeu_epi32(data_, (1 << ColRemain) - 1, result);
     }
 
     // Nothing to write.
