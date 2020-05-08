@@ -171,6 +171,17 @@ struct TestMatricesRef : TestMatrices8 {
   AlignedVector<int32_t> C_reference;
 };
 
+struct TestMatricesRef_Unquantize : TestMatrices<RowMajorAccess<int8_t>, ColMajorAccess<int8_t>, RowMajorAccess<float>> {
+  TestMatricesRef_Unquantize(Tile shape_in, float unquant_mult) : TestMatrices(shape_in), C_reference(shape.A_rows * shape.B_cols) {
+    AccessT ref_access({A.begin(), shape.inner}, {B.begin(), shape.inner}, {C_reference.begin(), shape.B_cols});
+    Signed8ReferenceMult(ref_access, shape, [unquant_mult](typename AccessT::CContent value) {
+      return value * unquant_mult;
+    });
+  }
+
+  AlignedVector<float> C_reference;
+};
+
 #ifndef INTGEMM_THIS_IS_SSE2
 template <class Kernel> void TestMultiplyNoOverhang(Tile shape) {
   // These are sanity checks on the arguments, not the code.
@@ -185,6 +196,16 @@ template <class Kernel> void TestMultiplyNoOverhang(Tile shape) {
       CHECK(t.C_reference[i * shape.B_cols + j] == C_test[i * shape.B_cols + j]);
     }
   }*/
+}
+
+template <class Kernel> void TestMultiplyNoOverhang_Unquantize(Tile shape, float unquant_mult) {
+  // These are sanity checks on the arguments, not the code.
+  CHECK(shape.A_rows % Kernel::kTile.A_rows == 0);
+  CHECK(shape.inner % Kernel::kTile.inner == 0);
+  CHECK(shape.B_cols % Kernel::kTile.B_cols == 0);
+  TestMatricesRef_Unquantize t(shape, unquant_mult);
+  MultiplyNoOverhang<Kernel>(t.Accessor(), shape, callbacks::Unquantize(unquant_mult));
+  CHECK(!memcmp(t.C_reference.begin(), t.C.begin(), shape.A_rows * shape.B_cols * sizeof(int32_t)));
 }
 
 template <class Kernel> void TestMultiplyNoOverhangShapes() {
@@ -206,10 +227,36 @@ template <class Kernel> void TestMultiplyNoOverhangShapes() {
   }
 }
 
+template <class Kernel> void TestMultiplyNoOverhangShapes_Unquantize(float unquant_mult) {
+  Tile shape = Kernel::kTile;
+  // Minimum size.
+  TestMultiplyNoOverhang_Unquantize<Kernel>(shape, unquant_mult);
+  // Multiples on each dimension.
+  TestMultiplyNoOverhang_Unquantize<Kernel>(Tile{shape.A_rows * 2, shape.inner, shape.B_cols}, unquant_mult);
+  TestMultiplyNoOverhang_Unquantize<Kernel>(Tile{shape.A_rows, shape.inner * 2, shape.B_cols}, unquant_mult);
+  TestMultiplyNoOverhang_Unquantize<Kernel>(Tile{shape.A_rows, shape.inner, shape.B_cols * 2}, unquant_mult);
+  TestMultiplyNoOverhang_Unquantize<Kernel>(Tile{shape.A_rows * 2, shape.inner * 2, shape.B_cols * 2}, unquant_mult);
+  // Try a bunch of shapes!
+  for (shape.A_rows = 0; shape.A_rows <= Kernel::kTile.A_rows * 9; shape.A_rows += Kernel::kTile.A_rows) {
+    for (shape.inner = 0; shape.inner <= Kernel::kTile.inner * 9; shape.inner += Kernel::kTile.inner) {
+      for (shape.B_cols = 0; shape.B_cols <= Kernel::kTile.B_cols * 9; shape.B_cols += Kernel::kTile.B_cols) {
+        TestMultiplyNoOverhang_Unquantize<Kernel>(shape, unquant_mult);
+      }
+    }
+  }
+}
+
 TEST_CASE("MultiplyNoOverhang Signed8 " INTGEMM_TEST_NAME, "[tile]") {
   if (kCPU < CPUType::INTGEMM_ARCH) return;
   TestMultiplyNoOverhangShapes<Signed8>();
 }
+
+#if defined(INTGEMM_THIS_IS_AVX512BW) || defined(INTGEMM_THIS_IS_AVX512VNNI)
+TEST_CASE("MultiplyNoOverhang Signed8 Unquantize " INTGEMM_TEST_NAME, "[tile]") {
+  if (kCPU < CPUType::INTGEMM_ARCH) return;
+  TestMultiplyNoOverhangShapes_Unquantize<Signed8>(2.0f);
+}
+#endif
 
 // Due to unordered_unfurl in dot.inl, the inner dimension can change order.
 // That impacts saturation.  Then the test doesn't mach reference on arches
