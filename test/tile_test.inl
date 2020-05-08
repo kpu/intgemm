@@ -102,8 +102,11 @@ TEST_CASE("Reduce " INTGEMM_TEST_NAME, "[tile]") {
 }
 
 // Replicate the saturation behavior of the Signed8 kernel with 16-bit accumulation.
-template <class Access, typename ScalarCallback> void Signed8ReferenceMult(Access access, Tile problem, ScalarCallback callback) {
+template <class Access, typename Callback> void Signed8ReferenceMult(Access access, Tile problem, Callback callback) {
   assert(!(problem.inner % 2));
+
+  auto callback_impl = callbacks::CallbackImpl<CPUType::INTGEMM_ARCH, Callback>(callback);
+
   for (Index a_row = 0; a_row < problem.A_rows; ++a_row) {
     for (Index b_col = 0; b_col < problem.B_cols; ++b_col) {
       Access acc = access.AAdd(a_row, 0).BAdd(0, b_col).CAdd(a_row, b_col);
@@ -137,13 +140,9 @@ template <class Access, typename ScalarCallback> void Signed8ReferenceMult(Acces
         acc.CFront() += static_cast<int32_t>(accumulators[i]);
       }
 #endif
-      acc.CFront() = callback(acc.CFront());
+      acc.CFront() = callback_impl(acc.CFront(), callbacks::OutputBufferInfo(a_row, b_col, 0, 0));
     }
   }
-}
-
-template <class Access> void Signed8ReferenceMult(Access access, Tile problem) {
-  Signed8ReferenceMult(access, problem, [](typename Access::CContent sum) { return sum; });
 }
 
 void DumpMatrix(int8_t *m, Index rows, Index cols) {
@@ -165,22 +164,27 @@ struct TestMatricesRef : TestMatrices8 {
         RowMajorAccess<int8_t>(A.begin(), shape.inner),
         ColMajorAccess<int8_t>(B.begin(), shape.inner),
         RowMajorAccess<int32_t>(C_reference.begin(), shape.B_cols));
-    Signed8ReferenceMult(ref_access, shape);
+    Signed8ReferenceMult(ref_access, shape, callbacks::Identity<int32_t>());
   }
 
   AlignedVector<int32_t> C_reference;
 };
 
 struct TestMatricesRef_Unquantize : TestMatrices<RowMajorAccess<int8_t>, ColMajorAccess<int8_t>, RowMajorAccess<float>> {
-  TestMatricesRef_Unquantize(Tile shape_in, float unquant_mult) : TestMatrices(shape_in), C_reference(shape.A_rows * shape.B_cols) {
-    AccessT ref_access({A.begin(), shape.inner}, {B.begin(), shape.inner}, {C_reference.begin(), shape.B_cols});
-    Signed8ReferenceMult(ref_access, shape, [unquant_mult](typename AccessT::CContent value) {
-      return value * unquant_mult;
-    });
+  TestMatricesRef_Unquantize(Tile shape_in, float unquant_mult) :
+    TestMatrices(shape_in),
+    C_reference(shape.A_rows * shape.B_cols) {
+
+    AccessT ref_access(
+        RowMajorAccess<int8_t>(A.begin(), shape.inner),
+        ColMajorAccess<int8_t>(B.begin(), shape.inner),
+        RowMajorAccess<float>(C_reference.begin(), shape.B_cols));
+    Signed8ReferenceMult(ref_access, shape, callbacks::Unquantize(unquant_mult));
   }
 
   AlignedVector<float> C_reference;
 };
+
 
 #ifndef INTGEMM_THIS_IS_SSE2
 template <class Kernel> void TestMultiplyNoOverhang(Tile shape) {
@@ -251,12 +255,10 @@ TEST_CASE("MultiplyNoOverhang Signed8 " INTGEMM_TEST_NAME, "[tile]") {
   TestMultiplyNoOverhangShapes<Signed8>();
 }
 
-#if defined(INTGEMM_THIS_IS_AVX512BW) || defined(INTGEMM_THIS_IS_AVX512VNNI)
 TEST_CASE("MultiplyNoOverhang Signed8 Unquantize " INTGEMM_TEST_NAME, "[tile]") {
   if (kCPU < CPUType::INTGEMM_ARCH) return;
   TestMultiplyNoOverhangShapes_Unquantize<Signed8>(2.0f);
 }
-#endif
 
 // Due to unordered_unfurl in dot.inl, the inner dimension can change order.
 // That impacts saturation.  Then the test doesn't mach reference on arches

@@ -58,6 +58,10 @@ public:
     run_callbacks(input, info, callbacks, make_sequence<sizeof...(Configs)>());
   }
 
+  void operator()(int32_t input, const OutputBufferInfo& info) {
+    run_callbacks(input, info, callbacks, make_sequence<sizeof...(Configs)>());
+  }
+
 private:
   using CallbacksTupleType = std::tuple<CallbackImpl<CPUType::CPU_NAME, Configs>...>;
 
@@ -82,6 +86,7 @@ private:
   RUN_CALLBACKS_PIPELINE_IMPL(vi)
   RUN_CALLBACKS_PIPELINE_IMPL(vf)
   RUN_CALLBACKS_PIPELINE_IMPL(vd)
+  RUN_CALLBACKS_PIPELINE_IMPL(int32_t)
 
 #undef RUN_CALLBACKS_PIPELINE_IMPL
 };
@@ -93,7 +98,12 @@ template <typename Type>
 class CallbackImpl<CPUType::CPU_NAME, Identity<Type>> {
 public:
   CPU_ATTR CallbackImpl(const Identity<Type>&) {}
+
   CPU_ATTR vector_t<CPUType::CPU_NAME, Type> operator()(vector_t<CPUType::CPU_NAME, Type> input, const OutputBufferInfo&) {
+    return input;
+  }
+
+  Type operator()(Type input, const OutputBufferInfo&) {
     return input;
   }
 };
@@ -109,6 +119,10 @@ public:
 
   CPU_ATTR vf operator()(vi input, const OutputBufferInfo&) {
     return kernels::unquantize(input, unquant_mult);
+  }
+
+  float operator()(int32_t input, const OutputBufferInfo&) {
+    return input * config.unquant_mult;
   }
 
 private:
@@ -130,6 +144,8 @@ public:
     kernels::write(result, config.output_addr, info.row_idx * info.cols + info.col_idx);
   }
 
+  // TODO: Implement scalar version of operator()
+
 private:
   UnquantizeAndWrite config;
   vf unquant_mult;
@@ -146,6 +162,8 @@ public:
     auto result = kernels::add_bias(input, config.bias_addr, info.col_idx);
     kernels::write(result, config.output_addr, info.row_idx * info.cols + info.col_idx);
   }
+
+  // TODO: Implement scalar version of operator()
 
 private:
   AddBiasAndWrite config;
@@ -165,6 +183,9 @@ public:
     result = kernels::add_bias(result, config.bias_addr, info.col_idx);
     kernels::write(result, config.output_addr, info.row_idx * info.cols + info.col_idx);
   }
+
+  // TODO: Implement scalar version of operator()
+
 private:
   UnquantizeAndAddBiasAndWrite config;
   vf unquant_mult;

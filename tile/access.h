@@ -23,11 +23,11 @@ template <class T> class RowMajorAccess {
     Content &Front() { return *data_; }
 
     // TODO: SLOW.  This is here for testing.
-    template <Index A_rows, Index B_cols, typename CallbackImpl> void Write(const __m128i *from, CallbackImpl&) {
-      SlowWrite<A_rows, B_cols>(reinterpret_cast<const T*>(from));
+    template <Index A_rows, Index B_cols, typename CallbackImpl> void Write(const __m128i *from, CallbackImpl& callback_impl) {
+      SlowWrite<A_rows, B_cols>(reinterpret_cast<const int32_t*>(from), callback_impl);
     }
-    template <Index A_rows, Index B_cols, typename CallbackImpl> void Write(const __m256i *from, CallbackImpl&) {
-      SlowWrite<A_rows, B_cols>(reinterpret_cast<const T*>(from));
+    template <Index A_rows, Index B_cols, typename CallbackImpl> void Write(const __m256i *from, CallbackImpl& callback_impl) {
+      SlowWrite<A_rows, B_cols>(reinterpret_cast<const int32_t*>(from), callback_impl);
     }
     template <Index A_rows, Index B_cols, typename CallbackImpl> void Write(const __m512i *from, CallbackImpl& callback_impl) {
       WriteImpl<A_rows, B_cols, B_cols>(from, callback_impl);
@@ -107,10 +107,10 @@ template <class T> class RowMajorAccess {
       typename std::enable_if<!A_rows || !B_cols>::type
       WriteImpl(const __m512i *, CallbackImpl&) {}
 
-    template <Index A_rows, Index B_cols> void SlowWrite(const T *from) {
+    template <Index A_rows, Index B_cols, typename CallbackImpl> void SlowWrite(const int32_t *from, CallbackImpl& callback_impl) {
       for (Index i = 0; i < A_rows; ++i) {
         for (Index j = 0; j < B_cols; ++j) {
-          data_[i * cols_ + j] = from[i * B_cols + j];
+          data_[i * cols_ + j] = callback_impl(from[i * B_cols + j], callbacks::OutputBufferInfo(i, j, 0, 0));
         }
       }
     }
