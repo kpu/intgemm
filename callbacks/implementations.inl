@@ -51,17 +51,6 @@ namespace callbacks {
  */
 template <typename... Configs>
 class CallbackImpl<CPUType::CPU_NAME, std::tuple<Configs...>> {
-public:
-  CPU_ATTR CallbackImpl(const std::tuple<Configs...>& configs) : callbacks(init_callbacks(configs, make_sequence<sizeof...(Configs)>())) {}
-
-  CPU_ATTR void operator()(vi input, const OutputBufferInfo& info) {
-    run_callbacks(input, info, callbacks, make_sequence<sizeof...(Configs)>());
-  }
-
-  void operator()(int32_t input, const OutputBufferInfo& info) {
-    run_callbacks(input, info, callbacks, make_sequence<sizeof...(Configs)>());
-  }
-
 private:
   using CallbacksTupleType = std::tuple<CallbackImpl<CPUType::CPU_NAME, Configs>...>;
 
@@ -72,23 +61,41 @@ private:
     return std::make_tuple(CallbackImpl<CPUType::CPU_NAME, typename std::tuple_element<Indices, std::tuple<Configs...>>::type>(std::get<Indices>(configs))...);
   }
 
-#define RUN_CALLBACKS_PIPELINE_IMPL(vtype) \
+#define RUN_SEQUENCE_REG_IMPL(return_type, input_type) \
   template <unsigned FirstIndex> \
-  CPU_ATTR static inline void run_callbacks(vtype input, const OutputBufferInfo& info, CallbacksTupleType& tuple, sequence<FirstIndex>) { \
-    std::get<FirstIndex>(tuple)(input, info); \
+  CPU_ATTR static inline auto run_callbacks(input_type input, const OutputBufferInfo& info, CallbacksTupleType& tuple, sequence<FirstIndex>) -> decltype(std::get<FirstIndex>(tuple)(input, info)) { \
+    return std::get<FirstIndex>(tuple)(input, info); \
   } \
   template <unsigned FirstIndex, unsigned SecondIndex, unsigned... RestIndices> \
-  CPU_ATTR static inline void run_callbacks(vtype input, const OutputBufferInfo& info, CallbacksTupleType& tuple, sequence<FirstIndex, SecondIndex, RestIndices...>) { \
-    auto output = std::get<FirstIndex>(tuple)(input, info); \
-    run_callbacks(output, info, tuple, sequence<SecondIndex, RestIndices...>()); \
+  CPU_ATTR static inline auto run_callbacks(input_type input, const OutputBufferInfo& info, CallbacksTupleType& tuple, sequence<FirstIndex, SecondIndex, RestIndices...>) -> decltype(run_callbacks(std::get<FirstIndex>(tuple)(input, info), info, tuple, sequence<SecondIndex, RestIndices...>()))  { \
+    return run_callbacks(std::get<FirstIndex>(tuple)(input, info), info, tuple, sequence<SecondIndex, RestIndices...>()); \
   }
 
-  RUN_CALLBACKS_PIPELINE_IMPL(vi)
-  RUN_CALLBACKS_PIPELINE_IMPL(vf)
-  RUN_CALLBACKS_PIPELINE_IMPL(vd)
-  RUN_CALLBACKS_PIPELINE_IMPL(int32_t)
+  RUN_SEQUENCE_REG_IMPL(ReturnTypeRegister, vi)
+  RUN_SEQUENCE_REG_IMPL(ReturnTypeRegister, vf)
+  RUN_SEQUENCE_REG_IMPL(ReturnTypeRegister, vd)
 
-#undef RUN_CALLBACKS_PIPELINE_IMPL
+  template <typename InputType, unsigned FirstIndex>
+  CPU_ATTR static inline auto run_callbacks(InputType input, const OutputBufferInfo& info, CallbacksTupleType& tuple, sequence<FirstIndex>) -> decltype(std::get<FirstIndex>(tuple)(input, info)) {
+    return std::get<FirstIndex>(tuple)(input, info);
+  }
+  template <typename InputType, unsigned FirstIndex, unsigned SecondIndex, unsigned... RestIndices>
+  CPU_ATTR static inline auto run_callbacks(InputType input, const OutputBufferInfo& info, CallbacksTupleType& tuple, sequence<FirstIndex, SecondIndex, RestIndices...>) -> decltype(run_callbacks(std::get<FirstIndex>(tuple)(input, info), info, tuple, sequence<SecondIndex, RestIndices...>()))  {
+    return run_callbacks(std::get<FirstIndex>(tuple)(input, info), info, tuple, sequence<SecondIndex, RestIndices...>());
+  }
+
+#undef RUN_SEQUENCE_REG_IMPL
+
+public:
+  CPU_ATTR CallbackImpl(const std::tuple<Configs...>& configs) : callbacks(init_callbacks(configs, make_sequence<sizeof...(Configs)>())) {}
+
+  CPU_ATTR auto operator()(vi input, const OutputBufferInfo& info) -> decltype(run_callbacks(input, info, callbacks, make_sequence<sizeof...(Configs)>())) {
+    return run_callbacks(input, info, callbacks, make_sequence<sizeof...(Configs)>());
+  }
+
+  auto operator()(int32_t input, const OutputBufferInfo& info) -> decltype(run_callbacks(input, info, callbacks, make_sequence<sizeof...(Configs)>())) {
+    return run_callbacks(input, info, callbacks, make_sequence<sizeof...(Configs)>());
+  }
 };
 
 /*
