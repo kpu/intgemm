@@ -138,6 +138,25 @@ private:
 };
 
 /*
+ * AddBias
+ */
+template <> class CallbackImpl<CPUType::CPU_NAME, AddBias> {
+public:
+  CPU_ATTR CallbackImpl(const AddBias& config) : config(config) {}
+
+  CPU_ATTR vf operator()(vf input, const OutputBufferInfo& info) {
+    return kernels::add_bias(input, config.bias_addr, info.col_idx);
+  }
+
+  float operator()(float input, const OutputBufferInfo& info) {
+    return input + config.bias_addr[info.col_idx];
+  }
+
+private:
+  AddBias config;
+};
+
+/*
  * UnquantizeAndWrite
  */
 template <> class CallbackImpl<CPUType::CPU_NAME, UnquantizeAndWrite> {

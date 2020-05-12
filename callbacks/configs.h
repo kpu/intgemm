@@ -26,6 +26,12 @@ struct Unquantize {
   Unquantize(float unquant_mult) : unquant_mult(unquant_mult) {}
 };
 
+struct AddBias {
+  const float* bias_addr;
+
+  AddBias(const float* bias_addr) :  bias_addr(bias_addr) {}
+};
+
 struct UnquantizeAndWrite {
   float unquant_mult;
   float* output_addr;
