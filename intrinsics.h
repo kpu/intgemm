@@ -481,9 +481,23 @@ INTGEMM_AVX512BW static inline __m512i or_si(__m512i a, __m512i b) {
 INTGEMM_AVX512BW static inline __m512i packs_epi16(__m512i a, __m512i b) {
   return _mm512_packs_epi16(a, b);
 }
+/* g++ (Ubuntu 5.4.0-6ubuntu1~16.04.12) 5.4.0 20160609 has a bug:
+ * /usr/lib/gcc/x86_64-linux-gnu/5/include/avx512bwintrin.h is missing
+ * _mm512_packs_epi32 when compiled with debugging.
+ */
+#if !defined(__OPTIMIZE__) && (__GNUC__ == 5) && (__GNUC_MINOR__ == 4)
+INTGEMM_AVX512BW static inline __attribute__ ((__gnu_inline__, __always_inline__, __artificial__)) __m512i packs_epi32(__m512i a, __m512i b) {
+  return reinterpret_cast<__m512i>(__builtin_ia32_packssdw512_mask(
+     reinterpret_cast<__v16si>(a),
+     reinterpret_cast<__v16si>(b),
+     reinterpret_cast<__v32hi>(_mm512_setzero_si512()),
+     0xffffffff));
+}
+#else
 INTGEMM_AVX512BW static inline __m512i packs_epi32(__m512i a, __m512i b) {
   return _mm512_packs_epi32(a, b);
 }
+#endif
 template <> inline INTGEMM_AVX512BW __m512i set1_epi8<__m512i>(int8_t to) {
   return _mm512_set1_epi8(to);
 }
