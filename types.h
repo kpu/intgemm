@@ -13,8 +13,8 @@
 #define INTGEMM_AVX512VNNI __attribute__ ((target ("avx512f")))
 #else
 #define INTGEMM_AVX512F __attribute__ ((target ("avx512f")))
-#define INTGEMM_AVX512BW __attribute__ ((target ("avx512bw")))
-#define INTGEMM_AVX512DQ __attribute__ ((target ("avx512dq")))
+#define INTGEMM_AVX512BW __attribute__ ((target ("avx512f,avx512bw,avx512dq")))
+#define INTGEMM_AVX512DQ __attribute__ ((target ("avx512f,avx512bw,avx512dq")))
 #define INTGEMM_AVX512VNNI __attribute__ ((target ("avx512f,avx512bw,avx512dq,avx512vnni")))
 #endif
 namespace intgemm {
