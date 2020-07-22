@@ -430,7 +430,27 @@ INTGEMM_AVX2 inline static void InnerINTGEMM_AVX2(
   // 1 for a (or |a|)
   // 8 temporaries for applying sign to each column of B.
   // 8 sums.
-  //
+#ifdef __clang__
+  // https://bugs.llvm.org/show_bug.cgi?id=41482
+  // clang has a bug: target attribute avx2 doesn't allow inline assembly with
+  // +x for YMM registers.  For example, this will not compile with default
+  // arguments:
+  // __attribute__ ((target ("avx2"))) void Foo(__m256i sum0) {
+  //   asm("" : [sum0] "+x" (sum0));
+  // }
+  // but it will compile with -mavx2.
+  // However, clang does allow intrinsics and has a better register allocator
+  // than gcc.  So here we just use intrinsics.
+  __m256i a_positive = abs_epi8(a);
+  sum0 = adds_epi16(sum0, maddubs_epi16(a_positive, sign_epi8(b[0], a)));
+  sum1 = adds_epi16(sum1, maddubs_epi16(a_positive, sign_epi8(b[1], a)));
+  sum2 = adds_epi16(sum2, maddubs_epi16(a_positive, sign_epi8(b[2], a)));
+  sum3 = adds_epi16(sum3, maddubs_epi16(a_positive, sign_epi8(b[3], a)));
+  sum4 = adds_epi16(sum4, maddubs_epi16(a_positive, sign_epi8(b[4], a)));
+  sum5 = adds_epi16(sum5, maddubs_epi16(a_positive, sign_epi8(b[5], a)));
+  sum6 = adds_epi16(sum6, maddubs_epi16(a_positive, sign_epi8(b[6], a)));
+  sum7 = adds_epi16(sum7, maddubs_epi16(a_positive, sign_epi8(b[7], a)));
+#else
   // gcc's register allocator does:
   // 1 for a, do all the sign application, then overwrite with |a|
   // 8 temporaries
@@ -535,6 +555,7 @@ INTGEMM_AVX2 inline static void InnerINTGEMM_AVX2(
         [a] "x" (a),
         [size] "i" (sizeof(__m256i))
     );
+#endif
 }
 
 
