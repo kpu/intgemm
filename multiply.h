@@ -662,25 +662,36 @@ template <class Callback, class Backend> static inline void OMPParallelWrap8Shif
 }
 
 #define INTGEMM_MAXABSOLUTE(Register, target) \
-target static inline float MaxAbsolute(const float *begin_float, const float *end_float) { \
-  assert(end_float > begin_float); \
-  assert(reinterpret_cast<uintptr_t>(begin_float) % sizeof(Register) == 0); \
-  const Register *begin = reinterpret_cast<const Register*>(begin_float); \
-  const float *end_reg = end_float - (reinterpret_cast<uintptr_t>(end_float) % sizeof(Register)) / sizeof(float); \
-  const Register *end = reinterpret_cast<const Register*>(end_reg); \
-  union {float f; int32_t i;} and_convert, float_convert; \
+/* Separate functions to work around older gcc bug that OMP loops do not keep target attributes */ \
+target static inline float MaxAbsoluteThread(const Register *begin, const Register *end) { \
+  union {float f; int32_t i;} and_convert; \
   and_convert.i = 0x7fffffff; \
   Register and_me = set1_ps<Register>(and_convert.f); \
   Register highest = setzero_ps<Register>(); \
-  for (; begin < end; ++begin) { \
-    Register reg = and_ps(and_me, *begin); \
+  _Pragma("omp for") \
+  for (const Register *i = begin; i < end; ++i) { \
+    Register reg = and_ps(and_me, *i); \
     highest = max_ps(highest, reg); \
   } \
-  float ret = MaxFloat32(highest); \
+  return MaxFloat32(highest); \
+} \
+target static inline float MaxAbsolute(const float *begin_float, const float *end_float) { \
+  assert(reinterpret_cast<uintptr_t>(begin_float) % sizeof(Register) == 0); \
+  const float *end_reg = end_float - (reinterpret_cast<uintptr_t>(end_float) % sizeof(Register)) / sizeof(float); \
+  float ret = 0.0; \
+  _Pragma("omp parallel") \
+  { \
+    float shard_max = MaxAbsoluteThread( \
+        reinterpret_cast<const Register*>(begin_float), \
+        reinterpret_cast<const Register*>(end_reg)); \
+    _Pragma("omp critical") /* Not sure if there's a way to use reduction(max : ret) with the target option OMP workaround */ \
+    ret = std::max(ret, shard_max); \
+  } \
   /* Overhang: this would be more efficient if done in a single SIMD operation with some zeroing */ \
+  union {float f; int32_t i;} float_convert; \
   for (const float *i = end_reg; i < end_float; ++i) { \
     float_convert.f = *i; \
-    float_convert.i &= and_convert.i; \
+    float_convert.i &= 0x7fffffff; \
     ret = std::max(ret, float_convert.f); \
   } \
   return ret; \
