@@ -184,11 +184,11 @@ TEST_CASE("Max", "[max]") {
   TestMax<__m128>();
 }
 
-void CompareMaxAbs(const float *begin, const float *end, float test) {
+void CompareMaxAbs(const float *begin, const float *end, float test, std::size_t offset) {
   float largest = fabs(*std::max_element(begin, end));
   float smallest = fabs(*std::min_element(begin, end));
   largest = std::max(largest, smallest);
-  CHECK_MESSAGE(largest == test, "Error: " << largest << " versus " << test);
+  CHECK_MESSAGE(largest == test, "Error: " << largest << " versus " << test << " in length " << (end - begin) << " offset " << offset);
 }
 
 template <float (*Backend) (const float *, const float *)> void TestMaxAbsolute() {
@@ -202,11 +202,11 @@ template <float (*Backend) (const float *, const float *)> void TestMaxAbsolute(
       for (auto& it : test) {
         it = dist(gen);
       }
-      CompareMaxAbs(test.begin(), test.begin() + len, Backend(test.begin(), test.begin() + len));
+      CompareMaxAbs(test.begin(), test.begin() + len, Backend(test.begin(), test.begin() + len), t);
       test[t] = -32.0;
-      CompareMaxAbs(test.begin(), test.begin() + len, Backend(test.begin(), test.begin() + len));
+      CompareMaxAbs(test.begin(), test.begin() + len, Backend(test.begin(), test.begin() + len), t);
       test[t] = 32.0;
-      CompareMaxAbs(test.begin(), test.begin() + len, Backend(test.begin(), test.begin() + len));
+      CompareMaxAbs(test.begin(), test.begin() + len, Backend(test.begin(), test.begin() + len), t);
     }
   }
 }
