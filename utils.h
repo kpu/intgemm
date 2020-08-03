@@ -16,15 +16,14 @@ template <size_t... Is>
 struct index_sequence{};
 
 namespace detail {
-    template <size_t I,size_t...Is>
-    struct make_index_sequence_impl : make_index_sequence_impl<I-1,I-1,Is...> {};
+template <size_t I,size_t...Is>
+struct make_index_sequence_impl : make_index_sequence_impl<I-1,I-1,Is...> {};
 
-    template <size_t...Is>
-    struct make_index_sequence_impl<0,Is...>
-    {
-        using type = index_sequence<Is...>;
-    };
-}
+template <size_t...Is>
+struct make_index_sequence_impl<0,Is...> {
+  using type = index_sequence<Is...>;
+};
+} // namespace detail
 
 template<size_t N>
 using make_index_sequence = typename detail::make_index_sequence_impl<N>::type;
