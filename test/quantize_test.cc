@@ -4,6 +4,7 @@
 #include "../avx512_gemm.h"
 #include "../sse2_gemm.h"
 #include "../ssse3_gemm.h"
+#include "../stats.h"
 
 #include <cstring>
 #include <iostream>
@@ -34,7 +35,7 @@ MeanStd VectorMeanStd(AlignedVector<float>& vals, int num_items, bool absolute) 
   float normal_sums = 0;
   float squares_sum = 0;
   if (absolute) {
-    std::for_each(vals.begin(), vals.end(), [&] (float n) {normal_sums+=abs(n);});
+    std::for_each(vals.begin(), vals.end(), [&] (float n) {normal_sums+=std::abs(n);});
   } else {
     std::for_each(vals.begin(), vals.end(), [&] (float n) {normal_sums+=n;});
   }
@@ -134,51 +135,51 @@ TEST_CASE ("Quantize AVX2", "[quantize]") {
 
 TEST_CASE("QuantizeStd SSSE3", "[VectorMeanStd]") {
   if (kCPU < CPUType::SSSE3) return;
-  testVectorMeanStd<sse2::VectorMeanStd>(64);
-  testVectorMeanStd<sse2::VectorMeanStd>(64, true);
-  testVectorMeanStd<sse2::VectorMeanStd>(256);
-  testVectorMeanStd<sse2::VectorMeanStd>(256, true);
-  testVectorMeanStd<sse2::VectorMeanStd>(2048);
-  testVectorMeanStd<sse2::VectorMeanStd>(2048, true);
-  testVectorMeanStd<sse2::VectorMeanStd>(65536);
-  testVectorMeanStd<sse2::VectorMeanStd>(65536, true);
-  testVectorMeanStd<sse2::VectorMeanStd>(81920);
-  testVectorMeanStd<sse2::VectorMeanStd>(81920, true);
-  testVectorMeanStd<sse2::VectorMeanStd>(120832);
-  testVectorMeanStd<sse2::VectorMeanStd>(120832, true);
+  testVectorMeanStd<SSE2::VectorMeanStd>(64);
+  testVectorMeanStd<SSE2::VectorMeanStd>(64, true);
+  testVectorMeanStd<SSE2::VectorMeanStd>(256);
+  testVectorMeanStd<SSE2::VectorMeanStd>(256, true);
+  testVectorMeanStd<SSE2::VectorMeanStd>(2048);
+  testVectorMeanStd<SSE2::VectorMeanStd>(2048, true);
+  testVectorMeanStd<SSE2::VectorMeanStd>(65536);
+  testVectorMeanStd<SSE2::VectorMeanStd>(65536, true);
+  testVectorMeanStd<SSE2::VectorMeanStd>(81920);
+  testVectorMeanStd<SSE2::VectorMeanStd>(81920, true);
+  testVectorMeanStd<SSE2::VectorMeanStd>(120832);
+  testVectorMeanStd<SSE2::VectorMeanStd>(120832, true);
 }
 
 TEST_CASE("QuantizeStd AVX2", "[VectorMeanStd]") {
   if (kCPU < CPUType::AVX2) return;
-  testVectorMeanStd<avx2::VectorMeanStd>(64);
-  testVectorMeanStd<avx2::VectorMeanStd>(64, true);
-  testVectorMeanStd<avx2::VectorMeanStd>(256);
-  testVectorMeanStd<avx2::VectorMeanStd>(256, true);
-  testVectorMeanStd<avx2::VectorMeanStd>(2048);
-  testVectorMeanStd<avx2::VectorMeanStd>(2048, true);
-  testVectorMeanStd<avx2::VectorMeanStd>(65536);
-  testVectorMeanStd<avx2::VectorMeanStd>(65536, true);
-  testVectorMeanStd<avx2::VectorMeanStd>(81920);
-  testVectorMeanStd<avx2::VectorMeanStd>(81920, true);
-  testVectorMeanStd<avx2::VectorMeanStd>(120832);
-  testVectorMeanStd<avx2::VectorMeanStd>(120832, true);
+  testVectorMeanStd<AVX2::VectorMeanStd>(64);
+  testVectorMeanStd<AVX2::VectorMeanStd>(64, true);
+  testVectorMeanStd<AVX2::VectorMeanStd>(256);
+  testVectorMeanStd<AVX2::VectorMeanStd>(256, true);
+  testVectorMeanStd<AVX2::VectorMeanStd>(2048);
+  testVectorMeanStd<AVX2::VectorMeanStd>(2048, true);
+  testVectorMeanStd<AVX2::VectorMeanStd>(65536);
+  testVectorMeanStd<AVX2::VectorMeanStd>(65536, true);
+  testVectorMeanStd<AVX2::VectorMeanStd>(81920);
+  testVectorMeanStd<AVX2::VectorMeanStd>(81920, true);
+  testVectorMeanStd<AVX2::VectorMeanStd>(120832);
+  testVectorMeanStd<AVX2::VectorMeanStd>(120832, true);
 }
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-TEST_CASE("QuantizeStd AVX512", "[VectorMeanStd]") {
+TEST_CASE("QuantizeStd AVX512BW", "[VectorMeanStd]") {
   if (kCPU < CPUType::AVX512BW) return;
-  testVectorMeanStd<avx512f::VectorMeanStd>(64);
-  testVectorMeanStd<avx512f::VectorMeanStd>(64, true);
-  testVectorMeanStd<avx512f::VectorMeanStd>(256);
-  testVectorMeanStd<avx512f::VectorMeanStd>(256, true);
-  testVectorMeanStd<avx512f::VectorMeanStd>(2048);
-  testVectorMeanStd<avx512f::VectorMeanStd>(2048, true);
-  testVectorMeanStd<avx512f::VectorMeanStd>(65536);
-  testVectorMeanStd<avx512f::VectorMeanStd>(65536, true);
-  testVectorMeanStd<avx512f::VectorMeanStd>(81920);
-  testVectorMeanStd<avx512f::VectorMeanStd>(81920, true);
-  testVectorMeanStd<avx512f::VectorMeanStd>(120832);
-  testVectorMeanStd<avx512f::VectorMeanStd>(120832, true);
+  testVectorMeanStd<AVX512BW::VectorMeanStd>(64);
+  testVectorMeanStd<AVX512BW::VectorMeanStd>(64, true);
+  testVectorMeanStd<AVX512BW::VectorMeanStd>(256);
+  testVectorMeanStd<AVX512BW::VectorMeanStd>(256, true);
+  testVectorMeanStd<AVX512BW::VectorMeanStd>(2048);
+  testVectorMeanStd<AVX512BW::VectorMeanStd>(2048, true);
+  testVectorMeanStd<AVX512BW::VectorMeanStd>(65536);
+  testVectorMeanStd<AVX512BW::VectorMeanStd>(65536, true);
+  testVectorMeanStd<AVX512BW::VectorMeanStd>(81920);
+  testVectorMeanStd<AVX512BW::VectorMeanStd>(81920, true);
+  testVectorMeanStd<AVX512BW::VectorMeanStd>(120832);
+  testVectorMeanStd<AVX512BW::VectorMeanStd>(120832, true);
 }
 #endif
 

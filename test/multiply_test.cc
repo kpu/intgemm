@@ -1,9 +1,10 @@
 #include "test.h"
 #include "../aligned.h"
+#include "../callbacks.h"
 #include "../interleave.h"
 #include "../intgemm.h"
 #include "../multiply.h"
-#include "../callbacks.h"
+#include "../stats.h"
 
 #include <algorithm>
 #include <cassert>
@@ -184,11 +185,11 @@ TEST_CASE("Max", "[max]") {
   TestMax<__m128>();
 }
 
-void CompareMaxAbs(const float *begin, const float *end, float test) {
+void CompareMaxAbs(const float *begin, const float *end, float test, std::size_t offset) {
   float largest = fabs(*std::max_element(begin, end));
   float smallest = fabs(*std::min_element(begin, end));
   largest = std::max(largest, smallest);
-  CHECK_MESSAGE(largest == test, "Error: " << largest << " versus " << test);
+  CHECK_MESSAGE(largest == test, "Error: " << largest << " versus " << test << " in length " << (end - begin) << " offset " << offset);
 }
 
 template <float (*Backend) (const float *, const float *)> void TestMaxAbsolute() {
@@ -202,29 +203,29 @@ template <float (*Backend) (const float *, const float *)> void TestMaxAbsolute(
       for (auto& it : test) {
         it = dist(gen);
       }
-      CompareMaxAbs(test.begin(), test.begin() + len, Backend(test.begin(), test.begin() + len));
+      CompareMaxAbs(test.begin(), test.begin() + len, Backend(test.begin(), test.begin() + len), t);
       test[t] = -32.0;
-      CompareMaxAbs(test.begin(), test.begin() + len, Backend(test.begin(), test.begin() + len));
+      CompareMaxAbs(test.begin(), test.begin() + len, Backend(test.begin(), test.begin() + len), t);
       test[t] = 32.0;
-      CompareMaxAbs(test.begin(), test.begin() + len, Backend(test.begin(), test.begin() + len));
+      CompareMaxAbs(test.begin(), test.begin() + len, Backend(test.begin(), test.begin() + len), t);
     }
   }
 }
 
 TEST_CASE("MaxAbsolute SSE2", "[max]") {
   if (kCPU < CPUType::SSE2) return;
-  TestMaxAbsolute<sse2::MaxAbsolute>();
+  TestMaxAbsolute<SSE2::MaxAbsolute>();
 }
 
 TEST_CASE("MaxAbsolute AVX2", "[max]") {
   if (kCPU < CPUType::AVX2) return;
-  TestMaxAbsolute<avx2::MaxAbsolute>();
+  TestMaxAbsolute<AVX2::MaxAbsolute>();
 }
 
-TEST_CASE("MaxAbsolute AVX512F", "[max]") {
+TEST_CASE("MaxAbsolute AVX512BW", "[max]") {
   if (kCPU < CPUType::AVX512BW) return;
   #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-  TestMaxAbsolute<avx512f::MaxAbsolute>();
+  TestMaxAbsolute<AVX512BW::MaxAbsolute>();
   #endif
 }
 

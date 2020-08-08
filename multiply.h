@@ -6,33 +6,11 @@
 #include "vec_traits.h"
 #include "callbacks.h"
 
-#include <cmath> //sqrt
-
 namespace intgemm {
-
-struct MeanStd {
-  float mean;
-  float stddev;
-};
-
-INTGEMM_SSE2 static inline float MaxFloat32(__m128 a) {
-  // Fold to just using the first 64 bits.
-  __m128 second_half = _mm_shuffle_ps(a, a, 3 * 4 + 2);
-  a = _mm_max_ps(a, second_half);
-  // Fold to just using the first 32 bits.
-  second_half = _mm_shuffle_ps(a, a, 1);
-  a = _mm_max_ps(a, second_half);
-  // This casting compiles to nothing.
-  return *reinterpret_cast<float*>(&a);
-}
 
 INTGEMM_SSE2 static inline dvector_t<CPUType::SSE2, int> PermuteSummer(__m128i pack0123, __m128i pack4567) {
   // No op for 128 bits: already reduced fully.
   return { pack0123, pack4567 };
-}
-
-INTGEMM_AVX2 static inline float MaxFloat32(__m256 a) {
-  return MaxFloat32(max_ps(_mm256_castps256_ps128(a), _mm256_extractf128_ps(a, 1)));
 }
 
 INTGEMM_AVX2 static inline __m256i PermuteSummer(__m256i pack0123, __m256i pack4567) {
@@ -43,21 +21,6 @@ INTGEMM_AVX2 static inline __m256i PermuteSummer(__m256i pack0123, __m256i pack4
   return _mm256_add_epi32(rev, blended);
 }
 
-/* https://stackoverflow.com/questions/6996764/fastest-way-to-do-horizontal-float-vector-sum-on-x86 */
-INTGEMM_SSSE3 static inline float horizontalSum(__m128 a) {
-    __m128 shuf = _mm_movehdup_ps(a);        // broadcast elements 3,1 to 2,0
-    __m128 sums = _mm_add_ps(a, shuf);
-    shuf        = _mm_movehl_ps(shuf, sums); // high half -> low half
-    sums        = _mm_add_ss(sums, shuf);
-    return        _mm_cvtss_f32(sums);
-}
-
-INTGEMM_AVX2 static inline float horizontalSum(__m256 a) {
-    __m128 vlow  = _mm256_castps256_ps128(a);
-    __m128 vhigh = _mm256_extractf128_ps(a, 1); // high 128
-    vlow  = _mm_add_ps(vlow, vhigh);     // add the low 128
-    return horizontalSum(vlow);         // and inline the sse3 version, which is optimal for AVX
-}
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
@@ -70,20 +33,6 @@ INTGEMM_AVX512BW static inline __m256i PermuteSummer(__m512i pack0123, __m512i p
   // Now we have 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7.
   // Fold register over itself.
   return _mm256_add_epi32(_mm512_castsi512_si256(added), _mm512_extracti64x4_epi64(added, 1));
-}
-
-// Find the maximum float.
-static inline INTGEMM_AVX512F float MaxFloat32(__m512 a) {
-  // _mm512_extractf32x8_ps is AVX512DQ but we don't care about masking.
-  // So cast to pd, do AVX512F _mm512_extractf64x4_pd, then cast to ps.
-  __m256 upper = _mm256_castpd_ps(_mm512_extractf64x4_pd(_mm512_castps_pd(a), 1));
-  return MaxFloat32(max_ps(_mm512_castps512_ps256(a), upper));
-}
-
-static inline INTGEMM_AVX512F float horizontalSum(__m512 a) {
-  __m256 low  = _mm512_castps512_ps256(a);
-  __m256 high = _mm256_castpd_ps(_mm512_extractf64x4_pd(_mm512_castps_pd(a),1));
-  return horizontalSum(low) + horizontalSum(high);
 }
 
 #endif
@@ -430,7 +379,8 @@ INTGEMM_AVX2 inline static void InnerINTGEMM_AVX2(
   // 1 for a (or |a|)
   // 8 temporaries for applying sign to each column of B.
   // 8 sums.
-  //
+#if defined(__GNUC__) && !defined(__clang__)
+  // Workaround for https://gcc.gnu.org/bugzilla/show_bug.cgi?id=94663
   // gcc's register allocator does:
   // 1 for a, do all the sign application, then overwrite with |a|
   // 8 temporaries
@@ -535,6 +485,27 @@ INTGEMM_AVX2 inline static void InnerINTGEMM_AVX2(
         [a] "x" (a),
         [size] "i" (sizeof(__m256i))
     );
+#else
+  // https://bugs.llvm.org/show_bug.cgi?id=41482
+  // clang has a bug: target attribute avx2 doesn't allow inline assembly with
+  // +x for YMM registers.  For example, this will not compile with default
+  // arguments:
+  // __attribute__ ((target ("avx2"))) void Foo(__m256i sum0) {
+  //   asm("" : [sum0] "+x" (sum0));
+  // }
+  // but it will compile with -mavx2.
+  // However, clang does allow intrinsics and has a better register allocator
+  // than gcc.  So here we just use intrinsics.
+  __m256i a_positive = abs_epi8(a);
+  sum0 = adds_epi16(sum0, maddubs_epi16(a_positive, sign_epi8(b[0], a)));
+  sum1 = adds_epi16(sum1, maddubs_epi16(a_positive, sign_epi8(b[1], a)));
+  sum2 = adds_epi16(sum2, maddubs_epi16(a_positive, sign_epi8(b[2], a)));
+  sum3 = adds_epi16(sum3, maddubs_epi16(a_positive, sign_epi8(b[3], a)));
+  sum4 = adds_epi16(sum4, maddubs_epi16(a_positive, sign_epi8(b[4], a)));
+  sum5 = adds_epi16(sum5, maddubs_epi16(a_positive, sign_epi8(b[5], a)));
+  sum6 = adds_epi16(sum6, maddubs_epi16(a_positive, sign_epi8(b[6], a)));
+  sum7 = adds_epi16(sum7, maddubs_epi16(a_positive, sign_epi8(b[7], a)));
+#endif
 }
 
 
@@ -639,63 +610,5 @@ template <class Callback, class Backend> static inline void OMPParallelWrap8Shif
 #pragma omp parallel
   Backend::template Multiply8Shift<Callback>(A, B, A_rows, width, B_cols, callback);
 }
-
-#define INTGEMM_MAXABSOLUTE(Register, target) \
-target static inline float MaxAbsolute(const float *begin_float, const float *end_float) { \
-  assert(end_float > begin_float); \
-  assert(reinterpret_cast<uintptr_t>(begin_float) % sizeof(Register) == 0); \
-  const Register *begin = reinterpret_cast<const Register*>(begin_float); \
-  const float *end_reg = end_float - (reinterpret_cast<uintptr_t>(end_float) % sizeof(Register)) / sizeof(float); \
-  const Register *end = reinterpret_cast<const Register*>(end_reg); \
-  union {float f; int32_t i;} and_convert, float_convert; \
-  and_convert.i = 0x7fffffff; \
-  Register and_me = set1_ps<Register>(and_convert.f); \
-  Register highest = setzero_ps<Register>(); \
-  for (; begin < end; ++begin) { \
-    Register reg = and_ps(and_me, *begin); \
-    highest = max_ps(highest, reg); \
-  } \
-  float ret = MaxFloat32(highest); \
-  /* Overhang: this would be more efficient if done in a single SIMD operation with some zeroing */ \
-  for (const float *i = end_reg; i < end_float; ++i) { \
-    float_convert.f = *i; \
-    float_convert.i &= and_convert.i; \
-    ret = std::max(ret, float_convert.f); \
-  } \
-  return ret; \
-} \
-
-#define INTGEMM_VECTORMEANSTD(Register, target) \
-target static inline MeanStd VectorMeanStd(const float *begin_float, const float *end_float, bool absolute) { \
-  /* Computes the euclidean norm and returns the mean and the standard deviation. Optionally it can be the mean and standard deviation in absolute terms. */ \
-  assert(end_float > begin_float); \
-  assert((end_float - begin_float) % (sizeof(Register) / sizeof(float)) == 0); \
-  size_t num_items = end_float - begin_float; \
-  const Register *begin = reinterpret_cast<const Register*>(begin_float); \
-  const Register *end = reinterpret_cast<const Register*>(end_float); \
-  Register squares = set1_ps<Register>(0); \
-  Register sums = set1_ps<Register>(0); \
-  if (absolute) { \
-    const Register mask = set1_ps<Register>(-0.f); \
-    for (; begin != end; begin++) { \
-      Register vec = *begin; \
-      vec = andnot_ps(mask, vec); \
-      squares = add_ps(squares, mul_ps(vec, vec)); \
-      sums = add_ps(sums, vec); \
-    } \
-  } else { \
-    for (; begin != end; begin++) { \
-      Register vec = *begin; \
-      squares = add_ps(squares, mul_ps(vec, vec)); \
-      sums = add_ps(sums, vec); \
-    } \
-  } \
-  float squares_sum = horizontalSum(squares); \
-  float normal_sums = horizontalSum(sums); \
-  MeanStd ret; \
-  ret.mean = normal_sums/num_items; \
-  ret.stddev = std::sqrt((squares_sum/num_items) - (ret.mean*ret.mean)); \
-  return ret; \
-} \
 
 } // namespace intgemm

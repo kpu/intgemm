@@ -34,5 +34,12 @@ TEST_CASE("Expi (positive)",) {
   CHECK_EPS(expi(10), 22026.4657948067165170, eps);
 }
 
+TEST_CASE("Round up",) {
+  CHECK(round_up(0, 5) == 0);
+  CHECK(round_up(1, 5) == 5);
+  CHECK(round_up(4, 5) == 5);
+  CHECK(round_up(6, 5) == 10);
 }
-}
+
+} // namespace
+} // namespace intgemm

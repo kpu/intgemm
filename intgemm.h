@@ -128,7 +128,7 @@ namespace avx512f {
 static inline float MaxAbsolute(const float * /*begin*/, const float * /*end*/) {
   throw UnsupportedCPU();
 }
-static inline MeanStd EuclideanNorm(const float * /*begin*/, const float * /*end*/, bool) {
+static inline MeanStd VectorMeanStd(const float * /*begin*/, const float * /*end*/, bool /*absolute*/) {
   throw UnsupportedCPU();
 }
 } //namespace

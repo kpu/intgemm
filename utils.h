@@ -91,4 +91,16 @@ static constexpr double expi(int n) {
   return (n >= 0 ? expi_nonnegative(n) : 1.0 / expi_nonnegative(-n));
 }
 
+// Version that returns float.
+static constexpr float expif(int n) {
+  return static_cast<float>(expi(n));
+}
+
+/*
+ * Round up
+ */
+static constexpr Index round_up(Index value, Index factor) {
+  return (value + factor - 1) / factor * factor;
+}
+
 } // namespace intgemm

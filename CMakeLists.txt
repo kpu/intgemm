@@ -33,13 +33,6 @@ if(NOT INTGEMM_COMPILER_SUPPORTS_AVX512VNNI)
   message(WARNING "${Orange}Not building AVX512VNNI-based multiplication because your compiler is too old.\nFor details rerun cmake with --debug-trycompile then try to build in compile_tests/CMakeFiles/CMakeTmp.${ColourReset}")
 endif()
 
-# Working around https://bugs.llvm.org/show_bug.cgi?id=41482
-# Anything compiled with clang might not work properly in SSE2/SSSE3 world
-if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-  message(WARNING "${Orange}Compiling with Clang and using -mavx due to https://bugs.llvm.org/show_bug.cgi?id=41482. Support for SSE2/SSSE3 hardware is likely broken at this point.${ColourReset}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
-endif()
-
 # Generate configure file
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/intgemm_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/intgemm_config.h)
 

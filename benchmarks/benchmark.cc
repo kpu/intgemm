@@ -6,6 +6,7 @@
 #include "../ssse3_gemm.h"
 #include "../intgemm.h"
 #include "../stop_watch.h"
+#include "../stats.h"
 #include "../callbacks.h"
 
 #include <algorithm>
@@ -45,7 +46,7 @@ void BenchmarkMaxAbsolute() {
   }
   {
     StopWatch w(stats);
-    avx2::MaxAbsolute(v.begin(), v.end());
+    AVX2::MaxAbsolute(v.begin(), v.end());
   }
   std::cout << "MaxAbsolute baseline = " << stats[0] << " optimized = " << stats[1] << " speedup = " << ((float)stats[0] / (float)stats[1])<< '\n';
 }

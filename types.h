@@ -4,25 +4,39 @@
 #include <exception>
 #include <immintrin.h>
 
-#define INTGEMM_SSE2 __attribute__ ((target ("sse2")))
-//#define SSE2_3 __attribute__ ((target ("ssse3"), target("sse2"))) //Not supported by clang
-#define INTGEMM_SSSE3 __attribute__ ((target ("ssse3")))
-#define INTGEMM_AVX2 __attribute__ ((target ("avx2")))
-//#define AVX2_512F __attribute__ ((target ("avx2"), target("avx512f"))) //Not supported by clang
-#if defined __INTEL_COMPILER
-#define INTGEMM_AVX512F __attribute__ ((target ("avx512f")))
-#define INTGEMM_AVX512BW __attribute__ ((target ("avx512f")))
-#define INTGEMM_AVX512DQ __attribute__ ((target ("avx512f")))
-#define INTGEMM_AVX512VNNI __attribute__ ((target ("avx512f")))
+#if defined(_MSC_VER)
+/* MSVC does not appear to have target attributes but is also fine with just
+ * using intrinsics anywhere.
+ */
+  #define INTGEMM_SSE2
+  #define INTGEMM_SSSE3
+  #define INTGEMM_AVX2
+  #define INTGEMM_AVX512F
+  #define INTGEMM_AVX512BW
+  #define INTGEMM_AVX512DQ
+  #define INTGEMM_AVX512VNNI
 #else
-#define INTGEMM_AVX512F __attribute__ ((target ("avx512f")))
-#define INTGEMM_AVX512BW __attribute__ ((target ("avx512bw")))
-#define INTGEMM_AVX512DQ __attribute__ ((target ("avx512dq")))
-#define INTGEMM_AVX512VNNI __attribute__ ((target ("avx512f,avx512bw,avx512dq,avx512vnni")))
+  /* gcc, clang, and Intel compiler */
+  #define INTGEMM_SSE2 __attribute__ ((target ("sse2")))
+  #define INTGEMM_SSSE3 __attribute__ ((target ("ssse3")))
+  #define INTGEMM_AVX2 __attribute__ ((target ("avx2")))
+  #if defined(__INTEL_COMPILER)
+    /* Intel compiler might not have AVX512 flavors but lets you use them anyway */
+    #define INTGEMM_AVX512F __attribute__ ((target ("avx512f")))
+    #define INTGEMM_AVX512BW __attribute__ ((target ("avx512f")))
+    #define INTGEMM_AVX512DQ __attribute__ ((target ("avx512f")))
+    #define INTGEMM_AVX512VNNI __attribute__ ((target ("avx512f")))
+  #else
+    /* gcc and clang take lists of all the flavors */
+    #define INTGEMM_AVX512F __attribute__ ((target ("avx512f")))
+    #define INTGEMM_AVX512BW __attribute__ ((target ("avx512f,avx512bw,avx512dq")))
+    #define INTGEMM_AVX512DQ __attribute__ ((target ("avx512f,avx512bw,avx512dq")))
+    #define INTGEMM_AVX512VNNI __attribute__ ((target ("avx512f,avx512bw,avx512dq,avx512vnni")))
+  #endif
 #endif
 namespace intgemm {
 
-// This will be thrown if a CPU isn't supported by the routines (16-bit without INTGEMM_SSE2 or 8-bit without INTGEMM_SSSE3).
+// This will be thrown if a CPU isn't supported by the routines (16-bit without SSE2 or 8-bit without SSSE3).
 class UnsupportedCPU : public std::exception {
   public:
     UnsupportedCPU() {}
@@ -55,6 +69,11 @@ struct Tile {
   constexpr bool operator==(const Tile other) const {
     return A_rows == other.A_rows && inner == other.inner && B_cols == other.B_cols;
   }
+};
+
+struct MeanStd {
+  float mean;
+  float stddev;
 };
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI

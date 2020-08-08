@@ -363,13 +363,13 @@ CPU_ATTR static inline vf exp_approx_taylor(vf x) {
   static constexpr int EXP_MIN = -20;
   static constexpr int EXP_MAX = 20;
   static constexpr float EXP_LOOKUP[EXP_MAX - EXP_MIN + 1] = {
-    expi(-20), expi(-19), expi(-18), expi(-17), expi(-16), expi(-15),
-    expi(-14), expi(-13), expi(-12), expi(-11), expi(-10), expi(-9),
-    expi(-8), expi(-7), expi(-6), expi(-5), expi(-4), expi(-3), expi(-2),
-    expi(-1), expi(0), expi(1), expi(2), expi(3), expi(4), expi(5),
-    expi(6), expi(7), expi(8), expi(9), expi(10), expi(11), expi(12),
-    expi(13), expi(14), expi(15), expi(16), expi(17), expi(18), expi(19),
-    expi(20),
+    expif(-20), expif(-19), expif(-18), expif(-17), expif(-16), expif(-15),
+    expif(-14), expif(-13), expif(-12), expif(-11), expif(-10), expif(-9),
+    expif(-8), expif(-7), expif(-6), expif(-5), expif(-4), expif(-3), expif(-2),
+    expif(-1), expif(0), expif(1), expif(2), expif(3), expif(4), expif(5),
+    expif(6), expif(7), expif(8), expif(9), expif(10), expif(11), expif(12),
+    expif(13), expif(14), expif(15), expif(16), expif(17), expif(18), expif(19),
+    expif(20),
   };
 
   static const vf dividers[] = {

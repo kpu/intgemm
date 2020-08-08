@@ -80,14 +80,14 @@ class QuantizeTile16 {
       auto input1 = input + 16 + (cols_left <= 16 ? cols * (row_step - 1) : 0);
       auto g0 = QuantizerGrabHalves(input0, input1, mult_reg_);
       auto g1 = QuantizerGrabHalves(input0 + 8, input1 + 8, mult_reg_);
-      auto packed = _mm512_packs_epi32(g0, g1);
+      auto packed = packs_epi32(g0, g1);
       return _mm512_permutex_epi64(packed, 0xd8 /* 0, 2, 1, 3 */);
     }
 
     INTGEMM_AVX512BW inline __m512i ForReshape(const float *input, Index cols) const {
       __m512i g0 = QuantizerGrabHalves(input, input + 16 * cols, mult_reg_);
       __m512i g1 = QuantizerGrabHalves(input + 8 * cols, input + 24 * cols, mult_reg_);
-      __m512i packed = _mm512_packs_epi32(g0, g1);
+      __m512i packed = packs_epi32(g0, g1);
       // Permute within 256-bit lanes, so same as INTGEMM_AVX2
       return _mm512_permutex_epi64(packed, 0xd8 /* 0, 2, 1, 3 */);
     }
@@ -123,8 +123,8 @@ class QuantizeTile8 {
       auto g2 = QuantizerGrab(inputs[2], mult_reg_);
       auto g3 = QuantizerGrab(inputs[3], mult_reg_);
 
-      auto packed0 = _mm512_packs_epi32(g0, g1);
-      auto packed1 = _mm512_packs_epi32(g2, g3);
+      auto packed0 = packs_epi32(g0, g1);
+      auto packed1 = packs_epi32(g2, g3);
       auto packed = _mm512_packs_epi16(packed0, packed1);
       packed = _mm512_max_epi8(packed, neg127);
       return _mm512_permutexvar_epi32(shuffle_param, packed);
@@ -142,8 +142,8 @@ class QuantizeTile8 {
       __m512i g2 = QuantizerGrabHalves(input + 32 * cols, input + 34 * cols, mult_reg_);
       __m512i g3 = QuantizerGrabHalves(input + 48 * cols, input + 50 * cols, mult_reg_);
       // Pack 32-bit to 16-bit.
-      __m512i packed0 = _mm512_packs_epi32(g0, g1);
-      __m512i packed1 = _mm512_packs_epi32(g2, g3);
+      __m512i packed0 = packs_epi32(g0, g1);
+      __m512i packed1 = packs_epi32(g2, g3);
       // Pack 16-bit to 8-bit.
       __m512i packed = _mm512_packs_epi16(packed0, packed1);
       // Ban -128.
@@ -155,11 +155,6 @@ class QuantizeTile8 {
   private:
     const __m512 mult_reg_;
 };
-
-/* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
-INTGEMM_MAXABSOLUTE(__m512, INTGEMM_AVX512BW)
-
-INTGEMM_VECTORMEANSTD(__m512, INTGEMM_AVX512BW)
 
 } // namespace
 

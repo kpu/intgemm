@@ -189,11 +189,6 @@ class QuantizeTile8 {
     const __m256 mult_;
 };
 
-// Technically only requires AVX
-INTGEMM_MAXABSOLUTE(__m256, INTGEMM_AVX2)
-
-INTGEMM_VECTORMEANSTD(__m256, INTGEMM_AVX2)
-
 } // namespace
 
 struct AVX2_8bit {
