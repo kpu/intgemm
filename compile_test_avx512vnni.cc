@@ -1,6 +1,7 @@
 #include <immintrin.h>
 
-#ifdef __INTEL_COMPILER
+#if defined(_MSC_VER)
+#elif defined(__INTEL_COMPILER)
 __attribute__ ((target ("avx512f")))
 #else
 __attribute__ ((target ("avx512f,avx512bw,avx512dq,avx512vnni")))
@@ -19,13 +20,5 @@ bool Foo() {
 }
 
 int main() {
-  return Foo()
-#if defined(__GNUC__) || defined(__clang__)
-    // uses cpuid
-#elif defined(__INTEL_COMPILER)
-    && _may_i_use_cpu_feature(_FEATURE_AVX512_VNNI)
-#else
-    && __builtin_cpu_supports("avx512vnni")
-#endif
-    ;
+  return Foo();
 }
