@@ -1,7 +1,7 @@
 #pragma once
 #include <exception>
 
-#if defined(_MSVC_VER)
+#if defined(_MSC_VER)
 /* MSVC does not appear to have target attributes but is also fine with just
  * using intrinsics anywhere.
  */
