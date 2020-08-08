@@ -6,6 +6,7 @@
 #include "../ssse3_gemm.h"
 #include "../intgemm.h"
 #include "../stop_watch.h"
+#include "../stats.h"
 #include "../callbacks.h"
 
 #include <algorithm>

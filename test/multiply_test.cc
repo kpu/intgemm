@@ -1,9 +1,10 @@
 #include "test.h"
 #include "../aligned.h"
+#include "../callbacks.h"
 #include "../interleave.h"
 #include "../intgemm.h"
 #include "../multiply.h"
-#include "../callbacks.h"
+#include "../stats.h"
 
 #include <algorithm>
 #include <cassert>
@@ -221,10 +222,10 @@ TEST_CASE("MaxAbsolute AVX2", "[max]") {
   TestMaxAbsolute<avx2::MaxAbsolute>();
 }
 
-TEST_CASE("MaxAbsolute AVX512F", "[max]") {
+TEST_CASE("MaxAbsolute AVX512BW", "[max]") {
   if (kCPU < CPUType::AVX512BW) return;
   #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-  TestMaxAbsolute<avx512f::MaxAbsolute>();
+  TestMaxAbsolute<avx512bw::MaxAbsolute>();
   #endif
 }
 

@@ -1,5 +1,6 @@
 #pragma once
 #include <exception>
+#include <immintrin.h>
 
 #if defined(_MSC_VER)
 /* MSVC does not appear to have target attributes but is also fine with just
@@ -59,5 +60,35 @@ enum class CPUType {
 
 // Running CPU type.  This is defined in intgemm.cc (as the dispatcher).
 extern const CPUType kCPU;
+
+struct MeanStd {
+  float mean;
+  float stddev;
+};
+
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
+namespace avx512vnni {
+typedef __m512i Register;
+typedef __m512 FRegister;
+} // namespace avx512vnni
+#endif
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
+namespace avx512bw {
+typedef __m512i Register;
+typedef __m512 FRegister;
+} // namespace avx512bw
+#endif
+namespace avx2 {
+typedef __m256i Register;
+typedef __m256 FRegister;
+} // namespace avx2
+namespace ssse3 {
+typedef __m128i Register;
+typedef __m128 FRegister;
+} // namespace ssse3
+namespace sse2 {
+typedef __m128i Register;
+typedef __m128 FRegister;
+} // namespace sse2
 
 } // namespace intgemm

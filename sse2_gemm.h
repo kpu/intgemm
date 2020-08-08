@@ -49,12 +49,6 @@ class QuantizeTile16 {
     const __m128 mult_reg_;
 };
 
-// Technically only requires SSE
-
-INTGEMM_MAXABSOLUTE(__m128, INTGEMM_SSE2)
-
-INTGEMM_VECTORMEANSTD(__m128, INTGEMM_SSE2)
-
 } //namespace
 // This should be pure INTGEMM_SSE2 (and below).
 struct SSE2_16bit {

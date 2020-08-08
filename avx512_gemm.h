@@ -156,11 +156,6 @@ class QuantizeTile8 {
     const __m512 mult_reg_;
 };
 
-/* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
-INTGEMM_MAXABSOLUTE(__m512, INTGEMM_AVX512BW)
-
-INTGEMM_VECTORMEANSTD(__m512, INTGEMM_AVX512BW)
-
 } // namespace
 
 struct AVX512_16bit {

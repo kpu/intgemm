@@ -1,4 +1,5 @@
 #include "intgemm.h"
+#include "stats.h"
 
 namespace intgemm {
 
@@ -42,9 +43,9 @@ const char *const Int8Shift::kName = ChooseCPU(AVX512VNNI_8bit::kName, AVX512_8b
 
 const CPUType kCPU = ChooseCPU(CPUType::AVX512VNNI, CPUType::AVX512BW, CPUType::AVX2, CPUType::SSSE3, CPUType::SSE2, CPUType::UNSUPPORTED);
 
-float (*MaxAbsolute)(const float *begin, const float *end) = ChooseCPU(avx512f::MaxAbsolute, avx512f::MaxAbsolute, avx2::MaxAbsolute, sse2::MaxAbsolute, sse2::MaxAbsolute, Unsupported_MaxAbsolute);
+float (*MaxAbsolute)(const float *begin, const float *end) = ChooseCPU(avx512bw::MaxAbsolute, avx512bw::MaxAbsolute, avx2::MaxAbsolute, sse2::MaxAbsolute, sse2::MaxAbsolute, Unsupported_MaxAbsolute);
 
-MeanStd (*VectorMeanStd)(const float *begin, const float *end, bool absolute) = ChooseCPU(avx512f::VectorMeanStd, avx512f::VectorMeanStd, avx2::VectorMeanStd, sse2::VectorMeanStd, sse2::VectorMeanStd, Unsupported_VectorMeanStd);
+MeanStd (*VectorMeanStd)(const float *begin, const float *end, bool absolute) = ChooseCPU(avx512bw::VectorMeanStd, avx512bw::VectorMeanStd, avx2::VectorMeanStd, sse2::VectorMeanStd, sse2::VectorMeanStd, Unsupported_VectorMeanStd);
 
 constexpr const char *const Unsupported_16bit::kName;
 constexpr const char *const Unsupported_8bit::kName;

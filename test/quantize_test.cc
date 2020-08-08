@@ -4,6 +4,7 @@
 #include "../avx512_gemm.h"
 #include "../sse2_gemm.h"
 #include "../ssse3_gemm.h"
+#include "../stats.h"
 
 #include <cstring>
 #include <iostream>
@@ -165,20 +166,20 @@ TEST_CASE("QuantizeStd AVX2", "[VectorMeanStd]") {
 }
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-TEST_CASE("QuantizeStd AVX512", "[VectorMeanStd]") {
+TEST_CASE("QuantizeStd AVX512BW", "[VectorMeanStd]") {
   if (kCPU < CPUType::AVX512BW) return;
-  testVectorMeanStd<avx512f::VectorMeanStd>(64);
-  testVectorMeanStd<avx512f::VectorMeanStd>(64, true);
-  testVectorMeanStd<avx512f::VectorMeanStd>(256);
-  testVectorMeanStd<avx512f::VectorMeanStd>(256, true);
-  testVectorMeanStd<avx512f::VectorMeanStd>(2048);
-  testVectorMeanStd<avx512f::VectorMeanStd>(2048, true);
-  testVectorMeanStd<avx512f::VectorMeanStd>(65536);
-  testVectorMeanStd<avx512f::VectorMeanStd>(65536, true);
-  testVectorMeanStd<avx512f::VectorMeanStd>(81920);
-  testVectorMeanStd<avx512f::VectorMeanStd>(81920, true);
-  testVectorMeanStd<avx512f::VectorMeanStd>(120832);
-  testVectorMeanStd<avx512f::VectorMeanStd>(120832, true);
+  testVectorMeanStd<avx512bw::VectorMeanStd>(64);
+  testVectorMeanStd<avx512bw::VectorMeanStd>(64, true);
+  testVectorMeanStd<avx512bw::VectorMeanStd>(256);
+  testVectorMeanStd<avx512bw::VectorMeanStd>(256, true);
+  testVectorMeanStd<avx512bw::VectorMeanStd>(2048);
+  testVectorMeanStd<avx512bw::VectorMeanStd>(2048, true);
+  testVectorMeanStd<avx512bw::VectorMeanStd>(65536);
+  testVectorMeanStd<avx512bw::VectorMeanStd>(65536, true);
+  testVectorMeanStd<avx512bw::VectorMeanStd>(81920);
+  testVectorMeanStd<avx512bw::VectorMeanStd>(81920, true);
+  testVectorMeanStd<avx512bw::VectorMeanStd>(120832);
+  testVectorMeanStd<avx512bw::VectorMeanStd>(120832, true);
 }
 #endif
 
