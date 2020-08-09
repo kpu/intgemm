@@ -43,6 +43,13 @@ const char *const Int8Shift::kName = ChooseCPU(AVX512VNNI_8bit::kName, AVX512_8b
 
 const CPUType kCPU = ChooseCPU(CPUType::AVX512VNNI, CPUType::AVX512BW, CPUType::AVX2, CPUType::SSSE3, CPUType::SSE2, CPUType::UNSUPPORTED);
 
+#if !defined(INTGEMM_COMPILER_SUPPORTS_AVX512BW)
+namespace AVX512BW {
+using AVX2::MaxAbsolute;
+using AVX2::VectorMeanStd;
+} // namespace avx512bw
+#endif
+
 float (*MaxAbsolute)(const float *begin, const float *end) = ChooseCPU(AVX512BW::MaxAbsolute, AVX512BW::MaxAbsolute, AVX2::MaxAbsolute, SSE2::MaxAbsolute, SSE2::MaxAbsolute, Unsupported_MaxAbsolute);
 
 MeanStd (*VectorMeanStd)(const float *begin, const float *end, bool absolute) = ChooseCPU(AVX512BW::VectorMeanStd, AVX512BW::VectorMeanStd, AVX2::VectorMeanStd, SSE2::VectorMeanStd, SSE2::VectorMeanStd, Unsupported_VectorMeanStd);

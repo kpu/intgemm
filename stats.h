@@ -3,6 +3,10 @@
 #include <cmath>
 #include "intrinsics.h"
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 namespace intgemm {
 
 /* Horizontal max and sums.  TODO make a template argument? */
@@ -49,6 +53,8 @@ INTGEMM_AVX512F static inline float AddFloat32(__m512 a) {
 }
 #endif
 
+constexpr int32_t kFloatAbsoluteMask = 0x7fffffff;
+
 } // namespace intgemm
 
 #define INTGEMM_THIS_IS_SSE2
@@ -60,7 +66,7 @@ INTGEMM_AVX512F static inline float AddFloat32(__m512 a) {
 #undef INTGEMM_THIS_IS_AVX2
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-#define INTGEMM_THIS_IS_AVX512BW
+#define INTGEMM_THIS_IS_AVX512DQ
 #include "stats.inl"
-#undef INTGEMM_THIS_IS_AVX512BW
+#undef INTGEMM_THIS_IS_AVX512DQ
 #endif

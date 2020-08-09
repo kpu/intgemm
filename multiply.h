@@ -34,7 +34,14 @@ INTGEMM_AVX512BW static inline __m256i PermuteSummer(__m512i pack0123, __m512i p
   // Fold register over itself.
   return _mm256_add_epi32(_mm512_castsi512_si256(added), _mm512_extracti64x4_epi64(added, 1));
 }
+#endif
 
+#ifdef _MSC_VER
+#define INTGEMM_OMP_FOR __pragma(omp for)
+#define INTGEMM_OMP_PARALLEL __pragma(omp parallel)
+#else
+#define INTGEMM_OMP_FOR _Pragma("omp for")
+#define INTGEMM_OMP_PARALLEL _Pragma("omp parallel")
 #endif
 
 // Quantize function used for SSSE3 and AVX2.
@@ -43,7 +50,7 @@ INTGEMM_AVX512BW static inline __m256i PermuteSummer(__m512i pack0123, __m512i p
 #define INTGEMM_QUANTIZE_THREAD(target, Register, name) \
 target static void QuantizeThread(const float *input, int8_t *output, float quant_mult, std::size_t count) { \
   name::QuantizeTile8 q(quant_mult); \
-  _Pragma("omp for") \
+  INTGEMM_OMP_FOR \
   for (std::size_t i = 0; i < count; i += sizeof(Register)) { \
     *reinterpret_cast<Register*>(output + i) = q.Consecutive(input + i); \
   } \
@@ -55,7 +62,7 @@ target static void Quantize(const float *const input, int8_t *const output, floa
   assert(reinterpret_cast<uintptr_t>(output) % sizeof(Register) == 0); \
   const std::size_t kBatch = sizeof(Register); \
   const std::size_t fast_end = size & ~(kBatch - 1); \
-  _Pragma("omp parallel") \
+  INTGEMM_OMP_PARALLEL \
   { \
     QuantizeThread(input, output, quant_mult, fast_end); \
   } \
@@ -154,7 +161,7 @@ template <typename Callback> target static void Multiply(const int16_t *A, const
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0); \
   const int simd_width = width / (sizeof(Register) / sizeof(int16_t)); \
   auto callback_impl = callbacks::CallbackImpl<cpu_type, Callback>(callback); \
-  _Pragma("omp for") \
+  INTGEMM_OMP_FOR \
   for (Index B0_colidx = 0; B0_colidx < B_cols; B0_colidx += 8) { \
     const Register *B0_col = reinterpret_cast<const Register *>(B) + simd_width * B0_colidx; \
     /* Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.*/ \
@@ -212,7 +219,7 @@ template <typename Callback> target static void Multiply(const int16_t *A, const
   const int simd_width = width / (sizeof(Register) / sizeof(int8_t)); \
   auto callback_impl = callbacks::CallbackImpl<cpu_type, Callback>(callback); \
   const Register a = set1_epi8<Register>(1); \
-  _Pragma("omp for") \
+  INTGEMM_OMP_FOR \
   for (Index B0_colidx = 0; B0_colidx < B_cols; B0_colidx += 8) { \
     const Register *B0_col = reinterpret_cast<const Register *>(B) + simd_width * B0_colidx; \
     /*const Register *A_row = reinterpret_cast<const Register*>(A + A_rowidx * width);*/ \
@@ -286,7 +293,7 @@ template <typename Callback> target static void Multiply(const int16_t *A, const
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0); \
   const int simd_width = width / (sizeof(Register) / sizeof(int8_t)); \
   auto callback_impl = callbacks::CallbackImpl<cpu_type, Callback>(callback); \
-  _Pragma("omp for") \
+  INTGEMM_OMP_FOR \
   for (Index B0_colidx = 0; B0_colidx < B_cols; B0_colidx += 8) { \
     const Register *B0_col = reinterpret_cast<const Register *>(B) + simd_width * B0_colidx; \
     /* Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.*/ \
@@ -533,7 +540,7 @@ INTGEMM_SSSE3 inline static void InnerINTGEMM_SSSE3(
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0); \
   const int simd_width = width / sizeof(Register); \
   auto callback_impl = callbacks::CallbackImpl<cpu_type, Callback>(callback); \
-  _Pragma("omp for") \
+  INTGEMM_OMP_FOR \
   for (Index B0_colidx = 0; B0_colidx < B_cols; B0_colidx += 8) { \
     const Register *B0_col = reinterpret_cast<const Register *>(B) + simd_width * B0_colidx; \
     /*Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.*/ \

@@ -51,8 +51,12 @@
 #include "avx512_gemm.h"
 #include "avx512vnni_gemm.h"
 
-#if defined(__GNUC__) || defined(__clang__)
-#include "cpuid.h"
+#if defined(__INTEL_COMPILER)
+#include <immintrin.h>
+#elif defined(_MSC_VER)
+#include <intrin.h>
+#elif defined(__GNUC__) || defined(__clang__)
+#include <cpuid.h>
 #endif
 
 /* Dispatch to functions based on runtime CPUID.  This adds one call-by-variable to each call. */
@@ -156,12 +160,32 @@ template <class T> T ChooseCPU(T
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
     avx512vnni
 #endif
-    , T 
+    , T
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
     avx512bw
 #endif
     , T avx2, T ssse3, T sse2, T unsupported) {
-  /* If intgemm is compiled by gcc 6.4.1 then dlopened into an executable
+#if defined(__INTEL_COMPILER)
+#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
+  if (_may_i_use_cpu_feature(_FEATURE_AVX512_VNNI)) return avx512vnni;
+#  endif
+#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
+  if (_may_i_use_cpu_feature(_FEATURE_AVX512BW)) return avx512bw;
+#  endif
+  if (_may_i_use_cpu_feature(_FEATURE_AVX2)) return avx2;
+  if (_may_i_use_cpu_feature(_FEATURE_SSSE3)) return ssse3;
+  if (_may_i_use_cpu_feature(_FEATURE_SSE2)) return sse2;
+  return unsupported;
+#else
+// Everybody except Intel compiler.
+#  if defined(_MSC_VER)
+  int regs[4];
+  int &eax = regs[0], &ebx = regs[1], &ecx = regs[2], &edx = regs[3];
+  __cpuid(regs, 0);
+  int m = eax;
+#  else
+  /* gcc and clang.
+   * If intgemm is compiled by gcc 6.4.1 then dlopened into an executable
    * compiled by gcc 7.3.0, there will be a undefined symbol __cpu_info.
    * Work around this by calling the intrinsics more directly instead of
    * __builtin_cpu_supports.
@@ -170,11 +194,15 @@ template <class T> T ChooseCPU(T
    *   __builtin_cpu_supports("avx512vnni")
    * so use the hand-coded CPUID for clang.
    */
-#if defined(__GNUC__) || defined(__clang__)
-  unsigned int m = __get_cpuid_max(0, NULL);
+  unsigned int m = __get_cpuid_max(0, 0);
   unsigned int eax, ebx, ecx, edx;
+#  endif
   if (m >= 7) {
+#  if defined(_MSC_VER)
+    __cpuid(regs, 7);
+#  else
     __cpuid_count(7, 0, eax, ebx, ecx, edx);
+#  endif
 #  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
     if (ecx & (1 << 11)) return avx512vnni;
 #  endif
@@ -184,40 +212,15 @@ template <class T> T ChooseCPU(T
     if (ebx & (1 << 5)) return avx2;
   }
   if (m >= 1) {
+#  if defined(_MSC_VER)
+    __cpuid(regs, 1);
+#  else
     __cpuid_count(1, 0, eax, ebx, ecx, edx);
+#  endif
     if (ecx & (1 << 9)) return ssse3;
     if (edx & (1 << 26)) return sse2;
   }
   return unsupported;
-#else // not gcc or clang.
-  __builtin_cpu_init();
-#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
-  if (
-#    ifdef __INTEL_COMPILER
-      _may_i_use_cpu_feature(_FEATURE_AVX512_VNNI)
-#    else
-      __builtin_cpu_supports("avx512vnni")
-#    endif
-      ) return vnni;
-#  endif
-#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-  if (
-#    ifdef __INTEL_COMPILER
-      _may_i_use_cpu_feature(_FEATURE_AVX512BW)
-#    else
-      __builtin_cpu_supports("avx512bw")
-#    endif
-      ) return avx512bw;
-#  endif
-  if (__builtin_cpu_supports("avx2")) {
-    return avx2;
-  } else if (__builtin_cpu_supports("ssse3")) {
-    return ssse3;
-  } else if (__builtin_cpu_supports("sse2")) {
-    return sse2;
-  } else {
-    return unsupported;
-  }
 #endif
 }
 
