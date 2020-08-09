@@ -19,13 +19,11 @@ namespace INTGEMM_ARCH {
  * Do not call this function directly; it's a subroutine of MaxAbsolute.
  */
 INTGEMM_TARGET static inline float MaxAbsoluteThread(const FRegister *begin, const FRegister *end) {
-  union {float f; int32_t i;} and_convert;
-  and_convert.i = 0x7fffffff;
-  FRegister and_me = set1_ps<FRegister>(and_convert.f);
   FRegister highest = setzero_ps<FRegister>();
+  const FRegister abs_mask = set1_ps<FRegister>(kFloatAbsoluteMask);
 #pragma omp for
   for (const FRegister *i = begin; i < end; ++i) {
-    FRegister reg = and_ps(and_me, *i);
+    FRegister reg = and_ps(abs_mask, *i);
     highest = max_ps(highest, reg);
   }
   return MaxFloat32(highest);
@@ -38,20 +36,44 @@ INTGEMM_TARGET static inline float MaxAbsolute(const float *begin_float, const f
   assert(reinterpret_cast<uintptr_t>(begin_float) % sizeof(FRegister) == 0);
   const float *end_reg = end_float - (reinterpret_cast<uintptr_t>(end_float) % sizeof(FRegister)) / sizeof(float);
   float ret = 0.0;
-#pragma omp parallel
+#pragma omp parallel reduction(max:ret) num_threads(std::max<int>(1, std::min<int>(omp_get_max_threads(), (end_float - begin_float) / 16384)))
   {
     float shard_max = MaxAbsoluteThread(
         reinterpret_cast<const FRegister*>(begin_float),
         reinterpret_cast<const FRegister*>(end_reg));
-#pragma omp critical /* Not sure if there's a way to use reduction(max : ret) with the target option OMP workaround */
     ret = std::max(ret, shard_max);
   }
-  /* Overhang: this would be more efficient if done in a single SIMD operation with some zeroing */
-  union {float f; int32_t i;} float_convert;
-  for (const float *i = end_reg; i < end_float; ++i) {
-    float_convert.f = *i;
-    float_convert.i &= 0x7fffffff;
-    ret = std::max(ret, float_convert.f);
+  /* Overhang. The beginning was aligned so if there's any overhang we're
+   * allowed to read the next full register.  Then mask that to 0. */
+  if (end_float != end_reg) {
+#if defined(INTGEMM_THIS_IS_AVX512BW)
+    FRegister and_me = set1_ps<FRegister>(kFloatAbsoluteMask);
+    __mmask16 mask = (1 << (end_float - end_reg)) - 1;
+    FRegister masked = _mm512_maskz_and_ps(mask, and_me, *reinterpret_cast<const FRegister*>(end_reg));
+#elif defined(INTGEMM_THIS_IS_AVX2)
+    const float k = kFloatAbsoluteMask;
+    const __m256 kMasks[8] = {
+      _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, 0),
+      _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, k),
+      _mm256_set_ps(0, 0, 0, 0, 0, 0, k, k),
+      _mm256_set_ps(0, 0, 0, 0, 0, k, k, k),
+      _mm256_set_ps(0, 0, 0, 0, k, k, k, k),
+      _mm256_set_ps(0, 0, 0, k, k, k, k, k),
+      _mm256_set_ps(0, 0, k, k, k, k, k, k),
+      _mm256_set_ps(0, k, k, k, k, k, k, k),
+    };
+    FRegister masked = and_ps(kMasks[end_float - end_reg], *reinterpret_cast<const FRegister*>(end_reg));
+#elif defined(INTGEMM_THIS_IS_SSE2)
+    const float k = kFloatAbsoluteMask;
+    const __m128 kMasks[8] = {
+      _mm_set_ps(0, 0, 0, 0),
+      _mm_set_ps(0, 0, 0, k),
+      _mm_set_ps(0, 0, k, k),
+      _mm_set_ps(0, k, k, k),
+    };
+    FRegister masked = and_ps(kMasks[end_float - end_reg], *reinterpret_cast<const FRegister*>(end_reg));
+#endif
+    ret = std::max(ret, MaxFloat32(masked));
   }
   return ret;
 }
@@ -66,10 +88,9 @@ INTGEMM_TARGET static inline MeanStd VectorMeanStd(const float *begin_float, con
   FRegister squares = set1_ps<FRegister>(0);
   FRegister sums = set1_ps<FRegister>(0);
   if (absolute) {
-    const FRegister mask = set1_ps<FRegister>(-0.f);
+    const FRegister abs_mask = set1_ps<FRegister>(kFloatAbsoluteMask);
     for (; begin != end; begin++) {
-      FRegister vec = *begin;
-      vec = andnot_ps(mask, vec);
+      FRegister vec = and_ps(abs_mask, *begin);
       squares = add_ps(squares, mul_ps(vec, vec));
       sums = add_ps(sums, vec);
     }

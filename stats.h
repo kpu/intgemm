@@ -3,6 +3,10 @@
 #include <cmath>
 #include "intrinsics.h"
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 namespace intgemm {
 
 /* Horizontal max and sums.  TODO make a template argument? */
@@ -48,6 +52,9 @@ INTGEMM_AVX512F static inline float AddFloat32(__m512 a) {
   return AddFloat32(add_ps(_mm512_castps512_ps256(a), upper));
 }
 #endif
+
+typedef union {int32_t i; float f;} FloatConvert;
+const float kFloatAbsoluteMask = FloatConvert{0x7fffffff}.f;
 
 } // namespace intgemm
 
