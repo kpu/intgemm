@@ -67,7 +67,7 @@ const float kFloatAbsoluteMask = FloatConvert{0x7fffffff}.f;
 #undef INTGEMM_THIS_IS_AVX2
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-#define INTGEMM_THIS_IS_AVX512BW
+#define INTGEMM_THIS_IS_AVX512DQ
 #include "stats.inl"
-#undef INTGEMM_THIS_IS_AVX512BW
+#undef INTGEMM_THIS_IS_AVX512DQ
 #endif

@@ -1,7 +1,7 @@
 /* This file is included multiple times, once per architecture. */
-#if defined(INTGEMM_THIS_IS_AVX512BW)
+#if defined(INTGEMM_THIS_IS_AVX512DQ)
 #define INTGEMM_ARCH avx512bw
-#define INTGEMM_TARGET INTGEMM_AVX512BW
+#define INTGEMM_TARGET INTGEMM_AVX512DQ
 #elif defined(INTGEMM_THIS_IS_AVX2)
 #define INTGEMM_ARCH avx2
 #define INTGEMM_TARGET INTGEMM_AVX2
@@ -46,7 +46,7 @@ INTGEMM_TARGET static inline float MaxAbsolute(const float *begin_float, const f
   /* Overhang. The beginning was aligned so if there's any overhang we're
    * allowed to read the next full register.  Then mask that to 0. */
   if (end_float != end_reg) {
-#if defined(INTGEMM_THIS_IS_AVX512BW)
+#if defined(INTGEMM_THIS_IS_AVX512DQ)
     FRegister and_me = set1_ps<FRegister>(kFloatAbsoluteMask);
     __mmask16 mask = (1 << (end_float - end_reg)) - 1;
     FRegister masked = _mm512_maskz_and_ps(mask, and_me, *reinterpret_cast<const FRegister*>(end_reg));
