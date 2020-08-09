@@ -5,7 +5,7 @@
 #include "../tile/reduce.h"
 #include "test.h"
 
-#include "test_matrices.h"
+#include "../benchmarks/test_matrices.h"
 
 #include <random>
 

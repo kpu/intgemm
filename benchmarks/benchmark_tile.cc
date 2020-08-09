@@ -1,9 +1,10 @@
 #include "../aligned.h"
 #include "../stop_watch.h"
-#include "../test/test_matrices.h"
+#include "test_matrices.h"
 #include "../tile/multiply.h"
 #include "../tile/dot.h"
 
+#include <algorithm>
 #include <chrono>
 #include <functional>
 #include <limits>
@@ -16,79 +17,19 @@
 namespace intgemm {
 namespace {
 
-typedef TestMatrices8::AccessT Accessor;
-
-// What do we do with the overhang?  Include in the bottom, include in right, or separate call?
-enum Overhang {
-  BOTTOM,
-  RIGHT,
-  SEPARATE,
-  NONE
-};
-
-/* Entry in the memoisation table.  It has three levels of validity:
- * Blank:
- *   direct_time == std::numeric_limits<double>::infinity()
- *   recursive_time == std::numeric_limits<double>::infinity()
- * Direct evaluated, but not splits:
- *   direct_time valid
- *   recursive_time == std::numeric_limits<double>::infinity()
- *   This is useful e.g. if the size is being considered for big evaluation.
- * Full:
- *   direct_time valid
- *   recursive_time valid
-     It's been evaluated with splitting into big, right, bottom, and bottom right corner etc
- */
-struct BestConfig {
-  // Big matrix size.
-  Index big_A_rows;
-  Index big_B_cols;
-  // The kernel used for the big matrix size.
-  Index kernel_A_rows;
-  Index kernel_B_cols;
-  Overhang overhang;
-  double recursive_time { std::numeric_limits<double>::infinity() };
-  double direct_time { std::numeric_limits<double>::infinity() };
-
-  void AbsorbIndirect(BestConfig other) {
-    if (other.recursive_time < recursive_time) {
-      double direct_save = direct_time;
-      *this = other;
-      direct_time = direct_save;
-    }
-  }
-
-  void Zero() {
-    big_A_rows = 0;
-    big_B_cols = 0;
-    kernel_A_rows = 0;
-    kernel_B_cols = 0;
-    overhang = NONE;
-    recursive_time = 0.0;
-    direct_time = 0.0;
-  }
-
-  char OverhangDescription() const {
-    switch (overhang) {
-      case BOTTOM:
-        return 'B';
-      case RIGHT:
-        return 'R';
-      case SEPARATE:
-        return 'S';
-      case NONE:
-        return 'N';
-      default:
-        std::cerr << "Bad overhang?" << std::endl;
-        return 'F';
-    }
+struct Result {
+  Index A_rows;
+  Index B_cols;
+  double timing;
+  bool operator<(const Result &other) const {
+    return timing < other.timing;
   }
 };
 
-template <Index A_rows, Index B_cols> static inline double BenchmarkNoOverhang(Accessor access, Tile shape) {
+template <class Accessor, Index A_rows, Index B_cols> static inline Result BenchmarkNoOverhang(Accessor access, Tile shape) {
   if ((shape.A_rows % A_rows) || (shape.B_cols % B_cols))
-    return std::numeric_limits<double>::infinity();
-  const std::size_t kTries = 20;
+    return { A_rows, B_cols, std::numeric_limits<double>::infinity() };
+  const std::size_t kTries = 100;
   auto start = std::chrono::steady_clock::now();
   typedef AVX512VNNI::UnrollKernel<A_rows, 1, B_cols, AVX512VNNI::Shifted8> Kernel;
   // Burn in.
@@ -98,143 +39,115 @@ template <Index A_rows, Index B_cols> static inline double BenchmarkNoOverhang(A
     AVX512VNNI::MultiplyNoOverhang<Kernel>(access, shape);
   }
   auto end = std::chrono::steady_clock::now();
-  return std::chrono::duration<double>(end - start).count() / kTries;
+  double timing = std::chrono::duration<double>(end - start).count() / kTries;
+  return Result { A_rows, B_cols, timing };
 }
 
-template <Index A_rows, Index B_cols> static void BenchmarkAndUpdate(Accessor access, Tile shape, BestConfig &out) {
-  double time = BenchmarkNoOverhang<A_rows, B_cols>(access, shape);
-  if (time < out.direct_time) {
-    out.big_A_rows = shape.A_rows;
-    out.big_B_cols = shape.B_cols;
-    out.kernel_A_rows = A_rows;
-    out.kernel_B_cols = B_cols;
-    out.direct_time = time;
-    out.overhang = NONE;
+template <class Accessor> void BenchmarkKernels(Accessor access, Tile shape) {
+  printf("problem=%4zux%4zux%4zu\n", shape.A_rows, shape.inner, shape.B_cols);
+  std::vector<Result> results;
+  results.push_back(BenchmarkNoOverhang<Accessor, 1, 1>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 2, 1>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 4, 1>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 8, 1>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 16, 1>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 32, 1>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 1, 2>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 2, 2>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 4, 2>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 8, 2>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 16, 2>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 1, 4>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 2, 4>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 4, 4>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 8, 4>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 16, 4>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 1, 8>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 2, 8>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 4, 8>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 8, 8>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 1, 16>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 2, 16>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 4, 16>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 1, 32>(access, shape));
+  results.push_back(BenchmarkNoOverhang<Accessor, 2, 32>(access, shape));
+  std::sort(results.begin(), results.end());
+  for (const Result &r : results) {
+    printf("%9.3fus kernel=%2zux%2zu\n", r.timing * 1000000.0, r.A_rows, r.B_cols);
   }
 }
 
-// Size of inner loop to sweep.
-constexpr Index kColsMax = 16;
-constexpr Index kRowsMax = 16;
-
-template <std::size_t... Iterator> static inline BestConfig BenchmarkKernels(TestMatrices8::AccessT accessor, Tile shape, index_sequence<Iterator...>) {
-  BestConfig ret;
-  using unfurl = int[];
-  // Could have used return values and built an array but the indices were annoying to handle.
-  (void)unfurl {0, (
-    BenchmarkAndUpdate<(Iterator / kColsMax) + 1, (Iterator % kColsMax) + 1>(accessor, shape, ret)
-    , 0)...
-  };
-  ret.recursive_time = ret.direct_time;
-  return ret;
-}
-
-struct TileHash {
-  std::size_t operator()(const Tile &t) const noexcept {
-    std::hash<Index> hasher;
-    std::size_t seed = hasher(t.A_rows);
-    seed ^= hasher(t.inner) + 0x9e3779b9 + (seed<<6) + (seed>>2);
-    seed ^= hasher(t.B_cols) + 0x9e3779b9 + (seed<<6) + (seed>>2);
-    return seed;
-  }
-};
-
-class Memoise {
+template <class T, unsigned int PackCols, unsigned int RegisterLength> class PackedAccess {
   public:
-    explicit Memoise(Tile max_problem) :
-      matrices_(max_problem) {
-      // We'll just assume zero-size matrices take zero time.
-      zero_.Zero();
+    typedef T Content;
+
+    PackedAccess(Content *data, Index rows)
+      : base_(data), rows_(rows), row_(0), col_(0) {}
+
+    PackedAccess Add(Index row, Index col) const {
+      PackedAccess ret(base_, rows_);
+      ret.row_ = row_ + row;
+      ret.col_ = col_ + col;
+      return ret;
     }
 
-    BestConfig Find(const Tile problem) {
-      BestConfig &best = Entry(problem);
-      const Index A_rows = problem.A_rows;
-      const Index inner = problem.inner;
-      const Index B_cols = problem.B_cols;
-      if (best.recursive_time != std::numeric_limits<double>::infinity()) return best;
-      // No overhang.
-      best = BenchmarkKernels(matrices_.Accessor(), problem, make_index_sequence<kColsMax * kRowsMax>());
-      for (Index row_overhang = 0; row_overhang < std::min(kRowsMax, A_rows); ++row_overhang) {
-        // Don't visit (0,0).
-        for (Index col_overhang = (row_overhang == 0 ? 1 : 0); col_overhang < std::min(kColsMax, B_cols); ++col_overhang) {
-          // This option does full recursion on breaking up big.
-          //BestConfig big = Find(A_rows - row_overhang, B_cols - col_overhang);
-          // This option assumes we run big directly.
-          BestConfig &big = Entry({A_rows - row_overhang, problem.inner, B_cols - col_overhang});
-          if (big.direct_time == std::numeric_limits<double>::infinity()) {
-            big = BenchmarkKernels(matrices_.Accessor(), Tile{A_rows - row_overhang, problem.inner, B_cols - col_overhang}, make_index_sequence<kColsMax * kRowsMax>());
-          }
-          
-          BestConfig bottom_long = Find({row_overhang, inner, B_cols});
-          BestConfig bottom_short = Find({row_overhang, inner, B_cols - col_overhang});
-          BestConfig right_long = Find({A_rows, inner, col_overhang});
-          BestConfig right_short = Find({A_rows - row_overhang, inner, col_overhang});
-          BestConfig bottom_right = Find({row_overhang, inner, col_overhang});
-          BestConfig candidate;
-          candidate.big_A_rows = A_rows - row_overhang;
-          candidate.big_B_cols = B_cols - col_overhang;
-          // Record kernel from big tile
-          candidate.kernel_A_rows = big.kernel_A_rows;
-          candidate.kernel_B_cols = big.kernel_B_cols;
-
-          candidate.recursive_time = big.direct_time + bottom_long.recursive_time + right_short.recursive_time;
-          candidate.overhang = BOTTOM;
-          best.AbsorbIndirect(candidate);
-
-          candidate.recursive_time = big.direct_time + bottom_short.recursive_time + right_long.recursive_time;
-          candidate.overhang = RIGHT;
-          best.AbsorbIndirect(candidate);
-
-          candidate.recursive_time = big.direct_time + bottom_short.recursive_time + right_short.recursive_time + bottom_right.recursive_time;
-          candidate.overhang = SEPARATE;
-          best.AbsorbIndirect(candidate);
-        }
-      }
-      fprintf(stderr, "%8.3fus %8.3fus problem=%4zux%4zux%4zu big=%4zux%4zu bigkernel=%2zux%2zu overhang=%c\n", best.recursive_time * 1000000.0, best.direct_time * 1000000.0, problem.A_rows, problem.inner, problem.B_cols, best.big_A_rows, best.big_B_cols, best.kernel_A_rows, best.kernel_B_cols, best.OverhangDescription());
-      return best;
+    const Content &Front() const {
+      const Content *ret = base_ +
+        (col_ / PackCols) * rows_ * PackCols +
+        (col_ % PackCols) * RegisterLength +
+        (row_ / RegisterLength) * RegisterLength * PackCols +
+        (row_ % RegisterLength);
+      return *ret;
     }
 
-    void Print(Tile problem, unsigned int nest) {
-      BestConfig best = Find(problem);
-      printf("%8.3fus %8.3fus problem=%4zux%4zux%4zu big=%4zux%4zu bigkernel=%2zux%2zu overhang=%c", best.recursive_time * 1000000.0, best.direct_time * 1000000.0, problem.A_rows, problem.inner, problem.B_cols, best.big_A_rows, best.big_B_cols, best.kernel_A_rows, best.kernel_B_cols, best.OverhangDescription());
-      for (unsigned int i = 0; i < nest; ++i) {
-        printf("*");
-      }
-      printf("\n");
-
-      if (best.overhang != NONE) {
-        Print({best.big_A_rows, problem.inner, best.big_B_cols}, nest + 1);
-        if (problem.A_rows != best.big_A_rows) {
-          Print({problem.A_rows - best.big_A_rows, problem.inner, best.overhang == BOTTOM ? problem.B_cols : best.big_B_cols}, nest + 1);
-        }
-        if (problem.B_cols != best.big_B_cols) { 
-          Print({best.overhang == RIGHT ? problem.A_rows : best.big_A_rows, problem.inner, problem.B_cols - best.big_B_cols}, nest + 1);
-        }
-        if (best.overhang == SEPARATE) {
-          Print({problem.A_rows - best.big_A_rows, problem.inner, problem.B_cols - best.big_B_cols}, nest + 1);
-        }
-      }
+    Content &Front() {
+      Content *ret = base_ +
+        (col_ / PackCols) * rows_ * PackCols +
+        (col_ % PackCols) * RegisterLength +
+        (row_ / RegisterLength) * RegisterLength * PackCols +
+        (row_ % RegisterLength);
+      return *ret;
     }
- 
+
   private:
-    BestConfig &Entry(Tile size) {
-      // Nobody should modify zero because it is already valid.
-      if (size.A_rows == 0 || size.B_cols == 0) { return zero_; }
-      return table_[size];
-    }
+    Content *base_;
+    Index rows_;
 
-    std::unordered_map<Tile, BestConfig, TileHash> table_;
-
-    BestConfig zero_;
-
-    TestMatrices8 matrices_;
+    Index row_, col_;
 };
+
+template <unsigned int PackCols> void TryPacked(TestMatrices8 &m, Tile shape) {
+  typedef Access<RowMajorAccess<int8_t>, PackedAccess<int8_t, PackCols, 64>, DoNotOptimizeAccess<int32_t> > Packed;
+  Packed packed(
+      RowMajorAccess<int8_t>(m.A.begin(), shape.inner),
+      PackedAccess<int8_t, PackCols, 64>(m.B.begin(), shape.inner),
+      DoNotOptimizeAccess<int32_t>());
+  printf("packed %u ", PackCols);
+  BenchmarkKernels(packed, shape);
+}
+
+void Benchmark(Tile shape) {
+  TestMatrices8 m(shape);
+  typedef Access<RowMajorAccess<int8_t>, ColMajorAccess<int8_t>, DoNotOptimizeAccess<int32_t> > Regular;
+  Regular regular(
+      RowMajorAccess<int8_t>(m.A.begin(), shape.inner),
+      ColMajorAccess<int8_t>(m.B.begin(), shape.inner),
+      DoNotOptimizeAccess<int32_t>());
+  printf("regular ");
+  BenchmarkKernels(regular, shape);
+  TryPacked<1>(m, shape);
+  TryPacked<2>(m, shape);
+  TryPacked<4>(m, shape);
+  TryPacked<8>(m, shape);
+  TryPacked<16>(m, shape);
+  TryPacked<32>(m, shape);
+}
 
 } // namespace
 } // namespace intgemm
 
 int main() {
+  using namespace intgemm;
   intgemm::Tile shapes[] = {
     {8, 256, 256},
     {8, 2048, 256},
@@ -248,7 +161,11 @@ int main() {
     {1024, 1024, 1024},
     {64, 1024, 1024},
   };
-  intgemm::Tile largest = {0,0,0};
+  for (const intgemm::Tile *i = shapes; i < shapes + sizeof(shapes) / sizeof(intgemm::Tile); ++i) {
+    intgemm::Benchmark(*i);
+  }
+
+/*  intgemm::Tile largest = {0,0,0};
   for (const intgemm::Tile *i = shapes; i < shapes + sizeof(shapes) / sizeof(intgemm::Tile); ++i) {
     largest.A_rows = std::max(largest.A_rows, i->A_rows);
     largest.inner = std::max(largest.inner, i->inner);
@@ -257,5 +174,5 @@ int main() {
   intgemm::Memoise memo(largest);
   for (const intgemm::Tile *i = shapes; i < shapes + sizeof(shapes) / sizeof(intgemm::Tile); ++i) {
     memo.Print(*i, 0);
-  }
+  }*/
 }

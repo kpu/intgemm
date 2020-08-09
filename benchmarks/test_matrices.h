@@ -1,5 +1,6 @@
 #pragma once
 
+#include "do_not_optimize.h"
 #include "../aligned.h"
 #include "../tile/access.h"
 #include <random>
@@ -8,6 +9,25 @@
 #include <cstdint>
 
 namespace intgemm {
+
+template <class T> class DoNotOptimizeAccess {
+  public:
+    typedef T Content;
+
+    DoNotOptimizeAccess() {}
+
+    DoNotOptimizeAccess Add(Index, Index) const { return *this; }
+
+    template <Index A_rows, Index B_cols> void Write(const __m128i *from) {
+      doNotOptimizeAway(from);
+    }
+    template <Index A_rows, Index B_cols> void Write(const __m256i *from) {
+      doNotOptimizeAway(from);
+    }
+    template <Index A_rows, Index B_cols> void Write(const __m512i *from) {
+      doNotOptimizeAway(from);
+    }
+};
 
 struct TestMatrices8 {
   typedef Access<RowMajorAccess<int8_t>, ColMajorAccess<int8_t>, RowMajorAccess<int32_t> > AccessT;
