@@ -53,8 +53,7 @@ INTGEMM_AVX512F static inline float AddFloat32(__m512 a) {
 }
 #endif
 
-typedef union {int32_t i; float f;} FloatConvert;
-const float kFloatAbsoluteMask = FloatConvert{0x7fffffff}.f;
+constexpr int32_t kFloatAbsoluteMask = 0x7fffffff;
 
 } // namespace intgemm
 

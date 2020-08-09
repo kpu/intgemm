@@ -20,7 +20,7 @@ namespace INTGEMM_ARCH {
  */
 INTGEMM_TARGET static inline float MaxAbsoluteThread(const FRegister *begin, const FRegister *end) {
   FRegister highest = setzero_ps<FRegister>();
-  const FRegister abs_mask = set1_ps<FRegister>(kFloatAbsoluteMask);
+  const FRegister abs_mask = cast_ps(set1_epi32<Register>(kFloatAbsoluteMask));
 #pragma omp for
   for (const FRegister *i = begin; i < end; ++i) {
     FRegister reg = and_ps(abs_mask, *i);
@@ -45,36 +45,18 @@ INTGEMM_TARGET static inline float MaxAbsolute(const float *begin_float, const f
   }
   /* Overhang. The beginning was aligned so if there's any overhang we're
    * allowed to read the next full register.  Then mask that to 0. */
-  if (end_float != end_reg) {
 #if defined(INTGEMM_THIS_IS_AVX512DQ)
-    FRegister and_me = set1_ps<FRegister>(kFloatAbsoluteMask);
+  if (end_float != end_reg) {
+    const FRegister abs_mask = cast_ps(set1_epi32<Register>(kFloatAbsoluteMask));
     __mmask16 mask = (1 << (end_float - end_reg)) - 1;
-    FRegister masked = _mm512_maskz_and_ps(mask, and_me, *reinterpret_cast<const FRegister*>(end_reg));
-#elif defined(INTGEMM_THIS_IS_AVX2)
-    const float k = kFloatAbsoluteMask;
-    const __m256 kMasks[8] = {
-      _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, 0),
-      _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, k),
-      _mm256_set_ps(0, 0, 0, 0, 0, 0, k, k),
-      _mm256_set_ps(0, 0, 0, 0, 0, k, k, k),
-      _mm256_set_ps(0, 0, 0, 0, k, k, k, k),
-      _mm256_set_ps(0, 0, 0, k, k, k, k, k),
-      _mm256_set_ps(0, 0, k, k, k, k, k, k),
-      _mm256_set_ps(0, k, k, k, k, k, k, k),
-    };
-    FRegister masked = and_ps(kMasks[end_float - end_reg], *reinterpret_cast<const FRegister*>(end_reg));
-#elif defined(INTGEMM_THIS_IS_SSE2)
-    const float k = kFloatAbsoluteMask;
-    const __m128 kMasks[8] = {
-      _mm_set_ps(0, 0, 0, 0),
-      _mm_set_ps(0, 0, 0, k),
-      _mm_set_ps(0, 0, k, k),
-      _mm_set_ps(0, k, k, k),
-    };
-    FRegister masked = and_ps(kMasks[end_float - end_reg], *reinterpret_cast<const FRegister*>(end_reg));
-#endif
+    FRegister masked = _mm512_maskz_and_ps(mask, abs_mask, *reinterpret_cast<const FRegister*>(end_reg));
     ret = std::max(ret, MaxFloat32(masked));
   }
+#else
+  for (const float *i = end_reg; i < end_float; ++i) {
+    ret = std::max(ret, fabsf(*i));
+  }
+#endif
   return ret;
 }
 
@@ -88,7 +70,7 @@ INTGEMM_TARGET static inline MeanStd VectorMeanStd(const float *begin_float, con
   FRegister squares = set1_ps<FRegister>(0);
   FRegister sums = set1_ps<FRegister>(0);
   if (absolute) {
-    const FRegister abs_mask = set1_ps<FRegister>(kFloatAbsoluteMask);
+    const FRegister abs_mask = cast_ps(set1_epi32<Register>(kFloatAbsoluteMask));
     for (; begin != end; begin++) {
       FRegister vec = and_ps(abs_mask, *begin);
       squares = add_ps(squares, mul_ps(vec, vec));
