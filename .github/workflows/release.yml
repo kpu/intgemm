@@ -2,15 +2,15 @@ name: Release
 
 on:
   push:
-    branches: [ ci-test ]
+    branches: [master, ci-test, static]
   pull_request:
-    branches: [ ci-test ]
+    branches: [master, ci-test, static]
 
 jobs:
   build:
     strategy:
       matrix:
-        runs-on: [ubuntu-latest, macOS-latest, windows-2019]
+        runs-on: [ubuntu-latest, macOS-latest, windows-latest]
     runs-on: ${{ matrix.runs-on }}
 
     steps:

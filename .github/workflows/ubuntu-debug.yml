@@ -2,9 +2,9 @@ name: Ubuntu debug
 
 on:
   push:
-    branches: [ ci-test ]
+    branches: [master, static]
   pull_request:
-    branches: [ ci-test ]
+    branches: [master, static]
 
 jobs:
   build:

@@ -2,9 +2,9 @@ name: Ubuntu OpenMP
 
 on:
   push:
-    branches: [ ci-test ]
+    branches: [ubuntu, static]
   pull_request:
-    branches: [ ci-test ]
+    branches: [ubuntu, static]
 
 jobs:
   build:
