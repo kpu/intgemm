@@ -179,8 +179,8 @@ template <typename Callback> target static void Multiply(const int16_t *A, const
       Register sum5 = madd_epi16(a, *(B0_col + k * 8 + 5)); \
       Register sum6 = madd_epi16(a, *(B0_col + k * 8 + 6)); \
       Register sum7 = madd_epi16(a, *(B0_col + k * 8 + 7)); \
-      for (int k = 1; k < simd_width; ++k) { \
-        Register a = *(A_row + k); \
+      for (k = 1; k < simd_width; ++k) { \
+        a = *(A_row + k); \
         /* Multiply 16-bit, horizontally add to packed 32-bit integers.*/ \
         Register mult0 = madd_epi16(a, *(B0_col + k * 8)); \
         Register mult1 = madd_epi16(a, *(B0_col + k * 8 + 1)); \

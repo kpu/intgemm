@@ -39,7 +39,7 @@ void BenchmarkMaxAbsolute() {
   std::cout << "MaxAbsolute baseline = " << baseline << " optimized = " << optimized << " speedup = " << (optimized / baseline) << '\n';
 }
 
-template <class Backend> void QuantizerBench(const float *in, int8_t *out, std::size_t count) {
+template <class Backend> void QuantizerBench(const float *in, int8_t *out, intgemm::Index count) {
   if (intgemm::kCPU < Backend::kUses) return;
   Backend::Quantize(in, out, 1.0, count);
   const std::size_t kTries = 60;
@@ -63,10 +63,10 @@ int main() {
     for (float &element : in) {
       element = dist(gen);
     }
-    QuantizerBench<intgemm::SSSE3_8bit>(in.begin(), out.begin(), count);
-    QuantizerBench<intgemm::AVX2_8bit>(in.begin(), out.begin(), count);
+    QuantizerBench<intgemm::SSSE3_8bit>(in.begin(), out.begin(), static_cast<intgemm::Index>(count));
+    QuantizerBench<intgemm::AVX2_8bit>(in.begin(), out.begin(), static_cast<intgemm::Index>(count));
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-    QuantizerBench<intgemm::AVX512_8bit>(in.begin(), out.begin(), count);
+    QuantizerBench<intgemm::AVX512_8bit>(in.begin(), out.begin(), static_cast<intgemm::Index>(count));
 #endif
   }
 }

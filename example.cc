@@ -33,7 +33,7 @@ int main() {
   }
 
   // Compute the top left corner of C as a sanity check.
-  float top_left_reference = 0.0;
+  float top_left_reference = 0.0f;
   for (Index w = 0; w < width; ++w) {
     top_left_reference += A[w] * B[w * B_cols];
   }
@@ -41,7 +41,7 @@ int main() {
   // 16-bit multiplication.
   {
     // For 16-bit, Jacob Devlin recommends 1024 so as to not overflow in 32-bit accumulation.
-    float quant_mult = 1024.0;
+    float quant_mult = 1024.0f;
     AlignedVector<int16_t> A_prepared(A.size());
     AlignedVector<int16_t> B_prepared(B.size());
     // Quantize A.
@@ -52,15 +52,15 @@ int main() {
 
     AlignedVector<float> C(A_rows * B_cols);
     // Do the actual multiply.
-    intgemm::Int16::Multiply(A_prepared.begin(), B_prepared.begin(), A_rows, width, B_cols, intgemm::callbacks::UnquantizeAndWrite(1.0 / (quant_mult * quant_mult), C.begin()));
+    intgemm::Int16::Multiply(A_prepared.begin(), B_prepared.begin(), A_rows, width, B_cols, intgemm::callbacks::UnquantizeAndWrite(1.0f / (quant_mult * quant_mult), C.begin()));
     // Sanity check.  C will be row major.
-    assert(fabs(C[0] - top_left_reference) < 0.05);
+    assert(fabsf(C[0] - top_left_reference) < 0.05f);
   }
 
   // 8-bit multiplication.
   {
     // For 8-bit a good quantization multiplier is 127 / largest absolute value..
-    float quant_mult = 127.0 / 2.0;
+    float quant_mult = 127.0f / 2.0f;
     AlignedVector<int8_t> A_prepared(A.size());
     AlignedVector<int8_t> B_prepared(B.size());
     // Quantize A.
@@ -71,8 +71,8 @@ int main() {
 
     AlignedVector<float> C(A_rows * B_cols);
     // Do the actual multiply.
-    intgemm::Int8::Multiply(A_prepared.begin(), B_prepared.begin(), A_rows, width, B_cols, intgemm::callbacks::UnquantizeAndWrite(1.0 / (quant_mult * quant_mult), C.begin()));
+    intgemm::Int8::Multiply(A_prepared.begin(), B_prepared.begin(), A_rows, width, B_cols, intgemm::callbacks::UnquantizeAndWrite(1.0f / (quant_mult * quant_mult), C.begin()));
     // Sanity check.  C will be row major.
-    assert(fabs(C[0] - top_left_reference) < 0.05);
+    assert(fabsf(C[0] - top_left_reference) < 0.05f);
   }
 }
