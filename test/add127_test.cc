@@ -1,6 +1,7 @@
 #include "test.h"
 
 namespace intgemm {
+namespace {
 
 void CompareAs(int8_t * output_old, uint8_t * output_new, Index rows, Index cols) {
 	for (Index r = 0; r<rows; r++) {
@@ -47,7 +48,7 @@ template <class Routine> void TestPrepareBias(Index rows, Index cols) {
   AlignedVector<int8_t> B_prep(inputB.size());
   AlignedVector<int8_t> B_quant(inputB.size());
   Routine::PrepareB(inputB.begin(), B_prep.begin(), quant_mult, rows, cols);
-  Routine::Quantize(inputB.begin(), B_quant.begin(), quant_mult, inputB.size());
+  Routine::Quantize(inputB.begin(), B_quant.begin(), quant_mult, static_cast<intgemm::Index>(inputB.size()));
 
 
   AlignedVector<float> inputBias(cols);
@@ -102,8 +103,8 @@ template <class Routine> void TestMultiplyBiasNew(Index A_rows, Index width, Ind
   }
 
   float alpha = 2.0f;
-  float quant_mult = 127/alpha;
-  float unquant_mult = 1.0/(quant_mult*quant_mult);
+  float quant_mult = 127.0f / alpha;
+  float unquant_mult = 1.0f / (quant_mult*quant_mult);
 
   AlignedVector<uint8_t> A_prep(A.size());
   AlignedVector<int8_t> B_prep(B.size());
@@ -117,7 +118,7 @@ template <class Routine> void TestMultiplyBiasNew(Index A_rows, Index width, Ind
   *
   */
   AlignedVector<int8_t> B_quant(B.size());
-  Routine::Quantize(B.begin(), B_quant.begin(), quant_mult, B.size());
+  Routine::Quantize(B.begin(), B_quant.begin(), quant_mult, static_cast<Index>(B.size()));
   AlignedVector<float> slowint_C(test_C.size());
   // Taking the original A_preparation which means A would be int8_t
   AlignedVector<int8_t> A_prep2(A.size());
@@ -237,7 +238,7 @@ template <class Routine> void TestMultiplyShiftInt(Index A_rows, Index width, In
    * Reference float multiplication
    */
   AlignedVector<int8_t> B_quant(B.size());
-  Routine::Quantize(B.begin(), B_quant.begin(), quant_mult, B.size());
+  Routine::Quantize(B.begin(), B_quant.begin(), quant_mult, static_cast<Index>(B.size()));
   AlignedVector<float> slowint_C(test_C.size());
   // Taking the original A_preparation which means A would be int8_t
   // references::Multiply(A_prep.begin(), B_quant.begin(), slowint_C.begin(), A_rows, width, B_cols, [&](int32_t sum, const callbacks::OutputBufferInfo& info) {
@@ -474,4 +475,5 @@ TEST_CASE ("Multiply AVX512VNNI 8bit Shift vs Int", "[Add127]") {
 }
 #endif
 
-} //namespace intgemm
+} // namespace
+} // namespace intgemm

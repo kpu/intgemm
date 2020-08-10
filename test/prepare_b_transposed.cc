@@ -22,7 +22,7 @@ void PrepareBTransposedRef(const float* input, typename Backend::Integer* output
       for (Index k = 0; k < vec_len; ++k) {
         Index col = (i + k) % B_transposed_cols;
         Index row = 8 * ((i + k) / B_transposed_cols) + j;
-        *output++ = input[row * B_transposed_cols + col] * quant_mult;
+        *output++ = static_cast<float>(input[row * B_transposed_cols + col] * quant_mult);
       }
 }
 

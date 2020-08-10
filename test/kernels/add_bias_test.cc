@@ -18,8 +18,8 @@ void kernel_add_bias_test() {
   AlignedVector<ElemType_> bias(VECTOR_LENGTH);
   AlignedVector<ElemType_> output(VECTOR_LENGTH);
 
-  std::iota(input.begin(), input.end(), 0);
-  std::fill(bias.begin(), bias.end(), 100);
+  std::iota(input.begin(), input.end(), static_cast<ElemType_>(0));
+  std::fill(bias.begin(), bias.end(), static_cast<ElemType_>(100));
 
   *output.template as<vec_t>() = kernels::add_bias(*input.template as<vec_t>(), bias.begin(), 0);
   for (std::size_t i = 0; i < output.size(); ++i)
