@@ -158,9 +158,7 @@ template <class AT, class BT, class CT> class Access {
     const C &CAccessor() const { return c_; }
     C &CAccessor() { return c_; }
 
-    AContent &AFront() { return a_.Front(); }
     const AContent &AFront() const { return a_.Front(); }
-    BContent &BFront() { return b_.Front(); }
     const BContent &BFront() const { return b_.Front(); }
     CContent &CFront() { return c_.Front(); }
     const CContent &CFront() const { return c_.Front(); }
