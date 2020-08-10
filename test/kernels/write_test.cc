@@ -17,7 +17,7 @@ void kernel_write_test() {
   AlignedVector<ElemType_> input(VECTOR_LENGTH);
   AlignedVector<ElemType_> output(VECTOR_LENGTH);
 
-  std::iota(input.begin(), input.end(), 0);
+  std::iota(input.begin(), input.end(), static_cast<ElemType_>(0));
 
   kernels::write(*input.template as<vec_t>(), output.begin(), 0);
   for (std::size_t i = 0; i < VECTOR_LENGTH; ++i)
