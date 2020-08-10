@@ -124,20 +124,6 @@ struct Unsupported_8bit {
   constexpr static const char *const kName = "8-bit Unsupported";
 };
 
-#ifndef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-// These won't ever be called in this capacity, but it does let the code below compile.
-typedef Unsupported_16bit AVX512_16bit;
-typedef Unsupported_8bit AVX512_8bit;
-namespace avx512f {
-static inline float MaxAbsolute(const float * /*begin*/, const float * /*end*/) {
-  throw UnsupportedCPU();
-}
-static inline MeanStd VectorMeanStd(const float * /*begin*/, const float * /*end*/, bool /*absolute*/) {
-  throw UnsupportedCPU();
-}
-} //namespace
-#endif
-
 #ifndef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
 // These won't ever be called in this capacity, but it does let the code below compile.
 typedef Unsupported_8bit AVX512VNNI_8bit;
