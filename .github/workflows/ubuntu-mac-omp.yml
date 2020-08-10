@@ -1,4 +1,4 @@
-name: Ubuntu 18.04
+name: Ubuntu and Mac OpenMP
 
 on:
   push:
@@ -8,8 +8,10 @@ on:
 
 jobs:
   build:
-
-    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        runs-on: [ubuntu-latest, macOS-latest]
+    runs-on: ${{ matrix.runs-on }}
 
     steps:
     - uses: actions/checkout@v2
@@ -17,7 +19,7 @@ jobs:
       run: |
         mkdir -p build
         cd build
-        cmake ..
+        cmake -DUSE_OPENMP=ON ..
     - name: Compile
       working-directory: build
       run: make -j2
