@@ -1,10 +1,10 @@
-name: ubuntu-18.04-omp
+name: Ubuntu 18.04
 
 on:
   push:
-    branches: [ master static ]
+    branches: [ ci-test ]
   pull_request:
-    branches: [ master static ]
+    branches: [ ci-test ]
 
 jobs:
   build:
@@ -12,18 +12,15 @@ jobs:
     runs-on: ubuntu-18.04
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-
-    - name: Configure CMake
+    - uses: actions/checkout@v2
+    - name: cmake
       run: |
         mkdir -p build
         cd build
-        cmake -DUSE_OPENMP=1 .. 
+        cmake -DUSE_OPENMP=1 ..
     - name: Compile
       working-directory: build
       run: make -j2
-
-    - name: Run unit tests
+    - name: Test
       working-directory: build
       run: ctest -j2
