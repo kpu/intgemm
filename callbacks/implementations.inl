@@ -115,8 +115,8 @@ public:
   }
 
 private:
-  Unquantize config;
   vf unquant_mult;
+  Unquantize config;
 };
 
 /*
@@ -134,8 +134,8 @@ public:
   }
 
 private:
-  UnquantizeAndWrite config;
   vf unquant_mult;
+  UnquantizeAndWrite config;
 };
 
 /*
@@ -169,8 +169,8 @@ public:
     kernels::write(result, config.output_addr, info.row_idx * info.cols + info.col_idx);
   }
 private:
-  UnquantizeAndAddBiasAndWrite config;
   vf unquant_mult;
+  UnquantizeAndAddBiasAndWrite config;
 };
 
 }
