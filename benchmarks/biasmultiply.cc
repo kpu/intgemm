@@ -67,8 +67,8 @@ std::chrono::duration<double> testOld(Index A_rows, Index width, Index B_cols) {
   }
 
   float alpha = 2.0f;
-  float quant_mult = 127/alpha;
-  float unquant_mult = 1.0/(quant_mult*quant_mult);
+  float quant_mult = 127.0f / alpha;
+  float unquant_mult = 1.0f / (quant_mult*quant_mult);
 
   AlignedVector<int8_t> A_prep(A.size());
   AlignedVector<int8_t> B_prep(B.size());
