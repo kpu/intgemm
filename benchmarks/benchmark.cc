@@ -81,7 +81,7 @@ struct BackendStats {
 const float kOutlierThreshold = 0.75;
 void Summarize(std::vector<double> &stats) {
   // Throw out outliers.
-  std::vector<double>::iterator keep = stats.begin() + stats.size() * kOutlierThreshold;
+  std::vector<double>::iterator keep = stats.begin() + static_cast<std::size_t>(static_cast<float>(stats.size()) * kOutlierThreshold);
   std::nth_element(stats.begin(), keep, stats.end());
   double avg = 0.0;
   for (std::vector<double>::const_iterator i = stats.begin(); i != keep; ++i) {
@@ -97,7 +97,7 @@ void Summarize(std::vector<double> &stats) {
   std::cout << std::setw(10) << *std::min_element(stats.begin(), stats.end()) << '\t' << std::setw(8) << avg << '\t' << std::setw(8) << stddev;
 }
 
-template <class Backend> void Print(std::vector<std::vector<double>> &stats, int index) {
+template <class Backend> void Print(std::vector<std::vector<double>> &stats, std::size_t index) {
   if (stats.empty()) return;
   std::cout << std::setw(16) << Backend::kName << '\t';
   Summarize(stats[index]);
