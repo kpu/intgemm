@@ -15,7 +15,7 @@ template <class T> class AlignedVector {
     explicit AlignedVector(std::size_t size)
       : size_(size) {
 #ifdef _MSC_VER
-      mem_ = _aligned_malloc(size * sizeof(T), 64);
+      mem_ = static_cast<T*>(_aligned_malloc(size * sizeof(T), 64));
       if (!mem_) throw std::bad_alloc();
 #else      
       if (posix_memalign(reinterpret_cast<void **>(&mem_), 64, size * sizeof(T))) {
