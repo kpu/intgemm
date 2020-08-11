@@ -34,8 +34,8 @@ INTGEMM_TARGET void OneIteration() {
 
   memset(C.begin(), 0, sizeof(Register));
 
-  std::iota(A.begin(), A.end(), 7 /* made up */);
-  std::iota(B.begin(), B.end(), 1 /* made up */);
+  std::iota(A.begin(), A.end(), static_cast<int8_t>(7)/* made up */);
+  std::iota(B.begin(), B.end(), static_cast<int8_t>(1) /* made up */);
 
   typedef RowMajorAccess<int8_t> InputA;
   typedef ColMajorAccess<int8_t> InputB;

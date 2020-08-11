@@ -7,6 +7,7 @@
 
 #include "../benchmarks/test_matrices.h"
 
+#include <numeric>
 #include <random>
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
