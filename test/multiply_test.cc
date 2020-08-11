@@ -24,7 +24,7 @@ INTGEMM_SSE2 TEST_CASE("Transpose 16", "[transpose]") {
   if (kCPU < CPUType::SSE2) return;
   const unsigned N = 8;
   AlignedVector<int16_t> input(N * N);
-  std::iota(input.begin(), input.end(), 0);
+  std::iota(input.begin(), input.end(), static_cast<int16_t>(0));
 
   AlignedVector<int16_t> ref(N * N);
   references::Transpose(input.begin(), ref.begin(), N, N);
@@ -42,7 +42,7 @@ INTGEMM_SSSE3 TEST_CASE("Transpose 8", "[transpose]") {
   if (kCPU < CPUType::SSSE3) return;
   const unsigned N = 16;
   AlignedVector<int8_t> input(N * N);
-  std::iota(input.begin(), input.end(), 0);
+  std::iota(input.begin(), input.end(), static_cast<int8_t>(0));
 
   AlignedVector<int8_t> ref(input.size());
   references::Transpose(input.begin(), ref.begin(), N, N);
@@ -73,7 +73,7 @@ template <class Routine> void TestPrepare(Index rows = 32, Index cols = 16) {
 
   // Compute reference output.
   AlignedVector<Integer> quantized(input.size());
-  Routine::Quantize(input.begin(), quantized.begin(), 1, input.size());
+  Routine::Quantize(input.begin(), quantized.begin(), 1, static_cast<Index>(input.size()));
   AlignedVector<Integer> reference(input.size());
   // Note this won't work for Int8/Int16 generic routines because tile sizes vary.
   references::Rearragement(quantized.begin(), reference.begin(), Routine::kBTileRow, Routine::kBTileCol, rows, cols);
@@ -272,7 +272,7 @@ template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_co
   }
 
   float quant_mult = (sizeof(Integer) == 2) ? 1024 : 64;
-  float unquant_mult = 1.0/(quant_mult*quant_mult);
+  float unquant_mult = 1.0f / (quant_mult*quant_mult);
 
   AlignedVector<Integer> A_prep(A.size());
   AlignedVector<Integer> B_prep(B.size());
@@ -287,7 +287,7 @@ template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_co
   // ));
 
   AlignedVector<Integer> B_quant(B.size());
-  Routine::Quantize(B.begin(), B_quant.begin(), quant_mult, B.size());
+  Routine::Quantize(B.begin(), B_quant.begin(), quant_mult, static_cast<Index>(B.size()));
   AlignedVector<float> slowint_C(test_C.size());
   // Assuming A is just quantization here.
   references::Multiply(A_prep.begin(), B_quant.begin(), slowint_C.begin(), A_rows, width, B_cols, [&](int32_t sum, const callbacks::OutputBufferInfo&) {
@@ -295,8 +295,8 @@ template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_co
   });
 
   AlignedVector<float> float_C(test_C.size());
-  references::Multiply(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols, [&](float sum, const callbacks::OutputBufferInfo&) {
-    return sum;
+  references::Multiply(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols, [&](double sum, const callbacks::OutputBufferInfo&) {
+    return static_cast<float>(sum);
   });
 
   CompareMSE(float_C.begin(), slowint_C.begin(), test_C.begin(), test_C.size(), info.str(),
@@ -306,7 +306,7 @@ template <class Routine> void TestMultiply(Index A_rows, Index width, Index B_co
 //Code duplication may be avoided through some use of variadic templates, as the different WriteC symbols
 //Require different number of arguments. I don't think the refactoring is worth it.
 template <class Routine> void TestMultiplyBias(Index A_rows, Index width, Index B_cols,
- float int_tolerance=.1, float float_tolerance=1, float MSE_float_tolerance=0, float MSE_int_tolerance=0) {
+ float int_tolerance = 0.1f, float float_tolerance = 1.0f, float MSE_float_tolerance = 0.0f, float MSE_int_tolerance = 0.0f) {
   typedef typename Routine::Integer Integer;
   std::ostringstream info;
   info << Routine::kName << "\t" << A_rows << '\t' << width << '\t' << B_cols << '\n';
@@ -328,7 +328,7 @@ template <class Routine> void TestMultiplyBias(Index A_rows, Index width, Index 
   }
   
   float quant_mult = (sizeof(Integer) == 2) ? 1024 : 64;
-  float unquant_mult = 1.0/(quant_mult*quant_mult);
+  float unquant_mult = 1.0f / (quant_mult*quant_mult);
 
   AlignedVector<Integer> A_prep(A.size());
   AlignedVector<Integer> B_prep(B.size());
@@ -340,7 +340,7 @@ template <class Routine> void TestMultiplyBias(Index A_rows, Index width, Index 
   Routine::Multiply(A_prep.begin(), B_prep.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult, bias.begin(), test_C.begin()));
 
   AlignedVector<Integer> B_quant(B.size());
-  Routine::Quantize(B.begin(), B_quant.begin(), quant_mult, B.size());
+  Routine::Quantize(B.begin(), B_quant.begin(), quant_mult, static_cast<Index>(B.size()));
   AlignedVector<float> slowint_C(test_C.size());
   // Assuming A is just quantization here.
   references::Multiply(A_prep.begin(), B_quant.begin(), slowint_C.begin(), A_rows, width, B_cols, [&](int32_t sum, const callbacks::OutputBufferInfo& info) {
