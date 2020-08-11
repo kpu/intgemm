@@ -2,6 +2,8 @@
 #include "../../aligned.h"
 #include "../../kernels.h"
 
+#include <cstdint>
+#include <stdint.h>
 #include <numeric>
 
 namespace intgemm {
@@ -12,12 +14,12 @@ void kernel_upcast8to16_test() {
     return;
 
   using vi = vector_t<CPUType_, int>;
-  const int LENGTH = sizeof(vi) / sizeof(int8_t);
+  constexpr int LENGTH = sizeof(vi) / sizeof(int8_t);
 
   AlignedVector<int8_t> input(LENGTH);
   AlignedVector<int16_t> output(LENGTH);
 
-  std::iota(input.begin(), input.end(), -LENGTH / 2);
+  std::iota(input.begin(), input.end(), static_cast<int8_t>(-LENGTH / 2));
 
   auto result = kernels::upcast8to16(*input.template as<vi>());
   output.template as<vi>()[0] = result.first;
@@ -44,12 +46,12 @@ void kernel_upcast16to32_test() {
     return;
 
   using vi = vector_t<CPUType_, int>;
-  const int LENGTH = sizeof(vi) / sizeof(int16_t);
+  constexpr int LENGTH = sizeof(vi) / sizeof(int16_t);
 
   AlignedVector<int16_t> input(LENGTH);
   AlignedVector<int32_t> output(LENGTH);
 
-  std::iota(input.begin(), input.end(), -LENGTH / 2);
+  std::iota(input.begin(), input.end(), static_cast<int16_t>(-LENGTH / 2));
 
   auto result = kernels::upcast16to32(*input.template as<vi>());
   output.template as<vi>()[0] = result.first;
@@ -76,12 +78,12 @@ void kernel_upcast8to32_test() {
     return;
 
   using vi = vector_t<CPUType_, int>;
-  const int LENGTH = sizeof(vi) / sizeof(int8_t);
+  constexpr int LENGTH = sizeof(vi) / sizeof(int8_t);
 
   AlignedVector<int8_t> input(LENGTH);
   AlignedVector<int32_t> output(LENGTH);
 
-  std::iota(input.begin(), input.end(), -LENGTH / 2);
+  std::iota(input.begin(), input.end(), static_cast<int8_t>(-LENGTH / 2));
 
   auto result = kernels::upcast8to32(*input.template as<vi>());
   output.template as<vi>()[0] = result.first;

@@ -1,6 +1,7 @@
 #include "test.h"
 
 namespace intgemm {
+namespace {
 
 void CompareAs(int8_t * output_old, uint8_t * output_new, Index rows, Index cols) {
 	for (Index r = 0; r<rows; r++) {
@@ -47,7 +48,7 @@ template <class Routine> void TestPrepareBias(Index rows, Index cols) {
   AlignedVector<int8_t> B_prep(inputB.size());
   AlignedVector<int8_t> B_quant(inputB.size());
   Routine::PrepareB(inputB.begin(), B_prep.begin(), quant_mult, rows, cols);
-  Routine::Quantize(inputB.begin(), B_quant.begin(), quant_mult, inputB.size());
+  Routine::Quantize(inputB.begin(), B_quant.begin(), quant_mult, static_cast<intgemm::Index>(inputB.size()));
 
 
   AlignedVector<float> inputBias(cols);
@@ -102,8 +103,8 @@ template <class Routine> void TestMultiplyBiasNew(Index A_rows, Index width, Ind
   }
 
   float alpha = 2.0f;
-  float quant_mult = 127/alpha;
-  float unquant_mult = 1.0/(quant_mult*quant_mult);
+  float quant_mult = 127.0f / alpha;
+  float unquant_mult = 1.0f / (quant_mult*quant_mult);
 
   AlignedVector<uint8_t> A_prep(A.size());
   AlignedVector<int8_t> B_prep(B.size());
@@ -117,7 +118,7 @@ template <class Routine> void TestMultiplyBiasNew(Index A_rows, Index width, Ind
   *
   */
   AlignedVector<int8_t> B_quant(B.size());
-  Routine::Quantize(B.begin(), B_quant.begin(), quant_mult, B.size());
+  Routine::Quantize(B.begin(), B_quant.begin(), quant_mult, static_cast<Index>(B.size()));
   AlignedVector<float> slowint_C(test_C.size());
   // Taking the original A_preparation which means A would be int8_t
   AlignedVector<int8_t> A_prep2(A.size());
@@ -127,14 +128,14 @@ template <class Routine> void TestMultiplyBiasNew(Index A_rows, Index width, Ind
   });
 
   AlignedVector<float> float_C(test_C.size());
-  references::Multiply(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols, [&](float sum, const callbacks::OutputBufferInfo& info) {
-    return sum + bias[info.col_idx];
+  references::Multiply(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols, [&](double sum, const callbacks::OutputBufferInfo& info) {
+    return static_cast<float>(sum) + bias[info.col_idx];
   });
 
   /*ACTUAL MULTIPLICATION
   *
   */
-  float unquant_mult_forprep = (-1)*(alpha)*(alpha)/(127.0f); //Minus one to invert add_ps later on
+  float unquant_mult_forprep = (-1.0f)*(alpha)*(alpha)/(127.0f); //Minus one to invert add_ps later on
   Routine::PrepareBias(B_prep.begin(), width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, bias.begin(), bias.begin()));
   //Routine::PrepareBias(B.begin(), bias.begin(), alpha, width, B_cols);
   Routine::Multiply8Shift(A_prep.begin(), B_prep.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult, bias.begin(), test_C.begin()));
@@ -165,8 +166,8 @@ template <class Routine> void TestMultiplyShiftNonShift(Index A_rows, Index widt
   }
 
   float alpha = 2.0f;
-  float quant_mult = 127/alpha;
-  float unquant_mult = 1.0/(quant_mult*quant_mult);
+  float quant_mult = 127.0f / alpha;
+  float unquant_mult = 1.0f / (quant_mult*quant_mult);
 
   AlignedVector<uint8_t> A_prep(A.size());
   AlignedVector<int8_t> A_prep_old(A.size());
@@ -184,14 +185,14 @@ template <class Routine> void TestMultiplyShiftNonShift(Index A_rows, Index widt
   Routine::Multiply(A_prep_old.begin(), B_prep.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult, bias.begin(), slowint_C.begin()));
 
   AlignedVector<float> float_C(test_C.size());
-  references::Multiply(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols, [&](float sum, const callbacks::OutputBufferInfo& info) {
-    return sum + bias[info.col_idx];
+  references::Multiply(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols, [&](double sum, const callbacks::OutputBufferInfo& info) {
+    return static_cast<float>(sum) + bias[info.col_idx];
   });
 
   /*
    * Multiply8 shift multiplication
    */
-  float unquant_mult_forprep = (-1)*(alpha)*(alpha)/(127.0f); //Minus one to invert add_ps later on
+  float unquant_mult_forprep = (-1.0f)*(alpha)*(alpha)/(127.0f); //Minus one to invert add_ps later on
   Routine::PrepareBias(B_prep.begin(), width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, bias.begin(), bias.begin()));
   Routine::Multiply8Shift(A_prep.begin(), B_prep.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult, bias.begin(), test_C.begin()));
 
@@ -221,8 +222,8 @@ template <class Routine> void TestMultiplyShiftInt(Index A_rows, Index width, In
   }
 
   float alpha = 2.0f;
-  float quant_mult = 127/alpha;
-  float unquant_mult = 1.0/(quant_mult*quant_mult);
+  float quant_mult = 127.0f / alpha;
+  float unquant_mult = 1.0f / (quant_mult*quant_mult);
 
   AlignedVector<uint8_t> A_prep(A.size());
   AlignedVector<int8_t> A_prep_old(A.size());
@@ -237,7 +238,7 @@ template <class Routine> void TestMultiplyShiftInt(Index A_rows, Index width, In
    * Reference float multiplication
    */
   AlignedVector<int8_t> B_quant(B.size());
-  Routine::Quantize(B.begin(), B_quant.begin(), quant_mult, B.size());
+  Routine::Quantize(B.begin(), B_quant.begin(), quant_mult, static_cast<Index>(B.size()));
   AlignedVector<float> slowint_C(test_C.size());
   // Taking the original A_preparation which means A would be int8_t
   // references::Multiply(A_prep.begin(), B_quant.begin(), slowint_C.begin(), A_rows, width, B_cols, [&](int32_t sum, const callbacks::OutputBufferInfo& info) {
@@ -245,8 +246,8 @@ template <class Routine> void TestMultiplyShiftInt(Index A_rows, Index width, In
   // });
 
   AlignedVector<float> float_C(test_C.size());
-  references::Multiply(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols, [&](float sum, const callbacks::OutputBufferInfo& info) {
-    return sum + bias[info.col_idx];
+  references::Multiply(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols, [&](double sum, const callbacks::OutputBufferInfo& info) {
+    return static_cast<float>(sum) + bias[info.col_idx];
   });
   /*
    * Multiply8 shift multiplication
@@ -333,145 +334,146 @@ TEST_CASE("PrepareA AVX512F", "[Add127]") {
 
 TEST_CASE ("Multiply SSSE3 8bit Shift with bias", "[Add127]") {
   if (kCPU < CPUType::SSSE3) return;
-  TestMultiplyBiasNew<SSSE3_8bit>(1, 64, 8, 0.11, 0.1, 0.06, 0.05);
-  TestMultiplyBiasNew<SSSE3_8bit>(8, 256, 256, 0.45, 0.54, 0.17, 0.16);
-  TestMultiplyBiasNew<SSSE3_8bit>(8, 2048, 256, 1.7, 1.7, 0.46, 0.43);
-  TestMultiplyBiasNew<SSSE3_8bit>(320, 256, 256, 0.56, 0.64, 0.16, 0.15);
-  TestMultiplyBiasNew<SSSE3_8bit>(472, 256, 256, 0.46, 0.62, 0.17, 0.16);
-  TestMultiplyBiasNew<SSSE3_8bit>(248, 256, 256, 0.48, 0.64, 0.16, 0.15);
-  TestMultiplyBiasNew<SSSE3_8bit>(200, 256, 256, 0.55, 0.74, 0.17, 0.16);
+  TestMultiplyBiasNew<SSSE3_8bit>(1, 64, 8, 0.11f, 0.1f, 0.06f, 0.05f);
+  TestMultiplyBiasNew<SSSE3_8bit>(8, 256, 256, 0.45f, 0.54f, 0.17f, 0.16f);
+  TestMultiplyBiasNew<SSSE3_8bit>(8, 2048, 256, 1.7f, 1.7f, 0.46f, 0.43f);
+  TestMultiplyBiasNew<SSSE3_8bit>(320, 256, 256, 0.56f, 0.64f, 0.16f, 0.15f);
+  TestMultiplyBiasNew<SSSE3_8bit>(472, 256, 256, 0.46f, 0.62f, 0.17f, 0.16f);
+  TestMultiplyBiasNew<SSSE3_8bit>(248, 256, 256, 0.48f, 0.64f, 0.16f, 0.15f);
+  TestMultiplyBiasNew<SSSE3_8bit>(200, 256, 256, 0.55f, 0.74f, 0.17f, 0.16f);
 }
 
 TEST_CASE ("Multiply AVX2 8bit Shift with bias", "[Add127]") {
   if (kCPU < CPUType::AVX2) return;
-  TestMultiplyBiasNew<AVX2_8bit>(1, 64, 8, 0.11, 0.11, 0.06, 0.05);
-  TestMultiplyBiasNew<AVX2_8bit>(8, 256, 256, 0.49, 0.54, 0.17, 0.16);
-  TestMultiplyBiasNew<AVX2_8bit>(8, 2048, 256, 1.57, 1.66, 0.46, 0.46);
-  TestMultiplyBiasNew<AVX2_8bit>(320, 256, 256, 0.49, 0.64, 0.16, 0.15);
-  TestMultiplyBiasNew<AVX2_8bit>(472, 256, 256, 0.46, 0.62, 0.17, 0.16);
-  TestMultiplyBiasNew<AVX2_8bit>(248, 256, 256, 0.48, 0.64, 0.16, 0.15);
-  TestMultiplyBiasNew<AVX2_8bit>(200, 256, 256, 0.55, 0.74, 0.17, 0.16);
+  TestMultiplyBiasNew<AVX2_8bit>(1, 64, 8, 0.11f, 0.11f, 0.06f, 0.05f);
+  TestMultiplyBiasNew<AVX2_8bit>(8, 256, 256, 0.49f, 0.54f, 0.17f, 0.16f);
+  TestMultiplyBiasNew<AVX2_8bit>(8, 2048, 256, 1.57f, 1.66f, 0.46f, 0.46f);
+  TestMultiplyBiasNew<AVX2_8bit>(320, 256, 256, 0.49f, 0.64f, 0.16f, 0.15f);
+  TestMultiplyBiasNew<AVX2_8bit>(472, 256, 256, 0.46f, 0.62f, 0.17f, 0.16f);
+  TestMultiplyBiasNew<AVX2_8bit>(248, 256, 256, 0.48f, 0.64f, 0.16f, 0.15f);
+  TestMultiplyBiasNew<AVX2_8bit>(200, 256, 256, 0.55f, 0.74f, 0.17f, 0.16f);
 }
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 TEST_CASE ("Multiply AVX512F 8bit Shift with bias", "[Add127]") {
   if (kCPU < CPUType::AVX512BW) return;
-  TestMultiplyBiasNew<AVX512_8bit>(1, 64, 8, 0.0001, 0.05, 0.03, 0.001);
-  TestMultiplyBiasNew<AVX512_8bit>(8, 256, 256, 0.0001, 0.22, 0.06, 0.001);
-  TestMultiplyBiasNew<AVX512_8bit>(8, 2048, 256, 0.0001, 0.61, 0.17, 0.001);
-  TestMultiplyBiasNew<AVX512_8bit>(320, 256, 256, 0.0001, 0.27, 0.06, 0.001);
-  TestMultiplyBiasNew<AVX512_8bit>(472, 256, 256, 0.0001, 0.33, 0.06, 0.001);
-  TestMultiplyBiasNew<AVX512_8bit>(248, 256, 256, 0.0001, 0.27, 0.06, 0.001);
-  TestMultiplyBiasNew<AVX512_8bit>(200, 256, 256, 0.0001, 0.28, 0.06, 0.001);
+  TestMultiplyBiasNew<AVX512_8bit>(1, 64, 8, 0.0001f, 0.05f, 0.03f, 0.001f);
+  TestMultiplyBiasNew<AVX512_8bit>(8, 256, 256, 0.0001f, 0.22f, 0.06f, 0.001f);
+  TestMultiplyBiasNew<AVX512_8bit>(8, 2048, 256, 0.0001f, 0.61f, 0.17f, 0.001f);
+  TestMultiplyBiasNew<AVX512_8bit>(320, 256, 256, 0.0001f, 0.27f, 0.06f, 0.001f);
+  TestMultiplyBiasNew<AVX512_8bit>(472, 256, 256, 0.0001f, 0.33f, 0.06f, 0.001f);
+  TestMultiplyBiasNew<AVX512_8bit>(248, 256, 256, 0.0001f, 0.27f, 0.06f, 0.001f);
+  TestMultiplyBiasNew<AVX512_8bit>(200, 256, 256, 0.0001f, 0.28f, 0.06f, 0.001f);
 }
 #endif
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
   TEST_CASE ("Multiply AVX512VNNI 8bit Shift with bias", "[Add127]") {
     if (kCPU < CPUType::AVX512VNNI) return;
-    TestMultiplyBiasNew<AVX512VNNI_8bit>(1, 64, 8, 0.0001, 0.05, 0.03, 0.001);
-    TestMultiplyBiasNew<AVX512VNNI_8bit>(8, 256, 256, 0.0001, 0.22, 0.06, 0.001);
-    TestMultiplyBiasNew<AVX512VNNI_8bit>(8, 2048, 256, 0.0001, 0.61, 0.17, 0.001);
-    TestMultiplyBiasNew<AVX512VNNI_8bit>(320, 256, 256, 0.0001, 0.27, 0.06, 0.001);
-    TestMultiplyBiasNew<AVX512VNNI_8bit>(472, 256, 256, 0.0001, 0.33, 0.06, 0.001);
-    TestMultiplyBiasNew<AVX512VNNI_8bit>(248, 256, 256, 0.0001, 0.27, 0.06, 0.001);
-    TestMultiplyBiasNew<AVX512VNNI_8bit>(200, 256, 256, 0.0001, 0.28, 0.06, 0.001);
+    TestMultiplyBiasNew<AVX512VNNI_8bit>(1, 64, 8, 0.0001f, 0.05f, 0.03f, 0.001f);
+    TestMultiplyBiasNew<AVX512VNNI_8bit>(8, 256, 256, 0.0001f, 0.22f, 0.06f, 0.001f);
+    TestMultiplyBiasNew<AVX512VNNI_8bit>(8, 2048, 256, 0.0001f, 0.61f, 0.17f, 0.001f);
+    TestMultiplyBiasNew<AVX512VNNI_8bit>(320, 256, 256, 0.0001f, 0.27f, 0.06f, 0.001f);
+    TestMultiplyBiasNew<AVX512VNNI_8bit>(472, 256, 256, 0.0001f, 0.33f, 0.06f, 0.001f);
+    TestMultiplyBiasNew<AVX512VNNI_8bit>(248, 256, 256, 0.0001f, 0.27f, 0.06f, 0.001f);
+    TestMultiplyBiasNew<AVX512VNNI_8bit>(200, 256, 256, 0.0001f, 0.28f, 0.06f, 0.001f);
   }
 #endif
 
 //Multiply old vs new
 TEST_CASE ("Multiply SSSE3 8bit Shift vs nonshift", "[Add127]") {
   if (kCPU < CPUType::SSSE3) return;
-  TestMultiplyShiftNonShift<SSSE3_8bit>(1, 64, 8, 0.00001, 0.1, 0.06, 0.00001);
-  TestMultiplyShiftNonShift<SSSE3_8bit>(8, 256, 256, 0.00001, 0.54, 0.17, 0.00001);
-  TestMultiplyShiftNonShift<SSSE3_8bit>(8, 2048, 256, 17.9, 1.7, 0.46, 4.2); //Big difference here because the non-shift version is very bad
-  TestMultiplyShiftNonShift<SSSE3_8bit>(320, 256, 256, 1.2, 0.64, 0.16, 0.006);
-  TestMultiplyShiftNonShift<SSSE3_8bit>(472, 256, 256, 1.1, 0.62, 0.17, 0.006);
-  TestMultiplyShiftNonShift<SSSE3_8bit>(248, 256, 256, 0.9, 0.64, 0.16, 0.007);
-  TestMultiplyShiftNonShift<SSSE3_8bit>(200, 256, 256, 1, 0.74, 0.17, 0.006);
+  TestMultiplyShiftNonShift<SSSE3_8bit>(1, 64, 8, 0.00001f, 0.1f, 0.06f, 0.00001f);
+  TestMultiplyShiftNonShift<SSSE3_8bit>(8, 256, 256, 0.00001f, 0.54f, 0.17f, 0.00001f);
+  TestMultiplyShiftNonShift<SSSE3_8bit>(8, 2048, 256, 17.9f, 1.7f, 0.46f, 4.2f); //Big difference here because the non-shift version is very bad
+  TestMultiplyShiftNonShift<SSSE3_8bit>(320, 256, 256, 1.2f, 0.64f, 0.16f, 0.006f);
+  TestMultiplyShiftNonShift<SSSE3_8bit>(472, 256, 256, 1.1f, 0.62f, 0.17f, 0.006f);
+  TestMultiplyShiftNonShift<SSSE3_8bit>(248, 256, 256, 0.9f, 0.64f, 0.16f, 0.007f);
+  TestMultiplyShiftNonShift<SSSE3_8bit>(200, 256, 256, 1, 0.74f, 0.17f, 0.006f);
 }
 
 TEST_CASE ("Multiply AVX2 8bit Shift vs nonshift", "[Add127]") {
   if (kCPU < CPUType::AVX2) return;
-  TestMultiplyShiftNonShift<AVX2_8bit>(1, 64, 8, 0.00001, 0.11, 0.06, 0.00001);
-  TestMultiplyShiftNonShift<AVX2_8bit>(8, 256, 256, 0.00001, 0.54, 0.17, 0.00001);
-  TestMultiplyShiftNonShift<AVX2_8bit>(8, 2048, 256, 9.4, 1.66, 0.46, 1.67); //Big difference here because the non-shift version is very bad
-  TestMultiplyShiftNonShift<AVX2_8bit>(320, 256, 256, 0.0001, 0.64, 0.16, 0.0001);
-  TestMultiplyShiftNonShift<AVX2_8bit>(472, 256, 256, 0.0001, 0.62, 0.17, 0.0001);
-  TestMultiplyShiftNonShift<AVX2_8bit>(248, 256, 256, 0.0001, 0.64, 0.16, 0.0001);
-  TestMultiplyShiftNonShift<AVX2_8bit>(200, 256, 256, 0.0001, 0.74, 0.17, 0.0001);
+  TestMultiplyShiftNonShift<AVX2_8bit>(1, 64, 8, 0.00001f, 0.11f, 0.06f, 0.00001f);
+  TestMultiplyShiftNonShift<AVX2_8bit>(8, 256, 256, 0.00001f, 0.54f, 0.17f, 0.00001f);
+  TestMultiplyShiftNonShift<AVX2_8bit>(8, 2048, 256, 9.4f, 1.66f, 0.46f, 1.67f); //Big difference here because the non-shift version is very bad
+  TestMultiplyShiftNonShift<AVX2_8bit>(320, 256, 256, 0.0001f, 0.64f, 0.16f, 0.0001f);
+  TestMultiplyShiftNonShift<AVX2_8bit>(472, 256, 256, 0.0001f, 0.62f, 0.17f, 0.0001f);
+  TestMultiplyShiftNonShift<AVX2_8bit>(248, 256, 256, 0.0001f, 0.64f, 0.16f, 0.0001f);
+  TestMultiplyShiftNonShift<AVX2_8bit>(200, 256, 256, 0.0001f, 0.74f, 0.17f, 0.0001f);
 }
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 TEST_CASE ("Multiply AVX512F 8bit Shift vs nonshift", "[Add127]") {
   if (kCPU < CPUType::AVX512BW) return;
-  TestMultiplyShiftNonShift<AVX512_8bit>(1, 64, 8, 0.0001, 0.05, 0.03, 0.001);
-  TestMultiplyShiftNonShift<AVX512_8bit>(8, 256, 256, 0.0001, 0.22, 0.06, 0.001);
-  TestMultiplyShiftNonShift<AVX512_8bit>(8, 2048, 256, 3.51, 0.61, 0.17, 0.3);
-  TestMultiplyShiftNonShift<AVX512_8bit>(320, 256, 256, 0.0001, 0.27, 0.06, 0.001);
-  TestMultiplyShiftNonShift<AVX512_8bit>(472, 256, 256, 0.0001, 0.33, 0.06, 0.001);
-  TestMultiplyShiftNonShift<AVX512_8bit>(248, 256, 256, 0.0001, 0.27, 0.06, 0.001);
-  TestMultiplyShiftNonShift<AVX512_8bit>(200, 256, 256, 0.0001, 0.28, 0.06, 0.001);
+  TestMultiplyShiftNonShift<AVX512_8bit>(1, 64, 8, 0.0001f, 0.05f, 0.03f, 0.001f);
+  TestMultiplyShiftNonShift<AVX512_8bit>(8, 256, 256, 0.0001f, 0.22f, 0.06f, 0.001f);
+  TestMultiplyShiftNonShift<AVX512_8bit>(8, 2048, 256, 3.51f, 0.61f, 0.17f, 0.3f);
+  TestMultiplyShiftNonShift<AVX512_8bit>(320, 256, 256, 0.0001f, 0.27f, 0.06f, 0.001f);
+  TestMultiplyShiftNonShift<AVX512_8bit>(472, 256, 256, 0.0001f, 0.33f, 0.06f, 0.001f);
+  TestMultiplyShiftNonShift<AVX512_8bit>(248, 256, 256, 0.0001f, 0.27f, 0.06f, 0.001f);
+  TestMultiplyShiftNonShift<AVX512_8bit>(200, 256, 256, 0.0001f, 0.28f, 0.06f, 0.001f);
 }
 #endif
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
   TEST_CASE ("Multiply AVX512VNNI 8bit Shift vs nonshift", "[Add127]") {
     if (kCPU < CPUType::AVX512VNNI) return;
-    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(1, 64, 8, 0.00001, 0.05, 0.03, 0.00001);
-    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(8, 256, 256, 0.00001, 0.22, 0.06, 0.00001);
-    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(8, 2048, 256, 0.0001, 0.61, 0.17, 0.0001);
-    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(320, 256, 256, 0.00001, 0.27, 0.06, 0.00001);
-    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(472, 256, 256, 0.00001, 0.33, 0.06, 0.00001);
-    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(248, 256, 256, 0.00001, 0.27, 0.06, 0.00001);
-    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(200, 256, 256, 0.00001, 0.28, 0.06, 0.00001);
+    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(1, 64, 8, 0.00001f, 0.05f, 0.03f, 0.00001f);
+    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(8, 256, 256, 0.00001f, 0.22f, 0.06f, 0.00001f);
+    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(8, 2048, 256, 0.0001f, 0.61f, 0.17f, 0.0001f);
+    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(320, 256, 256, 0.00001f, 0.27f, 0.06f, 0.00001f);
+    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(472, 256, 256, 0.00001f, 0.33f, 0.06f, 0.00001f);
+    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(248, 256, 256, 0.00001f, 0.27f, 0.06f, 0.00001f);
+    TestMultiplyShiftNonShift<AVX512VNNI_8bit>(200, 256, 256, 0.00001f, 0.28f, 0.06f, 0.00001f);
   }
 #endif
 
 //Multiply Shift vs int shift implementation
 TEST_CASE ("Multiply SSSE3 8bit Shift vs Int", "[Add127]") {
   if (kCPU < CPUType::SSSE3) return;
-  TestMultiplyShiftInt<SSSE3_8bit>(1, 64, 8, 0.0001f, 0.1, 0.06, 0.0001f);
-  TestMultiplyShiftInt<SSSE3_8bit>(8, 256, 256, 0.0001f, 0.54, 0.17, 0.0001f);
-  TestMultiplyShiftInt<SSSE3_8bit>(8, 2048, 256, 0.0001f, 1.7, 0.46, 0.0001f);
-  TestMultiplyShiftInt<SSSE3_8bit>(320, 256, 256, 0.0001f, 0.64, 0.16, 0.0001f);
-  TestMultiplyShiftInt<SSSE3_8bit>(472, 256, 256, 0.0001f, 0.62, 0.17, 0.0001f);
-  TestMultiplyShiftInt<SSSE3_8bit>(248, 256, 256, 0.0001f, 0.64, 0.16, 0.0001f);
-  TestMultiplyShiftInt<SSSE3_8bit>(200, 256, 256, 0.0001f, 0.74, 0.17, 0.0001f);
+  TestMultiplyShiftInt<SSSE3_8bit>(1, 64, 8, 0.0001f, 0.1f, 0.06f, 0.0001f);
+  TestMultiplyShiftInt<SSSE3_8bit>(8, 256, 256, 0.0001f, 0.54f, 0.17f, 0.0001f);
+  TestMultiplyShiftInt<SSSE3_8bit>(8, 2048, 256, 0.0001f, 1.7f, 0.46f, 0.0001f);
+  TestMultiplyShiftInt<SSSE3_8bit>(320, 256, 256, 0.0001f, 0.64f, 0.16f, 0.0001f);
+  TestMultiplyShiftInt<SSSE3_8bit>(472, 256, 256, 0.0001f, 0.62f, 0.17f, 0.0001f);
+  TestMultiplyShiftInt<SSSE3_8bit>(248, 256, 256, 0.0001f, 0.64f, 0.16f, 0.0001f);
+  TestMultiplyShiftInt<SSSE3_8bit>(200, 256, 256, 0.0001f, 0.74f, 0.17f, 0.0001f);
 }
 
 TEST_CASE ("Multiply AVX2 8bit Shift vs Int", "[Add127]") {
   if (kCPU < CPUType::AVX2) return;
-  TestMultiplyShiftInt<AVX2_8bit>(1, 64, 8, 0.0001f, 0.11, 0.06, 0.0001f);
-  TestMultiplyShiftInt<AVX2_8bit>(8, 256, 256, 0.0001f, 0.54, 0.17, 0.0001f);
-  TestMultiplyShiftInt<AVX2_8bit>(8, 2048, 256, 0.0001f, 1.66, 0.46, 0.0001f);
-  TestMultiplyShiftInt<AVX2_8bit>(320, 256, 256, 0.0001f, 0.64, 0.16, 0.0001f);
-  TestMultiplyShiftInt<AVX2_8bit>(472, 256, 256, 0.0001f, 0.62, 0.17, 0.0001f);
-  TestMultiplyShiftInt<AVX2_8bit>(248, 256, 256, 0.0001f, 0.64, 0.16, 0.0001f);
-  TestMultiplyShiftInt<AVX2_8bit>(200, 256, 256, 0.0001f, 0.74, 0.17, 0.0001f);
+  TestMultiplyShiftInt<AVX2_8bit>(1, 64, 8, 0.0001f, 0.11f, 0.06f, 0.0001f);
+  TestMultiplyShiftInt<AVX2_8bit>(8, 256, 256, 0.0001f, 0.54f, 0.17f, 0.0001f);
+  TestMultiplyShiftInt<AVX2_8bit>(8, 2048, 256, 0.0001f, 1.66f, 0.46f, 0.0001f);
+  TestMultiplyShiftInt<AVX2_8bit>(320, 256, 256, 0.0001f, 0.64f, 0.16f, 0.0001f);
+  TestMultiplyShiftInt<AVX2_8bit>(472, 256, 256, 0.0001f, 0.62f, 0.17f, 0.0001f);
+  TestMultiplyShiftInt<AVX2_8bit>(248, 256, 256, 0.0001f, 0.64f, 0.16f, 0.0001f);
+  TestMultiplyShiftInt<AVX2_8bit>(200, 256, 256, 0.0001f, 0.74f, 0.17f, 0.0001f);
 }
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 TEST_CASE ("Multiply AVX512F 8bit Shift vs Int", "[Add127]") {
   if (kCPU < CPUType::AVX512BW) return;
-  TestMultiplyShiftInt<AVX512_8bit>(1, 64, 8, 0.0001f, 0.05, 0.03, 0.0001f);
-  TestMultiplyShiftInt<AVX512_8bit>(8, 256, 256, 0.0001f, 0.22, 0.06, 0.0001f);
-  TestMultiplyShiftInt<AVX512_8bit>(8, 2048, 256, 0.0001f, 0.61, 0.17, 0.0001f);
-  TestMultiplyShiftInt<AVX512_8bit>(320, 256, 256, 0.0001f, 0.27, 0.06, 0.0001f);
-  TestMultiplyShiftInt<AVX512_8bit>(472, 256, 256, 0.0001f, 0.33, 0.06, 0.0001f);
-  TestMultiplyShiftInt<AVX512_8bit>(248, 256, 256, 0.0001f, 0.27, 0.06, 0.0001f);
-  TestMultiplyShiftInt<AVX512_8bit>(200, 256, 256, 0.0001f, 0.28, 0.06, 0.0001f);
+  TestMultiplyShiftInt<AVX512_8bit>(1, 64, 8, 0.0001f, 0.05f, 0.03f, 0.0001f);
+  TestMultiplyShiftInt<AVX512_8bit>(8, 256, 256, 0.0001f, 0.22f, 0.06f, 0.0001f);
+  TestMultiplyShiftInt<AVX512_8bit>(8, 2048, 256, 0.0001f, 0.61f, 0.17f, 0.0001f);
+  TestMultiplyShiftInt<AVX512_8bit>(320, 256, 256, 0.0001f, 0.27f, 0.06f, 0.0001f);
+  TestMultiplyShiftInt<AVX512_8bit>(472, 256, 256, 0.0001f, 0.33f, 0.06f, 0.0001f);
+  TestMultiplyShiftInt<AVX512_8bit>(248, 256, 256, 0.0001f, 0.27f, 0.06f, 0.0001f);
+  TestMultiplyShiftInt<AVX512_8bit>(200, 256, 256, 0.0001f, 0.28f, 0.06f, 0.0001f);
 }
 #endif
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
 TEST_CASE ("Multiply AVX512VNNI 8bit Shift vs Int", "[Add127]") {
   if (kCPU < CPUType::AVX512VNNI) return;
-  TestMultiplyShiftInt<AVX512VNNI_8bit>(1, 64, 8, 0.0001f, 0.05, 0.03, 0.0001f);
-  TestMultiplyShiftInt<AVX512VNNI_8bit>(8, 256, 256, 0.0001f, 0.22, 0.06, 0.0001f);
-  TestMultiplyShiftInt<AVX512VNNI_8bit>(8, 2048, 256, 0.0001f, 0.61, 0.17, 0.0001f);
-  TestMultiplyShiftInt<AVX512VNNI_8bit>(320, 256, 256, 0.0001f, 0.27, 0.06, 0.0001f);
-  TestMultiplyShiftInt<AVX512VNNI_8bit>(472, 256, 256, 0.0001f, 0.33, 0.06, 0.0001f);
-  TestMultiplyShiftInt<AVX512VNNI_8bit>(248, 256, 256, 0.0001f, 0.27, 0.06, 0.0001f);
-  TestMultiplyShiftInt<AVX512VNNI_8bit>(200, 256, 256, 0.0001f, 0.28, 0.06, 0.0001f);
+  TestMultiplyShiftInt<AVX512VNNI_8bit>(1, 64, 8, 0.0001f, 0.05f, 0.03f, 0.0001f);
+  TestMultiplyShiftInt<AVX512VNNI_8bit>(8, 256, 256, 0.0001f, 0.22f, 0.06f, 0.0001f);
+  TestMultiplyShiftInt<AVX512VNNI_8bit>(8, 2048, 256, 0.0001f, 0.61f, 0.17f, 0.0001f);
+  TestMultiplyShiftInt<AVX512VNNI_8bit>(320, 256, 256, 0.0001f, 0.27f, 0.06f, 0.0001f);
+  TestMultiplyShiftInt<AVX512VNNI_8bit>(472, 256, 256, 0.0001f, 0.33f, 0.06f, 0.0001f);
+  TestMultiplyShiftInt<AVX512VNNI_8bit>(248, 256, 256, 0.0001f, 0.27f, 0.06f, 0.0001f);
+  TestMultiplyShiftInt<AVX512VNNI_8bit>(200, 256, 256, 0.0001f, 0.28f, 0.06f, 0.0001f);
 }
 #endif
 
-} //namespace intgemm
+} // namespace
+} // namespace intgemm

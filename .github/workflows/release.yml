@@ -1,0 +1,28 @@
+name: Release
+
+on:
+  push:
+    branches: [master, static]
+  pull_request:
+    branches: [master, static]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        runs-on: [ubuntu-latest, macOS-latest, windows-latest]
+    runs-on: ${{ matrix.runs-on }}
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: cmake
+      run: |
+        cmake -E make_directory build
+        cd build
+        cmake ..
+    - name: Compile
+      working-directory: build
+      run: cmake --build . -j2
+    - name: Test
+      working-directory: build
+      run: ctest -j2

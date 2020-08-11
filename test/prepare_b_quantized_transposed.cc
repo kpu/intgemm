@@ -52,7 +52,7 @@ bool TestMany(Index B_rows, Index B_cols) {
   std::generate(input.begin(), input.end(), []() {
     static constexpr int divider = sizeof(intgemm::vector_t<Backend::kUses, typename Backend::Integer>) / sizeof(typename Backend::Integer);
     static int value = 0;
-    return (value++) % divider;
+    return static_cast<typename Backend::Integer>((value++) % divider);
   });
 
   return Test<Backend>(input, B_rows, B_cols);

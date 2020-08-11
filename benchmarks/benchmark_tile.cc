@@ -1,5 +1,4 @@
 #include "../aligned.h"
-#include "../stop_watch.h"
 #include "test_matrices.h"
 #include "../tile/multiply.h"
 #include "../tile/dot.h"

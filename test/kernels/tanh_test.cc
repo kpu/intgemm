@@ -2,6 +2,7 @@
 #include "../../aligned.h"
 #include "../../kernels.h"
 
+#include <cstddef>
 #include <numeric>
 
 namespace intgemm {
@@ -12,7 +13,7 @@ void kernel_tanh_test() {
     return;
 
   using vec_t = vector_t<CPUType_, float>;
-  constexpr static int VECTOR_LENGTH = sizeof(vec_t) / sizeof(float);
+  constexpr static std::size_t VECTOR_LENGTH = sizeof(vec_t) / sizeof(float);
 
   AlignedVector<float> input(VECTOR_LENGTH);
   AlignedVector<float> output(VECTOR_LENGTH);

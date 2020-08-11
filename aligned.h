@@ -2,6 +2,9 @@
 #include <cstdlib>
 #include <new>
 #include <stdlib.h>
+#ifdef _MSC_VER
+#include <malloc.h>
+#endif
 
 // 64-byte aligned simple vector.
 
@@ -11,15 +14,26 @@ template <class T> class AlignedVector {
   public:
     explicit AlignedVector(std::size_t size)
       : size_(size) {
+#ifdef _MSC_VER
+      mem_ = static_cast<T*>(_aligned_malloc(size * sizeof(T), 64));
+      if (!mem_) throw std::bad_alloc();
+#else      
       if (posix_memalign(reinterpret_cast<void **>(&mem_), 64, size * sizeof(T))) {
         throw std::bad_alloc();
       }
+#endif
     }
 
     AlignedVector(const AlignedVector&) = delete;
     AlignedVector& operator=(const AlignedVector&) = delete;
 
-    ~AlignedVector() { std::free(mem_); }
+    ~AlignedVector() {
+#ifdef _MSC_VER
+      _aligned_free(mem_);
+#else
+      std::free(mem_);
+#endif
+    }
 
     std::size_t size() const { return size_; }
 

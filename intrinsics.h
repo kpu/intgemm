@@ -8,6 +8,9 @@
 #include <immintrin.h>
 #include <xmmintrin.h>
 
+#include <cstdint>
+#include <stdint.h>
+
 /*
  * NOTE: Please keep intrinsics in alphabetical order.
  */
