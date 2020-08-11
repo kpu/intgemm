@@ -2,6 +2,7 @@
 #include "../../aligned.h"
 #include "../../kernels.h"
 
+#include <cstddef>
 #include <numeric>
 
 namespace intgemm {
@@ -12,12 +13,12 @@ void kernel_exp_approx_taylor_test() {
     return;
 
   using vec_t = vector_t<CPUType_, float>;
-  constexpr static auto VECTOR_LENGTH = sizeof(vec_t) / sizeof(float);
+  constexpr static std::size_t VECTOR_LENGTH = sizeof(vec_t) / sizeof(float);
 
   AlignedVector<float> input(VECTOR_LENGTH);
   AlignedVector<float> output(VECTOR_LENGTH);
 
-  std::iota(input.begin(), input.end(), -int(VECTOR_LENGTH / 2));
+  std::iota(input.begin(), input.end(), -static_cast<float>(VECTOR_LENGTH / 2));
 
   *output.template as<vec_t>() = kernels::exp_approx_taylor(*input.template as<vec_t>());
   for (std::size_t i = 0; i < output.size(); ++i)

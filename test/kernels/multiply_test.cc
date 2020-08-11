@@ -2,6 +2,9 @@
 #include "../../aligned.h"
 #include "../../kernels.h"
 
+#include <cstddef>
+#include <cstdint>
+#include <stdint.h>
 #include <numeric>
 
 namespace intgemm {
@@ -12,14 +15,14 @@ void kernel_multiply_test() {
     return;
 
   using vec_t = vector_t<CPUType_, Type_>;
-  constexpr static auto VECTOR_LENGTH = sizeof(vec_t) / sizeof(Type_);
+  constexpr static std::size_t VECTOR_LENGTH = sizeof(vec_t) / sizeof(Type_);
 
   AlignedVector<Type_> input1(VECTOR_LENGTH);
   AlignedVector<Type_> input2(VECTOR_LENGTH);
   AlignedVector<Type_> output(VECTOR_LENGTH);
 
-  std::iota(input1.begin(), input1.end(), -int(VECTOR_LENGTH / 2));
-  std::iota(input2.begin(), input2.end(), -int(VECTOR_LENGTH / 3));
+  std::iota(input1.begin(), input1.end(), -static_cast<Type_>(VECTOR_LENGTH / 2));
+  std::iota(input2.begin(), input2.end(), -static_cast<Type_>(VECTOR_LENGTH / 3));
 
   *output.template as<vec_t>() = kernels::multiply<Type_>(*input1.template as<vec_t>(), *input2.template as<vec_t>());
   for (std::size_t i = 0; i < output.size(); ++i)

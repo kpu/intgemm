@@ -135,7 +135,7 @@ template <class Routine> void TestMultiplyBiasNew(Index A_rows, Index width, Ind
   /*ACTUAL MULTIPLICATION
   *
   */
-  float unquant_mult_forprep = (-1)*(alpha)*(alpha)/(127.0f); //Minus one to invert add_ps later on
+  float unquant_mult_forprep = (-1.0f)*(alpha)*(alpha)/(127.0f); //Minus one to invert add_ps later on
   Routine::PrepareBias(B_prep.begin(), width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, bias.begin(), bias.begin()));
   //Routine::PrepareBias(B.begin(), bias.begin(), alpha, width, B_cols);
   Routine::Multiply8Shift(A_prep.begin(), B_prep.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult, bias.begin(), test_C.begin()));
@@ -166,8 +166,8 @@ template <class Routine> void TestMultiplyShiftNonShift(Index A_rows, Index widt
   }
 
   float alpha = 2.0f;
-  float quant_mult = 127/alpha;
-  float unquant_mult = 1.0/(quant_mult*quant_mult);
+  float quant_mult = 127.0f / alpha;
+  float unquant_mult = 1.0f / (quant_mult*quant_mult);
 
   AlignedVector<uint8_t> A_prep(A.size());
   AlignedVector<int8_t> A_prep_old(A.size());
@@ -192,7 +192,7 @@ template <class Routine> void TestMultiplyShiftNonShift(Index A_rows, Index widt
   /*
    * Multiply8 shift multiplication
    */
-  float unquant_mult_forprep = (-1)*(alpha)*(alpha)/(127.0f); //Minus one to invert add_ps later on
+  float unquant_mult_forprep = (-1.0f)*(alpha)*(alpha)/(127.0f); //Minus one to invert add_ps later on
   Routine::PrepareBias(B_prep.begin(), width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult_forprep, bias.begin(), bias.begin()));
   Routine::Multiply8Shift(A_prep.begin(), B_prep.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndAddBiasAndWrite(unquant_mult, bias.begin(), test_C.begin()));
 
@@ -222,8 +222,8 @@ template <class Routine> void TestMultiplyShiftInt(Index A_rows, Index width, In
   }
 
   float alpha = 2.0f;
-  float quant_mult = 127/alpha;
-  float unquant_mult = 1.0/(quant_mult*quant_mult);
+  float quant_mult = 127.0f / alpha;
+  float unquant_mult = 1.0f / (quant_mult*quant_mult);
 
   AlignedVector<uint8_t> A_prep(A.size());
   AlignedVector<int8_t> A_prep_old(A.size());

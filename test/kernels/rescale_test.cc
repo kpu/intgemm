@@ -2,6 +2,9 @@
 #include "../../aligned.h"
 #include "../../kernels.h"
 
+#include <cstddef>
+#include <cstdint>
+#include <stdint.h>
 #include <numeric>
 
 namespace intgemm {
@@ -13,12 +16,12 @@ void kernel_rescale_test() {
 
   using vi = vector_t<CPUType_, int>;
   using vf = vector_t<CPUType_, float>;
-  const int LENGTH = sizeof(vi) / sizeof(int);
+  const std::size_t LENGTH = sizeof(vi) / sizeof(int);
 
   AlignedVector<int32_t> input(LENGTH);
   AlignedVector<int32_t> output(LENGTH);
 
-  std::iota(input.begin(), input.end(), -LENGTH / 2);
+  std::iota(input.begin(), input.end(), -static_cast<int32_t>(LENGTH / 2));
   float scale = 2;
 
   *output.template as<vi>() = kernels::rescale(*input.template as<vi>(), intgemm::set1_ps<vf>(scale));

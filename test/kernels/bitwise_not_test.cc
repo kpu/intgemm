@@ -2,6 +2,7 @@
 #include "../../aligned.h"
 #include "../../kernels.h"
 
+#include <cstdlib>
 #include <numeric>
 
 namespace intgemm {
@@ -12,7 +13,7 @@ void kernel_bitwise_not_test() {
     return;
 
   using vec_t = vector_t<CPUType_, int>;
-  constexpr static auto VECTOR_LENGTH = sizeof(vec_t) / sizeof(int);
+  constexpr static std::size_t VECTOR_LENGTH = sizeof(vec_t) / sizeof(int);
 
   AlignedVector<int> input(VECTOR_LENGTH);
   AlignedVector<int> output(VECTOR_LENGTH);
