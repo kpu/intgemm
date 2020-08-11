@@ -17,7 +17,7 @@ void kernel_quantize_test() {
   AlignedVector<float> input(sizeof(input_vec_t) / sizeof(float));
   AlignedVector<int> output(sizeof(output_vec_t) / sizeof(int));
 
-  std::iota(input.begin(), input.end(), 0);
+  std::iota(input.begin(), input.end(), 0.0f);
   auto quant_mult = set1_ps<input_vec_t>(2.f);
 
   *output.template as<output_vec_t>() = kernels::quantize(*input.template as<input_vec_t>(), quant_mult);
