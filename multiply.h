@@ -159,7 +159,7 @@ template <typename Callback> target static void Multiply(const int16_t *A, const
   assert(B_cols % 8 == 0); \
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Register) == 0); \
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0); \
-  const int simd_width = width / (sizeof(Register) / sizeof(int16_t)); \
+  const Index simd_width = width / (sizeof(Register) / sizeof(int16_t)); \
   auto callback_impl = callbacks::CallbackImpl<cpu_type, Callback>(callback); \
   INTGEMM_OMP_FOR \
   for (Index B0_colidx = 0; B0_colidx < B_cols; B0_colidx += 8) { \
@@ -169,7 +169,7 @@ template <typename Callback> target static void Multiply(const int16_t *A, const
       const Register *A_row = reinterpret_cast<const Register*>(A + A_rowidx * width); \
       /* These will be packed 32-bit integers containing sums for each row of B multiplied by the row of A. \
          Iterate over shared (inner) dimension.*/ \
-      int k = 0; \
+      Index k = 0; \
       Register a = *(A_row + k); \
       Register sum0 = madd_epi16(a, *(B0_col + k * 8)); \
       Register sum1 = madd_epi16(a, *(B0_col + k * 8 + 1)); \
@@ -216,7 +216,7 @@ template <typename Callback> target static void Multiply(const int16_t *A, const
   assert(width % (sizeof(Register) / sizeof(int8_t)) == 0); \
   assert(B_cols % 8 == 0); \
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0); \
-  const int simd_width = width / (sizeof(Register) / sizeof(int8_t)); \
+  const Index simd_width = width / (sizeof(Register) / sizeof(int8_t)); \
   auto callback_impl = callbacks::CallbackImpl<cpu_type, Callback>(callback); \
   const Register a = set1_epi8<Register>(1); \
   INTGEMM_OMP_FOR \
@@ -225,7 +225,7 @@ template <typename Callback> target static void Multiply(const int16_t *A, const
     /*const Register *A_row = reinterpret_cast<const Register*>(A + A_rowidx * width);*/ \
     /* These will be packed 16-bit integers containing sums for each row of B multiplied by the row of A. \
        Iterate over shared (inner) dimension.*/ \
-    int k = 0; \
+    Index k = 0; \
     Register sum0 = maddubs_epi16(a, *(B0_col + k * 8)); \
     Register sum1 = maddubs_epi16(a, *(B0_col + k * 8 + 1)); \
     Register sum2 = maddubs_epi16(a, *(B0_col + k * 8 + 2)); \
@@ -291,7 +291,7 @@ template <typename Callback> target static void Multiply(const int16_t *A, const
   assert(B_cols % 8 == 0); \
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Register) == 0); \
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0); \
-  const int simd_width = width / (sizeof(Register) / sizeof(int8_t)); \
+  const Index simd_width = width / (sizeof(Register) / sizeof(int8_t)); \
   auto callback_impl = callbacks::CallbackImpl<cpu_type, Callback>(callback); \
   INTGEMM_OMP_FOR \
   for (Index B0_colidx = 0; B0_colidx < B_cols; B0_colidx += 8) { \
@@ -301,7 +301,7 @@ template <typename Callback> target static void Multiply(const int16_t *A, const
       const Register *A_row = reinterpret_cast<const Register*>(A + A_rowidx * width); \
       /* These will be packed 16-bit integers containing sums for each row of B multiplied by the row of A. \
          Iterate over shared (inner) dimension.*/ \
-      int k = 0; \
+      Index k = 0; \
       Register a = *(A_row + k); \
       Register sum0 = maddubs_epi16(a, *(B0_col + k * 8)); \
       Register sum1 = maddubs_epi16(a, *(B0_col + k * 8 + 1)); \
@@ -538,7 +538,7 @@ INTGEMM_SSSE3 inline static void InnerINTGEMM_SSSE3(
   assert(B_cols % 8 == 0); \
   assert(reinterpret_cast<uintptr_t>(A) % sizeof(Register) == 0); \
   assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0); \
-  const int simd_width = width / sizeof(Register); \
+  const Index simd_width = width / sizeof(Register); \
   auto callback_impl = callbacks::CallbackImpl<cpu_type, Callback>(callback); \
   INTGEMM_OMP_FOR \
   for (Index B0_colidx = 0; B0_colidx < B_cols; B0_colidx += 8) { \
