@@ -29,13 +29,13 @@ template <class Accessor, Index A_rows, Index B_cols> static inline Result Bench
   if ((shape.A_rows % A_rows) || (shape.B_cols % B_cols))
     return { A_rows, B_cols, std::numeric_limits<double>::infinity() };
   const std::size_t kTries = 100;
-  auto start = std::chrono::steady_clock::now();
-  typedef AVX512VNNI::UnrollKernel<A_rows, 1, B_cols, AVX512VNNI::Shifted8> Kernel;
-  // Burn in.
   // TODO: different arches, guard against old compilers, etc.
-  AVX512VNNI::MultiplyNoOverhang<Kernel>(access, shape);
+  typedef AVX2::UnrollKernel<A_rows, 1, B_cols, AVX2::Shifted8> Kernel;
+  // Burn in.
+  AVX2::MultiplyNoOverhang<Kernel>(access, shape);
+  auto start = std::chrono::steady_clock::now();
   for (std::size_t t = 0; t < kTries; ++t) {
-    AVX512VNNI::MultiplyNoOverhang<Kernel>(access, shape);
+    AVX2::MultiplyNoOverhang<Kernel>(access, shape);
   }
   auto end = std::chrono::steady_clock::now();
   double timing = std::chrono::duration<double>(end - start).count() / kTries;
