@@ -26,7 +26,7 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
     assert(reinterpret_cast<uintptr_t>(A) % sizeof(Register) == 0);
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0);
     auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
-    const int simd_width = width / sizeof(Register);
+    const Index simd_width = width / sizeof(Register);
     Register zeros = setzero_si<Register>();
     // Go over 8 columns of B at a time.
 #pragma omp for
@@ -88,7 +88,7 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
     assert(reinterpret_cast<uintptr_t>(A) % sizeof(Register) == 0);
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0);
     auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
-    const int simd_width = width / sizeof(Register);
+    const Index simd_width = width / sizeof(Register);
     Register zeros = setzero_si<Register>();
     // Go over 8 columns of B at a time.
 #pragma omp for

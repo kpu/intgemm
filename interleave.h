@@ -184,7 +184,7 @@ target static inline void PrepareB(const float *input, int8_t *output_shadow, fl
   typedef typename Quantizer::Register Register; \
   Quantizer q = Quantizer(quant_mult); \
   /* Currently all multipliers have a stride of 8 columns.*/ \
-  const int kColStride = 8; \
+  const Index kColStride = 8; \
   assert(cols % kColStride == 0); \
   assert(rows % sizeof(Register) == 0); \
   assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0); \

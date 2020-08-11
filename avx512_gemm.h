@@ -325,7 +325,7 @@ struct AVX512_8bit {
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0);
     // There's 8 results for INTGEMM_AVX2 to handle.
     auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
-    const int simd_width = width / sizeof(Register);
+    const Index simd_width = width / sizeof(Register);
     // Added for AVX512.
     Register zeros = setzero_si<Register>();
     // Go over 8 columns of B at a time.
