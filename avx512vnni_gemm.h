@@ -129,7 +129,7 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
     assert(B_cols % 8 == 0);
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0);
     auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
-    const int simd_width = width / sizeof(Register);
+    Index simd_width = width / sizeof(Register);
     Register zeros = setzero_si<Register>();
     const Register a = set1_epi8<Register>(1);
     // Go over 8 columns of B at a time.
