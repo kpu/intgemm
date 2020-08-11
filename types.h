@@ -8,6 +8,7 @@
 /* MSVC does not appear to have target attributes but is also fine with just
  * using intrinsics anywhere.
  */
+  #define INTGEMM_FLATTEN __pragma(inline_depth(255))
   #define INTGEMM_SSE2
   #define INTGEMM_SSSE3
   #define INTGEMM_AVX2
@@ -17,6 +18,7 @@
   #define INTGEMM_AVX512VNNI
 #else
   /* gcc, clang, and Intel compiler */
+  #define INTGEMM_FLATTEN __attribute__((flatten))
   #define INTGEMM_SSE2 __attribute__ ((target ("sse2")))
   #define INTGEMM_SSSE3 __attribute__ ((target ("ssse3")))
   #define INTGEMM_AVX2 __attribute__ ((target ("avx2")))

@@ -183,14 +183,14 @@ struct Signed16 {
 // Statically unroll a kernel into a larger tile.
 // Can't have Tile as a value until C++20.
 template <Index A_rows, Index inner, Index B_cols, class Backend> struct UnrollKernel {
-  template <class Access> INTGEMM_TARGET __attribute__((flatten)) static inline void Run(Access access) {
+  template <class Access> INTGEMM_FLATTEN INTGEMM_TARGET static inline void Run(Access access) {
     body(access, make_index_sequence<A_rows * inner * B_cols>());
   }
   static constexpr Tile kTile { A_rows * Backend::kTile.A_rows, inner * Backend::kTile.inner, B_cols * Backend::kTile.B_cols };
   typedef typename Backend::Packed Packed;
 
  private:
-  template <class Access, size_t... Index> INTGEMM_TARGET __attribute__((flatten)) static inline void body(
+  template <class Access, size_t... Index> INTGEMM_FLATTEN INTGEMM_TARGET static inline void body(
       Access access,
       index_sequence<Index...>) {
     // for each inner computed as (Index / A_rows / B_cols)

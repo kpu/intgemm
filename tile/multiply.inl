@@ -25,7 +25,7 @@ template <std::size_t... i> INTGEMM_TARGET static inline void Sum16To32(Register
 template <std::size_t... i> INTGEMM_TARGET static inline void Sum16To32(Register *, int32_t, index_sequence<i...>) {}
 
 /* Multiply assuming the matrix sizes are a multiple of the kernel size. */
-template <class Kernel, class AccessT> INTGEMM_TARGET __attribute__((flatten)) static inline void MultiplyNoOverhang(AccessT access, const Tile shape) {
+template <class Kernel, class AccessT> INTGEMM_TARGET INTGEMM_FLATTEN static inline void MultiplyNoOverhang(AccessT access, const Tile shape) {
   assert(shape.A_rows % Kernel::kTile.A_rows == 0);
   assert(shape.inner % Kernel::kTile.inner == 0);
   assert(shape.B_cols % Kernel::kTile.B_cols == 0);
