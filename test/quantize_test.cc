@@ -89,7 +89,7 @@ template <class Backend> bool Test(const float *input_unaligned, float quant_mul
   AlignedVector<Integer> ref(size);
   AlignedVector<Integer> test(size);
   QuantizeRef(input.begin(), ref.begin(), quant_mult, static_cast<Index>(size));
-  Backend::Quantize(input.begin(), test.begin(), quant_mult, size);
+  Backend::Quantize(input.begin(), test.begin(), quant_mult, static_cast<Index>(size));
   for (std::size_t i = 0; i < size; ++i) {
     if (IsOff(input[i] * quant_mult, ref[i], test[i])) {
       UNSCOPED_INFO("Error at " << i << " from " << input[i] << '*' << quant_mult << '=' << (input[i]*quant_mult) << " ref = " << static_cast<int>(ref[i]) << " test = " << static_cast<int>(test[i]));
