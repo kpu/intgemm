@@ -226,7 +226,7 @@ target static inline void PrepareB(const float *input, int16_t *output_shadow, f
   for (Index c = 0; c < cols; c += 8) { \
     for (Index r = 0; r < rows; r += (sizeof(Register) / sizeof(int16_t)), output += 8) { \
       /* gcc unrolls this loop and uses registers for output[k]*/ \
-      for (int k = 0; k < 8; ++k) { \
+      for (Index k = 0; k < 8; ++k) { \
         output[k] = q.ForReshape(input + cols * (r + k) + c, cols); \
       } \
       Transpose16InLane(output[0], output[1], output[2], output[3], output[4], output[5], output[6], output[7]); \
