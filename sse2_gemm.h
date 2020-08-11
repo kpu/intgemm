@@ -35,7 +35,7 @@ class QuantizeTile16 {
         input + 4 + (cols_left <= 4 ? cols * (row_step - 1) : 0));
     }
 
-    INTGEMM_SSE2 inline __m128i ForReshape(const float *input, int) const {
+    INTGEMM_SSE2 inline __m128i ForReshape(const float *input, Index) const {
       return Consecutive(input);
     }
 
