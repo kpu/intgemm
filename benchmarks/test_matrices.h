@@ -39,9 +39,11 @@ struct TestMatrices8 {
     C(shape.A_rows * shape.B_cols) {
 
     std::mt19937 gen;
-    std::uniform_int_distribution<int8_t> dist(-127,127);
-    for (int8_t &it : A) it = dist(gen);
-    for (int8_t &it : B) it = dist(gen);
+    // I wanted int8_t but MSVC hates it:
+    // C2338: invalid template argument for uniform_int_distribution: N4659 29.6.1.1 [rand.req.genl]/1e requires one of short, int, long, long long, unsigned short, unsigned int, unsigned long, or unsigned long long [D:\a\intgemm\intgemm\build\tests.vcxproj]
+    std::uniform_int_distribution<short> dist(-127,127);
+    for (int8_t &it : A) it = static_cast<int8_t>(dist(gen));
+    for (int8_t &it : B) it = static_cast<int8_t>(dist(gen));
     // C is uninitialized.
   }
 
