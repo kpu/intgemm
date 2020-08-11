@@ -348,8 +348,8 @@ template <class Routine> void TestMultiplyBias(Index A_rows, Index width, Index 
   });
 
   AlignedVector<float> float_C(test_C.size());
-  references::Multiply(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols, [&](float sum, const callbacks::OutputBufferInfo& info) {
-    return sum + bias[info.col_idx];
+  references::Multiply(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols, [&](double sum, const callbacks::OutputBufferInfo& info) {
+    return static_cast<float>(sum) + bias[info.col_idx];
   });
 
   CompareMSE(float_C.begin(), slowint_C.begin(), test_C.begin(), test_C.size(), info.str(),
