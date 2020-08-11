@@ -22,7 +22,7 @@ void PrepareBTransposedRef(const float* input, typename Backend::Integer* output
       for (Index k = 0; k < vec_len; ++k) {
         Index col = (i + k) % B_transposed_cols;
         Index row = 8 * ((i + k) / B_transposed_cols) + j;
-        *output++ = static_cast<float>(input[row * B_transposed_cols + col] * quant_mult);
+        *output++ = static_cast<typename Backend::Integer>(input[row * B_transposed_cols + col] * quant_mult);
       }
 }
 
@@ -53,7 +53,7 @@ bool TestMany(Index B_rows, Index B_cols, float quant_mult) {
   std::generate(input.begin(), input.end(), []() {
     static constexpr int divider = sizeof(intgemm::vector_t<Backend::kUses, typename Backend::Integer>) / sizeof(typename Backend::Integer);
     static int value = 0;
-    return (value++) % divider;
+    return static_cast<float>((value++) % divider);
   });
 
   return Test<Backend>(input, B_rows, B_cols, quant_mult);

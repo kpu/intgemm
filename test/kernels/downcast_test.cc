@@ -13,12 +13,12 @@ void kernel_downcast32to8_test() {
     return;
 
   using vi = vector_t<CPUType_, int>;
-  const std::size_t LENGTH = sizeof(vi) / sizeof(int8_t);
+  constexpr int LENGTH = sizeof(vi) / sizeof(int8_t);
 
   AlignedVector<int32_t> input(LENGTH);
   AlignedVector<int8_t> output(LENGTH);
 
-  std::iota(input.begin(), input.end(), -static_cast<int32_t>(LENGTH / 2));
+  std::iota(input.begin(), input.end(), static_cast<int32_t>(-LENGTH / 2));
 
   *output.template as<vi>() = kernels::downcast32to8(
     input.template as<vi>()[0], input.template as<vi>()[1],
@@ -44,12 +44,12 @@ void kernel_downcast32to16_test() {
     return;
 
   using vi = vector_t<CPUType_, int>;
-  const std::size_t LENGTH = sizeof(vi) / sizeof(int16_t);
+  constexpr int LENGTH = sizeof(vi) / sizeof(int16_t);
 
   AlignedVector<int32_t> input(LENGTH);
   AlignedVector<int16_t> output(LENGTH);
 
-  std::iota(input.begin(), input.end(), -static_cast<int32_t>(LENGTH / 2));
+  std::iota(input.begin(), input.end(), static_cast<int32_t>(-LENGTH / 2));
 
   *output.template as<vi>() = kernels::downcast32to16(
     input.template as<vi>()[0], input.template as<vi>()[1]);
@@ -74,12 +74,12 @@ void kernel_downcast16to8_test() {
     return;
 
   using vi = vector_t<CPUType_, int>;
-  const std::size_t LENGTH = sizeof(vi) / sizeof(int8_t);
+  constexpr int LENGTH = sizeof(vi) / sizeof(int8_t);
 
   AlignedVector<int16_t> input(LENGTH);
   AlignedVector<int8_t> output(LENGTH);
 
-  std::iota(input.begin(), input.end(), -static_cast<int16_t>(LENGTH / 2));
+  std::iota(input.begin(), input.end(), static_cast<int16_t>(-LENGTH / 2));
 
   *output.template as<vi>() = kernels::downcast16to8(
     input.template as<vi>()[0], input.template as<vi>()[1]);

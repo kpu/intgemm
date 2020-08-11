@@ -128,8 +128,8 @@ template <class Routine> void TestMultiplyBiasNew(Index A_rows, Index width, Ind
   });
 
   AlignedVector<float> float_C(test_C.size());
-  references::Multiply(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols, [&](float sum, const callbacks::OutputBufferInfo& info) {
-    return sum + bias[info.col_idx];
+  references::Multiply(A.begin(), B.begin(), float_C.begin(), A_rows, width, B_cols, [&](double sum, const callbacks::OutputBufferInfo& info) {
+    return static_cast<float>(sum) + bias[info.col_idx];
   });
 
   /*ACTUAL MULTIPLICATION

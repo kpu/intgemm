@@ -15,17 +15,17 @@ void kernel_multiply_sat_test() {
     return;
 
   using vec_t = vector_t<CPUType_, Type_>;
-  constexpr static std::size_t VECTOR_LENGTH = sizeof(vec_t) / sizeof(Type_);
+  constexpr int VECTOR_LENGTH = sizeof(vec_t) / sizeof(Type_);
 
   AlignedVector<Type_> input1(VECTOR_LENGTH);
   AlignedVector<Type_> input2(VECTOR_LENGTH);
   AlignedVector<Type_> output(VECTOR_LENGTH);
 
-  std::iota(input1.begin(), input1.end(), -static_cast<Type_>(VECTOR_LENGTH / 2));
-  std::iota(input2.begin(), input2.end(), -static_cast<Type_>(VECTOR_LENGTH / 3));
+  std::iota(input1.begin(), input1.end(), static_cast<Type_>(-VECTOR_LENGTH / 2));
+  std::iota(input2.begin(), input2.end(), static_cast<Type_>(-VECTOR_LENGTH / 3));
 
   // TODO: try all shifts.  The shift must be an immediate.
-  std::size_t shift = 1;
+  int8_t shift = 1;
   *output.template as<vec_t>() = kernels::multiply_sat<Type_>(*input1.template as<vec_t>(), *input2.template as<vec_t>(), shift);
   for (std::size_t i = 0; i < output.size(); ++i) {
     auto ref = (int64_t(input1[i]) * input2[i]) >> shift;

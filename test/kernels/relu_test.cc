@@ -2,7 +2,8 @@
 #include "../../aligned.h"
 #include "../../kernels.h"
 
-#include <cstddef>
+#include <stdint.h>
+#include <cstdint>
 #include <numeric>
 
 namespace intgemm {
@@ -13,12 +14,12 @@ void kernel_relu_test() {
     return;
 
   using vec_t = vector_t<CPUType_, ElemType_>;
-  constexpr static std::size_t VECTOR_LENGTH = sizeof(vec_t) / sizeof(ElemType_);
+  constexpr int VECTOR_LENGTH = sizeof(vec_t) / sizeof(ElemType_);
 
   AlignedVector<ElemType_> input(VECTOR_LENGTH);
   AlignedVector<ElemType_> output(VECTOR_LENGTH);
 
-  std::iota(input.begin(), input.end(), -static_cast<ElemType_>(VECTOR_LENGTH / 2));
+  std::iota(input.begin(), input.end(), static_cast<ElemType_>(-VECTOR_LENGTH / 2));
 
   *output.template as<vec_t>() = kernels::relu<ElemType_>(*input.template as<vec_t>());
   for (std::size_t i = 0; i < output.size(); ++i)
