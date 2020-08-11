@@ -15,6 +15,7 @@
 #include <iomanip>
 #include <iostream>
 #include <memory>
+#include <numeric>
 #include <random>
 
 namespace intgemm {
@@ -357,145 +358,145 @@ template <class Routine> void TestMultiplyBias(Index A_rows, Index width, Index 
 
 TEST_CASE ("Multiply SSE2 16bit", "[multiply]") {
   if (kCPU < CPUType::SSE2) return;
-  TestMultiply<SSE2_16bit>(8, 256, 256, .1, 1, 0.01);
-  TestMultiply<SSE2_16bit>(8, 2048, 256, .1, 1, 0.02);
-  TestMultiply<SSE2_16bit>(320, 256, 256, .1, 1, 0.01);
-  TestMultiply<SSE2_16bit>(472, 256, 256, .1, 1, 0.01);
-  TestMultiply<SSE2_16bit>(248, 256, 256, .1, 1, 0.01);
-  TestMultiply<SSE2_16bit>(200, 256, 256, .1, 1, 0.01);
+  TestMultiply<SSE2_16bit>(8, 256, 256, .1f, 1, 0.01f);
+  TestMultiply<SSE2_16bit>(8, 2048, 256, .1f, 1, 0.02f);
+  TestMultiply<SSE2_16bit>(320, 256, 256, .1f, 1, 0.01f);
+  TestMultiply<SSE2_16bit>(472, 256, 256, .1f, 1, 0.01f);
+  TestMultiply<SSE2_16bit>(248, 256, 256, .1f, 1, 0.01f);
+  TestMultiply<SSE2_16bit>(200, 256, 256, .1f, 1, 0.01f);
 }
 
 TEST_CASE ("Multiply SSE2 16bit with bias", "[biased_multiply]") {
   if (kCPU < CPUType::SSE2) return;
-  TestMultiplyBias<SSE2_16bit>(8, 256, 256, .1, 1, 0.01);
-  TestMultiplyBias<SSE2_16bit>(8, 2048, 256, .1, 1, 0.02);
-  TestMultiplyBias<SSE2_16bit>(320, 256, 256, .1, 1, 0.01);
-  TestMultiplyBias<SSE2_16bit>(472, 256, 256, .1, 1, 0.01);
-  TestMultiplyBias<SSE2_16bit>(248, 256, 256, .1, 1, 0.01);
-  TestMultiplyBias<SSE2_16bit>(200, 256, 256, .1, 1, 0.01);
+  TestMultiplyBias<SSE2_16bit>(8, 256, 256, .1f, 1, 0.01f);
+  TestMultiplyBias<SSE2_16bit>(8, 2048, 256, .1f, 1, 0.02f);
+  TestMultiplyBias<SSE2_16bit>(320, 256, 256, .1f, 1, 0.01f);
+  TestMultiplyBias<SSE2_16bit>(472, 256, 256, .1f, 1, 0.01f);
+  TestMultiplyBias<SSE2_16bit>(248, 256, 256, .1f, 1, 0.01f);
+  TestMultiplyBias<SSE2_16bit>(200, 256, 256, .1f, 1, 0.01f);
 }
 
 TEST_CASE ("Multiply SSSE3 8bit", "[multiply]") {
   if (kCPU < CPUType::SSSE3) return;
-  TestMultiply<SSSE3_8bit>(8, 256, 256, 1.2, 1.2, 0.064, 0.026);
-  TestMultiply<SSSE3_8bit>(8, 2048, 256, 33, 33, 4.4, 4.4);
-  TestMultiply<SSSE3_8bit>(320, 256, 256, 1.9, 1.9, 0.1, 0.01);
-  TestMultiply<SSSE3_8bit>(472, 256, 256, 2.1, 2.1, 0.1, 0.011);
-  TestMultiply<SSSE3_8bit>(248, 256, 256, 1.7, 1.7, 0.1, 0.012);
-  TestMultiply<SSSE3_8bit>(200, 256, 256, 1.8, 1.9, 0.1, 0.011);
+  TestMultiply<SSSE3_8bit>(8, 256, 256, 1.2f, 1.2f, 0.064f, 0.026f);
+  TestMultiply<SSSE3_8bit>(8, 2048, 256, 33, 33, 4.4f, 4.4f);
+  TestMultiply<SSSE3_8bit>(320, 256, 256, 1.9f, 1.9f, 0.1f, 0.01f);
+  TestMultiply<SSSE3_8bit>(472, 256, 256, 2.1f, 2.1f, 0.1f, 0.011f);
+  TestMultiply<SSSE3_8bit>(248, 256, 256, 1.7f, 1.7f, 0.1f, 0.012f);
+  TestMultiply<SSSE3_8bit>(200, 256, 256, 1.8f, 1.9f, 0.1f, 0.011f);
 }
 
 TEST_CASE ("Multiply SSSE3 8bit with bias", "[biased_multiply]") {
   if (kCPU < CPUType::SSSE3) return;
-  TestMultiplyBias<SSSE3_8bit>(8, 256, 256, 1.2, 1.2, 0.064, 0.026);
-  TestMultiplyBias<SSSE3_8bit>(8, 2048, 256, 33, 33, 4.4, 4.4);
-  TestMultiplyBias<SSSE3_8bit>(320, 256, 256, 1.9, 1.9, 0.1, 0.01);
-  TestMultiplyBias<SSSE3_8bit>(472, 256, 256, 2.1, 2.1, 0.1, 0.011);
-  TestMultiplyBias<SSSE3_8bit>(248, 256, 256, 1.7, 1.7, 0.1, 0.012);
-  TestMultiplyBias<SSSE3_8bit>(200, 256, 256, 1.8, 1.9, 0.1, 0.011);
+  TestMultiplyBias<SSSE3_8bit>(8, 256, 256, 1.2f, 1.2f, 0.064f, 0.026f);
+  TestMultiplyBias<SSSE3_8bit>(8, 2048, 256, 33, 33, 4.4f, 4.4f);
+  TestMultiplyBias<SSSE3_8bit>(320, 256, 256, 1.9f, 1.9f, 0.1f, 0.01f);
+  TestMultiplyBias<SSSE3_8bit>(472, 256, 256, 2.1f, 2.1f, 0.1f, 0.011f);
+  TestMultiplyBias<SSSE3_8bit>(248, 256, 256, 1.7f, 1.7f, 0.1f, 0.012f);
+  TestMultiplyBias<SSSE3_8bit>(200, 256, 256, 1.8f, 1.9f, 0.1f, 0.011f);
 }
 
 TEST_CASE ("Multiply AVX2 8bit", "[multiply]") {
   if (kCPU < CPUType::AVX2) return;
-  TestMultiply<AVX2_8bit>(8, 256, 256, .1, 1, 0.1);
-  TestMultiply<AVX2_8bit>(8, 2048, 256, 19, 19, 1.8, 1.8);
-  TestMultiply<AVX2_8bit>(320, 256, 256, .1, 1, 0.1);
-  TestMultiply<AVX2_8bit>(472, 256, 256, .1, 1, 0.1);
-  TestMultiply<AVX2_8bit>(248, 256, 256, .1, 1, 0.1);
-  TestMultiply<AVX2_8bit>(200, 256, 256, .1, 1, 0.1);
+  TestMultiply<AVX2_8bit>(8, 256, 256, .1f, 1, 0.1f);
+  TestMultiply<AVX2_8bit>(8, 2048, 256, 19, 19, 1.8f, 1.8f);
+  TestMultiply<AVX2_8bit>(320, 256, 256, .1f, 1, 0.1f);
+  TestMultiply<AVX2_8bit>(472, 256, 256, .1f, 1, 0.1f);
+  TestMultiply<AVX2_8bit>(248, 256, 256, .1f, 1, 0.1f);
+  TestMultiply<AVX2_8bit>(200, 256, 256, .1f, 1, 0.1f);
 }
 
 TEST_CASE ("Multiply AVX2 8bit with bias", "[biased_multiply]") {
   if (kCPU < CPUType::AVX2) return;
-  TestMultiplyBias<AVX2_8bit>(8, 256, 256, .1, 1, 0.1);
-  TestMultiplyBias<AVX2_8bit>(8, 2048, 256, 19, 19, 1.8, 1.8);
-  TestMultiplyBias<AVX2_8bit>(320, 256, 256, .1, 1, 0.1);
-  TestMultiplyBias<AVX2_8bit>(472, 256, 256, .1, 1, 0.1);
-  TestMultiplyBias<AVX2_8bit>(248, 256, 256, .1, 1, 0.1);
-  TestMultiplyBias<AVX2_8bit>(200, 256, 256, .1, 1, 0.1);
+  TestMultiplyBias<AVX2_8bit>(8, 256, 256, .1f, 1, 0.1f);
+  TestMultiplyBias<AVX2_8bit>(8, 2048, 256, 19, 19, 1.8f, 1.8f);
+  TestMultiplyBias<AVX2_8bit>(320, 256, 256, .1f, 1, 0.1f);
+  TestMultiplyBias<AVX2_8bit>(472, 256, 256, .1f, 1, 0.1f);
+  TestMultiplyBias<AVX2_8bit>(248, 256, 256, .1f, 1, 0.1f);
+  TestMultiplyBias<AVX2_8bit>(200, 256, 256, .1f, 1, 0.1f);
 }
 
 TEST_CASE ("Multiply AVX2 16bit", "[multiply]") {
   if (kCPU < CPUType::AVX2) return;
-  TestMultiply<AVX2_16bit>(8, 256, 256, .1, 1, 0.01);
-  TestMultiply<AVX2_16bit>(8, 2048, 256, .1, 1, 0.02);
-  TestMultiply<AVX2_16bit>(320, 256, 256, .1, 1, 0.01);
-  TestMultiply<AVX2_16bit>(472, 256, 256, .1, 1, 0.01);
-  TestMultiply<AVX2_16bit>(248, 256, 256, .1, 1, 0.01);
-  TestMultiply<AVX2_16bit>(200, 256, 256, .1, 1, 0.01);
+  TestMultiply<AVX2_16bit>(8, 256, 256, .1f, 1, 0.01f);
+  TestMultiply<AVX2_16bit>(8, 2048, 256, .1f, 1, 0.02f);
+  TestMultiply<AVX2_16bit>(320, 256, 256, .1f, 1, 0.01f);
+  TestMultiply<AVX2_16bit>(472, 256, 256, .1f, 1, 0.01f);
+  TestMultiply<AVX2_16bit>(248, 256, 256, .1f, 1, 0.01f);
+  TestMultiply<AVX2_16bit>(200, 256, 256, .1f, 1, 0.01f);
 }
 
 TEST_CASE ("Multiply AVX2 16bit with bias", "[biased_multiply]") {
   if (kCPU < CPUType::AVX2) return;
-  TestMultiplyBias<AVX2_16bit>(8, 256, 256, .1, 1, 0.01);
-  TestMultiplyBias<AVX2_16bit>(8, 2048, 256, .1, 1, 0.02);
-  TestMultiplyBias<AVX2_16bit>(320, 256, 256, .1, 1, 0.01);
-  TestMultiplyBias<AVX2_16bit>(472, 256, 256, .1, 1, 0.01);
-  TestMultiplyBias<AVX2_16bit>(248, 256, 256, .1, 1, 0.01);
-  TestMultiplyBias<AVX2_16bit>(200, 256, 256, .1, 1, 0.01);
+  TestMultiplyBias<AVX2_16bit>(8, 256, 256, .1f, 1, 0.01f);
+  TestMultiplyBias<AVX2_16bit>(8, 2048, 256, .1f, 1, 0.02f);
+  TestMultiplyBias<AVX2_16bit>(320, 256, 256, .1f, 1, 0.01f);
+  TestMultiplyBias<AVX2_16bit>(472, 256, 256, .1f, 1, 0.01f);
+  TestMultiplyBias<AVX2_16bit>(248, 256, 256, .1f, 1, 0.01f);
+  TestMultiplyBias<AVX2_16bit>(200, 256, 256, .1f, 1, 0.01f);
 }
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
   TEST_CASE ("Multiply AVX512 8bit", "[multiply]") {
     if (kCPU < CPUType::AVX512BW) return;
-    TestMultiply<AVX512_8bit>(8, 256, 256, 0, 0.25, 0.062);
-    TestMultiply<AVX512_8bit>(8, 2048, 256, 3.7, 4, 0.37, 0.33);
-    TestMultiply<AVX512_8bit>(320, 256, 256, 0, 0.26, 0.059);
-    TestMultiply<AVX512_8bit>(472, 256, 256, 0, 0.29, 0.059);
-    TestMultiply<AVX512_8bit>(248, 256, 256, 0, 0.29, 0.059);
-    TestMultiply<AVX512_8bit>(200, 256, 256, 0, 0.28, 0.06);
+    TestMultiply<AVX512_8bit>(8, 256, 256, 0, 0.25f, 0.062f);
+    TestMultiply<AVX512_8bit>(8, 2048, 256, 3.7f, 4, 0.37f, 0.33f);
+    TestMultiply<AVX512_8bit>(320, 256, 256, 0, 0.26f, 0.059f);
+    TestMultiply<AVX512_8bit>(472, 256, 256, 0, 0.29f, 0.059f);
+    TestMultiply<AVX512_8bit>(248, 256, 256, 0, 0.29f, 0.059f);
+    TestMultiply<AVX512_8bit>(200, 256, 256, 0, 0.28f, 0.06f);
   }
 
   TEST_CASE ("Multiply AVX512 8bit with bias", "[biased_multiply]") {
     if (kCPU < CPUType::AVX512BW) return;
-    TestMultiplyBias<AVX512_8bit>(8, 256, 256, 0, 0.25, 0.062);
-    TestMultiplyBias<AVX512_8bit>(8, 2048, 256, 3.7, 4, 0.37, 0.33);
-    TestMultiplyBias<AVX512_8bit>(320, 256, 256, 0, 0.26, 0.059);
-    TestMultiplyBias<AVX512_8bit>(472, 256, 256, 0, 0.29, 0.059);
-    TestMultiplyBias<AVX512_8bit>(248, 256, 256, 0, 0.29, 0.059);
-    TestMultiplyBias<AVX512_8bit>(200, 256, 256, 0, 0.28, 0.06);
+    TestMultiplyBias<AVX512_8bit>(8, 256, 256, 0, 0.25f, 0.062f);
+    TestMultiplyBias<AVX512_8bit>(8, 2048, 256, 3.7f, 4, 0.37f, 0.33f);
+    TestMultiplyBias<AVX512_8bit>(320, 256, 256, 0, 0.26f, 0.059f);
+    TestMultiplyBias<AVX512_8bit>(472, 256, 256, 0, 0.29f, 0.059f);
+    TestMultiplyBias<AVX512_8bit>(248, 256, 256, 0, 0.29f, 0.059f);
+    TestMultiplyBias<AVX512_8bit>(200, 256, 256, 0, 0.28f, 0.06f);
   }
 
   #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
     TEST_CASE ("Multiply AVX512VNNI 8bit", "[multiply]") {
       if (kCPU < CPUType::AVX512VNNI) return;
-      TestMultiply<AVX512VNNI_8bit>(8, 256, 256, 0, 0.25, 0.062);
-      TestMultiply<AVX512VNNI_8bit>(8, 2048, 256, 0, 0.55, 0.25);
-      TestMultiply<AVX512VNNI_8bit>(320, 256, 256, 0, 0.26, 0.059);
-      TestMultiply<AVX512VNNI_8bit>(472, 256, 256, 0, 0.29, 0.059);
-      TestMultiply<AVX512VNNI_8bit>(248, 256, 256, 0, 0.29, 0.059);
-      TestMultiply<AVX512VNNI_8bit>(200, 256, 256, 0, 0.28, 0.06);
+      TestMultiply<AVX512VNNI_8bit>(8, 256, 256, 0, 0.25f, 0.062f);
+      TestMultiply<AVX512VNNI_8bit>(8, 2048, 256, 0, 0.55f, 0.25f);
+      TestMultiply<AVX512VNNI_8bit>(320, 256, 256, 0, 0.26f, 0.059f);
+      TestMultiply<AVX512VNNI_8bit>(472, 256, 256, 0, 0.29f, 0.059f);
+      TestMultiply<AVX512VNNI_8bit>(248, 256, 256, 0, 0.29f, 0.059f);
+      TestMultiply<AVX512VNNI_8bit>(200, 256, 256, 0, 0.28f, 0.06f);
     }
 
     TEST_CASE ("Multiply AVX512VNNI 8bit with bias", "[biased_multiply]") {
       if (kCPU < CPUType::AVX512VNNI) return;
-      TestMultiplyBias<AVX512VNNI_8bit>(8, 256, 256, 0, 0.25, 0.062);
-      TestMultiplyBias<AVX512VNNI_8bit>(8, 2048, 256, 0, 0.55, 0.25);
-      TestMultiplyBias<AVX512VNNI_8bit>(320, 256, 256, 0, 0.26, 0.059);
-      TestMultiplyBias<AVX512VNNI_8bit>(472, 256, 256, 0, 0.29, 0.059);
-      TestMultiplyBias<AVX512VNNI_8bit>(248, 256, 256, 0, 0.29, 0.059);
-      TestMultiplyBias<AVX512VNNI_8bit>(200, 256, 256, 0, 0.28, 0.06);
+      TestMultiplyBias<AVX512VNNI_8bit>(8, 256, 256, 0, 0.25f, 0.062f);
+      TestMultiplyBias<AVX512VNNI_8bit>(8, 2048, 256, 0, 0.55f, 0.25f);
+      TestMultiplyBias<AVX512VNNI_8bit>(320, 256, 256, 0, 0.26f, 0.059f);
+      TestMultiplyBias<AVX512VNNI_8bit>(472, 256, 256, 0, 0.29f, 0.059f);
+      TestMultiplyBias<AVX512VNNI_8bit>(248, 256, 256, 0, 0.29f, 0.059f);
+      TestMultiplyBias<AVX512VNNI_8bit>(200, 256, 256, 0, 0.28f, 0.06f);
     }
   #endif
 
   TEST_CASE ("Multiply AVX512 16bit", "[multiply]") {
     if (kCPU < CPUType::AVX512BW) return;
-    TestMultiply<AVX512_16bit>(8, 256, 256, .1, 1, 0.01);
-    TestMultiply<AVX512_16bit>(8, 2048, 256, .1, 1, 0.011);
-    TestMultiply<AVX512_16bit>(320, 256, 256, .1, 1, 0.01);
-    TestMultiply<AVX512_16bit>(472, 256, 256, .1, 1, 0.01);
-    TestMultiply<AVX512_16bit>(248, 256, 256, .1, 1, 0.01);
-    TestMultiply<AVX512_16bit>(200, 256, 256, .1, 1, 0.01);
+    TestMultiply<AVX512_16bit>(8, 256, 256, .1f, 1, 0.01f);
+    TestMultiply<AVX512_16bit>(8, 2048, 256, .1f, 1, 0.011f);
+    TestMultiply<AVX512_16bit>(320, 256, 256, .1f, 1, 0.01f);
+    TestMultiply<AVX512_16bit>(472, 256, 256, .1f, 1, 0.01f);
+    TestMultiply<AVX512_16bit>(248, 256, 256, .1f, 1, 0.01f);
+    TestMultiply<AVX512_16bit>(200, 256, 256, .1f, 1, 0.01f);
   }
 
   TEST_CASE ("Multiply AVX512 16bit with bias", "[biased_multiply]") {
     if (kCPU < CPUType::AVX512BW) return;
-    TestMultiplyBias<AVX512_16bit>(8, 256, 256, .1, 1, 0.01);
-    TestMultiplyBias<AVX512_16bit>(8, 2048, 256, .1, 1, 0.011);
-    TestMultiplyBias<AVX512_16bit>(320, 256, 256, .1, 1, 0.01);
-    TestMultiplyBias<AVX512_16bit>(472, 256, 256, .1, 1, 0.01);
-    TestMultiplyBias<AVX512_16bit>(248, 256, 256, .1, 1, 0.01);
-    TestMultiplyBias<AVX512_16bit>(200, 256, 256, .1, 1, 0.01);
+    TestMultiplyBias<AVX512_16bit>(8, 256, 256, .1f, 1, 0.01f);
+    TestMultiplyBias<AVX512_16bit>(8, 2048, 256, .1f, 1, 0.011f);
+    TestMultiplyBias<AVX512_16bit>(320, 256, 256, .1f, 1, 0.01f);
+    TestMultiplyBias<AVX512_16bit>(472, 256, 256, .1f, 1, 0.01f);
+    TestMultiplyBias<AVX512_16bit>(248, 256, 256, .1f, 1, 0.01f);
+    TestMultiplyBias<AVX512_16bit>(200, 256, 256, .1f, 1, 0.01f);
   }
 #endif
 
