@@ -18,7 +18,8 @@ void QuantizeRef(const float *input, int16_t *output, float quant_mult, std::siz
     float value = roundf(input[i] * quant_mult);
     value = std::max(-32768.0f, value);
     value = std::min(32767.0f, value);
-    output[i] = value;
+    // float should be exact in this range.
+    output[i] = static_cast<int16_t>(value);
   }
 }
 
@@ -27,7 +28,7 @@ void QuantizeRef(const float *input, int8_t *output, float quant_mult, std::size
     float value = roundf(input[i] * quant_mult);
     value = std::max(-127.0f, value);
     value = std::min(127.0f, value);
-    output[i] = value;
+    output[i] = static_cast<int8_t>(value);
   }
 }
 
@@ -60,9 +61,9 @@ void testVectorMeanStd(int num_items, bool absolute=false) {
   MeanStd reference = VectorMeanStd(inputVec, num_items, absolute);
   MeanStd fast = Backend(inputVec.begin(), inputVec.end(), absolute);
 
-  float meanDifference = fabs(reference.mean - fast.mean);
-  float stdDifference = fabs(reference.stddev - fast.stddev);
-  float eps = 0.00002; //Accumulating horizontal sums can lead to errors.
+  float meanDifference = fabsf(reference.mean - fast.mean);
+  float stdDifference = fabsf(reference.stddev - fast.stddev);
+  float eps = 0.00002f; //Accumulating horizontal sums can lead to errors.
 
   CHECK_MESSAGE(meanDifference <= eps, "Items: " << num_items << " Absolute: " << absolute << " Reference mean: " << reference.mean << " actual: " << fast.mean);
   CHECK_MESSAGE(stdDifference <= eps, "Items: " << num_items << " Absolute: " << absolute << " Reference mean: " << reference.stddev << " actual: " << fast.stddev);
@@ -87,7 +88,7 @@ template <class Backend> bool Test(const float *input_unaligned, float quant_mul
 
   AlignedVector<Integer> ref(size);
   AlignedVector<Integer> test(size);
-  QuantizeRef(input.begin(), ref.begin(), quant_mult, size);
+  QuantizeRef(input.begin(), ref.begin(), quant_mult, static_cast<Index>(size));
   Backend::Quantize(input.begin(), test.begin(), quant_mult, size);
   for (std::size_t i = 0; i < size; ++i) {
     if (IsOff(input[i] * quant_mult, ref[i], test[i])) {
@@ -99,14 +100,21 @@ template <class Backend> bool Test(const float *input_unaligned, float quant_mul
 }
 
 template <class Backend> void TestMany(std::size_t grow) {
-  float input[33] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32};
-  float corners[33] = {-32769, -32768, -32767, -129, -128, -127, -1, 0, 1, 126, 127, 128, 129, 32766, 32768, 32769, -1.9, -1.5, -1.1, -1, -0.9, -0.5, -0.1, 0.0, 0.1, 0.5, 0.9, 1.0, 1.1, 1.5, 1.9, 16056.8, 2.5};
+  float input[33] = {
+    0.f, 1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7.f, 8.f, 9.f, 10.f, 11.f, 12.f, 13.f,
+    14.f, 15.f, 16.f, 17.f, 18.f, 19.f, 20.f, 21.f, 22.f, 23.f, 24.f, 25.f,
+    26.f, 27.f, 28.f, 29.f, 30.f, 31.f, 32.f};
+  float corners[33] = {
+    -32769.f, -32768.f, -32767.f, -129.f, -128.f, -127.f, -1.f, 0.f, 1.f,
+    126.f, 127.f, 128.f, 129.f, 32766.f, 32768.f, 32769.f, -1.9f, -1.5f, -1.1f,
+    -1.f, -0.9f, -0.5f, -0.1f, 0.0f, 0.1f, 0.5f, 0.9f, 1.0f, 1.1f, 1.5f, 1.9f,
+    16056.8f, 2.5f};
   for (std::size_t len = 0; len <= 33; len += grow) {
-    CHECK(Test<Backend>(input, 1.0, len));
-    CHECK(Test<Backend>(input, 32.0, len));
-    CHECK(Test<Backend>(corners, 1.0, len));
-    CHECK(Test<Backend>(corners, -1.0, len));
-    CHECK(Test<Backend>(corners, -0.49, len));
+    CHECK(Test<Backend>(input, 1.0f, len));
+    CHECK(Test<Backend>(input, 32.0f, len));
+    CHECK(Test<Backend>(corners, 1.0f, len));
+    CHECK(Test<Backend>(corners, -1.0f, len));
+    CHECK(Test<Backend>(corners, -0.49f, len));
   }
 }
 
