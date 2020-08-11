@@ -99,7 +99,7 @@ void Multiply(const TypeA* A, const TypeB* B, TypeC* C, Index A_rows, Index widt
       for (Index k = 0; k < width; ++k) {
         sum += IntermediateType(A[r * width + k]) * IntermediateType(B[k * B_cols + c]);
       }
-      C[r * B_cols + c] = callback(sum, {r, c, A_rows, B_cols});
+      C[r * B_cols + c] = static_cast<TypeC>(callback(sum, {r, c, A_rows, B_cols}));
     }
   }
 }
