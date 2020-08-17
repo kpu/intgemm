@@ -43,7 +43,7 @@ struct RandomMatrices {
 };
 
 template <class Backend> double Run(const RandomMatrices &m) {
-  typedef typename Backend::Integer Integer;
+  using Integer = typename Backend::Integer;
   float quant_mult = 127.0f / 2.0f;
   float unquant_mult = 1.0f / (quant_mult * quant_mult);
   AlignedVector<Integer> A_prepared(m.A_rows * m.width);

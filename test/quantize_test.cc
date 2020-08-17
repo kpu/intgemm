@@ -81,7 +81,7 @@ template <class I> bool IsOff(float from, I ref, I test) {
 }
 
 template <class Backend> bool Test(const float *input_unaligned, float quant_mult, std::size_t size) {
-  typedef typename Backend::Integer Integer;
+  using Integer = typename Backend::Integer;
   bool success = true;
   AlignedVector<float> input(size);
   std::memcpy(input.begin(), input_unaligned, sizeof(float) * size);
