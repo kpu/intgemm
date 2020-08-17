@@ -126,6 +126,10 @@ struct Unsupported_8bit {
 // These won't ever be called in this capacity, but it does let the code below compile.
 typedef Unsupported_8bit AVX512VNNI_8bit;
 #endif
+#ifndef INTGEMM_COMPILER_SUPPORTS_AVX512BW
+typedef Unsupported_8bit AVX512_8bit;
+typedef Unsupported_16bit AVX512_16bit;
+#endif
 
 /* Returns:
  * axx512vnni if the CPU supports AVX512VNNI
