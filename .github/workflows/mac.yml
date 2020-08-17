@@ -1,4 +1,4 @@
-name: Release
+name: Mac
 
 on:
   push:
@@ -8,10 +8,7 @@ on:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        runs-on: [ubuntu-latest, macOS-latest, windows-latest]
-    runs-on: ${{ matrix.runs-on }}
+    runs-on: macOS-latest
 
     steps:
     - uses: actions/checkout@v2
