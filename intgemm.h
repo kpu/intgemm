@@ -39,9 +39,7 @@
  * passing unquant_mult = \lambda / (A_quant_mult * B_quant_mult).
  */
 
-// Yes, both headers due to the debacle about int32_t
 #include <cstdint>
-#include <stdint.h>
 
 #include "intgemm_config.h"
 #include "types.h"

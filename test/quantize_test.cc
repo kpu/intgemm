@@ -6,9 +6,9 @@
 #include "../ssse3_gemm.h"
 #include "../stats.h"
 
+#include <cmath>
 #include <cstring>
 #include <iostream>
-#include <math.h>
 
 namespace intgemm {
 namespace {
@@ -61,8 +61,8 @@ void testVectorMeanStd(int num_items, bool absolute=false) {
   MeanStd reference = VectorMeanStd(inputVec, num_items, absolute);
   MeanStd fast = Backend(inputVec.begin(), inputVec.end(), absolute);
 
-  float meanDifference = fabsf(reference.mean - fast.mean);
-  float stdDifference = fabsf(reference.stddev - fast.stddev);
+  float meanDifference = std::fabs(reference.mean - fast.mean);
+  float stdDifference = std::fabs(reference.stddev - fast.stddev);
   float eps = 0.00002f; //Accumulating horizontal sums can lead to errors.
 
   CHECK_MESSAGE(meanDifference <= eps, "Items: " << num_items << " Absolute: " << absolute << " Reference mean: " << reference.mean << " actual: " << fast.mean);
@@ -73,8 +73,8 @@ void testVectorMeanStd(int num_items, bool absolute=false) {
 template <class I> bool IsOff(float from, I ref, I test) {
   if (ref == test) return false;
   if (ref - test > 1 && test - ref > 1) return true;
-  float off_test = fabs((float)test - from);
-  float off_ref = fabs((float)ref - from);
+  float off_test = std::fabs(static_cast<float>(test) - from);
+  float off_ref = std::fabs(static_cast<float>(ref) - from);
   // Allow 0.5 to round either way.
   if (off_test > 0.49 && off_test < 0.51 && off_ref > 0.49 && off_ref < 0.51) return false;
   return true;

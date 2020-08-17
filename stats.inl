@@ -54,7 +54,7 @@ INTGEMM_TARGET static inline float MaxAbsolute(const float *begin_float, const f
   }
 #else
   for (const float *i = end_reg; i < end_float; ++i) {
-    ret = std::max(ret, fabsf(*i));
+    ret = std::max(ret, std::fabs(*i));
   }
 #endif
   return ret;

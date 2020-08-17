@@ -187,8 +187,8 @@ TEST_CASE("Max", "[max]") {
 }
 
 void CompareMaxAbs(const float *begin, const float *end, float test, std::size_t offset) {
-  float largest = fabs(*std::max_element(begin, end));
-  float smallest = fabs(*std::min_element(begin, end));
+  float largest = std::fabs(*std::max_element(begin, end));
+  float smallest = std::fabs(*std::min_element(begin, end));
   largest = std::max(largest, smallest);
   CHECK_MESSAGE(largest == test, "Error: " << largest << " versus " << test << " in length " << (end - begin) << " offset " << offset);
 }

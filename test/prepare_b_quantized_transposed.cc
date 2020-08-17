@@ -5,9 +5,9 @@
 #include "../sse2_gemm.h"
 #include "../ssse3_gemm.h"
 
+#include <cmath>
 #include <cstring>
 #include <iostream>
-#include <math.h>
 
 namespace intgemm {
 namespace {

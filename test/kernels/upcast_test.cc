@@ -3,7 +3,6 @@
 #include "../../kernels.h"
 
 #include <cstdint>
-#include <stdint.h>
 #include <numeric>
 
 namespace intgemm {

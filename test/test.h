@@ -6,7 +6,7 @@
 #include "../intgemm.h"
 #include "../aligned.h"
 
-#include <math.h>
+#include <cmath>
 #include <sstream>
 #include <iostream>
 #include <iomanip>
@@ -18,7 +18,7 @@
 
 #define CHECK_EPS(actual, expected, epsilon) \
   do { \
-    if (fabs((actual) - (expected)) < epsilon) { SUCCEED(); } \
+    if (std::fabs((actual) - (expected)) < epsilon) { SUCCEED(); } \
     else { CHECK((actual) == (expected)); } \
   } while(0)
 
@@ -39,8 +39,8 @@ void CompareEps(const Type* reference, const Type* actual, Index size, Type epsi
   for (Index i = 0; i < size; ++i) {
     INFO("Inaccurate at " << i << ' ' << reference[i] << ' ' << actual[i]);
     // Ratio to maximum value.
-    float threshold = epsilon * std::max<float>(0.01f, fabsf(reference[i]));
-    CHECK(fabsf(reference[i] - actual[i]) < threshold);
+    float threshold = epsilon * std::max<float>(0.01f, std::fabs(reference[i]));
+    CHECK(std::fabs(reference[i] - actual[i]) < threshold);
   }
 }
 

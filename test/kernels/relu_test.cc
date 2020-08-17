@@ -2,7 +2,6 @@
 #include "../../aligned.h"
 #include "../../kernels.h"
 
-#include <stdint.h>
 #include <cstdint>
 #include <numeric>
 

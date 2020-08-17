@@ -5,7 +5,6 @@
 #include "types.h"
 
 #include <cstdint>
-#include <stdint.h>
 
 // 8 bit is in ssse3_gemm.h
 

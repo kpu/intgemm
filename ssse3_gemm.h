@@ -6,7 +6,6 @@
 #include "types.h"
 
 #include <cstdint>
-#include <stdint.h>
 #include <cstring>
 
 // 16-bit is in sse2_gemm.h

@@ -12,10 +12,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
 
 /* AVX512 implementation.
  * This uses INTGEMM_AVX512BW, INTGEMM_AVX512DQ, and might use AVX512VL

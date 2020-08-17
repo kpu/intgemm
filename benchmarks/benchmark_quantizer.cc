@@ -14,7 +14,7 @@ namespace {
 
 float MaxAbsoluteBaseline(const float *begin, const float *end) {
   auto res = std::minmax_element(begin, end);
-  return std::max(fabsf(*res.first), fabsf(*res.second));
+  return std::max(std::fabs(*res.first), std::fabs(*res.second));
 }
 
 void BenchmarkMaxAbsolute() {

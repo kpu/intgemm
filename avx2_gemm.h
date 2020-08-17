@@ -6,7 +6,6 @@
 #include "types.h"
 
 #include <cstdint>
-#include <stdint.h>
 #include <cstring>
 
 namespace intgemm {
