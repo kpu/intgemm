@@ -179,7 +179,7 @@ template <class Register> static inline void Transpose8InLane(
 // ... ...
 #define INTGEMM_PREPARE_B_8(target, QuantClass) \
 target static inline void PrepareB(const float *input, int8_t *output_shadow, float quant_mult, Index rows, Index cols) { \
-  using Quantizer = typename QuantClass; \
+  typedef typename QuantClass Quantizer; \
   using Register = typename Quantizer::Register; \
   Quantizer q = Quantizer(quant_mult); \
   /* Currently all multipliers have a stride of 8 columns.*/ \
@@ -214,7 +214,7 @@ target static inline void PrepareB(const float *input, int8_t *output_shadow, fl
 
 #define INTGEMM_PREPARE_B_16(target, QuantClass) \
 target static inline void PrepareB(const float *input, int16_t *output_shadow, float quant_mult, Index rows, Index cols) { \
-  using Quantizer = typename QuantClass; \
+  typedef typename QuantClass Quantizer; \
   using Register = typename Quantizer::Register; \
   Quantizer q = Quantizer(quant_mult); \
   assert(cols % 8 == 0); \
