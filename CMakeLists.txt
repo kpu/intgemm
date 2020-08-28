@@ -33,12 +33,13 @@ if(NOT INTGEMM_COMPILER_SUPPORTS_AVX512VNNI)
   message(WARNING "${Orange}Not building AVX512VNNI-based multiplication because your compiler is too old.\nFor details rerun cmake with --debug-trycompile then try to build in compile_tests/CMakeFiles/CMakeTmp.${ColourReset}")
 endif()
 
-# Generate configure file
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/intgemm_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/intgemm_config.h)
-
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
-
 add_library(intgemm STATIC intgemm.cc)
+
+# Generate configure file
+configure_file(intgemm_config.h.in intgemm_config.h)
+#Ensure it is included by users.
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(intgemm PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
 option(USE_OPENMP "Use OpenMP" OFF)
 if (USE_OPENMP)
