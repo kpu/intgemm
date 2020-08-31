@@ -1,10 +1,10 @@
 #include "test.h"
-#include "../aligned.h"
-#include "../callbacks.h"
-#include "../interleave.h"
-#include "../intgemm.h"
-#include "../multiply.h"
-#include "../stats.h"
+#include "../intgemm/aligned.h"
+#include "../intgemm/callbacks.h"
+#include "../intgemm/interleave.h"
+#include "../intgemm/intgemm.h"
+#include "../intgemm/multiply.h"
+#include "../intgemm/stats.h"
 
 #include <algorithm>
 #include <cassert>

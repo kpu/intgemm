@@ -1,8 +1,8 @@
-#include "intgemm.h"
+#include "intgemm/intgemm.h"
 // This is just for AlignedVector, which helps managed 64-byte aligned memory.
 // Feel free to manage memory yourself.
-#include "aligned.h" 
-#include "callbacks.h"
+#include "intgemm/aligned.h" 
+#include "intgemm/callbacks.h"
 
 #include <cassert>
 #include <cmath>

@@ -3,7 +3,7 @@
 #include "callbacks/configs.h"
 #include "callbacks/output_buffer_info.h"
 
-#include "intgemm_config.h"
+#include "intgemm/intgemm_config.h"
 #include "intrinsics.h"
 #include "kernels.h"
 #include "types.h"

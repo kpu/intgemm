@@ -41,7 +41,7 @@
 
 #include <cstdint>
 
-#include "intgemm_config.h"
+#include "intgemm/intgemm_config.h"
 #include "types.h"
 #include "sse2_gemm.h"
 #include "ssse3_gemm.h"

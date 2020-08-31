@@ -1,10 +1,10 @@
 #pragma once
 
-#include "intgemm_config.h"
+#include "intgemm/intgemm_config.h"
 
-#include "../3rd_party/catch.hpp"
-#include "../intgemm.h"
-#include "../aligned.h"
+#include "3rd_party/catch.hpp"
+#include "../intgemm/intgemm.h"
+#include "../intgemm/aligned.h"
 
 #include <cmath>
 #include <sstream>

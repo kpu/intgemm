@@ -1,8 +1,8 @@
-#include "../intgemm.h"
-#include "../aligned.h"
-#include "../ssse3_gemm.h"
-#include "../avx2_gemm.h"
-#include "../avx512_gemm.h"
+#include "../intgemm/intgemm.h"
+#include "../intgemm/aligned.h"
+#include "../intgemm/ssse3_gemm.h"
+#include "../intgemm/avx2_gemm.h"
+#include "../intgemm/avx512_gemm.h"
 
 #include <chrono>
 #include <iomanip>

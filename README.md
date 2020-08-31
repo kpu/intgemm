@@ -30,7 +30,7 @@ A full example appears in [example.cc](example.cc).
 
 Both A and B should be prepared before multiplication.
 ```C++
-#include "intgemm.h"
+#include "intgemm/intgemm.h"
 
 /* Not shown: allocate 64-byte aligned memory with e.g. aligned_alloc.
  * A is A_rows x width.
@@ -56,7 +56,7 @@ The last argument of `Multiply` is a callback which is usually used to performs 
 For 8-bit, you can make use a of a slightly faster implementation, assuming you can determine tha quantization multipliers and prepare the biases offline:
 
 ```C++
-#include "intgemm.h"
+#include "intgemm/intgemm.h"
 
 /* Not shown: allocate 64-byte aligned memory with e.g. aligned_alloc.
  * A is A_rows x width.

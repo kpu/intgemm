@@ -1,6 +1,6 @@
 #pragma once
 
-#include "intgemm_config.h"
+#include "intgemm/intgemm_config.h"
 #include "types.h"
 
 #include <tmmintrin.h>

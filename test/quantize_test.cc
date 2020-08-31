@@ -1,10 +1,10 @@
 #include "test.h"
-#include "../aligned.h"
-#include "../avx2_gemm.h"
-#include "../avx512_gemm.h"
-#include "../sse2_gemm.h"
-#include "../ssse3_gemm.h"
-#include "../stats.h"
+#include "../intgemm/aligned.h"
+#include "../intgemm/avx2_gemm.h"
+#include "../intgemm/avx512_gemm.h"
+#include "../intgemm/sse2_gemm.h"
+#include "../intgemm/ssse3_gemm.h"
+#include "../intgemm/stats.h"
 
 #include <cmath>
 #include <cstring>

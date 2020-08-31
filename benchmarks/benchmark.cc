@@ -1,12 +1,12 @@
-#include "../aligned.h"
-#include "intgemm_config.h"
-#include "../avx512_gemm.h"
-#include "../sse2_gemm.h"
-#include "../avx2_gemm.h"
-#include "../ssse3_gemm.h"
-#include "../intgemm.h"
-#include "../stats.h"
-#include "../callbacks.h"
+#include "../intgemm/aligned.h"
+#include "intgemm/intgemm_config.h"
+#include "../intgemm/avx512_gemm.h"
+#include "../intgemm/sse2_gemm.h"
+#include "../intgemm/avx2_gemm.h"
+#include "../intgemm/ssse3_gemm.h"
+#include "../intgemm/intgemm.h"
+#include "../intgemm/stats.h"
+#include "../intgemm/callbacks.h"
 
 #include <algorithm>
 #include <cassert>
