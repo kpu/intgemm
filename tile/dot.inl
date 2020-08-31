@@ -21,27 +21,12 @@
 namespace intgemm {
 namespace INTGEMM_ARCH {
 
-/* When Register is used as a template argument, gcc warns
- * warning: ignoring attributes on template argument ‘Register’ {aka ‘__vector(8) long long int’} [-Wignored-attributes]
- * So here is a class that doesn't warn.
- */
-class RegisterRowMajorAccess {
-  public:
-    typedef Register Content;
+struct DotBase {
+  static constexpr Tile kTile { 1, sizeof(Register), 1 };
 
-    RegisterRowMajorAccess(Content *data, Index cols)
-      : data_(data), cols_(cols) {}
-
-    RegisterRowMajorAccess Add(Index row, Index col) const {
-      return RegisterRowMajorAccess(data_ + row * cols_ + col, cols_);
-    }
-
-    const Content &Front() const { return *data_; }
-    Content &Front() { return *data_; }
-
-  private:
-    Content *data_;
-    Index cols_;
+  template <class From, class To> INTGEMM_TARGET static inline void PrepareB(From from, To to) {
+    to.Front<Register>() = from.Front<Register>();
+  }
 };
 
 /* gcc _mm512_dpbusds_epi32 is slow because it inserts spurious vmovdqa64 instructions.
@@ -83,7 +68,7 @@ class RegisterRowMajorAccess {
  * clang 9.0.1 deals with this fine.
  */
 #ifdef INTGEMM_THIS_IS_AVX512VNNI
-INTGEMM_TARGET static inline void VNNI8(Register &c, Register a, Register b) {
+INTGEMM_TARGET static inline void VNNI8(Register a, Register b, Register &c) {
 #if defined(__GNUC__) && !defined(__clang__) && !defined(__INTEL_COMPILER)
     asm ("vpdpbusds %2, %1, %0" : "+x"(c) : "x"(a), "mx"(b));
 #else
@@ -94,21 +79,19 @@ INTGEMM_TARGET static inline void VNNI8(Register &c, Register a, Register b) {
 
 // 8-bit integer multiplication unsigned A * signed B.
 #if !defined(INTGEMM_THIS_IS_SSE2) // No int8 on SSE2.
-struct Shifted8 {
+struct Shifted8 : DotBase {
   template <class Access> INTGEMM_TARGET static inline void Run(Access access) {
-    const Register &a = reinterpret_cast<const Register&>(access.AFront());
-    const Register &b = reinterpret_cast<const Register&>(access.BFront());
+    const Register &a = access.AFront<Register>();
+    const Register &b = access.BFront<Register>();
 #ifdef INTGEMM_THIS_IS_AVX512VNNI
-    VNNI8(access.CFront(), a, b);
+    VNNI8(a, b, access.CFront<Register>());
 #else
     const Register ones = set1_epi16<Register>(1);
     Register mult = maddubs_epi16(a, b);
     mult = madd_epi16(mult, ones);
-    access.CFront() = add_epi32(access.CFront(), mult);
+    access.CFront<Register>() = add_epi32(access.CFront<Register>(), mult);
 #endif
   }
-
-  static constexpr Tile kTile { 1, sizeof(Register), 1 };
 
   struct Packed {
     typedef uint8_t A;
@@ -118,10 +101,10 @@ struct Shifted8 {
 };
 
 // 8-bit integer multiplication signed A * signed B.  Slower.
-struct Signed8 {
+struct Signed8 : DotBase {
   template <class Access> INTGEMM_TARGET static inline void Run(Access access) {
-    const Register &a = reinterpret_cast<const Register&>(access.AFront());
-    const Register &b = reinterpret_cast<const Register&>(access.BFront());
+    const Register &a = access.ARead<Register>();
+    const Register &b = access.BRead<Register>();
     const Register a_positive = abs_epi8(a);
     // b_signed = b * sign(a)
 #if defined(INTGEMM_THIS_IS_AVX512VNNI) || defined(INTGEMM_THIS_IS_AVX512BW)
@@ -137,14 +120,12 @@ struct Signed8 {
 
     // c += |a| * b_signed
 #if defined(INTGEMM_THIS_IS_AVX512VNNI)
-    VNNI8(access.CFront(), a_positive, b_signed);
+    VNNI8(a_positive, b_signed, access.CFront<Register>());
 #else
     Register mult = maddubs_epi16(a_positive, b_signed);
-    access.CFront() = adds_epi16(access.CFront(), mult);
+    access.CFront<Register>() = adds_epi16(access.CFront<Register>(), mult);
 #endif
   }
-
-  static constexpr Tile kTile { 1, sizeof(Register), 1 };
 
   struct Packed {
     typedef int8_t A;
@@ -159,25 +140,76 @@ struct Signed8 {
 #endif // No int8 on SSE2.
 
 // Signed 16-bit integer multiplication.
-struct Signed16 {
+struct Signed16 : DotBase {
   template <class Access> INTGEMM_TARGET static inline void Run(Access access) {
-    const Register &a = reinterpret_cast<const Register&>(access.AFront());
-    const Register &b = reinterpret_cast<const Register&>(access.BFront());
+    const Register &a = access.AFront<Register>();
+    const Register &b = access.BFront<Register>();
 #if defined(INTGEMM_THIS_IS_AVX512VNNI)
-    access.CFront() = _mm512_dpwssds_epi32(access.CFront(), a, b);
+    access.CFront<Register>() = _mm512_dpwssds_epi32(access.CFront<Register>(), a, b);
 #else
     Register mult = madd_epi16(a, b);
-    access.CFront() = add_epi32(access.CFront(), mult);
+    access.CFront<Register>() = add_epi32(access.CFront<Register>(), mult);
 #endif
   }
-
-  static constexpr Tile kTile { 1, sizeof(Register), 1 };
 
   struct Packed {
     typedef int16_t A;
     typedef int16_t B;
     typedef int32_t C;
   };
+};
+
+class SingleAccess {
+  public:
+    explicit SingleAccess(const Register &reg) : reg_(reg) {}
+
+    // template but only has one option.
+    template <class R = Content> const Register &Front() const {
+      return reg_;
+    }
+
+  private:
+    const Register reg_;
+};
+
+template <class Backend> struct Rotate {
+  template <class Acc> INTGEMM_TARGET static inline void Run(Acc access) {
+    // Could loop over A but really just put the loop around this.
+    static_assert(Backend::kTile.A_rows == 1);
+    Register a = access.AFront<Register>();
+    Run128(a, access);
+    // Create permuations.
+#ifdef INTGEMM_THIS_IS_AVX2
+    // Flip 128-bit registers
+    Run128(_mm256_permute4x64_epi64(a, 2 | (3 << 2) | (0 << 4) | (1 << 6)), access.BAdd(0, 4));
+#elif defined(INTGEMM_THIS_IS_AVX512VNNI) || defined(INTGEMM_THIS_IS_AVX512BW)
+    // TODO consider permuting same register to save registers.
+    // 1 0 3 2
+    Run128(_mm512_permutex_epi64(a, 2 | (3 << 2) | (0 << 4) | (1 << 6)), access.BAdd(0, 4));
+    // 2 3 0 1
+    Run128(_mm512_shuffle_i64x2(a, a, 2 | (3 << 2) | (0 << 4) | (1 << 6)), access.BAdd(0, 8));
+    // 3 2 1 0 could also be derived using _mm512_permutex_epi64 on the above line.
+    Run128(_mm512_shuffle_i64x2(a, a, 3 | (2 << 2) | (1 << 4) | (0 << 6)), access.BAdd(0, 12));
+#endif
+  }
+
+  template <class From, class To> INTGEMM_TARGET static inline void PrepareB(From from, To to) {
+  }
+
+  typedef typename Backend::Packed Packed;
+
+  private:
+    template <class Acc> INTGEMM_TARGET static inline void Run128(Register a, Acc access) {
+      typedef Access<SingleAccess, typename Acc::B, typename Acc::C> Internal;
+      Backend::Run(Internal(SingleAccess(a), acc.BAccessor(), acc.CAccessor()));
+      // Shift everything left.  TODO: consider sequence vs all derived from same register.
+      a = shuffle_epi32(a, 1 | (2 << 2) | (3 << 4) | (0 << 6));
+      Backend::Run(Internal(SingleAccess(a), acc.BAccessor().Add(0, 1), acc.CAccessor());
+      a = shuffle_epi32(a, 1 | (2 << 2) | (3 << 4) | (0 << 6));
+      Backend::Run(Internal(SingleAccess(a), acc.BAccessor().Add(0, 2), acc.CAccessor());
+      a = shuffle_epi32(a, 1 | (2 << 2) | (3 << 4) | (0 << 6));
+      Backend::Run(Internal(SingleAccess(a), acc.BAccessor().Add(0, 3), acc.CAccessor()));
+    }
 };
 
 // Statically unroll a kernel into a larger tile.
