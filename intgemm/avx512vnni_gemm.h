@@ -7,6 +7,7 @@
 #include "types.h"
 
 namespace intgemm {
+namespace avx512vnni {
 
 // Workaround extra vmovdqa64 https://gcc.gnu.org/bugzilla/show_bug.cgi?id=94663
 INTGEMM_AVX512VNNI static inline void VNNI8(__m512i &c, __m512i a, __m512i b) {
@@ -17,7 +18,7 @@ INTGEMM_AVX512VNNI static inline void VNNI8(__m512i &c, __m512i a, __m512i b) {
 #endif
 }
 
-struct AVX512VNNI_8bit : public AVX512_8bit {
+struct Kernels8 : public avx512bw::Kernels8 {
   template <typename Callback>
   INTGEMM_AVX512VNNI static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
     typedef __m512i Register;
@@ -164,6 +165,7 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
   static const CPUType kUses = CPUType::AVX512VNNI;
 };
 
+} // namespace avx512vnni
 } // namespace intgemm
 
 #endif

@@ -120,24 +120,24 @@ template <class Backend> void TestMany(std::size_t grow) {
 
 TEST_CASE ("Quantize SSE2", "[quantize]") {
   if (kCPU < CPUType::SSE2) return;
-  TestMany<SSE2_16bit>(8);
+  TestMany<sse2::Kernels16>(8);
 }
 
 TEST_CASE ("Quantize SSSE3", "[quantize]") {
   if (kCPU < CPUType::SSSE3) return;
-  TestMany<SSSE3_8bit>(1);
+  TestMany<ssse3::Kernels8>(1);
 }
 
 TEST_CASE ("Quantize AVX2", "[quantize]") {
   if (kCPU < CPUType::AVX2) return;
-  TestMany<AVX2_8bit>(1);
-  TestMany<AVX2_16bit>(16);
+  TestMany<avx2::Kernels8>(1);
+  TestMany<avx2::Kernels16>(16);
 }
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
   TEST_CASE ("Quantize AVX512", "[quantize]") {
     if (kCPU < CPUType::AVX512BW) return;
-    TestMany<AVX512_8bit>(1);
-    TestMany<AVX512_16bit>(16);
+    TestMany<avx512bw::Kernels8>(1);
+    TestMany<avx512bw::Kernels16>(16);
   }
 #endif
 

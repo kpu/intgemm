@@ -11,7 +11,6 @@
 // 16-bit is in sse2_gemm.h
 
 namespace intgemm {
-
 namespace ssse3 {
 
 INTGEMM_SSSE3 inline __m128i QuantizerGrab(const float *input, const __m128 quant_mult_reg) {
@@ -104,10 +103,8 @@ class QuantizeTile8 {
     const __m128 mult_reg_;
 };
 
-} // namespace
-
-// pmaddubsw (the 8-bit multiply) is INTGEMM_SSSE3, so pedantically that's the version we need.
-struct SSSE3_8bit {
+// pmaddubsw (the 8-bit multiply) is SSSE3, so pedantically that's the version we need.
+struct Kernels8 {
   typedef int8_t Integer;
 
   // Currently A is prepared by quantization but this could theoretically change.
@@ -160,4 +157,5 @@ struct SSSE3_8bit {
   static const CPUType kUses = CPUType::SSSE3;
 };
 
+} // namespace ssse3
 } // namespace intgemm

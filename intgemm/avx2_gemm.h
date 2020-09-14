@@ -9,7 +9,6 @@
 #include <cstring>
 
 namespace intgemm {
-
 namespace avx2 {
 
 INTGEMM_AVX2 inline __m256i QuantizerGrab(const float *input, const __m256 quant_mult_reg) {
@@ -52,10 +51,7 @@ class QuantizeTile16 {
     const __m256 mult_;
 };
 
-} // namespace
-
-
-struct AVX2_16bit {
+struct Kernels16 {
   typedef int16_t Integer;
 
   // Currently A is prepared by quantization but this could theoretically change.
@@ -96,7 +92,6 @@ struct AVX2_16bit {
   static const CPUType kUses = CPUType::AVX2;
 };
 
-namespace avx2 {
 /* Read 8 floats at a time from input0, input1, input2, and input3.  Quantize
  * them to 8-bit by multiplying with quant_mult_reg then rounding. Concatenate
  * the result into one register and return it.
@@ -188,9 +183,7 @@ class QuantizeTile8 {
     const __m256 mult_;
 };
 
-} // namespace
-
-struct AVX2_8bit {
+struct Kernels8 {
   typedef int8_t Integer;
 
   // Currently A is prepared by quantization but this could theoretically change.
@@ -241,4 +234,5 @@ struct AVX2_8bit {
   static const CPUType kUses = CPUType::AVX2;
 };
 
+} // namespace avx2
 } // namespace intgemm
