@@ -19,8 +19,6 @@ INTGEMM_SELECT_COL_B(INTGEMM_SSE2, __m128i)
 
 class QuantizeTile16 {
   public:
-    typedef __m128i Register;
-
     INTGEMM_SSE2 explicit QuantizeTile16(float mult) : mult_reg_(_mm_set1_ps(mult)) {}
 
     INTGEMM_SSE2 inline __m128i Consecutive(const float *input) const {

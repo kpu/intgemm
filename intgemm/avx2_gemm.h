@@ -11,16 +11,14 @@
 namespace intgemm {
 namespace avx2 {
 
-INTGEMM_AVX2 inline __m256i QuantizerGrab(const float *input, const __m256 quant_mult_reg) {
-  return kernels::quantize(loadu_ps<__m256>(input), quant_mult_reg);
+INTGEMM_AVX2 inline Register QuantizerGrab(const float *input, const __m256 quant_mult_reg) {
+  return kernels::quantize(loadu_ps<FRegister>(input), quant_mult_reg);
 }
 
 INTGEMM_SELECT_COL_B(INTGEMM_AVX2, __m256i)
 
 class QuantizeTile16 {
   public:
-    typedef __m256i Register;
-
     INTGEMM_AVX2 explicit QuantizeTile16(float mult) : mult_(_mm256_set1_ps(mult)) {}
 
     INTGEMM_AVX2 Register Consecutive(const float *input) const {
@@ -40,15 +38,15 @@ class QuantizeTile16 {
 
   private:
     INTGEMM_AVX2 __m256i Tile(const float *input0, const float *input1) const {
-      __m256i g0 = QuantizerGrab(input0, mult_);
-      __m256i g1 = QuantizerGrab(input1, mult_);
-      __m256i packed = _mm256_packs_epi32(g0, g1);
+      Register g0 = QuantizerGrab(input0, mult_);
+      Register g1 = QuantizerGrab(input1, mult_);
+      Register packed = _mm256_packs_epi32(g0, g1);
       // Reorder the packed values because Intel does 0 1 2 3 8 9 10 11 4 5 6 7 12 13 14 15.
       // Technically this could be removed if the PrepareB did the same reordering internally.
       return _mm256_permute4x64_epi64(packed, 0xd8 /* 0, 2, 1, 3 */);
     }
 
-    const __m256 mult_;
+    const FRegister mult_;
 };
 
 struct Kernels16 {
@@ -98,8 +96,6 @@ struct Kernels16 {
  */
 class QuantizeTile8 {
   public:
-    typedef __m256i Register;
-
     INTGEMM_AVX2 explicit QuantizeTile8(float quant_mult) : mult_(_mm256_set1_ps(quant_mult)) {}
 
     INTGEMM_AVX2 inline __m256i Consecutive(const float *input) const {

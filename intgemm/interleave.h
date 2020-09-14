@@ -238,7 +238,6 @@ target static inline void PrepareB(const float *input, int16_t *output_shadow, f
  */
 #define INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(target, cpu_type, Integer) \
 target static inline void PrepareBQuantizedTransposed(const Integer* input, Integer* output, Index cols, Index rows) { \
-  using Register = vector_t<cpu_type, Integer>; \
   const Index RegisterElems = sizeof(Register) / sizeof(Integer); \
   const Index kColStride = 8; \
   \
@@ -263,7 +262,6 @@ target static inline void PrepareBQuantizedTransposed(const Integer* input, Inte
  */
 #define INTGEMM_PREPARE_B_TRANSPOSED(target, Quantizer, Integer) \
 target static inline void PrepareBTransposed(const float* input, Integer* output, float quant_mult, Index cols, Index rows) { \
-  using Register = typename Quantizer::Register; \
   const Index RegisterElemsInt = sizeof(Register) / sizeof(Integer); \
   const Index kColStride = 8; \
   \

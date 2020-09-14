@@ -21,7 +21,6 @@ INTGEMM_AVX512VNNI static inline void VNNI8(__m512i &c, __m512i a, __m512i b) {
 struct Kernels8 : public avx512bw::Kernels8 {
   template <typename Callback>
   INTGEMM_AVX512VNNI static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
-    typedef __m512i Register;
     assert(width % sizeof(Register) == 0);
     assert(B_cols % 8 == 0);
     assert(reinterpret_cast<uintptr_t>(A) % sizeof(Register) == 0);
@@ -83,7 +82,6 @@ struct Kernels8 : public avx512bw::Kernels8 {
 
   template <typename Callback>
   INTGEMM_AVX512VNNI static void Multiply8Shift(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
-    typedef __m512i Register;
     assert(width % sizeof(Register) == 0);
     assert(B_cols % 8 == 0);
     assert(reinterpret_cast<uintptr_t>(A) % sizeof(Register) == 0);
@@ -125,7 +123,6 @@ struct Kernels8 : public avx512bw::Kernels8 {
 
   template <typename Callback>
   INTGEMM_AVX512VNNI static void PrepareBias(const int8_t *B, Index width, Index B_cols, Callback callback) {
-    typedef __m512i Register;
     assert(width % sizeof(Register) == 0);
     assert(B_cols % 8 == 0);
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0);

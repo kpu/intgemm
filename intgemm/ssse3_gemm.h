@@ -21,8 +21,6 @@ INTGEMM_SELECT_COL_B(INTGEMM_SSSE3, __m128i)
 
 class QuantizeTile8 {
   public:
-    typedef __m128i Register;
-
     INTGEMM_SSSE3 explicit QuantizeTile8(float mult) : mult_reg_(_mm_set1_ps(mult)) {}
 
     INTGEMM_SSSE3 inline __m128i ForReshape(const float *input, Index cols) const {
@@ -100,7 +98,7 @@ class QuantizeTile8 {
     }
 
   private:
-    const __m128 mult_reg_;
+    const FRegister mult_reg_;
 };
 
 // pmaddubsw (the 8-bit multiply) is SSSE3, so pedantically that's the version we need.
