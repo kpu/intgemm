@@ -235,7 +235,7 @@ CPU_ATTR static inline dvector_t<CPUType::CPU_NAME, int16_t> upcast8to16(vi inpu
   static const auto permutation_indices = _mm512_set_epi64(7, 3, 6, 2, 5, 1, 4, 0);
 
   input = _mm512_castpd_si512(_mm512_permutexvar_pd(permutation_indices, _mm512_castsi512_pd(input)));
-  auto negatives = _mm512_cmp_epi8_mask(input, vzero, _MM_CMPINT_LT);
+  auto negatives = _mm512_cmp_epi8_mask(input, vzero, 1 /* _MM_CMPINT_LT */);
   auto higher_byte = _mm512_mask_blend_epi8(negatives, vzero, vmax_negative);
 #endif
 
@@ -258,7 +258,7 @@ CPU_ATTR static inline dvector_t<CPUType::CPU_NAME, int> upcast16to32(vi input) 
   static const auto permutation_indices = _mm512_set_epi64(7, 3, 6, 2, 5, 1, 4, 0);
 
   input = _mm512_castpd_si512(_mm512_permutexvar_pd(permutation_indices, _mm512_castsi512_pd(input)));
-  auto negatives = _mm512_cmp_epi16_mask(input, vzero, _MM_CMPINT_LT);
+  auto negatives = _mm512_cmp_epi16_mask(input, vzero, 1 /* _MM_CMPINT_LT */);
   auto higher_byte = _mm512_mask_blend_epi16(negatives, vzero, vmax_negative);
 #endif
 
