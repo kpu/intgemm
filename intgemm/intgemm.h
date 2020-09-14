@@ -124,11 +124,15 @@ struct Unsupported_8bit {
 
 #ifndef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
 // These won't ever be called in this capacity, but it does let the code below compile.
-typedef Unsupported_8bit avx512vnni::Kernels8;
+namespace avx512vnni {
+typedef Unsupported_8bit Kernels8;
+} // namespace avx512vnni
 #endif
 #ifndef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-typedef Unsupported_8bit avx512bw::Kernels8;
-typedef Unsupported_16bit avx512bw::Kernels16;
+namespace avx512bw {
+typedef Unsupported_8bit Kernels8;
+typedef Unsupported_16bit Kernels16;
+} // namespace avx512bw
 #endif
 
 /* Returns:
