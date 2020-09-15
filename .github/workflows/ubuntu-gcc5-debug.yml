@@ -1,4 +1,4 @@
-name: Ubuntu gcc5
+name: Ubuntu gcc5 debug
 
 on:
   push:
@@ -13,12 +13,12 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: install
-      run: sudo apt-get install gcc-5 g++-5
+      run: sudo apt-get install -y gcc-5 g++-5
     - name: cmake
       run: |
         cmake -E make_directory build
         cd build
-        cmake -DCMAKE_C_COMPILER=gcc-5 -DCMAKE_CXX_COMPILER=g++-5 ..
+        cmake -DCMAKE_C_COMPILER=gcc-5 -DCMAKE_CXX_COMPILER=g++-5 -DCMAKE_BUILD_TYPE=Debug ..
     - name: Compile
       working-directory: build
       run: cmake --build . -j2
