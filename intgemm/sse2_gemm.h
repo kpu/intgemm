@@ -70,7 +70,7 @@ struct Kernels16 {
   static const Index kBTileCol = 8;
 
   INTGEMM_PREPARE_B_16(INTGEMM_SSE2, QuantizeTile16)
-  INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(INTGEMM_SSE2, CPUType::SSE2, int16_t)
+  INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(INTGEMM_SSE2, int16_t)
   INTGEMM_PREPARE_B_TRANSPOSED(INTGEMM_SSE2, QuantizeTile16, int16_t)
 
   INTGEMM_SSE2 static void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {

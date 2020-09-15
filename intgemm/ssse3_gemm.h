@@ -137,7 +137,7 @@ struct Kernels8 {
   static const Index kBTileCol = 8;
 
   INTGEMM_PREPARE_B_8(INTGEMM_SSSE3, ssse3::QuantizeTile8)
-  INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(INTGEMM_SSSE3, CPUType::SSE2, int8_t)
+  INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(INTGEMM_SSSE3, int8_t)
   INTGEMM_PREPARE_B_TRANSPOSED(INTGEMM_SSSE3, ssse3::QuantizeTile8, int8_t)
 
   INTGEMM_SSSE3 static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
