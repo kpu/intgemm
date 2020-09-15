@@ -66,36 +66,27 @@ INTGEMM_AVX512BW inline __m512i QuantizerGrabHalves(const float *input0, const f
 // being used for the quantizer.
 class QuantizeTile16 {
   public:
-    /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
-    INTGEMM_AVX512BW explicit QuantizeTile16(float mult) : mult_reg_(_mm512_set1_ps(mult)) {}
-
-    INTGEMM_AVX512BW Register ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) const {
+    INTGEMM_AVX512BW static inline Register ConsecutiveWithWrapping(FRegister quant_mult, const float *input, Index cols_left, Index cols, Index row_step) {
       auto input0 = input;
       auto input1 = input + 16 + (cols_left <= 16 ? cols * (row_step - 1) : 0);
-      auto g0 = QuantizerGrabHalves(input0, input1, mult_reg_);
-      auto g1 = QuantizerGrabHalves(input0 + 8, input1 + 8, mult_reg_);
+      auto g0 = QuantizerGrabHalves(input0, input1, quant_mult);
+      auto g1 = QuantizerGrabHalves(input0 + 8, input1 + 8, quant_mult);
       auto packed = packs_epi32(g0, g1);
       return _mm512_permutex_epi64(packed, 0xd8 /* 0, 2, 1, 3 */);
     }
 
-    INTGEMM_AVX512BW inline __m512i ForReshape(const float *input, Index cols) const {
-      __m512i g0 = QuantizerGrabHalves(input, input + 16 * cols, mult_reg_);
-      __m512i g1 = QuantizerGrabHalves(input + 8 * cols, input + 24 * cols, mult_reg_);
+    INTGEMM_AVX512BW static inline Register ForReshape(FRegister quant_mult, const float *input, Index cols) {
+      __m512i g0 = QuantizerGrabHalves(input, input + 16 * cols, quant_mult);
+      __m512i g1 = QuantizerGrabHalves(input + 8 * cols, input + 24 * cols, quant_mult);
       __m512i packed = packs_epi32(g0, g1);
       // Permute within 256-bit lanes, so same as INTGEMM_AVX2
       return _mm512_permutex_epi64(packed, 0xd8 /* 0, 2, 1, 3 */);
     }
-
-  private:
-    const __m512 mult_reg_;
 };
 
 class QuantizeTile8 {
   public:
-    /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
-    INTGEMM_AVX512BW explicit QuantizeTile8(float mult) : mult_reg_(_mm512_set1_ps(mult)) {}
-
-    INTGEMM_AVX512BW Register ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) const {
+    INTGEMM_AVX512BW static inline Register ConsecutiveWithWrapping(FRegister quant_mult, const float *input, Index cols_left, Index cols, Index row_step) {
       static const __m512i neg127 = _mm512_set1_epi8(-127);
       static const __m512i shuffle_param = _mm512_set_epi32(15, 11, 7, 3, 14, 10, 6, 2, 13, 9, 5, 1, 12, 8, 4, 0);
 
@@ -110,10 +101,10 @@ class QuantizeTile8 {
         cols_left -= sizeof(Register) / sizeof(float);
       }
 
-      auto g0 = QuantizerGrab(inputs[0], mult_reg_);
-      auto g1 = QuantizerGrab(inputs[1], mult_reg_);
-      auto g2 = QuantizerGrab(inputs[2], mult_reg_);
-      auto g3 = QuantizerGrab(inputs[3], mult_reg_);
+      auto g0 = QuantizerGrab(inputs[0], quant_mult);
+      auto g1 = QuantizerGrab(inputs[1], quant_mult);
+      auto g2 = QuantizerGrab(inputs[2], quant_mult);
+      auto g3 = QuantizerGrab(inputs[3], quant_mult);
 
       auto packed0 = packs_epi32(g0, g1);
       auto packed1 = packs_epi32(g2, g3);
@@ -122,17 +113,17 @@ class QuantizeTile8 {
       return _mm512_permutexvar_epi32(shuffle_param, packed);
     }
 
-    INTGEMM_AVX512BW inline __m512i ForReshape(const float *input, Index cols) const {
+    INTGEMM_AVX512BW static inline __m512i ForReshape(FRegister quant_mult, const float *input, Index cols) {
       // TODO: try alternative: _mm512_cvtsepi32_epi8 ?
       const __m512i neg127 = _mm512_set1_epi8(-127);
       // In reverse order: grabbing the first 32-bit values from each 128-bit register, then the second 32-bit values, etc.
       const __m512i shuffle_param = _mm512_set_epi32(15, 11, 7, 3, 14, 10, 6, 2, 13, 9, 5, 1, 12, 8, 4, 0);
 
       // 32-bit format.
-      __m512i g0 = QuantizerGrabHalves(input, input + 2 * cols, mult_reg_);
-      __m512i g1 = QuantizerGrabHalves(input + 16 * cols, input + 18 * cols, mult_reg_);
-      __m512i g2 = QuantizerGrabHalves(input + 32 * cols, input + 34 * cols, mult_reg_);
-      __m512i g3 = QuantizerGrabHalves(input + 48 * cols, input + 50 * cols, mult_reg_);
+      __m512i g0 = QuantizerGrabHalves(input, input + 2 * cols, quant_mult);
+      __m512i g1 = QuantizerGrabHalves(input + 16 * cols, input + 18 * cols, quant_mult);
+      __m512i g2 = QuantizerGrabHalves(input + 32 * cols, input + 34 * cols, quant_mult);
+      __m512i g3 = QuantizerGrabHalves(input + 48 * cols, input + 50 * cols, quant_mult);
       // Pack 32-bit to 16-bit.
       __m512i packed0 = packs_epi32(g0, g1);
       __m512i packed1 = packs_epi32(g2, g3);
@@ -143,9 +134,6 @@ class QuantizeTile8 {
       // 0 1 2 3 16 17 18 19 32 33 34 35 48 49 50 51 4 5 6 7 20 21 22 23 36 37 38 39 52 53 54 55 8 9 10 11 24 25 26 27 40 41 42 43 56 57 58 59 12 13 14 15 28 29 30 31 44 45 46 47 60 61 62 63
       return _mm512_permutexvar_epi32(shuffle_param, packed);
     }
-
-  private:
-    const __m512 mult_reg_;
 };
 
 struct Kernels16 {

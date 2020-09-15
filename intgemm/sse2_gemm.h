@@ -19,30 +19,26 @@ INTGEMM_SELECT_COL_B(INTGEMM_SSE2, __m128i)
 
 class QuantizeTile16 {
   public:
-    INTGEMM_SSE2 explicit QuantizeTile16(float mult) : mult_reg_(_mm_set1_ps(mult)) {}
-
-    INTGEMM_SSE2 inline __m128i Consecutive(const float *input) const {
-      return Tile(input, input + 4);
+    INTGEMM_SSE2 static inline Register Consecutive(__m128 mult_reg, const float *input) {
+      return Tile(mult_reg, input, input + 4);
     }
 
-    INTGEMM_SSE2 Register ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) const {
-      return Tile(
+    INTGEMM_SSE2 static inline Register ConsecutiveWithWrapping(__m128 mult_reg, const float *input, Index cols_left, Index cols, Index row_step) {
+      return Tile(mult_reg,
         input,
         input + 4 + (cols_left <= 4 ? cols * (row_step - 1) : 0));
     }
 
-    INTGEMM_SSE2 inline __m128i ForReshape(const float *input, int) const {
-      return Consecutive(input);
+    INTGEMM_SSE2 static inline Register ForReshape(__m128 mult_reg, const float *input, int) {
+      return Consecutive(mult_reg, input);
     }
 
   private:
-    INTGEMM_SSE2 __m128i Tile(const float *input0, const float *input1) const {
-      __m128i g0 = QuantizerGrab(input0, mult_reg_);
-      __m128i g1 = QuantizerGrab(input1, mult_reg_);
+    INTGEMM_SSE2 static inline Register Tile(__m128 mult_reg, const float *input0, const float *input1) {
+      __m128i g0 = kernels::quantize(loadu_ps<__m128>(input0), mult_reg);
+      __m128i g1 = kernels::quantize(loadu_ps<__m128>(input1), mult_reg);
       return _mm_packs_epi32(g0, g1);
     }
-
-    const __m128 mult_reg_;
 };
 
 // This should be pure SSE2 (and below).
@@ -58,10 +54,10 @@ struct Kernels16 {
     assert(size % 8 == 0);
     assert(reinterpret_cast<uintptr_t>(input) % 16 == 0);
     assert(reinterpret_cast<uintptr_t>(output) % 16 == 0);
-    sse2::QuantizeTile16 q(quant_mult);
+    FRegister q = set1_ps<FRegister>(quant_mult);
     const float *end = input + size;
     for (; input != end; input += 8, output += 8) {
-      *reinterpret_cast<__m128i*>(output) = q.Consecutive(input);
+      *reinterpret_cast<__m128i*>(output) = QuantizeTile16::Consecutive(q, input);
     }
   }
 
