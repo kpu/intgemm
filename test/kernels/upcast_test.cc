@@ -1,3 +1,5 @@
+// This test triggers an internal compiler error in gcc 5.
+#if defined(__OPTIMIZE__) || defined(__clang__) || defined(__INTEL_COMPILER) || !defined(__GNUC__) || (__GNUC__ != 5)
 #include "../test.h"
 #include "../../intgemm/aligned.h"
 #include "../../intgemm/kernels.h"
@@ -71,6 +73,7 @@ template INTGEMM_AVX512BW void kernel_upcast16to32_test<CPUType::AVX512BW>();
 KERNEL_TEST_CASE("upcast16to32 AVX512BW") { return kernel_upcast16to32_test<CPUType::AVX512BW>(); }
 #endif
 
+
 template <CPUType CPUType_>
 void kernel_upcast8to32_test() {
   if (kCPU < CPUType_)
@@ -106,3 +109,4 @@ KERNEL_TEST_CASE("upcast8to32 AVX512BW") { return kernel_upcast8to32_test<CPUTyp
 #endif
 
 }
+#endif
