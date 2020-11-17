@@ -25,8 +25,10 @@ void kernel_tanh_test() {
     CHECK_EPS(output[i], tanh(input[i]), 0.001f);
 }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 template INTGEMM_AVX2 void kernel_tanh_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("tanh AVX2") { return kernel_tanh_test<CPUType::AVX2>(); }
+#endif
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_tanh_test<CPUType::AVX512BW>();

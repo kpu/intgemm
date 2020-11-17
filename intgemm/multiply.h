@@ -13,6 +13,7 @@ INTGEMM_SSE2 static inline dvector_t<CPUType::SSE2, int> PermuteSummer(__m128i p
   return { pack0123, pack4567 };
 }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 INTGEMM_AVX2 static inline __m256i PermuteSummer(__m256i pack0123, __m256i pack4567) {
   // This instruction generates 1s 2s 3s 4s 5f 6f 7f 8f
   __m256i rev = _mm256_permute2f128_si256(pack0123, pack4567, 0x21);
@@ -20,7 +21,7 @@ INTGEMM_AVX2 static inline __m256i PermuteSummer(__m256i pack0123, __m256i pack4
   __m256i blended = _mm256_blend_epi32(pack0123, pack4567, 0xf0);
   return _mm256_add_epi32(rev, blended);
 }
-
+#endif
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
@@ -99,7 +100,9 @@ target inline Register Pack0123(Register sum0, Register sum1, Register sum2, Reg
 } \
 
 INTGEMM_PACK0123(INTGEMM_SSE2, __m128i)
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 INTGEMM_PACK0123(INTGEMM_AVX2, __m256i)
+#endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_PACK0123(INTGEMM_AVX512BW, __m512i)
@@ -111,10 +114,12 @@ INTGEMM_SSE2 static inline void RunCallback(Callback& callback_impl, dvector_t<C
   callback_impl(total.second, callbacks::OutputBufferInfo(row_idx, col_idx + 4, rows, cols));
 }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 template <typename Callback>
 INTGEMM_AVX2 static inline void RunCallback(Callback& callback_impl, vector_t<CPUType::AVX2, int> total, Index row_idx, Index col_idx, Index rows, Index cols) {
   callback_impl(total, callbacks::OutputBufferInfo(row_idx, col_idx, rows, cols));
 }
+#endif
 
 // 16-bit multiplier for INTGEMM_SSE2, INTGEMM_AVX2, and AVX512.
 // C = A * B * unquant_mult
@@ -374,7 +379,7 @@ template <typename Callback> target static void Multiply(const int16_t *A, const
  * 256-bit.  We had to wait for INTGEMM_AVX2 to get 256-bit versions of vpsignb and
  * vpmaddubsw.  That's why this code is generic over 128-bit or 256-bit.
  */
-
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 INTGEMM_AVX2 inline static void InnerINTGEMM_AVX2(
     __m256i a, const __m256i *b,
     __m256i &sum0, __m256i &sum1, __m256i &sum2, __m256i &sum3,
@@ -514,7 +519,7 @@ INTGEMM_AVX2 inline static void InnerINTGEMM_AVX2(
   sum7 = adds_epi16(sum7, maddubs_epi16(a_positive, sign_epi8(b[7], a)));
 #endif
 }
-
+#endif
 
 // For INTGEMM_SSSE3 without AVX
 INTGEMM_SSSE3 inline static void InnerINTGEMM_SSSE3(

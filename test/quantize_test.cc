@@ -128,17 +128,19 @@ TEST_CASE ("Quantize SSSE3", "[quantize]") {
   TestMany<ssse3::Kernels8>(1);
 }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 TEST_CASE ("Quantize AVX2", "[quantize]") {
   if (kCPU < CPUType::AVX2) return;
   TestMany<avx2::Kernels8>(1);
   TestMany<avx2::Kernels16>(16);
 }
+#endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-  TEST_CASE ("Quantize AVX512", "[quantize]") {
-    if (kCPU < CPUType::AVX512BW) return;
-    TestMany<avx512bw::Kernels8>(1);
-    TestMany<avx512bw::Kernels16>(16);
-  }
+TEST_CASE ("Quantize AVX512", "[quantize]") {
+  if (kCPU < CPUType::AVX512BW) return;
+  TestMany<avx512bw::Kernels8>(1);
+  TestMany<avx512bw::Kernels16>(16);
+}
 #endif
 
 TEST_CASE("QuantizeStd SSSE3", "[VectorMeanStd]") {
@@ -157,6 +159,7 @@ TEST_CASE("QuantizeStd SSSE3", "[VectorMeanStd]") {
   testVectorMeanStd<sse2::VectorMeanStd>(120832, true);
 }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 TEST_CASE("QuantizeStd AVX2", "[VectorMeanStd]") {
   if (kCPU < CPUType::AVX2) return;
   testVectorMeanStd<avx2::VectorMeanStd>(64);
@@ -172,6 +175,7 @@ TEST_CASE("QuantizeStd AVX2", "[VectorMeanStd]") {
   testVectorMeanStd<avx2::VectorMeanStd>(120832);
   testVectorMeanStd<avx2::VectorMeanStd>(120832, true);
 }
+#endif
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 TEST_CASE("QuantizeStd AVX512BW", "[VectorMeanStd]") {

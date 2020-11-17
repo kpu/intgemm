@@ -16,19 +16,26 @@ else()
   add_compile_options(-Wall -Wextra -pedantic -Werror -Wno-unknown-pragmas)
 endif()
 
+# Check if compiler supports AVX2 (this should only catch emscripten)
+try_compile(INTGEMM_COMPILER_SUPPORTS_AVX2
+  ${CMAKE_CURRENT_BINARY_DIR}/compile_tests
+  ${CMAKE_CURRENT_SOURCE_DIR}/compile_test_avx2.cc)
+if(NOT INTGEMM_COMPILER_SUPPORTS_AVX2)
+  message(WARNING "${Orange}Not building AVX2-based multiplication because your compiler is too old.\nFor details rerun cmake with --debug-trycompile then try to build in compile_tests/CMakeFiles/CMakeTmp.${ColourReset}")
+endif()
+
 # Check if compiler supports AVX512BW
 try_compile(INTGEMM_COMPILER_SUPPORTS_AVX512BW
   ${CMAKE_CURRENT_BINARY_DIR}/compile_tests
   ${CMAKE_CURRENT_SOURCE_DIR}/compile_test_avx512bw.cc)
-
 if(NOT INTGEMM_COMPILER_SUPPORTS_AVX512BW)
   message(WARNING "${Orange}Not building AVX512BW-based multiplication because your compiler is too old.\nFor details rerun cmake with --debug-trycompile then try to build in compile_tests/CMakeFiles/CMakeTmp.${ColourReset}")
 endif()
 
+# Check if the compiler supports AVX512VNNI
 try_compile(INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
   ${CMAKE_CURRENT_BINARY_DIR}/compile_tests
   ${CMAKE_CURRENT_SOURCE_DIR}/compile_test_avx512vnni.cc)
-#No compiler flags for this test; that's part of the test!
 if(NOT INTGEMM_COMPILER_SUPPORTS_AVX512VNNI)
   message(WARNING "${Orange}Not building AVX512VNNI-based multiplication because your compiler is too old.\nFor details rerun cmake with --debug-trycompile then try to build in compile_tests/CMakeFiles/CMakeTmp.${ColourReset}")
 endif()

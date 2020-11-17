@@ -82,21 +82,23 @@ template <class Routine> void TestPrepare(Index rows = 32, Index cols = 16) {
   	 PrintMatrix(reference.begin(), rows, cols) << "Routine" << '\n' << PrintMatrix(test.begin(), rows, cols));
 }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 TEST_CASE("Prepare AVX512", "[prepare]") {
   if (kCPU < CPUType::AVX512BW) return;
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 	TestPrepare<avx512bw::Kernels8>(64, 8);
 	TestPrepare<avx512bw::Kernels8>(256, 32);
     TestPrepare<avx512bw::Kernels16>(64, 8);
     TestPrepare<avx512bw::Kernels16>(256, 32);
-#endif
 }
+#endif
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 TEST_CASE("Prepare AVX2", "[prepare]") {
   if (kCPU < CPUType::AVX2) return;
   TestPrepare<avx2::Kernels8>(64, 32);
   TestPrepare<avx2::Kernels16>(64, 32);
 }
+#endif
 
 TEST_CASE("Prepare SSSE3", "[prepare]") {
   if (kCPU < CPUType::SSSE3) return;
@@ -147,19 +149,21 @@ template <class Routine> void TestSelectColumnsB(Index rows = 64, Index cols = 1
   	PrintMatrix(ref.begin(), rows, kSelectCols) << PrintMatrix(test.begin(), rows, kSelectCols));
 }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 TEST_CASE("SelectColumnsB AVX512", "[select]") {
   if (kCPU < CPUType::AVX512BW) return;
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
     TestSelectColumnsB<avx512bw::Kernels8>();
     TestSelectColumnsB<avx512bw::Kernels16>(256, 256);
-#endif
 }
+#endif
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 TEST_CASE("SelectColumnsB AVX2", "[select]") {
   if (kCPU < CPUType::AVX2) return;
   TestSelectColumnsB<avx2::Kernels8>(256, 256);
   TestSelectColumnsB<avx2::Kernels16>(256, 256);
 }
+#endif
 
 TEST_CASE("SelectColumnsB SSSE3", "[select]") {
   if (kCPU < CPUType::SSSE3) return;
@@ -218,17 +222,19 @@ TEST_CASE("MaxAbsolute SSE2", "[max]") {
   TestMaxAbsolute<sse2::MaxAbsolute>();
 }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 TEST_CASE("MaxAbsolute AVX2", "[max]") {
   if (kCPU < CPUType::AVX2) return;
   TestMaxAbsolute<avx2::MaxAbsolute>();
 }
+#endif
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 TEST_CASE("MaxAbsolute AVX512BW", "[max]") {
   if (kCPU < CPUType::AVX512BW) return;
-  #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
   TestMaxAbsolute<avx512bw::MaxAbsolute>();
-  #endif
 }
+#endif
 
 // Based on https://arxiv.org/abs/1705.01991
 
@@ -396,6 +402,8 @@ TEST_CASE ("Multiply SSSE3 8bit with bias", "[biased_multiply]") {
   TestMultiplyBias<ssse3::Kernels8>(200, 256, 256, 1.8f, 1.9f, 0.1f, 0.011f);
 }
 
+
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 TEST_CASE ("Multiply AVX2 8bit", "[multiply]") {
   if (kCPU < CPUType::AVX2) return;
   TestMultiply<avx2::Kernels8>(8, 256, 256, .1f, 1, 0.1f);
@@ -435,6 +443,7 @@ TEST_CASE ("Multiply AVX2 16bit with bias", "[biased_multiply]") {
   TestMultiplyBias<avx2::Kernels16>(248, 256, 256, .1f, 1, 0.01f);
   TestMultiplyBias<avx2::Kernels16>(200, 256, 256, .1f, 1, 0.01f);
 }
+#endif
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
   TEST_CASE ("Multiply AVX512 8bit", "[multiply]") {

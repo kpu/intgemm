@@ -64,7 +64,9 @@ int main() {
       element = dist(gen);
     }
     QuantizerBench<intgemm::ssse3::Kernels8>(in.begin(), out.begin(), static_cast<intgemm::Index>(count));
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
     QuantizerBench<intgemm::avx2::Kernels8>(in.begin(), out.begin(), static_cast<intgemm::Index>(count));
+#endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
     QuantizerBench<intgemm::avx512bw::Kernels8>(in.begin(), out.begin(), static_cast<intgemm::Index>(count));
 #endif

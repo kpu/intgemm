@@ -154,6 +154,7 @@ int main(int, char ** argv) {
     RunAll<sse2::Kernels16>(matrices, end, stats.sse2_16bit);
   }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
   std::cerr << "AVX2 8bit, 100 samples..." << std::endl;
   for (int samples = 0; samples < kSamples; ++samples) {
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
@@ -165,7 +166,7 @@ int main(int, char ** argv) {
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
     RunAll<avx2::Kernels16>(matrices, end, stats.avx2_16bit);
   }
-
+#endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
   std::cerr << "AVX512 8bit, 100 samples..." << std::endl;
   for (int samples = 0; samples < kSamples; ++samples) {

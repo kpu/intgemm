@@ -30,8 +30,10 @@ void kernel_rescale_test() {
 template INTGEMM_SSE2 void kernel_rescale_test<CPUType::SSE2>();
 KERNEL_TEST_CASE("rescale SSE2") { return kernel_rescale_test<CPUType::SSE2>(); }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 template INTGEMM_AVX2 void kernel_rescale_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("rescale AVX2") { return kernel_rescale_test<CPUType::AVX2>(); }
+#endif
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_rescale_test<CPUType::AVX512BW>();

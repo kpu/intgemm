@@ -73,6 +73,7 @@ TEST_CASE("PrepareBTransposed SSSE3", "") {
   CHECK(TestMany<ssse3::Kernels8>(4, 128, 2.0f));
 }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 TEST_CASE("PrepareBTransposed AVX2", "") {
   if (kCPU < CPUType::AVX2)
     return;
@@ -80,15 +81,16 @@ TEST_CASE("PrepareBTransposed AVX2", "") {
   CHECK(TestMany<avx2::Kernels8>(8, 128, 2.0f));
   CHECK(TestMany<avx2::Kernels16>(8, 128, 2.0f));
 }
+#endif
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-  TEST_CASE("PrepareBTransposed AVX512", "") {
-    if (kCPU < CPUType::AVX512BW)
-      return;
+TEST_CASE("PrepareBTransposed AVX512", "") {
+  if (kCPU < CPUType::AVX512BW)
+    return;
 
-    CHECK(TestMany<avx512bw::Kernels8>(16, 128, 2.0f));
-    CHECK(TestMany<avx512bw::Kernels16>(16, 128, 2.0f));
-  }
+  CHECK(TestMany<avx512bw::Kernels8>(16, 128, 2.0f));
+  CHECK(TestMany<avx512bw::Kernels16>(16, 128, 2.0f));
+}
 #endif
 
 }

@@ -134,6 +134,13 @@ typedef Unsupported_8bit Kernels8;
 typedef Unsupported_16bit Kernels16;
 } // namespace avx512bw
 #endif
+#ifndef INTGEMM_COMPILER_SUPPORTS_AVX2
+namespace avx2 {
+typedef Unsupported_8bit Kernels8;
+typedef Unsupported_16bit Kernels16;
+} // namespace avx2
+#endif
+
 
 /* Returns:
  * axx512vnni if the CPU supports AVX512VNNI

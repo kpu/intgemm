@@ -43,6 +43,12 @@ const char *const Int8Shift::kName = ChooseCPU(avx512vnni::Kernels8::kName, avx5
 
 const CPUType kCPU = ChooseCPU(CPUType::AVX512VNNI, CPUType::AVX512BW, CPUType::AVX2, CPUType::SSSE3, CPUType::SSE2, CPUType::UNSUPPORTED);
 
+#if !defined(INTGEMM_COMPILER_SUPPORTS_AVX2)
+namespace avx2{
+using sse2::MaxAbsolute;
+using sse2::VectorMeanStd;
+} // namespace avx2
+#endif
 #if !defined(INTGEMM_COMPILER_SUPPORTS_AVX512BW)
 namespace avx512bw {
 using avx2::MaxAbsolute;
@@ -58,8 +64,10 @@ constexpr const char *const Unsupported_16bit::kName;
 constexpr const char *const Unsupported_8bit::kName;
 constexpr const char *const sse2::Kernels16::kName;
 constexpr const char *const ssse3::Kernels8::kName;
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 constexpr const char *const avx2::Kernels8::kName;
 constexpr const char *const avx2::Kernels16::kName;
+#endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 constexpr const char *const avx512bw::Kernels8::kName;
 constexpr const char *const avx512bw::Kernels16::kName;

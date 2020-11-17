@@ -215,6 +215,8 @@ INTGEMM_SSE2 static inline __m128i xor_si(__m128i a, __m128i b) {
  * AVX2
  *
  */
+
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 INTGEMM_AVX2 static inline __m256i abs_epi8(__m256i arg) {
   return _mm256_abs_epi8(arg);
 }
@@ -390,6 +392,7 @@ INTGEMM_AVX2 static inline __m256i unpackhi_epi64(__m256i a, __m256i b) {
 INTGEMM_AVX2 static inline __m256i xor_si(__m256i a, __m256i b) {
   return _mm256_xor_si256(a, b);
 }
+#endif
 
 /*
  *

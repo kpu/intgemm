@@ -1,5 +1,9 @@
 #pragma once
 
+#include "intgemm/intgemm_config.h"
+
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
+
 #include "interleave.h"
 #include "kernels.h"
 #include "multiply.h"
@@ -224,3 +228,5 @@ struct Kernels8 {
 
 } // namespace avx2
 } // namespace intgemm
+
+#endif
