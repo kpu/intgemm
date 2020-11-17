@@ -1,4 +1,4 @@
-// Some compilers don't have AVX512BW support.  Test for them.
+// Some compilers don't have AVX2 support.  Test for them.
 #include <immintrin.h>
 
 #if defined(_MSC_VER)
