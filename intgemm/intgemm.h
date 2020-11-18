@@ -49,11 +49,14 @@
 #include "avx512_gemm.h"
 #include "avx512vnni_gemm.h"
 
-#if defined(__INTEL_COMPILER)
+#if defined(__EMSCRIPTEN__)
+// No header for CPUID since it's hard-coded.
+#elif defined(__INTEL_COMPILER)
 #include <immintrin.h>
 #elif defined(_MSC_VER)
 #include <intrin.h>
-#elif defined(__GNUC__) || defined(__clang__)
+#else
+// Assume GCC and clang style.
 #include <cpuid.h>
 #endif
 
@@ -177,7 +180,7 @@ template <class T> T ChooseCPU(T
 #endif
     ) {
 #if defined(__EMSCRIPTEN__)
-  // emscripten is always ssse3.
+  // emscripten does SSE4.1 but we only use up to SSSE3.
   return ssse3;
 #elif defined(__INTEL_COMPILER)
 #  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
