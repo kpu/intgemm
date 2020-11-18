@@ -1,6 +1,9 @@
 #pragma once
 #include <exception>
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 #include <immintrin.h>
+#endif
+#include <xmmintrin.h>
 
 #if defined(_MSC_VER)
 /* MSVC does not appear to have target attributes but is also fine with just
@@ -78,10 +81,12 @@ typedef __m512i Register;
 typedef __m512 FRegister;
 } // namespace avx512bw
 #endif
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 namespace avx2 {
 typedef __m256i Register;
 typedef __m256 FRegister;
 } // namespace avx2
+#endif
 namespace ssse3 {
 typedef __m128i Register;
 typedef __m128 FRegister;

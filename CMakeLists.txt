@@ -20,25 +20,31 @@ endif()
 try_compile(INTGEMM_COMPILER_SUPPORTS_AVX2
   ${CMAKE_CURRENT_BINARY_DIR}/compile_tests
   ${CMAKE_CURRENT_SOURCE_DIR}/compile_test/avx2.cc)
-if(NOT INTGEMM_COMPILER_SUPPORTS_AVX2)
-  message(WARNING "${Orange}Not building AVX2-based multiplication because your compiler is too old.\nFor details rerun cmake with --debug-trycompile then try to build in compile_tests/CMakeFiles/CMakeTmp.${ColourReset}")
-endif()
 
 # Check if compiler supports AVX512BW
 try_compile(INTGEMM_COMPILER_SUPPORTS_AVX512BW
   ${CMAKE_CURRENT_BINARY_DIR}/compile_tests
   ${CMAKE_CURRENT_SOURCE_DIR}/compile_test/avx512bw.cc)
-if(NOT INTGEMM_COMPILER_SUPPORTS_AVX512BW)
-  message(WARNING "${Orange}Not building AVX512BW-based multiplication because your compiler is too old.\nFor details rerun cmake with --debug-trycompile then try to build in compile_tests/CMakeFiles/CMakeTmp.${ColourReset}")
-endif()
 
 # Check if the compiler supports AVX512VNNI
 try_compile(INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
   ${CMAKE_CURRENT_BINARY_DIR}/compile_tests
   ${CMAKE_CURRENT_SOURCE_DIR}/compile_test/avx512vnni.cc)
-if(NOT INTGEMM_COMPILER_SUPPORTS_AVX512VNNI)
-  message(WARNING "${Orange}Not building AVX512VNNI-based multiplication because your compiler is too old.\nFor details rerun cmake with --debug-trycompile then try to build in compile_tests/CMakeFiles/CMakeTmp.${ColourReset}")
+
+if (NOT INTGEMM_COMPILER_SUPPORTS_AVX2 OR NOT INTGEMM_COMPILER_SUPPORTS_AVX512BW OR NOT INTGEMM_COMPILER_SUPPORTS_AVX512VNNI)
+  set(UNSUPPORTED "Your compiler is too old to support")
+  if (NOT INTGEMM_COMPILER_SUPPORTS_AVX2)
+    set(UNSUPPORTED "${UNSUPPORTED} AVX2")
+  endif()
+  if (NOT INTGEMM_COMPILER_SUPPORTS_AVX512BW)
+    set(UNSUPPORTED "${UNSUPPORTED} AVX512BW")
+  endif()
+  if (NOT INTGEMM_COMPILER_SUPPORTS_AVX512VNNI)
+    set(UNSUPPORTED "${UNSUPPORTED} AVX512VNNI")
+  endif()
+  message(WARNING "${Orange}${UNSUPPORTED}.  Multiplication will be slower on CPUs that support these instructions. For details rerun cmake with --debug-trycompile then try to build in compile_tests/CMakeFiles/CMakeTmp.${ColourReset}")
 endif()
+
 
 add_library(intgemm STATIC intgemm/intgemm.cc)
 

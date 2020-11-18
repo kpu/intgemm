@@ -5,8 +5,10 @@
 
 #include <tmmintrin.h>
 #include <emmintrin.h>
-#include <immintrin.h>
 #include <xmmintrin.h>
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
+#include <immintrin.h>
+#endif
 
 #include <cstdint>
 
