@@ -163,20 +163,37 @@ template <class T> T ChooseCPU(T
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
     avx512bw
 #endif
-    , T avx2, T ssse3, T sse2, T unsupported) {
-#if defined(__INTEL_COMPILER)
+    , T
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
+    avx2
+#endif
+    , T ssse3, T
+#ifndef __EMSCRIPTEN__
+    sse2
+#endif
+    , T
+#ifndef __EMSCRIPTEN__
+    unsupported
+#endif
+    ) {
+#if defined(__EMSCRIPTEN__)
+  // emscripten is always ssse3.
+  return ssse3;
+#elif defined(__INTEL_COMPILER)
 #  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
   if (_may_i_use_cpu_feature(_FEATURE_AVX512_VNNI)) return avx512vnni;
 #  endif
 #  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
   if (_may_i_use_cpu_feature(_FEATURE_AVX512BW)) return avx512bw;
 #  endif
+#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
   if (_may_i_use_cpu_feature(_FEATURE_AVX2)) return avx2;
+#  endif
   if (_may_i_use_cpu_feature(_FEATURE_SSSE3)) return ssse3;
   if (_may_i_use_cpu_feature(_FEATURE_SSE2)) return sse2;
   return unsupported;
 #else
-// Everybody except Intel compiler.
+// Not emscripten, not Intel compiler
 #  if defined(_MSC_VER)
   int regs[4];
   int &eax = regs[0], &ebx = regs[1], &ecx = regs[2], &edx = regs[3];
@@ -208,7 +225,9 @@ template <class T> T ChooseCPU(T
 #  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
     if (ebx & (1 << 30)) return avx512bw;
 #  endif
+#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
     if (ebx & (1 << 5)) return avx2;
+#   endif
   }
   if (m >= 1) {
 #  if defined(_MSC_VER)
