@@ -3,7 +3,7 @@
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 #include <immintrin.h>
 #endif
-#include <xmmintrin.h>
+#include <emmintrin.h>
 
 #if defined(_MSC_VER)
 /* MSVC does not appear to have target attributes but is also fine with just
