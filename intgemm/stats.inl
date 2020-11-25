@@ -1,12 +1,12 @@
 /* This file is included multiple times, once per architecture. */
 #if defined(INTGEMM_THIS_IS_AVX512DQ)
-#define INTGEMM_ARCH avx512bw
+#define INTGEMM_ARCH AVX512BW
 #define INTGEMM_TARGET INTGEMM_AVX512DQ
 #elif defined(INTGEMM_THIS_IS_AVX2)
-#define INTGEMM_ARCH avx2
+#define INTGEMM_ARCH AVX2
 #define INTGEMM_TARGET INTGEMM_AVX2
 #elif defined(INTGEMM_THIS_IS_SSE2)
-#define INTGEMM_ARCH sse2
+#define INTGEMM_ARCH SSE2
 #define INTGEMM_TARGET INTGEMM_SSE2
 #else
 #error Included with unexpected architecture

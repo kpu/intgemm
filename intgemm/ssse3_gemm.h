@@ -11,7 +11,7 @@
 // 16-bit is in sse2_gemm.h
 
 namespace intgemm {
-namespace ssse3 {
+namespace SSSE3 {
 
 INTGEMM_SSSE3 inline __m128i QuantizerGrab(const float *input, const __m128 quant_mult_reg) {
   return kernels::quantize(loadu_ps<__m128>(input), quant_mult_reg);
@@ -131,12 +131,12 @@ struct Kernels8 {
   static const Index kBTileRow = 16;
   static const Index kBTileCol = 8;
 
-  INTGEMM_PREPARE_B_8(INTGEMM_SSSE3, ssse3::QuantizeTile8)
+  INTGEMM_PREPARE_B_8(INTGEMM_SSSE3, SSSE3::QuantizeTile8)
   INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(INTGEMM_SSSE3, int8_t)
   INTGEMM_PREPARE_B_TRANSPOSED(INTGEMM_SSSE3, QuantizeTile8, int8_t)
 
   INTGEMM_SSSE3 static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
-    ssse3::SelectColumnsOfB((const __m128i*)input, (__m128i*)output, rows, cols_begin, cols_end);
+    SSSE3::SelectColumnsOfB((const __m128i*)input, (__m128i*)output, rows, cols_begin, cols_end);
   }
 
   INTGEMM_MULTIPLY8(__m128i, INTGEMM_SSSE3, CPUType::SSE2)
@@ -150,5 +150,5 @@ struct Kernels8 {
   static const CPUType kUses = CPUType::SSSE3;
 };
 
-} // namespace ssse3
+} // namespace SSSE3
 } // namespace intgemm

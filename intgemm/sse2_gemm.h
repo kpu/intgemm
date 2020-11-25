@@ -9,7 +9,7 @@
 // 8 bit is in ssse3_gemm.h
 
 namespace intgemm {
-namespace sse2 {
+namespace SSE2 {
 
 INTGEMM_SSE2 inline __m128i QuantizerGrab(const float *input, const __m128 quant_mult_reg) {
   return kernels::quantize(loadu_ps<__m128>(input), quant_mult_reg);
@@ -80,5 +80,5 @@ struct Kernels16 {
   static const CPUType kUses = CPUType::SSE2;
 };
 
-} // namespace sse2
+} // namespace SSE2
 } // namespace intgemm

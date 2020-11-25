@@ -62,14 +62,14 @@ TEST_CASE("PrepareBQuantizedTransposed SSE2", "") {
   if (kCPU < CPUType::SSE2)
     return;
 
-  CHECK(TestMany<sse2::Kernels16>(32, 128));
+  CHECK(TestMany<SSE2::Kernels16>(32, 128));
 }
 
 TEST_CASE("PrepareBQuantizedTransposed SSSE3", "") {
   if (kCPU < CPUType::SSSE3)
     return;
 
-  CHECK(TestMany<ssse3::Kernels8>(32, 128));
+  CHECK(TestMany<SSSE3::Kernels8>(32, 128));
 }
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
@@ -77,8 +77,8 @@ TEST_CASE("PrepareBQuantizedTransposed AVX2", "") {
   if (kCPU < CPUType::AVX2)
     return;
 
-  CHECK(TestMany<avx2::Kernels8>(32, 128));
-  CHECK(TestMany<avx2::Kernels16>(32, 128));
+  CHECK(TestMany<AVX2::Kernels8>(32, 128));
+  CHECK(TestMany<AVX2::Kernels16>(32, 128));
 }
 #endif
 
@@ -87,8 +87,8 @@ TEST_CASE("PrepareBQuantizedTransposed AVX2", "") {
     if (kCPU < CPUType::AVX512BW)
       return;
 
-    CHECK(TestMany<avx512bw::Kernels8>(64, 128));
-    CHECK(TestMany<avx512bw::Kernels16>(64, 128));
+    CHECK(TestMany<AVX512BW::Kernels8>(64, 128));
+    CHECK(TestMany<AVX512BW::Kernels16>(64, 128));
   }
 #endif
 

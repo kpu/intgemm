@@ -125,151 +125,151 @@ int main(int argc, char ** argv) {
 		repeat = atoi(argv[1]);
 	}
 
-	std::chrono::duration<double> oldSSSE3_nobias = testOld_nobias<ssse3::Kernels8>(1, 64, 8);
+	std::chrono::duration<double> oldSSSE3_nobias = testOld_nobias<SSSE3::Kernels8>(1, 64, 8);
 	for (int i = 0; i<repeat; i++) {
-		oldSSSE3_nobias += testOld_nobias<ssse3::Kernels8>(8, 256, 256);
-		oldSSSE3_nobias += testOld_nobias<ssse3::Kernels8>(8, 2048, 256);
-		oldSSSE3_nobias += testOld_nobias<ssse3::Kernels8>(320, 256, 256);
-		oldSSSE3_nobias += testOld_nobias<ssse3::Kernels8>(472, 256, 256);
-		oldSSSE3_nobias += testOld_nobias<ssse3::Kernels8>(248, 256, 256);
-		oldSSSE3_nobias += testOld_nobias<ssse3::Kernels8>(200, 256, 256);
+		oldSSSE3_nobias += testOld_nobias<SSSE3::Kernels8>(8, 256, 256);
+		oldSSSE3_nobias += testOld_nobias<SSSE3::Kernels8>(8, 2048, 256);
+		oldSSSE3_nobias += testOld_nobias<SSSE3::Kernels8>(320, 256, 256);
+		oldSSSE3_nobias += testOld_nobias<SSSE3::Kernels8>(472, 256, 256);
+		oldSSSE3_nobias += testOld_nobias<SSSE3::Kernels8>(248, 256, 256);
+		oldSSSE3_nobias += testOld_nobias<SSSE3::Kernels8>(200, 256, 256);
 	}
 
 	std::cout << repeat << " iterations of SSSE3 without bias took: " << oldSSSE3_nobias.count() << " seconds." << std::endl;
 
-	std::chrono::duration<double> oldSSSE3 = testOld<ssse3::Kernels8>(1, 64, 8);
+	std::chrono::duration<double> oldSSSE3 = testOld<SSSE3::Kernels8>(1, 64, 8);
 	for (int i = 0; i<repeat; i++) {
-		oldSSSE3 += testOld<ssse3::Kernels8>(8, 256, 256);
-		oldSSSE3 += testOld<ssse3::Kernels8>(8, 2048, 256);
-		oldSSSE3 += testOld<ssse3::Kernels8>(320, 256, 256);
-		oldSSSE3 += testOld<ssse3::Kernels8>(472, 256, 256);
-		oldSSSE3 += testOld<ssse3::Kernels8>(248, 256, 256);
-		oldSSSE3 += testOld<ssse3::Kernels8>(200, 256, 256);
+		oldSSSE3 += testOld<SSSE3::Kernels8>(8, 256, 256);
+		oldSSSE3 += testOld<SSSE3::Kernels8>(8, 2048, 256);
+		oldSSSE3 += testOld<SSSE3::Kernels8>(320, 256, 256);
+		oldSSSE3 += testOld<SSSE3::Kernels8>(472, 256, 256);
+		oldSSSE3 += testOld<SSSE3::Kernels8>(248, 256, 256);
+		oldSSSE3 += testOld<SSSE3::Kernels8>(200, 256, 256);
 	}
 
 	std::cout << repeat << " iterations of SSSE3 took: " << oldSSSE3.count() << " seconds." << std::endl;
 
-	std::chrono::duration<double> newTimeSSSE3 = testOld<ssse3::Kernels8>(1, 64, 8);
+	std::chrono::duration<double> newTimeSSSE3 = testOld<SSSE3::Kernels8>(1, 64, 8);
 	for (int i = 0; i<repeat; i++) {
-		newTimeSSSE3 += testNew<ssse3::Kernels8>(8, 256, 256);
-		newTimeSSSE3 += testNew<ssse3::Kernels8>(8, 2048, 256);
-		newTimeSSSE3 += testNew<ssse3::Kernels8>(320, 256, 256);
-		newTimeSSSE3 += testNew<ssse3::Kernels8>(472, 256, 256);
-		newTimeSSSE3 += testNew<ssse3::Kernels8>(248, 256, 256);
-		newTimeSSSE3 += testNew<ssse3::Kernels8>(200, 256, 256);
+		newTimeSSSE3 += testNew<SSSE3::Kernels8>(8, 256, 256);
+		newTimeSSSE3 += testNew<SSSE3::Kernels8>(8, 2048, 256);
+		newTimeSSSE3 += testNew<SSSE3::Kernels8>(320, 256, 256);
+		newTimeSSSE3 += testNew<SSSE3::Kernels8>(472, 256, 256);
+		newTimeSSSE3 += testNew<SSSE3::Kernels8>(248, 256, 256);
+		newTimeSSSE3 += testNew<SSSE3::Kernels8>(200, 256, 256);
 	}
 
 	std::cout << repeat << " iterations of Shifted SSSE3 took: " << newTimeSSSE3.count() << " seconds." << std::endl;
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
-	std::chrono::duration<double> oldAVX2_nobias = testOld_nobias<avx2::Kernels8>(1, 64, 8);
+	std::chrono::duration<double> oldAVX2_nobias = testOld_nobias<AVX2::Kernels8>(1, 64, 8);
 	for (int i = 0; i<repeat; i++) {
-		oldAVX2_nobias += testOld_nobias<avx2::Kernels8>(8, 256, 256);
-		oldAVX2_nobias += testOld_nobias<avx2::Kernels8>(8, 2048, 256);
-		oldAVX2_nobias += testOld_nobias<avx2::Kernels8>(320, 256, 256);
-		oldAVX2_nobias += testOld_nobias<avx2::Kernels8>(472, 256, 256);
-		oldAVX2_nobias += testOld_nobias<avx2::Kernels8>(248, 256, 256);
-		oldAVX2_nobias += testOld_nobias<avx2::Kernels8>(200, 256, 256);
+		oldAVX2_nobias += testOld_nobias<AVX2::Kernels8>(8, 256, 256);
+		oldAVX2_nobias += testOld_nobias<AVX2::Kernels8>(8, 2048, 256);
+		oldAVX2_nobias += testOld_nobias<AVX2::Kernels8>(320, 256, 256);
+		oldAVX2_nobias += testOld_nobias<AVX2::Kernels8>(472, 256, 256);
+		oldAVX2_nobias += testOld_nobias<AVX2::Kernels8>(248, 256, 256);
+		oldAVX2_nobias += testOld_nobias<AVX2::Kernels8>(200, 256, 256);
 	}
 
 	std::cout << repeat << " iterations of AVX2 without bias took: " << oldAVX2_nobias.count() << " seconds." << std::endl;
 
-	std::chrono::duration<double> oldAVX2 = testOld<avx2::Kernels8>(1, 64, 8);
+	std::chrono::duration<double> oldAVX2 = testOld<AVX2::Kernels8>(1, 64, 8);
 	for (int i = 0; i<repeat; i++) {
-		oldAVX2 += testOld<avx2::Kernels8>(8, 256, 256);
-		oldAVX2 += testOld<avx2::Kernels8>(8, 2048, 256);
-		oldAVX2 += testOld<avx2::Kernels8>(320, 256, 256);
-		oldAVX2 += testOld<avx2::Kernels8>(472, 256, 256);
-		oldAVX2 += testOld<avx2::Kernels8>(248, 256, 256);
-		oldAVX2 += testOld<avx2::Kernels8>(200, 256, 256);
+		oldAVX2 += testOld<AVX2::Kernels8>(8, 256, 256);
+		oldAVX2 += testOld<AVX2::Kernels8>(8, 2048, 256);
+		oldAVX2 += testOld<AVX2::Kernels8>(320, 256, 256);
+		oldAVX2 += testOld<AVX2::Kernels8>(472, 256, 256);
+		oldAVX2 += testOld<AVX2::Kernels8>(248, 256, 256);
+		oldAVX2 += testOld<AVX2::Kernels8>(200, 256, 256);
 	}
 
 	std::cout << repeat << " iterations of AVX2 took: " << oldAVX2.count() << " seconds." << std::endl;
 
-	std::chrono::duration<double> newTimeAVX2 = testOld<avx2::Kernels8>(1, 64, 8);
+	std::chrono::duration<double> newTimeAVX2 = testOld<AVX2::Kernels8>(1, 64, 8);
 	for (int i = 0; i<repeat; i++) {
-		newTimeAVX2 += testNew<avx2::Kernels8>(8, 256, 256);
-		newTimeAVX2 += testNew<avx2::Kernels8>(8, 2048, 256);
-		newTimeAVX2 += testNew<avx2::Kernels8>(320, 256, 256);
-		newTimeAVX2 += testNew<avx2::Kernels8>(472, 256, 256);
-		newTimeAVX2 += testNew<avx2::Kernels8>(248, 256, 256);
-		newTimeAVX2 += testNew<avx2::Kernels8>(200, 256, 256);
+		newTimeAVX2 += testNew<AVX2::Kernels8>(8, 256, 256);
+		newTimeAVX2 += testNew<AVX2::Kernels8>(8, 2048, 256);
+		newTimeAVX2 += testNew<AVX2::Kernels8>(320, 256, 256);
+		newTimeAVX2 += testNew<AVX2::Kernels8>(472, 256, 256);
+		newTimeAVX2 += testNew<AVX2::Kernels8>(248, 256, 256);
+		newTimeAVX2 += testNew<AVX2::Kernels8>(200, 256, 256);
 	}
 
 	std::cout << repeat << " iterations of Shifted AVX2 took: " << newTimeAVX2.count() << " seconds." << std::endl;
 #endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 	if (kCPU < CPUType::AVX512BW) return 0;
-	std::chrono::duration<double> oldAVX512_nobias = testOld_nobias<avx512bw::Kernels8>(1, 64, 8);
+	std::chrono::duration<double> oldAVX512_nobias = testOld_nobias<AVX512BW::Kernels8>(1, 64, 8);
 	for (int i = 0; i<repeat; i++) {
-		oldAVX512_nobias += testOld_nobias<avx512bw::Kernels8>(8, 256, 256);
-		oldAVX512_nobias += testOld_nobias<avx512bw::Kernels8>(8, 2048, 256);
-		oldAVX512_nobias += testOld_nobias<avx512bw::Kernels8>(320, 256, 256);
-		oldAVX512_nobias += testOld_nobias<avx512bw::Kernels8>(472, 256, 256);
-		oldAVX512_nobias += testOld_nobias<avx512bw::Kernels8>(248, 256, 256);
-		oldAVX512_nobias += testOld_nobias<avx512bw::Kernels8>(200, 256, 256);
+		oldAVX512_nobias += testOld_nobias<AVX512BW::Kernels8>(8, 256, 256);
+		oldAVX512_nobias += testOld_nobias<AVX512BW::Kernels8>(8, 2048, 256);
+		oldAVX512_nobias += testOld_nobias<AVX512BW::Kernels8>(320, 256, 256);
+		oldAVX512_nobias += testOld_nobias<AVX512BW::Kernels8>(472, 256, 256);
+		oldAVX512_nobias += testOld_nobias<AVX512BW::Kernels8>(248, 256, 256);
+		oldAVX512_nobias += testOld_nobias<AVX512BW::Kernels8>(200, 256, 256);
 	}
 
 	std::cout << repeat << " iterations of AVX512 without bias took: " << oldAVX512_nobias.count() << " seconds." << std::endl;
 
-	std::chrono::duration<double> oldAVX512 = testOld<avx512bw::Kernels8>(1, 64, 8);
+	std::chrono::duration<double> oldAVX512 = testOld<AVX512BW::Kernels8>(1, 64, 8);
 	for (int i = 0; i<repeat; i++) {
-		oldAVX512 += testOld<avx512bw::Kernels8>(8, 256, 256);
-		oldAVX512 += testOld<avx512bw::Kernels8>(8, 2048, 256);
-		oldAVX512 += testOld<avx512bw::Kernels8>(320, 256, 256);
-		oldAVX512 += testOld<avx512bw::Kernels8>(472, 256, 256);
-		oldAVX512 += testOld<avx512bw::Kernels8>(248, 256, 256);
-		oldAVX512 += testOld<avx512bw::Kernels8>(200, 256, 256);
+		oldAVX512 += testOld<AVX512BW::Kernels8>(8, 256, 256);
+		oldAVX512 += testOld<AVX512BW::Kernels8>(8, 2048, 256);
+		oldAVX512 += testOld<AVX512BW::Kernels8>(320, 256, 256);
+		oldAVX512 += testOld<AVX512BW::Kernels8>(472, 256, 256);
+		oldAVX512 += testOld<AVX512BW::Kernels8>(248, 256, 256);
+		oldAVX512 += testOld<AVX512BW::Kernels8>(200, 256, 256);
 	}
 
 	std::cout << repeat << " iterations of AVX512 took: " << oldAVX512.count() << " seconds." << std::endl;
 
-	std::chrono::duration<double> newTimeAVX512 = testOld<avx512bw::Kernels8>(1, 64, 8);
+	std::chrono::duration<double> newTimeAVX512 = testOld<AVX512BW::Kernels8>(1, 64, 8);
 	for (int i = 0; i<repeat; i++) {
-		newTimeAVX512 += testNew<avx512bw::Kernels8>(8, 256, 256);
-		newTimeAVX512 += testNew<avx512bw::Kernels8>(8, 2048, 256);
-		newTimeAVX512 += testNew<avx512bw::Kernels8>(320, 256, 256);
-		newTimeAVX512 += testNew<avx512bw::Kernels8>(472, 256, 256);
-		newTimeAVX512 += testNew<avx512bw::Kernels8>(248, 256, 256);
-		newTimeAVX512 += testNew<avx512bw::Kernels8>(200, 256, 256);
+		newTimeAVX512 += testNew<AVX512BW::Kernels8>(8, 256, 256);
+		newTimeAVX512 += testNew<AVX512BW::Kernels8>(8, 2048, 256);
+		newTimeAVX512 += testNew<AVX512BW::Kernels8>(320, 256, 256);
+		newTimeAVX512 += testNew<AVX512BW::Kernels8>(472, 256, 256);
+		newTimeAVX512 += testNew<AVX512BW::Kernels8>(248, 256, 256);
+		newTimeAVX512 += testNew<AVX512BW::Kernels8>(200, 256, 256);
 	}
 
 	std::cout << repeat << " iterations of Shifted AVX512 took: " << newTimeAVX512.count() << " seconds." << std::endl;
 #endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
   if (kCPU < CPUType::AVX512VNNI) return 0;
-  std::chrono::duration<double> oldAVX512VNNI_nobias = testOld_nobias<avx512bw::Kernels8>(1, 64, 8);
+  std::chrono::duration<double> oldAVX512VNNI_nobias = testOld_nobias<AVX512BW::Kernels8>(1, 64, 8);
   for (int i = 0; i<repeat; i++) {
-          oldAVX512VNNI_nobias += testOld_nobias<avx512vnni::Kernels8>(8, 256, 256);
-          oldAVX512VNNI_nobias += testOld_nobias<avx512vnni::Kernels8>(8, 2048, 256);
-          oldAVX512VNNI_nobias += testOld_nobias<avx512vnni::Kernels8>(320, 256, 256);
-          oldAVX512VNNI_nobias += testOld_nobias<avx512vnni::Kernels8>(472, 256, 256);
-          oldAVX512VNNI_nobias += testOld_nobias<avx512vnni::Kernels8>(248, 256, 256);
-          oldAVX512VNNI_nobias += testOld_nobias<avx512vnni::Kernels8>(200, 256, 256);
+          oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI::Kernels8>(8, 256, 256);
+          oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI::Kernels8>(8, 2048, 256);
+          oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI::Kernels8>(320, 256, 256);
+          oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI::Kernels8>(472, 256, 256);
+          oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI::Kernels8>(248, 256, 256);
+          oldAVX512VNNI_nobias += testOld_nobias<AVX512VNNI::Kernels8>(200, 256, 256);
   }
 
   std::cout << repeat << " iterations of AVX512VNNI without bias took: " << oldAVX512VNNI_nobias.count() << " seconds." << std::endl;
 
-  std::chrono::duration<double> oldAVX512VNNI = testOld<avx512bw::Kernels8>(1, 64, 8);
+  std::chrono::duration<double> oldAVX512VNNI = testOld<AVX512BW::Kernels8>(1, 64, 8);
   for (int i = 0; i<repeat; i++) {
-          oldAVX512VNNI += testOld<avx512vnni::Kernels8>(8, 256, 256);
-          oldAVX512VNNI += testOld<avx512vnni::Kernels8>(8, 2048, 256);
-          oldAVX512VNNI += testOld<avx512vnni::Kernels8>(320, 256, 256);
-          oldAVX512VNNI += testOld<avx512vnni::Kernels8>(472, 256, 256);
-          oldAVX512VNNI += testOld<avx512vnni::Kernels8>(248, 256, 256);
-          oldAVX512VNNI += testOld<avx512vnni::Kernels8>(200, 256, 256);
+          oldAVX512VNNI += testOld<AVX512VNNI::Kernels8>(8, 256, 256);
+          oldAVX512VNNI += testOld<AVX512VNNI::Kernels8>(8, 2048, 256);
+          oldAVX512VNNI += testOld<AVX512VNNI::Kernels8>(320, 256, 256);
+          oldAVX512VNNI += testOld<AVX512VNNI::Kernels8>(472, 256, 256);
+          oldAVX512VNNI += testOld<AVX512VNNI::Kernels8>(248, 256, 256);
+          oldAVX512VNNI += testOld<AVX512VNNI::Kernels8>(200, 256, 256);
   }
 
   std::cout << repeat << " iterations of AVX512VNNI took: " << oldAVX512VNNI.count() << " seconds." << std::endl;
 
-  std::chrono::duration<double> newTimeAVX512VNNI = testOld<avx512bw::Kernels8>(1, 64, 8);
+  std::chrono::duration<double> newTimeAVX512VNNI = testOld<AVX512BW::Kernels8>(1, 64, 8);
   for (int i = 0; i<repeat; i++) {
-    newTimeAVX512VNNI += testNew<avx512vnni::Kernels8>(8, 256, 256);
-    newTimeAVX512VNNI += testNew<avx512vnni::Kernels8>(8, 2048, 256);
-    newTimeAVX512VNNI += testNew<avx512vnni::Kernels8>(320, 256, 256);
-    newTimeAVX512VNNI += testNew<avx512vnni::Kernels8>(472, 256, 256);
-    newTimeAVX512VNNI += testNew<avx512vnni::Kernels8>(248, 256, 256);
-    newTimeAVX512VNNI += testNew<avx512vnni::Kernels8>(200, 256, 256);
+    newTimeAVX512VNNI += testNew<AVX512VNNI::Kernels8>(8, 256, 256);
+    newTimeAVX512VNNI += testNew<AVX512VNNI::Kernels8>(8, 2048, 256);
+    newTimeAVX512VNNI += testNew<AVX512VNNI::Kernels8>(320, 256, 256);
+    newTimeAVX512VNNI += testNew<AVX512VNNI::Kernels8>(472, 256, 256);
+    newTimeAVX512VNNI += testNew<AVX512VNNI::Kernels8>(248, 256, 256);
+    newTimeAVX512VNNI += testNew<AVX512VNNI::Kernels8>(200, 256, 256);
   }
 
   std::cout << repeat << " iterations of Shifted AVX512VNNI took: " << newTimeAVX512VNNI.count() << " seconds." << std::endl;

@@ -31,7 +31,7 @@ namespace intgemm {
 // So conversion in memory uses these, but I also implement a wider version for
 // rearranging B.
 
-namespace avx512bw {
+namespace AVX512BW {
 
 // Load from memory, multiply, and convert to int32_t.
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
@@ -405,7 +405,7 @@ struct Kernels8 {
   static const CPUType kUses = CPUType::AVX512BW;
 };
 
-} // namespace avx512bw
+} // namespace AVX512BW
 } // namespace intgemm
 
 #endif

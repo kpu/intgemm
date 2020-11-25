@@ -70,30 +70,30 @@ struct MeanStd {
 };
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
-namespace avx512vnni {
+namespace AVX512VNNI {
 typedef __m512i Register;
 typedef __m512 FRegister;
-} // namespace avx512vnni
+} // namespace AVX512VNNI
 #endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-namespace avx512bw {
+namespace AVX512BW {
 typedef __m512i Register;
 typedef __m512 FRegister;
-} // namespace avx512bw
+} // namespace AVX512BW
 #endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
-namespace avx2 {
+namespace AVX2 {
 typedef __m256i Register;
 typedef __m256 FRegister;
-} // namespace avx2
+} // namespace AVX2
 #endif
-namespace ssse3 {
+namespace SSSE3 {
 typedef __m128i Register;
 typedef __m128 FRegister;
-} // namespace ssse3
-namespace sse2 {
+} // namespace SSSE3
+namespace SSE2 {
 typedef __m128i Register;
 typedef __m128 FRegister;
-} // namespace sse2
+} // namespace SSE2
 
 } // namespace intgemm

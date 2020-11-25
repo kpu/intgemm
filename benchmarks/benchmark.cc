@@ -145,46 +145,46 @@ int main(int, char ** argv) {
   std::cerr << "SSSE3 8bit, 100 samples..." << std::endl;
   for (int samples = 0; samples < kSamples; ++samples) {
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
-    RunAll<ssse3::Kernels8>(matrices, end, stats.ssse3_8bit);
+    RunAll<SSSE3::Kernels8>(matrices, end, stats.ssse3_8bit);
   }
 
   std::cerr << "SSE2 16bit, 100 samples..." << std::endl;
   for (int samples = 0; samples < kSamples; ++samples) {
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
-    RunAll<sse2::Kernels16>(matrices, end, stats.sse2_16bit);
+    RunAll<SSE2::Kernels16>(matrices, end, stats.sse2_16bit);
   }
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
   std::cerr << "AVX2 8bit, 100 samples..." << std::endl;
   for (int samples = 0; samples < kSamples; ++samples) {
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
-    RunAll<avx2::Kernels8>(matrices, end, stats.avx2_8bit);
+    RunAll<AVX2::Kernels8>(matrices, end, stats.avx2_8bit);
   }
 
   std::cerr << "AVX2 16bit, 100 samples..." << std::endl;
   for (int samples = 0; samples < kSamples; ++samples) {
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
-    RunAll<avx2::Kernels16>(matrices, end, stats.avx2_16bit);
+    RunAll<AVX2::Kernels16>(matrices, end, stats.avx2_16bit);
   }
 #endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
   std::cerr << "AVX512 8bit, 100 samples..." << std::endl;
   for (int samples = 0; samples < kSamples; ++samples) {
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
-    RunAll<avx512bw::Kernels8>(matrices, end, stats.avx512_8bit);
+    RunAll<AVX512BW::Kernels8>(matrices, end, stats.avx512_8bit);
   }
 
   std::cerr << "AVX512 16bit, 100 samples..." << std::endl;
   for (int samples = 0; samples < kSamples; ++samples) {
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
-    RunAll<avx512bw::Kernels16>(matrices, end, stats.avx512_16bit);
+    RunAll<AVX512BW::Kernels16>(matrices, end, stats.avx512_16bit);
   }
 #endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
   std::cerr << "AVX512VNNI 8bit, 100 samples..." << std::endl;
   for (int samples = 0; samples < kSamples; ++samples) {
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
-    RunAll<avx512vnni::Kernels8>(matrices, end, stats.avx512vnni_8bit);
+    RunAll<AVX512VNNI::Kernels8>(matrices, end, stats.avx512vnni_8bit);
   }
 #endif
 
@@ -194,18 +194,18 @@ int main(int, char ** argv) {
   }
   for (std::size_t i = 0; i < sizeof(matrices) / sizeof(RandomMatrices); ++i) {
     std::cout << "Multiply\t" << matrices[i].A_rows << '\t' << matrices[i].width << '\t' << matrices[i].B_cols << '\t' << "Samples=" << (kOutlierThreshold * stats.sse2_16bit[i].size()) << '\n';
-    Print<ssse3::Kernels8>(stats.ssse3_8bit, i);
-    Print<avx2::Kernels8>(stats.avx2_8bit, i);
+    Print<SSSE3::Kernels8>(stats.ssse3_8bit, i);
+    Print<AVX2::Kernels8>(stats.avx2_8bit, i);
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-    Print<avx512bw::Kernels8>(stats.avx512_8bit, i);
+    Print<AVX512BW::Kernels8>(stats.avx512_8bit, i);
 #endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
-    Print<avx512vnni::Kernels8>(stats.avx512vnni_8bit, i);
+    Print<AVX512VNNI::Kernels8>(stats.avx512vnni_8bit, i);
 #endif
-    Print<sse2::Kernels16>(stats.sse2_16bit, i);
-    Print<avx2::Kernels16>(stats.avx2_16bit, i);
+    Print<SSE2::Kernels16>(stats.sse2_16bit, i);
+    Print<AVX2::Kernels16>(stats.avx2_16bit, i);
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-    Print<avx512bw::Kernels16>(stats.avx512_16bit, i);
+    Print<AVX512BW::Kernels16>(stats.avx512_16bit, i);
 #endif
   }
   return 0;

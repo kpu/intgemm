@@ -63,12 +63,12 @@ int main() {
     for (float &element : in) {
       element = dist(gen);
     }
-    QuantizerBench<intgemm::ssse3::Kernels8>(in.begin(), out.begin(), static_cast<intgemm::Index>(count));
+    QuantizerBench<intgemm::SSSE3::Kernels8>(in.begin(), out.begin(), static_cast<intgemm::Index>(count));
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
-    QuantizerBench<intgemm::avx2::Kernels8>(in.begin(), out.begin(), static_cast<intgemm::Index>(count));
+    QuantizerBench<intgemm::AVX2::Kernels8>(in.begin(), out.begin(), static_cast<intgemm::Index>(count));
 #endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-    QuantizerBench<intgemm::avx512bw::Kernels8>(in.begin(), out.begin(), static_cast<intgemm::Index>(count));
+    QuantizerBench<intgemm::AVX512BW::Kernels8>(in.begin(), out.begin(), static_cast<intgemm::Index>(count));
 #endif
   }
 }
