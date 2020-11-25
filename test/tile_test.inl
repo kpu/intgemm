@@ -75,12 +75,12 @@ template <Index Valid> INTGEMM_TARGET static void Reduce32Test() {
   for (Index attempt = 0; attempt < 20; ++attempt) {
     memset(reference, 0, sizeof(reference));
     // Valid can be 0.
-#if defined(__GNUC__)
+#if (__GNUC__ == 10 && __GNUC_MINOR__ == 2)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wtype-limits"
 #endif
     for (Index i = 0; i < Valid; ++i) {
-#if defined(__GNUC__)
+#if (__GNUC__ == 10 && __GNUC_MINOR__ == 2)
 #pragma GCC diagnostic pop
 #endif
       int32_t temp[kReduce];
@@ -94,7 +94,14 @@ template <Index Valid> INTGEMM_TARGET static void Reduce32Test() {
     Register *indirect = regs;
     Reduce32<Valid, Sum32Op>(indirect);
     const int32_t *test = reinterpret_cast<const int32_t*>(regs);
+#if (__GNUC__ == 10 && __GNUC_MINOR__ == 2)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
+#endif
     for (Index i = 0; i < Valid; ++i) {
+#if (__GNUC__ == 10 && __GNUC_MINOR__ == 2)
+#pragma GCC diagnostic pop
+#endif
       CHECK(test[i] == reference[i]);
     }
   }
