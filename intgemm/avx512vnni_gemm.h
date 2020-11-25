@@ -1,12 +1,13 @@
 #pragma once
 
-#include "intgemm_config.h"
+#include "intgemm/intgemm_config.h"
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
 #include "avx512_gemm.h"
 #include "types.h"
 
 namespace intgemm {
+namespace AVX512VNNI {
 
 // Workaround extra vmovdqa64 https://gcc.gnu.org/bugzilla/show_bug.cgi?id=94663
 INTGEMM_AVX512VNNI static inline void VNNI8(__m512i &c, __m512i a, __m512i b) {
@@ -17,10 +18,9 @@ INTGEMM_AVX512VNNI static inline void VNNI8(__m512i &c, __m512i a, __m512i b) {
 #endif
 }
 
-struct AVX512VNNI_8bit : public AVX512_8bit {
+struct Kernels8 : public AVX512BW::Kernels8 {
   template <typename Callback>
   INTGEMM_AVX512VNNI static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
-    typedef __m512i Register;
     assert(width % sizeof(Register) == 0);
     assert(B_cols % 8 == 0);
     assert(reinterpret_cast<uintptr_t>(A) % sizeof(Register) == 0);
@@ -82,7 +82,6 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
 
   template <typename Callback>
   INTGEMM_AVX512VNNI static void Multiply8Shift(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
-    typedef __m512i Register;
     assert(width % sizeof(Register) == 0);
     assert(B_cols % 8 == 0);
     assert(reinterpret_cast<uintptr_t>(A) % sizeof(Register) == 0);
@@ -124,7 +123,6 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
 
   template <typename Callback>
   INTGEMM_AVX512VNNI static void PrepareBias(const int8_t *B, Index width, Index B_cols, Callback callback) {
-    typedef __m512i Register;
     assert(width % sizeof(Register) == 0);
     assert(B_cols % 8 == 0);
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0);
@@ -164,6 +162,7 @@ struct AVX512VNNI_8bit : public AVX512_8bit {
   static const CPUType kUses = CPUType::AVX512VNNI;
 };
 
+} // namespace AVX512VNNI
 } // namespace intgemm
 
 #endif

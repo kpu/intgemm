@@ -1,12 +1,11 @@
 #pragma once
 
-#include "intgemm_config.h"
+#include "intgemm/intgemm_config.h"
 #include "intrinsics.h"
 #include "types.h"
 
 #include <algorithm>
 #include <cassert>
-#include <stdint.h>
 
 namespace intgemm {
 
@@ -27,7 +26,10 @@ INTGEMM_INTERLEAVE_N(target, type, 32) \
 INTGEMM_INTERLEAVE_N(target, type, 64)
 
 INTGEMM_INTERLEAVE(INTGEMM_SSE2, __m128i)
+
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 INTGEMM_INTERLEAVE(INTGEMM_AVX2, __m256i)
+#endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 INTGEMM_INTERLEAVE(INTGEMM_AVX512BW, __m512i)
 #endif
@@ -43,7 +45,9 @@ target static inline void Swap(Register &a, Register &b) { \
 } \
 
 INTGEMM_SWAP(INTGEMM_SSE2, __m128i)
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 INTGEMM_SWAP(INTGEMM_AVX2, __m256i)
+#endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_SWAP(INTGEMM_AVX512BW, __m512i)
@@ -96,7 +100,9 @@ target static inline void Transpose16InLane(Register &r0, Register &r1, Register
 } \
 
 INTGEMM_TRANSPOSE16(INTGEMM_SSE2, __m128i)
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 INTGEMM_TRANSPOSE16(INTGEMM_AVX2, __m256i)
+#endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_TRANSPOSE16(INTGEMM_AVX512BW, __m512i)
@@ -180,9 +186,7 @@ template <class Register> static inline void Transpose8InLane(
 // ... ...
 #define INTGEMM_PREPARE_B_8(target, QuantClass) \
 target static inline void PrepareB(const float *input, int8_t *output_shadow, float quant_mult, Index rows, Index cols) { \
-  typedef typename QuantClass Quantizer; \
-  typedef typename Quantizer::Register Register; \
-  Quantizer q = Quantizer(quant_mult); \
+  FRegister q = set1_ps<FRegister>(quant_mult); \
   /* Currently all multipliers have a stride of 8 columns.*/ \
   const Index kColStride = 8; \
   assert(cols % kColStride == 0); \
@@ -196,14 +200,14 @@ target static inline void PrepareB(const float *input, int8_t *output_shadow, fl
          This isn't quite Transpose8InLane because it's half the number of columns, \
          so each register starts with two rows instead of being one row. \
          The quantizers know to skip a row.*/ \
-      output[0] = q.ForReshape(input + cols * (r    ) + c, cols); \
-      output[1] = q.ForReshape(input + cols * (r + 1) + c, cols); \
-      output[2] = q.ForReshape(input + cols * (r + 4) + c, cols); \
-      output[3] = q.ForReshape(input + cols * (r + 5) + c, cols); \
-      output[4] = q.ForReshape(input + cols * (r + 8) + c, cols); \
-      output[5] = q.ForReshape(input + cols * (r + 9) + c, cols); \
-      output[6] = q.ForReshape(input + cols * (r + 12) + c, cols); \
-      output[7] = q.ForReshape(input + cols * (r + 13) + c, cols); \
+      output[0] = QuantClass::ForReshape(q, input + cols * (r    ) + c, cols); \
+      output[1] = QuantClass::ForReshape(q, input + cols * (r + 1) + c, cols); \
+      output[2] = QuantClass::ForReshape(q, input + cols * (r + 4) + c, cols); \
+      output[3] = QuantClass::ForReshape(q, input + cols * (r + 5) + c, cols); \
+      output[4] = QuantClass::ForReshape(q, input + cols * (r + 8) + c, cols); \
+      output[5] = QuantClass::ForReshape(q, input + cols * (r + 9) + c, cols); \
+      output[6] = QuantClass::ForReshape(q, input + cols * (r + 12) + c, cols); \
+      output[7] = QuantClass::ForReshape(q, input + cols * (r + 13) + c, cols); \
       Interleave8(output[0], output[1]); \
       Interleave8(output[2], output[3]); \
       Interleave8(output[4], output[5]); \
@@ -215,9 +219,7 @@ target static inline void PrepareB(const float *input, int8_t *output_shadow, fl
 
 #define INTGEMM_PREPARE_B_16(target, QuantClass) \
 target static inline void PrepareB(const float *input, int16_t *output_shadow, float quant_mult, Index rows, Index cols) { \
-  typedef typename QuantClass Quantizer; \
-  typedef typename Quantizer::Register Register; \
-  Quantizer q = Quantizer(quant_mult); \
+  FRegister q = set1_ps<FRegister>(quant_mult); \
   assert(cols % 8 == 0); \
   assert(rows % (sizeof(Register) / sizeof(int16_t)) == 0); \
   assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0); \
@@ -227,7 +229,7 @@ target static inline void PrepareB(const float *input, int16_t *output_shadow, f
     for (Index r = 0; r < rows; r += (sizeof(Register) / sizeof(int16_t)), output += 8) { \
       /* gcc unrolls this loop and uses registers for output[k]*/ \
       for (Index k = 0; k < 8; ++k) { \
-        output[k] = q.ForReshape(input + cols * (r + k) + c, cols); \
+        output[k] = QuantClass::ForReshape(q, input + cols * (r + k) + c, cols); \
       } \
       Transpose16InLane(output[0], output[1], output[2], output[3], output[4], output[5], output[6], output[7]); \
     } \
@@ -241,9 +243,8 @@ target static inline void PrepareB(const float *input, int16_t *output_shadow, f
  *
  * cols and rows describe size of transposed B.
  */
-#define INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(target, cpu_type, Integer) \
+#define INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(target, Integer) \
 target static inline void PrepareBQuantizedTransposed(const Integer* input, Integer* output, Index cols, Index rows) { \
-  using Register = vector_t<cpu_type, Integer>; \
   const Index RegisterElems = sizeof(Register) / sizeof(Integer); \
   const Index kColStride = 8; \
   \
@@ -268,7 +269,6 @@ target static inline void PrepareBQuantizedTransposed(const Integer* input, Inte
  */
 #define INTGEMM_PREPARE_B_TRANSPOSED(target, Quantizer, Integer) \
 target static inline void PrepareBTransposed(const float* input, Integer* output, float quant_mult, Index cols, Index rows) { \
-  using Register = typename Quantizer::Register; \
   const Index RegisterElemsInt = sizeof(Register) / sizeof(Integer); \
   const Index kColStride = 8; \
   \
@@ -277,13 +277,13 @@ target static inline void PrepareBTransposed(const float* input, Integer* output
   assert(reinterpret_cast<uintptr_t>(input) % sizeof(Register) == 0); \
   assert(reinterpret_cast<uintptr_t>(output) % sizeof(Register) == 0); \
   \
-  Quantizer quantizer(quant_mult); \
+  FRegister q = set1_ps<FRegister>(quant_mult); \
   Register* output_it = reinterpret_cast<Register*>(output); \
   Index r = 0; \
   Index c = 0; \
   while (r < rows) { \
     for (Index ri = 0; ri < 8; ++ri) \
-      *output_it++ = quantizer.ConsecutiveWithWrapping(input + (r + ri) * cols + c, cols - c, cols, 8); \
+      *output_it++ = Quantizer::ConsecutiveWithWrapping(q, input + (r + ri) * cols + c, cols - c, cols, 8); \
     c += RegisterElemsInt; \
     while (c >= cols) { \
       r += kColStride; \

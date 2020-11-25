@@ -1,4 +1,4 @@
-name: Release
+name: Ubuntu gcc5 debug
 
 on:
   push:
@@ -8,18 +8,17 @@ on:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        runs-on: [ubuntu-latest, macOS-latest, windows-latest]
-    runs-on: ${{ matrix.runs-on }}
+    runs-on: ubuntu-18.04
 
     steps:
     - uses: actions/checkout@v2
+    - name: install
+      run: sudo apt-get install -y gcc-5 g++-5
     - name: cmake
       run: |
         cmake -E make_directory build
         cd build
-        cmake ..
+        cmake -DCMAKE_C_COMPILER=gcc-5 -DCMAKE_CXX_COMPILER=g++-5 -DCMAKE_BUILD_TYPE=Debug ..
     - name: Compile
       working-directory: build
       run: cmake --build . -j2

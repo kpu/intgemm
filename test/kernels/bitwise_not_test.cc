@@ -1,6 +1,6 @@
 #include "../test.h"
-#include "../../aligned.h"
-#include "../../kernels.h"
+#include "../../intgemm/aligned.h"
+#include "../../intgemm/kernels.h"
 
 #include <cstdlib>
 #include <numeric>
@@ -28,8 +28,10 @@ void kernel_bitwise_not_test() {
 template INTGEMM_SSE2 void kernel_bitwise_not_test<CPUType::SSE2>();
 KERNEL_TEST_CASE("bitwise_not SSE2") { return kernel_bitwise_not_test<CPUType::SSE2>(); }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 template INTGEMM_AVX2 void kernel_bitwise_not_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("bitwise_not AVX2") { return kernel_bitwise_not_test<CPUType::AVX2>(); }
+#endif
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_bitwise_not_test<CPUType::AVX512BW>();

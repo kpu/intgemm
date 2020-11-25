@@ -1,6 +1,11 @@
 [![Build SSE](https://img.shields.io/jenkins/s/http/vali.inf.ed.ac.uk/jenkins/view/intgemm/job/intgemm-SSE.svg?label=SSE)](http://vali.inf.ed.ac.uk/jenkins/job/intgemm-SSE/)
 [![Build AVX2](https://img.shields.io/jenkins/s/http/vali.inf.ed.ac.uk/jenkins/view/intgemm/job/intgemm-AVX2.svg?label=AVX2)](http://vali.inf.ed.ac.uk/jenkins/job/intgemm-AVX2/)
 [![Build AVX512BW](https://img.shields.io/jenkins/s/http/vali.inf.ed.ac.uk/jenkins/view/intgemm/job/intgemm-AVX512BW.svg?label=AVX512BW)](http://vali.inf.ed.ac.uk/jenkins/job/intgemm-AVX512BW/)
+![Build Ubuntu](https://github.com/kpu/intgemm/workflows/Ubuntu/badge.svg)
+![Build Ubuntu debug](https://github.com/kpu/intgemm/workflows/Ubuntu%20debug/badge.svg)
+![Build Ubuntu OpenMP](https://github.com/kpu/intgemm/workflows/Ubuntu%20OpenMP/badge.svg)
+![Build Windows](https://github.com/kpu/intgemm/workflows/Windows/badge.svg)
+![Build Mac](https://github.com/kpu/intgemm/workflows/Mac/badge.svg)
 
 # Integer Matrix Multiplication
 
@@ -25,7 +30,7 @@ A full example appears in [example.cc](example.cc).
 
 Both A and B should be prepared before multiplication.
 ```C++
-#include "intgemm.h"
+#include "intgemm/intgemm.h"
 
 /* Not shown: allocate 64-byte aligned memory with e.g. aligned_alloc.
  * A is A_rows x width.
@@ -51,7 +56,7 @@ The last argument of `Multiply` is a callback which is usually used to performs 
 For 8-bit, you can make use a of a slightly faster implementation, assuming you can determine tha quantization multipliers and prepare the biases offline:
 
 ```C++
-#include "intgemm.h"
+#include "intgemm/intgemm.h"
 
 /* Not shown: allocate 64-byte aligned memory with e.g. aligned_alloc.
  * A is A_rows x width.

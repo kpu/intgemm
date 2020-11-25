@@ -1,15 +1,16 @@
 #pragma once
 
-#include "intgemm_config.h"
+#include "intgemm/intgemm_config.h"
 #include "types.h"
 
 #include <tmmintrin.h>
 #include <emmintrin.h>
-#include <immintrin.h>
 #include <xmmintrin.h>
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
+#include <immintrin.h>
+#endif
 
 #include <cstdint>
-#include <stdint.h>
 
 /*
  * NOTE: Please keep intrinsics in alphabetical order.
@@ -165,17 +166,17 @@ template <int imm8> INTGEMM_SSE2 static inline __m128i shuffle_epi32(__m128i a) 
 INTGEMM_SSSE3 static inline __m128i sign_epi8(__m128i first, __m128i second) {
   return _mm_sign_epi8(first, second);
 }
-INTGEMM_SSE2 static inline __m128i slli_epi16(__m128i a, int8_t b) {
-  return _mm_slli_epi16(a, b);
+template <int imm8> INTGEMM_SSE2 static inline __m128i slli_epi16(__m128i a) {
+  return _mm_slli_epi16(a, imm8);
 }
-INTGEMM_SSE2 static inline __m128i srai_epi16(__m128i a, int8_t b) {
-  return _mm_srai_epi16(a, b);
+template <int imm8> INTGEMM_SSE2 static inline __m128i srai_epi16(__m128i a) {
+  return _mm_srai_epi16(a, imm8);
 }
-INTGEMM_SSE2 static inline __m128i srai_epi32(__m128i a, int8_t b) {
-  return _mm_srai_epi32(a, b);
+template <int imm8> INTGEMM_SSE2 static inline __m128i srai_epi32(__m128i a) {
+  return _mm_srai_epi32(a, imm8);
 }
-INTGEMM_SSE2 static inline __m128i srli_epi16(__m128i a, int8_t b) {
-  return _mm_srli_epi16(a, b);
+template <int imm8> INTGEMM_SSE2 static inline __m128i srli_epi16(__m128i a) {
+  return _mm_srli_epi16(a, imm8);
 }
 INTGEMM_SSE2 static inline void storeu_ps(float* mem_addr, __m128 a) {
   _mm_storeu_ps(mem_addr, a);
@@ -219,6 +220,8 @@ INTGEMM_SSE2 static inline __m128i xor_si(__m128i a, __m128i b) {
  * AVX2
  *
  */
+
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 INTGEMM_AVX2 static inline __m256i abs_epi8(__m256i arg) {
   return _mm256_abs_epi8(arg);
 }
@@ -349,17 +352,17 @@ template <int imm8> INTGEMM_AVX2 static inline __m256i shuffle_epi32(__m256i a) 
 INTGEMM_AVX2 static inline __m256i sign_epi8(__m256i first, __m256i second) {
   return _mm256_sign_epi8(first, second);
 }
-INTGEMM_AVX2 static inline __m256i slli_epi16(__m256i a, int8_t b) {
-  return _mm256_slli_epi16(a, b);
+template <int imm8> INTGEMM_AVX2 static inline __m256i slli_epi16(__m256i a) {
+  return _mm256_slli_epi16(a, imm8);
 }
-INTGEMM_AVX2 static inline __m256i srai_epi16(__m256i a, int8_t b) {
-  return _mm256_srai_epi16(a, b);
+template <int imm8> INTGEMM_AVX2 static inline __m256i srai_epi16(__m256i a) {
+  return _mm256_srai_epi16(a, imm8);
 }
-INTGEMM_AVX2 static inline __m256i srai_epi32(__m256i a, int8_t b) {
-  return _mm256_srai_epi32(a, b);
+template <int imm8> INTGEMM_AVX2 static inline __m256i srai_epi32(__m256i a) {
+  return _mm256_srai_epi32(a, imm8);
 }
-INTGEMM_AVX2 static inline __m256i srli_epi16(__m256i a, int8_t b) {
-  return _mm256_srli_epi16(a, b);
+template <int imm8> INTGEMM_AVX2 static inline __m256i srli_epi16(__m256i a) {
+  return _mm256_srli_epi16(a, imm8);
 }
 INTGEMM_AVX2 static inline void storeu_ps(float* mem_addr, __m256 a) {
   _mm256_storeu_ps(mem_addr, a);
@@ -397,6 +400,7 @@ INTGEMM_AVX2 static inline __m256i unpackhi_epi64(__m256i a, __m256i b) {
 INTGEMM_AVX2 static inline __m256i xor_si(__m256i a, __m256i b) {
   return _mm256_xor_si256(a, b);
 }
+#endif
 
 /*
  *
@@ -549,17 +553,17 @@ template <int imm8> INTGEMM_AVX512BW static inline __m512i shuffle_epi32(__m512i
 /*
  * Missing sign_epi8
  */
-INTGEMM_AVX512BW static inline __m512i slli_epi16(__m512i a, int8_t b) {
-  return _mm512_slli_epi16(a, b);
+template <int imm8> INTGEMM_AVX512BW static inline __m512i slli_epi16(__m512i a) {
+  return _mm512_slli_epi16(a, imm8);
 }
-INTGEMM_AVX512BW static inline __m512i srai_epi16(__m512i a, int8_t b) {
-  return _mm512_srai_epi16(a, b);
+template <int imm8> INTGEMM_AVX512BW static inline __m512i srai_epi16(__m512i a) {
+  return _mm512_srai_epi16(a, imm8);
 }
-INTGEMM_AVX512BW static inline __m512i srai_epi32(__m512i a, int8_t b) {
-  return _mm512_srai_epi32(a, b);
+template <int imm8> INTGEMM_AVX512BW static inline __m512i srai_epi32(__m512i a) {
+  return _mm512_srai_epi32(a, imm8);
 }
-INTGEMM_AVX512BW static inline __m512i srli_epi16(__m512i a, int8_t b) {
-  return _mm512_srli_epi16(a, b);
+template <int imm8> INTGEMM_AVX512BW static inline __m512i srli_epi16(__m512i a) {
+  return _mm512_srli_epi16(a, imm8);
 }
 INTGEMM_AVX512BW static inline void storeu_ps(float* mem_addr, __m512 a) {
   _mm512_storeu_ps(mem_addr, a);

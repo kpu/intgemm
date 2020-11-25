@@ -1,13 +1,13 @@
 #include "test.h"
-#include "../aligned.h"
-#include "../avx2_gemm.h"
-#include "../avx512_gemm.h"
-#include "../sse2_gemm.h"
-#include "../ssse3_gemm.h"
+#include "../intgemm/aligned.h"
+#include "../intgemm/avx2_gemm.h"
+#include "../intgemm/avx512_gemm.h"
+#include "../intgemm/sse2_gemm.h"
+#include "../intgemm/ssse3_gemm.h"
 
+#include <cmath>
 #include <cstring>
 #include <iostream>
-#include <math.h>
 
 namespace intgemm {
 namespace {
@@ -62,31 +62,33 @@ TEST_CASE("PrepareBQuantizedTransposed SSE2", "") {
   if (kCPU < CPUType::SSE2)
     return;
 
-  CHECK(TestMany<SSE2_16bit>(32, 128));
+  CHECK(TestMany<SSE2::Kernels16>(32, 128));
 }
 
 TEST_CASE("PrepareBQuantizedTransposed SSSE3", "") {
   if (kCPU < CPUType::SSSE3)
     return;
 
-  CHECK(TestMany<SSSE3_8bit>(32, 128));
+  CHECK(TestMany<SSSE3::Kernels8>(32, 128));
 }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 TEST_CASE("PrepareBQuantizedTransposed AVX2", "") {
   if (kCPU < CPUType::AVX2)
     return;
 
-  CHECK(TestMany<AVX2_8bit>(32, 128));
-  CHECK(TestMany<AVX2_16bit>(32, 128));
+  CHECK(TestMany<AVX2::Kernels8>(32, 128));
+  CHECK(TestMany<AVX2::Kernels16>(32, 128));
 }
+#endif
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
   TEST_CASE("PrepareBQuantizedTransposed AVX512", "") {
     if (kCPU < CPUType::AVX512BW)
       return;
 
-    CHECK(TestMany<AVX512_8bit>(64, 128));
-    CHECK(TestMany<AVX512_16bit>(64, 128));
+    CHECK(TestMany<AVX512BW::Kernels8>(64, 128));
+    CHECK(TestMany<AVX512BW::Kernels16>(64, 128));
   }
 #endif
 

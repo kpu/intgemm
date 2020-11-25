@@ -81,9 +81,11 @@ class RegisterRowMajorAccess {
  * and that works better in the test program.
  *
  * clang 9.0.1 deals with this fine.
+ *
+ * Note this is also defined as VNNI8 in the legacy avx512vnni_gemm.h
  */
 #ifdef INTGEMM_THIS_IS_AVX512VNNI
-INTGEMM_TARGET static inline void VNNI8(Register &c, Register a, Register b) {
+INTGEMM_TARGET static inline void VNNI8bit(Register &c, Register a, Register b) {
 #if defined(__GNUC__) && !defined(__clang__) && !defined(__INTEL_COMPILER)
     asm ("vpdpbusds %2, %1, %0" : "+x"(c) : "x"(a), "mx"(b));
 #else
@@ -99,7 +101,7 @@ struct Shifted8 {
     const Register &a = reinterpret_cast<const Register&>(access.AFront());
     const Register &b = reinterpret_cast<const Register&>(access.BFront());
 #ifdef INTGEMM_THIS_IS_AVX512VNNI
-    VNNI8(access.CFront(), a, b);
+    VNNI8bit(access.CFront(), a, b);
 #else
     const Register ones = set1_epi16<Register>(1);
     Register mult = maddubs_epi16(a, b);
@@ -137,7 +139,7 @@ struct Signed8 {
 
     // c += |a| * b_signed
 #if defined(INTGEMM_THIS_IS_AVX512VNNI)
-    VNNI8(access.CFront(), a_positive, b_signed);
+    VNNI8bit(access.CFront(), a_positive, b_signed);
 #else
     Register mult = maddubs_epi16(a_positive, b_signed);
     access.CFront() = adds_epi16(access.CFront(), mult);

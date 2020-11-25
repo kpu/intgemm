@@ -1,14 +1,14 @@
 #include "test.h"
-#include "../aligned.h"
-#include "../avx2_gemm.h"
-#include "../avx512_gemm.h"
-#include "../sse2_gemm.h"
-#include "../ssse3_gemm.h"
-#include "../stats.h"
+#include "../intgemm/aligned.h"
+#include "../intgemm/avx2_gemm.h"
+#include "../intgemm/avx512_gemm.h"
+#include "../intgemm/sse2_gemm.h"
+#include "../intgemm/ssse3_gemm.h"
+#include "../intgemm/stats.h"
 
+#include <cmath>
 #include <cstring>
 #include <iostream>
-#include <math.h>
 
 namespace intgemm {
 namespace {
@@ -61,8 +61,8 @@ void testVectorMeanStd(int num_items, bool absolute=false) {
   MeanStd reference = VectorMeanStd(inputVec, num_items, absolute);
   MeanStd fast = Backend(inputVec.begin(), inputVec.end(), absolute);
 
-  float meanDifference = fabsf(reference.mean - fast.mean);
-  float stdDifference = fabsf(reference.stddev - fast.stddev);
+  float meanDifference = std::fabs(reference.mean - fast.mean);
+  float stdDifference = std::fabs(reference.stddev - fast.stddev);
   float eps = 0.00002f; //Accumulating horizontal sums can lead to errors.
 
   CHECK_MESSAGE(meanDifference <= eps, "Items: " << num_items << " Absolute: " << absolute << " Reference mean: " << reference.mean << " actual: " << fast.mean);
@@ -73,15 +73,15 @@ void testVectorMeanStd(int num_items, bool absolute=false) {
 template <class I> bool IsOff(float from, I ref, I test) {
   if (ref == test) return false;
   if (ref - test > 1 && test - ref > 1) return true;
-  float off_test = fabs((float)test - from);
-  float off_ref = fabs((float)ref - from);
+  float off_test = std::fabs(static_cast<float>(test) - from);
+  float off_ref = std::fabs(static_cast<float>(ref) - from);
   // Allow 0.5 to round either way.
   if (off_test > 0.49 && off_test < 0.51 && off_ref > 0.49 && off_ref < 0.51) return false;
   return true;
 }
 
 template <class Backend> bool Test(const float *input_unaligned, float quant_mult, std::size_t size) {
-  typedef typename Backend::Integer Integer;
+  using Integer = typename Backend::Integer;
   bool success = true;
   AlignedVector<float> input(size);
   std::memcpy(input.begin(), input_unaligned, sizeof(float) * size);
@@ -120,25 +120,27 @@ template <class Backend> void TestMany(std::size_t grow) {
 
 TEST_CASE ("Quantize SSE2", "[quantize]") {
   if (kCPU < CPUType::SSE2) return;
-  TestMany<SSE2_16bit>(8);
+  TestMany<SSE2::Kernels16>(8);
 }
 
 TEST_CASE ("Quantize SSSE3", "[quantize]") {
   if (kCPU < CPUType::SSSE3) return;
-  TestMany<SSSE3_8bit>(1);
+  TestMany<SSSE3::Kernels8>(1);
 }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 TEST_CASE ("Quantize AVX2", "[quantize]") {
   if (kCPU < CPUType::AVX2) return;
-  TestMany<AVX2_8bit>(1);
-  TestMany<AVX2_16bit>(16);
+  TestMany<AVX2::Kernels8>(1);
+  TestMany<AVX2::Kernels16>(16);
 }
+#endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-  TEST_CASE ("Quantize AVX512", "[quantize]") {
-    if (kCPU < CPUType::AVX512BW) return;
-    TestMany<AVX512_8bit>(1);
-    TestMany<AVX512_16bit>(16);
-  }
+TEST_CASE ("Quantize AVX512", "[quantize]") {
+  if (kCPU < CPUType::AVX512BW) return;
+  TestMany<AVX512BW::Kernels8>(1);
+  TestMany<AVX512BW::Kernels16>(16);
+}
 #endif
 
 TEST_CASE("QuantizeStd SSSE3", "[VectorMeanStd]") {
@@ -157,6 +159,7 @@ TEST_CASE("QuantizeStd SSSE3", "[VectorMeanStd]") {
   testVectorMeanStd<SSE2::VectorMeanStd>(120832, true);
 }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 TEST_CASE("QuantizeStd AVX2", "[VectorMeanStd]") {
   if (kCPU < CPUType::AVX2) return;
   testVectorMeanStd<AVX2::VectorMeanStd>(64);
@@ -172,6 +175,7 @@ TEST_CASE("QuantizeStd AVX2", "[VectorMeanStd]") {
   testVectorMeanStd<AVX2::VectorMeanStd>(120832);
   testVectorMeanStd<AVX2::VectorMeanStd>(120832, true);
 }
+#endif
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 TEST_CASE("QuantizeStd AVX512BW", "[VectorMeanStd]") {

@@ -1,6 +1,6 @@
 #include "../test.h"
-#include "../../aligned.h"
-#include "../../kernels.h"
+#include "../../intgemm/aligned.h"
+#include "../../intgemm/kernels.h"
 
 #include <cstddef>
 #include <numeric>
@@ -30,8 +30,10 @@ void kernel_downcast32to8_test() {
 template INTGEMM_SSE2 void kernel_downcast32to8_test<CPUType::SSE2>();
 KERNEL_TEST_CASE("downcast32to8 SSE2") { return kernel_downcast32to8_test<CPUType::SSE2>(); }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 template INTGEMM_AVX2 void kernel_downcast32to8_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("downcast32to8 AVX2") { return kernel_downcast32to8_test<CPUType::AVX2>(); }
+#endif
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_downcast32to8_test<CPUType::AVX512BW>();
@@ -60,8 +62,10 @@ void kernel_downcast32to16_test() {
 template INTGEMM_SSE2 void kernel_downcast32to16_test<CPUType::SSE2>();
 KERNEL_TEST_CASE("downcast32to16 SSE2") { return kernel_downcast32to16_test<CPUType::SSE2>(); }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 template INTGEMM_AVX2 void kernel_downcast32to16_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("downcast32to16 AVX2") { return kernel_downcast32to16_test<CPUType::AVX2>(); }
+#endif
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_downcast32to16_test<CPUType::AVX512BW>();
@@ -90,8 +94,10 @@ void kernel_downcast16to8_test() {
 template INTGEMM_SSE2 void kernel_downcast16to8_test<CPUType::SSE2>();
 KERNEL_TEST_CASE("downcast16to8 SSE2") { return kernel_downcast16to8_test<CPUType::SSE2>(); }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 template INTGEMM_AVX2 void kernel_downcast16to8_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("downcast16to8 AVX2") { return kernel_downcast16to8_test<CPUType::AVX2>(); }
+#endif
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_downcast16to8_test<CPUType::AVX512BW>();

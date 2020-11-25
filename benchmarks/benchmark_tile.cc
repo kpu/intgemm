@@ -1,7 +1,7 @@
-#include "../aligned.h"
+#include "../intgemm/aligned.h"
 #include "test_matrices.h"
-#include "../tile/multiply.h"
-#include "../tile/dot.h"
+#include "../intgemm/tile/multiply.h"
+#include "../intgemm/tile/dot.h"
 
 #include <algorithm>
 #include <chrono>

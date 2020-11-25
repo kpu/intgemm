@@ -16,29 +16,46 @@ else()
   add_compile_options(-Wall -Wextra -pedantic -Werror -Wno-unknown-pragmas)
 endif()
 
+# Check if compiler supports AVX2 (this should only catch emscripten)
+try_compile(INTGEMM_COMPILER_SUPPORTS_AVX2
+  ${CMAKE_CURRENT_BINARY_DIR}/compile_tests
+  ${CMAKE_CURRENT_SOURCE_DIR}/compile_test/avx2.cc)
+
 # Check if compiler supports AVX512BW
 try_compile(INTGEMM_COMPILER_SUPPORTS_AVX512BW
   ${CMAKE_CURRENT_BINARY_DIR}/compile_tests
-  ${CMAKE_CURRENT_SOURCE_DIR}/compile_test_avx512bw.cc)
+  ${CMAKE_CURRENT_SOURCE_DIR}/compile_test/avx512bw.cc)
 
-if(NOT INTGEMM_COMPILER_SUPPORTS_AVX512BW)
-  message(WARNING "${Orange}Not building AVX512BW-based multiplication because your compiler is too old.\nFor details rerun cmake with --debug-trycompile then try to build in compile_tests/CMakeFiles/CMakeTmp.${ColourReset}")
-endif()
-
+# Check if the compiler supports AVX512VNNI
 try_compile(INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
   ${CMAKE_CURRENT_BINARY_DIR}/compile_tests
-  ${CMAKE_CURRENT_SOURCE_DIR}/compile_test_avx512vnni.cc)
-#No compiler flags for this test; that's part of the test!
-if(NOT INTGEMM_COMPILER_SUPPORTS_AVX512VNNI)
-  message(WARNING "${Orange}Not building AVX512VNNI-based multiplication because your compiler is too old.\nFor details rerun cmake with --debug-trycompile then try to build in compile_tests/CMakeFiles/CMakeTmp.${ColourReset}")
+  ${CMAKE_CURRENT_SOURCE_DIR}/compile_test/avx512vnni.cc)
+
+if (NOT INTGEMM_COMPILER_SUPPORTS_AVX2 OR NOT INTGEMM_COMPILER_SUPPORTS_AVX512BW OR NOT INTGEMM_COMPILER_SUPPORTS_AVX512VNNI)
+  set(UNSUPPORTED "Your compiler is too old to support")
+  if (NOT INTGEMM_COMPILER_SUPPORTS_AVX2)
+    set(UNSUPPORTED "${UNSUPPORTED} AVX2")
+  endif()
+  if (NOT INTGEMM_COMPILER_SUPPORTS_AVX512BW)
+    set(UNSUPPORTED "${UNSUPPORTED} AVX512BW")
+  endif()
+  if (NOT INTGEMM_COMPILER_SUPPORTS_AVX512VNNI)
+    set(UNSUPPORTED "${UNSUPPORTED} AVX512VNNI")
+  endif()
+  message(WARNING "${Orange}${UNSUPPORTED}.  Multiplication will be slower on CPUs that support these instructions. For details rerun cmake with --debug-trycompile then try to build in compile_tests/CMakeFiles/CMakeTmp.${ColourReset}")
 endif()
 
+
+add_library(intgemm STATIC intgemm/intgemm.cc)
+
 # Generate configure file
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/intgemm_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/intgemm_config.h)
-
+configure_file(intgemm/intgemm_config.h.in intgemm/intgemm_config.h)
+#Ensure it is included by users.
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(intgemm PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
-add_library(intgemm STATIC intgemm.cc)
+# This isn't necessary since intgemm uses entirely relative paths but source code depending on it may want to #include <intgemm/intgemm.h>
+target_include_directories(intgemm INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
 option(USE_OPENMP "Use OpenMP" OFF)
 if (USE_OPENMP)
@@ -80,7 +97,6 @@ add_executable(tests
   test/kernels/downcast_test.cc
   test/kernels/exp_test.cc
   test/kernels/floor_test.cc
-  test/kernels/multiply_sat_test.cc
   test/kernels/multiply_test.cc
   test/kernels/quantize_test.cc
   test/kernels/relu_test.cc

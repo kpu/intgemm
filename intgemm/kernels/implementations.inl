@@ -145,8 +145,8 @@ CPU_ATTR static inline vector_t<CPUType::CPU_NAME, Type> multiply(vector_t<CPUTy
 template <>
 CPU_ATTR inline vi multiply<int8_t>(vi a, vi b) {
   auto even = mullo_epi16(a, b);
-  auto odd = mullo_epi16(srli_epi16(a, 8), srli_epi16(b, 8));
-  return or_si(slli_epi16(odd, 8), srli_epi16(slli_epi16(even, 8), 8));
+  auto odd = mullo_epi16(srli_epi16<8>(a), srli_epi16<8>(b));
+  return or_si(slli_epi16<8>(odd), srli_epi16<8>(slli_epi16<8>(even)));
 }
 
 template <>
@@ -235,7 +235,7 @@ CPU_ATTR static inline dvector_t<CPUType::CPU_NAME, int16_t> upcast8to16(vi inpu
   static const auto permutation_indices = _mm512_set_epi64(7, 3, 6, 2, 5, 1, 4, 0);
 
   input = _mm512_castpd_si512(_mm512_permutexvar_pd(permutation_indices, _mm512_castsi512_pd(input)));
-  auto negatives = _mm512_cmp_epi8_mask(input, vzero, _MM_CMPINT_LT);
+  auto negatives = _mm512_cmp_epi8_mask(input, vzero, 1 /* _MM_CMPINT_LT */);
   auto higher_byte = _mm512_mask_blend_epi8(negatives, vzero, vmax_negative);
 #endif
 
@@ -258,7 +258,7 @@ CPU_ATTR static inline dvector_t<CPUType::CPU_NAME, int> upcast16to32(vi input) 
   static const auto permutation_indices = _mm512_set_epi64(7, 3, 6, 2, 5, 1, 4, 0);
 
   input = _mm512_castpd_si512(_mm512_permutexvar_pd(permutation_indices, _mm512_castsi512_pd(input)));
-  auto negatives = _mm512_cmp_epi16_mask(input, vzero, _MM_CMPINT_LT);
+  auto negatives = _mm512_cmp_epi16_mask(input, vzero, 1 /* _MM_CMPINT_LT */);
   auto higher_byte = _mm512_mask_blend_epi16(negatives, vzero, vmax_negative);
 #endif
 
@@ -293,32 +293,6 @@ CPU_ATTR static inline vi rescale(vi input, vf scale) {
  */
 CPU_ATTR static inline vi bitwise_not(vi v) {
   return xor_si(v, set1_epi32<vi>(0xffffffff));
-}
-
-/*
- * Multiply with saturation (elemwise)
- */
-template <typename Type>
-CPU_ATTR static inline vector_t<CPUType::CPU_NAME, Type> multiply_sat(vector_t<CPUType::CPU_NAME, Type> a, vector_t<CPUType::CPU_NAME, Type> b, uint8_t right_shift);
-
-template <>
-CPU_ATTR inline vi multiply_sat<int8_t>(vi a, vi b, uint8_t right_shift) {
-  auto upcasted_a = upcast8to16(a);
-  auto upcasted_b = upcast8to16(b);
-  auto low = srai_epi16(multiply<int16_t>(upcasted_a.first, upcasted_b.first), right_shift);
-  auto hi = srai_epi16(multiply<int16_t>(upcasted_a.second, upcasted_b.second), right_shift);
-
-  return downcast16to8(low, hi);
-}
-
-template <>
-CPU_ATTR inline vi multiply_sat<int16_t>(vi a, vi b, uint8_t right_shift) {
-  auto upcasted_a = upcast16to32(a);
-  auto upcasted_b = upcast16to32(b);
-  auto low = srai_epi32(multiply<int32_t>(upcasted_a.first, upcasted_b.first), right_shift);
-  auto hi = srai_epi32(multiply<int32_t>(upcasted_a.second, upcasted_b.second), right_shift);
-
-  return downcast32to16(low, hi);
 }
 
 /*

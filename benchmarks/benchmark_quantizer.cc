@@ -1,8 +1,8 @@
-#include "../intgemm.h"
-#include "../aligned.h"
-#include "../ssse3_gemm.h"
-#include "../avx2_gemm.h"
-#include "../avx512_gemm.h"
+#include "../intgemm/intgemm.h"
+#include "../intgemm/aligned.h"
+#include "../intgemm/ssse3_gemm.h"
+#include "../intgemm/avx2_gemm.h"
+#include "../intgemm/avx512_gemm.h"
 
 #include <chrono>
 #include <iomanip>
@@ -14,7 +14,7 @@ namespace {
 
 float MaxAbsoluteBaseline(const float *begin, const float *end) {
   auto res = std::minmax_element(begin, end);
-  return std::max(fabsf(*res.first), fabsf(*res.second));
+  return std::max(std::fabs(*res.first), std::fabs(*res.second));
 }
 
 void BenchmarkMaxAbsolute() {
@@ -63,10 +63,12 @@ int main() {
     for (float &element : in) {
       element = dist(gen);
     }
-    QuantizerBench<intgemm::SSSE3_8bit>(in.begin(), out.begin(), static_cast<intgemm::Index>(count));
-    QuantizerBench<intgemm::AVX2_8bit>(in.begin(), out.begin(), static_cast<intgemm::Index>(count));
+    QuantizerBench<intgemm::SSSE3::Kernels8>(in.begin(), out.begin(), static_cast<intgemm::Index>(count));
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
+    QuantizerBench<intgemm::AVX2::Kernels8>(in.begin(), out.begin(), static_cast<intgemm::Index>(count));
+#endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-    QuantizerBench<intgemm::AVX512_8bit>(in.begin(), out.begin(), static_cast<intgemm::Index>(count));
+    QuantizerBench<intgemm::AVX512BW::Kernels8>(in.begin(), out.begin(), static_cast<intgemm::Index>(count));
 #endif
   }
 }

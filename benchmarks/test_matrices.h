@@ -1,8 +1,8 @@
 #pragma once
 
 #include "do_not_optimize.h"
-#include "../aligned.h"
-#include "../tile/access.h"
+#include "../intgemm/aligned.h"
+#include "../intgemm/tile/access.h"
 #include <random>
 // Yes both due to debacle.
 #include <stdint.h>

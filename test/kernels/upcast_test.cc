@@ -1,9 +1,10 @@
+// This test triggers an internal compiler error in gcc 5.
+#if defined(__OPTIMIZE__) || defined(__clang__) || defined(__INTEL_COMPILER) || !defined(__GNUC__) || (__GNUC__ != 5)
 #include "../test.h"
-#include "../../aligned.h"
-#include "../../kernels.h"
+#include "../../intgemm/aligned.h"
+#include "../../intgemm/kernels.h"
 
 #include <cstdint>
-#include <stdint.h>
 #include <numeric>
 
 namespace intgemm {
@@ -32,8 +33,10 @@ void kernel_upcast8to16_test() {
 template INTGEMM_SSE2 void kernel_upcast8to16_test<CPUType::SSE2>();
 KERNEL_TEST_CASE("upcast8to16 SSE2") { return kernel_upcast8to16_test<CPUType::SSE2>(); }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 template INTGEMM_AVX2 void kernel_upcast8to16_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("upcast8to16 AVX2") { return kernel_upcast8to16_test<CPUType::AVX2>(); }
+#endif
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_upcast8to16_test<CPUType::AVX512BW>();
@@ -64,13 +67,16 @@ void kernel_upcast16to32_test() {
 template INTGEMM_SSE2 void kernel_upcast16to32_test<CPUType::SSE2>();
 KERNEL_TEST_CASE("upcast16to32 SSE2") { return kernel_upcast16to32_test<CPUType::SSE2>(); }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 template INTGEMM_AVX2 void kernel_upcast16to32_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("upcast16to32 AVX2") { return kernel_upcast16to32_test<CPUType::AVX2>(); }
+#endif
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_upcast16to32_test<CPUType::AVX512BW>();
 KERNEL_TEST_CASE("upcast16to32 AVX512BW") { return kernel_upcast16to32_test<CPUType::AVX512BW>(); }
 #endif
+
 
 template <CPUType CPUType_>
 void kernel_upcast8to32_test() {
@@ -98,8 +104,10 @@ void kernel_upcast8to32_test() {
 template INTGEMM_SSE2 void kernel_upcast8to32_test<CPUType::SSE2>();
 KERNEL_TEST_CASE("upcast8to32 SSE2") { return kernel_upcast8to32_test<CPUType::SSE2>(); }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 template INTGEMM_AVX2 void kernel_upcast8to32_test<CPUType::AVX2>();
 KERNEL_TEST_CASE("upcast8to32 AVX2") { return kernel_upcast8to32_test<CPUType::AVX2>(); }
+#endif
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_upcast8to32_test<CPUType::AVX512BW>();
@@ -107,3 +115,4 @@ KERNEL_TEST_CASE("upcast8to32 AVX512BW") { return kernel_upcast8to32_test<CPUTyp
 #endif
 
 }
+#endif

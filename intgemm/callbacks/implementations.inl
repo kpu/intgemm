@@ -129,7 +129,14 @@ public:
   }
 
   CPU_ATTR void operator()(vi input, const OutputBufferInfo& info) {
-    auto result = kernels::unquantize(input, unquant_mult);
+    // Workaround gcc 5 internal compiler error that can't read register members in debug.
+    vf mult_reg;
+#if !defined(__OPTIMIZE__) && (__GNUC__ == 5) && !defined(__clang__) && !defined(__INTEL_COMPILER)
+    asm ("vmovdqa %1, %0" : "=x" (mult_reg) : "m" (unquant_mult));
+#else
+    mult_reg = unquant_mult;
+#endif
+    auto result = kernels::unquantize(input, mult_reg);
     kernels::write(result, config.output_addr, info.row_idx * info.cols + info.col_idx);
   }
 
@@ -164,7 +171,14 @@ public:
   }
 
   CPU_ATTR void operator()(vi input, const OutputBufferInfo& info) {
-    auto result = kernels::unquantize(input, unquant_mult);
+    // Workaround gcc 5 internal compiler error that can't read register members in debug.
+    vf mult_reg;
+#if !defined(__OPTIMIZE__) && (__GNUC__ == 5) && !defined(__clang__) && !defined(__INTEL_COMPILER)
+    asm ("vmovdqa %1, %0" : "=x" (mult_reg) : "m" (unquant_mult));
+#else
+    mult_reg = unquant_mult;
+#endif
+    auto result = kernels::unquantize(input, mult_reg);
     result = kernels::add_bias(result, config.bias_addr, info.col_idx);
     kernels::write(result, config.output_addr, info.row_idx * info.cols + info.col_idx);
   }

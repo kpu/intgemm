@@ -1,8 +1,8 @@
-#include "../aligned.h"
-#include "../tile/access.h"
-#include "../tile/dot.h"
-#include "../tile/multiply.h"
-#include "../tile/reduce.h"
+#include "../intgemm/aligned.h"
+#include "../intgemm/tile/access.h"
+#include "../intgemm/tile/dot.h"
+#include "../intgemm/tile/multiply.h"
+#include "../intgemm/tile/reduce.h"
 #include "test.h"
 
 #include "../benchmarks/test_matrices.h"

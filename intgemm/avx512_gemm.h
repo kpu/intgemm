@@ -1,6 +1,6 @@
 #pragma once
 
-#include "intgemm_config.h"
+#include "intgemm/intgemm_config.h"
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 
@@ -12,10 +12,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
 
 /* AVX512 implementation.
  * This uses INTGEMM_AVX512BW, INTGEMM_AVX512DQ, and might use AVX512VL
@@ -34,8 +31,7 @@ namespace intgemm {
 // So conversion in memory uses these, but I also implement a wider version for
 // rearranging B.
 
-// Convert to 16-bit signed integers.
-namespace avx512f {
+namespace AVX512BW {
 
 // Load from memory, multiply, and convert to int32_t.
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
@@ -60,7 +56,7 @@ INTGEMM_AVX512DQ inline __m512 Concat(const __m256 first, const __m256 second) {
 // Like QuantizerGrab, but allows 32-byte halves (i.e. 8 columns) to be controlled independently.
 /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 INTGEMM_AVX512BW inline __m512i QuantizerGrabHalves(const float *input0, const float *input1, const __m512 quant_mult_reg) {
-  __m512 appended = avx512f::Concat(loadu_ps<__m256>(input0), loadu_ps<__m256>(input1));
+  __m512 appended = Concat(loadu_ps<__m256>(input0), loadu_ps<__m256>(input1));
   appended = _mm512_mul_ps(appended, quant_mult_reg);
   return _mm512_cvtps_epi32(appended);
 }
@@ -70,40 +66,27 @@ INTGEMM_AVX512BW inline __m512i QuantizerGrabHalves(const float *input0, const f
 // being used for the quantizer.
 class QuantizeTile16 {
   public:
-    typedef __m512i Register;
-
-    /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
-    INTGEMM_AVX512BW explicit QuantizeTile16(float mult) : mult_reg_(_mm512_set1_ps(mult)) {}
-
-    INTGEMM_AVX512BW Register ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) const {
+    INTGEMM_AVX512BW static inline Register ConsecutiveWithWrapping(FRegister quant_mult, const float *input, Index cols_left, Index cols, Index row_step) {
       auto input0 = input;
       auto input1 = input + 16 + (cols_left <= 16 ? cols * (row_step - 1) : 0);
-      auto g0 = QuantizerGrabHalves(input0, input1, mult_reg_);
-      auto g1 = QuantizerGrabHalves(input0 + 8, input1 + 8, mult_reg_);
+      auto g0 = QuantizerGrabHalves(input0, input1, quant_mult);
+      auto g1 = QuantizerGrabHalves(input0 + 8, input1 + 8, quant_mult);
       auto packed = packs_epi32(g0, g1);
       return _mm512_permutex_epi64(packed, 0xd8 /* 0, 2, 1, 3 */);
     }
 
-    INTGEMM_AVX512BW inline __m512i ForReshape(const float *input, Index cols) const {
-      __m512i g0 = QuantizerGrabHalves(input, input + 16 * cols, mult_reg_);
-      __m512i g1 = QuantizerGrabHalves(input + 8 * cols, input + 24 * cols, mult_reg_);
+    INTGEMM_AVX512BW static inline Register ForReshape(FRegister quant_mult, const float *input, Index cols) {
+      __m512i g0 = QuantizerGrabHalves(input, input + 16 * cols, quant_mult);
+      __m512i g1 = QuantizerGrabHalves(input + 8 * cols, input + 24 * cols, quant_mult);
       __m512i packed = packs_epi32(g0, g1);
       // Permute within 256-bit lanes, so same as INTGEMM_AVX2
       return _mm512_permutex_epi64(packed, 0xd8 /* 0, 2, 1, 3 */);
     }
-
-  private:
-    const __m512 mult_reg_;
 };
 
 class QuantizeTile8 {
   public:
-    typedef __m512i Register;
-
-    /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
-    INTGEMM_AVX512BW explicit QuantizeTile8(float mult) : mult_reg_(_mm512_set1_ps(mult)) {}
-
-    INTGEMM_AVX512BW Register ConsecutiveWithWrapping(const float *input, Index cols_left, Index cols, Index row_step) const {
+    INTGEMM_AVX512BW static inline Register ConsecutiveWithWrapping(FRegister quant_mult, const float *input, Index cols_left, Index cols, Index row_step) {
       static const __m512i neg127 = _mm512_set1_epi8(-127);
       static const __m512i shuffle_param = _mm512_set_epi32(15, 11, 7, 3, 14, 10, 6, 2, 13, 9, 5, 1, 12, 8, 4, 0);
 
@@ -118,10 +101,10 @@ class QuantizeTile8 {
         cols_left -= sizeof(Register) / sizeof(float);
       }
 
-      auto g0 = QuantizerGrab(inputs[0], mult_reg_);
-      auto g1 = QuantizerGrab(inputs[1], mult_reg_);
-      auto g2 = QuantizerGrab(inputs[2], mult_reg_);
-      auto g3 = QuantizerGrab(inputs[3], mult_reg_);
+      auto g0 = QuantizerGrab(inputs[0], quant_mult);
+      auto g1 = QuantizerGrab(inputs[1], quant_mult);
+      auto g2 = QuantizerGrab(inputs[2], quant_mult);
+      auto g3 = QuantizerGrab(inputs[3], quant_mult);
 
       auto packed0 = packs_epi32(g0, g1);
       auto packed1 = packs_epi32(g2, g3);
@@ -130,17 +113,17 @@ class QuantizeTile8 {
       return _mm512_permutexvar_epi32(shuffle_param, packed);
     }
 
-    INTGEMM_AVX512BW inline __m512i ForReshape(const float *input, Index cols) const {
+    INTGEMM_AVX512BW static inline __m512i ForReshape(FRegister quant_mult, const float *input, Index cols) {
       // TODO: try alternative: _mm512_cvtsepi32_epi8 ?
       const __m512i neg127 = _mm512_set1_epi8(-127);
       // In reverse order: grabbing the first 32-bit values from each 128-bit register, then the second 32-bit values, etc.
       const __m512i shuffle_param = _mm512_set_epi32(15, 11, 7, 3, 14, 10, 6, 2, 13, 9, 5, 1, 12, 8, 4, 0);
 
       // 32-bit format.
-      __m512i g0 = QuantizerGrabHalves(input, input + 2 * cols, mult_reg_);
-      __m512i g1 = QuantizerGrabHalves(input + 16 * cols, input + 18 * cols, mult_reg_);
-      __m512i g2 = QuantizerGrabHalves(input + 32 * cols, input + 34 * cols, mult_reg_);
-      __m512i g3 = QuantizerGrabHalves(input + 48 * cols, input + 50 * cols, mult_reg_);
+      __m512i g0 = QuantizerGrabHalves(input, input + 2 * cols, quant_mult);
+      __m512i g1 = QuantizerGrabHalves(input + 16 * cols, input + 18 * cols, quant_mult);
+      __m512i g2 = QuantizerGrabHalves(input + 32 * cols, input + 34 * cols, quant_mult);
+      __m512i g3 = QuantizerGrabHalves(input + 48 * cols, input + 50 * cols, quant_mult);
       // Pack 32-bit to 16-bit.
       __m512i packed0 = packs_epi32(g0, g1);
       __m512i packed1 = packs_epi32(g2, g3);
@@ -151,14 +134,9 @@ class QuantizeTile8 {
       // 0 1 2 3 16 17 18 19 32 33 34 35 48 49 50 51 4 5 6 7 20 21 22 23 36 37 38 39 52 53 54 55 8 9 10 11 24 25 26 27 40 41 42 43 56 57 58 59 12 13 14 15 28 29 30 31 44 45 46 47 60 61 62 63
       return _mm512_permutexvar_epi32(shuffle_param, packed);
     }
-
-  private:
-    const __m512 mult_reg_;
 };
 
-} // namespace
-
-struct AVX512_16bit {
+struct Kernels16 {
   typedef int16_t Integer;
 
   // Currently A is prepared by quantization but this could theoretically change.
@@ -181,7 +159,7 @@ struct AVX512_16bit {
     const float *end = input + size;
     for (; input != end; input += 16, output += 16) {
       // There doesn't seem to be an unmasked version.
-      _mm512_mask_cvtsepi32_storeu_epi16(output, 0xffff, avx512f::QuantizerGrab(input, quant_mult_reg));
+      _mm512_mask_cvtsepi32_storeu_epi16(output, 0xffff, QuantizerGrab(input, quant_mult_reg));
     }
   }
 
@@ -189,19 +167,15 @@ struct AVX512_16bit {
   // Tile size for B; B must be a multiple of this block size.
   static const Index kBTileRow = 32;
   static const Index kBTileCol = 8;
-/*
-  INTGEMM_AVX512F static void PrepareB(const float *input, int16_t *output, float quant_mult, Index rows, Index cols) {
-    PrepareBFor16(input, output, avx512f::QuantizeTile16(quant_mult), rows, cols);
-  }
-*/
+
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
-  INTGEMM_PREPARE_B_16(INTGEMM_AVX512BW, avx512f::QuantizeTile16)
-  INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(INTGEMM_AVX512BW, CPUType::AVX512BW, int16_t)
-  INTGEMM_PREPARE_B_TRANSPOSED(INTGEMM_AVX512BW, avx512f::QuantizeTile16, int16_t)
+  INTGEMM_PREPARE_B_16(INTGEMM_AVX512BW, QuantizeTile16)
+  INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(INTGEMM_AVX512BW, int16_t)
+  INTGEMM_PREPARE_B_TRANSPOSED(INTGEMM_AVX512BW, QuantizeTile16, int16_t)
 
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
   INTGEMM_AVX512BW static void SelectColumnsB(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
-    avx512f::SelectColumnsOfB((const __m512i*)input, (__m512i*)output, rows * 2, cols_begin, cols_end);
+    SelectColumnsOfB((const __m512i*)input, (__m512i*)output, rows * 2, cols_begin, cols_end);
   }
 
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
@@ -212,7 +186,7 @@ struct AVX512_16bit {
   static const CPUType kUses = CPUType::AVX512BW;
 };
 
-struct AVX512_8bit {
+struct Kernels8 {
   typedef int8_t Integer;
 
   // Currently A is prepared by quantization but this could theoretically change.
@@ -237,7 +211,7 @@ struct AVX512_8bit {
     const std::size_t kBatch = sizeof(__m512i) / sizeof(float);
 #pragma omp for
     for (std::size_t i = 0; i < count; i += kBatch) {
-      __m512i asint = avx512f::QuantizerGrab(input + i, quant_mult_reg);
+      __m512i asint = QuantizerGrab(input + i, quant_mult_reg);
       asint = _mm512_max_epi32(asint, neg127);
       // There doesn't seem to be an unmasked version.
       _mm512_mask_cvtsepi32_storeu_epi8(output + i, 0xffff, asint);
@@ -263,7 +237,7 @@ struct AVX512_8bit {
     if (!overhang) return; // We needed a branch anyway for the empty case.
     const __m512i neg127 = _mm512_set1_epi32(-127);
     const __m512 quant_mult_reg = _mm512_set1_ps(quant_mult);
-    __m512i asint = avx512f::QuantizerGrab(fast_input_end, quant_mult_reg);
+    __m512i asint = QuantizerGrab(fast_input_end, quant_mult_reg);
     asint = _mm512_max_epi32(asint, neg127);
     _mm512_mask_cvtsepi32_storeu_epi8(fast_output_end, (1 << overhang) - 1, asint);
   }
@@ -287,7 +261,7 @@ struct AVX512_8bit {
     const __m512 quant_mult_reg = _mm512_set1_ps(quant_mult);
     const float *end = input + size;
     for (; input < end; input += 16, output += 16) {
-      __m512i asint = avx512f::QuantizerGrab(input, quant_mult_reg);
+      __m512i asint = QuantizerGrab(input, quant_mult_reg);
       asint = _mm512_min_epi32(asint, pos127);
       asint = _mm512_add_epi32(asint, pos127);
       asint = _mm512_max_epi32(asint, zero);
@@ -298,26 +272,21 @@ struct AVX512_8bit {
   // Tile size for B; B must be a multiple of this block size.
   static const Index kBTileRow = 64;
   static const Index kBTileCol = 8;
-/*
-  INTGEMM_AVX512F static void PrepareB(const float *input, int8_t *output, float quant_mult, Index rows, Index cols) {
-    PrepareBFor8(input, output, avx512f::QuantizeTile8(quant_mult), rows, cols);
-  }*/
+
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
-  INTGEMM_PREPARE_B_8(INTGEMM_AVX512BW, avx512f::QuantizeTile8)
-  INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(INTGEMM_AVX512BW, CPUType::AVX512BW, int8_t)
-  INTGEMM_PREPARE_B_TRANSPOSED(INTGEMM_AVX512BW, avx512f::QuantizeTile8, int8_t)
+  INTGEMM_PREPARE_B_8(INTGEMM_AVX512BW, QuantizeTile8)
+  INTGEMM_PREPARE_B_QUANTIZED_TRANSPOSED(INTGEMM_AVX512BW, int8_t)
+  INTGEMM_PREPARE_B_TRANSPOSED(INTGEMM_AVX512BW, QuantizeTile8, int8_t)
 
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
   INTGEMM_AVX512BW static void SelectColumnsB(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end) {
-    avx512f::SelectColumnsOfB((const __m512i*)input, (__m512i*)output, rows, cols_begin, cols_end);
+    SelectColumnsOfB((const __m512i*)input, (__m512i*)output, rows, cols_begin, cols_end);
   }
 
   // Special AVX512 implementation due to having 32 registers (so I don't have to
   // allocate registers manually) and no sign instruction.
   template <typename Callback>
   INTGEMM_AVX512BW static void Multiply(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
-    typedef __m512i Register;
-    //typedef __m256 Float; // For quantization we only do 8 at a time.
     // This is copy-paste from Multiply8_SSE2OrAVX2.
     assert(width % sizeof(Register) == 0);
     assert(B_cols % 8 == 0);
@@ -436,6 +405,7 @@ struct AVX512_8bit {
   static const CPUType kUses = CPUType::AVX512BW;
 };
 
+} // namespace AVX512BW
 } // namespace intgemm
 
 #endif

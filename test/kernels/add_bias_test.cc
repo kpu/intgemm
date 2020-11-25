@@ -1,6 +1,6 @@
 #include "../test.h"
-#include "../../aligned.h"
-#include "../../kernels.h"
+#include "../../intgemm/aligned.h"
+#include "../../intgemm/kernels.h"
 
 #include <numeric>
 
@@ -37,6 +37,7 @@ KERNEL_TEST_CASE("add_bias/int SSE2") { return kernel_add_bias_test<CPUType::SSE
 KERNEL_TEST_CASE("add_bias/float SSE2") { return kernel_add_bias_test<CPUType::SSE2, float>(); }
 KERNEL_TEST_CASE("add_bias/double SSE2") { return kernel_add_bias_test<CPUType::SSE2, double>(); }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 template INTGEMM_AVX2 void kernel_add_bias_test<CPUType::AVX2, int8_t>();
 template INTGEMM_AVX2 void kernel_add_bias_test<CPUType::AVX2, int16_t>();
 template INTGEMM_AVX2 void kernel_add_bias_test<CPUType::AVX2, int>();
@@ -47,6 +48,7 @@ KERNEL_TEST_CASE("add_bias/int16 AVX2") { return kernel_add_bias_test<CPUType::A
 KERNEL_TEST_CASE("add_bias/int AVX2") { return kernel_add_bias_test<CPUType::AVX2, int>(); }
 KERNEL_TEST_CASE("add_bias/float AVX2") { return kernel_add_bias_test<CPUType::AVX2, float>(); }
 KERNEL_TEST_CASE("add_bias/double AVX2") { return kernel_add_bias_test<CPUType::AVX2, double>(); }
+#endif
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 template INTGEMM_AVX512BW void kernel_add_bias_test<CPUType::AVX512BW, int8_t>();

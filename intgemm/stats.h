@@ -32,12 +32,14 @@ INTGEMM_SSE2 static inline float AddFloat32(__m128 a) {
   return *reinterpret_cast<float*>(&a);
 }
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 INTGEMM_AVX2 static inline float MaxFloat32(__m256 a) {
   return MaxFloat32(max_ps(_mm256_castps256_ps128(a), _mm256_extractf128_ps(a, 1)));
 }
 INTGEMM_AVX2 static inline float AddFloat32(__m256 a) {
   return AddFloat32(add_ps(_mm256_castps256_ps128(a), _mm256_extractf128_ps(a, 1)));
 }
+#endif
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 // Find the maximum float.
@@ -61,9 +63,11 @@ constexpr int32_t kFloatAbsoluteMask = 0x7fffffff;
 #include "stats.inl"
 #undef INTGEMM_THIS_IS_SSE2
 
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 #define INTGEMM_THIS_IS_AVX2
 #include "stats.inl"
 #undef INTGEMM_THIS_IS_AVX2
+#endif
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
 #define INTGEMM_THIS_IS_AVX512DQ

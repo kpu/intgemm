@@ -1,11 +1,11 @@
-#include "intgemm.h"
+#include "intgemm/intgemm.h"
 // This is just for AlignedVector, which helps managed 64-byte aligned memory.
 // Feel free to manage memory yourself.
-#include "aligned.h" 
-#include "callbacks.h"
+#include "intgemm/aligned.h" 
+#include "intgemm/callbacks.h"
 
 #include <cassert>
-#include <math.h>
+#include <cmath>
 #include <random>
 
 int main() {
@@ -54,7 +54,7 @@ int main() {
     // Do the actual multiply.
     intgemm::Int16::Multiply(A_prepared.begin(), B_prepared.begin(), A_rows, width, B_cols, intgemm::callbacks::UnquantizeAndWrite(1.0f / (quant_mult * quant_mult), C.begin()));
     // Sanity check.  C will be row major.
-    assert(fabsf(C[0] - top_left_reference) < 0.05f);
+    assert(std::fabs(C[0] - top_left_reference) < 0.05f);
   }
 
   // 8-bit multiplication.
@@ -73,6 +73,7 @@ int main() {
     // Do the actual multiply.
     intgemm::Int8::Multiply(A_prepared.begin(), B_prepared.begin(), A_rows, width, B_cols, intgemm::callbacks::UnquantizeAndWrite(1.0f / (quant_mult * quant_mult), C.begin()));
     // Sanity check.  C will be row major.
-    assert(fabsf(C[0] - top_left_reference) < 0.05f);
+    assert(std::fabs(C[0] - top_left_reference) < 0.05f);
   }
+  return 0;
 }
