@@ -74,7 +74,15 @@ template <Index Valid> INTGEMM_TARGET static void Reduce32Test() {
   // Do 20 different loops of random numbers.
   for (Index attempt = 0; attempt < 20; ++attempt) {
     memset(reference, 0, sizeof(reference));
+    // Valid can be 0.
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
+#endif
     for (Index i = 0; i < Valid; ++i) {
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
       int32_t temp[kReduce];
       for (std::size_t j = 0; j < kReduce; ++j) {
         temp[j] = dist(gen);
