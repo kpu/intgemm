@@ -14,6 +14,12 @@ if(MSVC)
   add_compile_options(/W4 /WX)
 else()
   add_compile_options(-Wall -Wextra -pedantic -Werror -Wno-unknown-pragmas)
+  if (COMPILE_WASM)
+    # Disabling Pthreads + memory growth warning to be an error for WASM
+    # Pthreads + memory growth causes JS accessing the wasm memory to be slow
+    # https://github.com/WebAssembly/design/issues/1271
+    add_compile_options(-Wno-error=pthreads-mem-growth)
+  endif()
 endif()
 
 # Check if compiler supports AVX2 (this should only catch emscripten)
