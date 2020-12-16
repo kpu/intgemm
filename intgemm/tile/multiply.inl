@@ -14,6 +14,7 @@
 #define INTGEMM_ARCH SSE2
 #define INTGEMM_TARGET INTGEMM_SSE2
 #endif
+#include <iostream>
 
 namespace intgemm {
 namespace INTGEMM_ARCH {
