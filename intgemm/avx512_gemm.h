@@ -391,7 +391,7 @@ struct Kernels8 {
         Register pack4567 = Pack0123(sum4, sum5, sum6, sum7);
 
         auto total = PermuteSummer(pack0123, pack4567);
-        callback_impl(total, callbacks::OutputBufferInfo(A_rowidx, B0_colidx, A_rows, B_cols));
+        callback_impl.Run(total, callbacks::OutputBufferInfo(A_rowidx, B0_colidx, A_rows, B_cols));
       }
     }
   }

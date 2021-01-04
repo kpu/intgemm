@@ -20,7 +20,10 @@
 
 namespace intgemm {
 
-INTGEMM_SSE2 TEST_CASE("Transpose 16", "[transpose]") {
+#ifndef __INTEL_COMPILER
+INTGEMM_SSE2
+#endif
+TEST_CASE("Transpose 16", "[transpose]") {
   if (kCPU < CPUType::SSE2) return;
   const unsigned N = 8;
   AlignedVector<int16_t> input(N * N);
@@ -38,7 +41,10 @@ INTGEMM_SSE2 TEST_CASE("Transpose 16", "[transpose]") {
   }
 }
 
-INTGEMM_SSSE3 TEST_CASE("Transpose 8", "[transpose]") {
+#ifndef __INTEL_COMPILER
+INTGEMM_SSSE3
+#endif
+TEST_CASE("Transpose 8", "[transpose]") {
   if (kCPU < CPUType::SSSE3) return;
   const unsigned N = 16;
   AlignedVector<int8_t> input(N * N);

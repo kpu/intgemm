@@ -75,7 +75,7 @@ struct Kernels8 : public AVX512BW::Kernels8 {
         Register pack0123 = Pack0123(sum0, sum1, sum2, sum3);
         Register pack4567 = Pack0123(sum4, sum5, sum6, sum7);
         auto total = PermuteSummer(pack0123, pack4567);
-        callback_impl(total, callbacks::OutputBufferInfo(A_rowidx, B0_colidx, A_rows, B_cols));
+        callback_impl.Run(total, callbacks::OutputBufferInfo(A_rowidx, B0_colidx, A_rows, B_cols));
       }
     }
   }
@@ -116,7 +116,7 @@ struct Kernels8 : public AVX512BW::Kernels8 {
         Register pack0123 = Pack0123(sum0, sum1, sum2, sum3);
         Register pack4567 = Pack0123(sum4, sum5, sum6, sum7);
         auto total = PermuteSummer(pack0123, pack4567);
-        callback_impl(total, callbacks::OutputBufferInfo(A_rowidx, B0_colidx, A_rows, B_cols));
+        callback_impl.Run(total, callbacks::OutputBufferInfo(A_rowidx, B0_colidx, A_rows, B_cols));
       }
     }
   }
@@ -153,7 +153,7 @@ struct Kernels8 : public AVX512BW::Kernels8 {
       Register pack0123 = Pack0123(sum0, sum1, sum2, sum3);
       Register pack4567 = Pack0123(sum4, sum5, sum6, sum7);
       auto total = PermuteSummer(pack0123, pack4567);
-      callback_impl(total, callbacks::OutputBufferInfo(0, B0_colidx, 1, B_cols));
+      callback_impl.Run(total, callbacks::OutputBufferInfo(0, B0_colidx, 1, B_cols));
     }
   }
 
