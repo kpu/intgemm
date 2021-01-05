@@ -5,9 +5,22 @@
 #endif
 #include <emmintrin.h>
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || defined(__INTEL_COMPILER)
 /* MSVC does not appear to have target attributes but is also fine with just
  * using intrinsics anywhere.
+ *
+ * The Intel compiler has a bug whereby constructors with target attributes do
+ * not link.  Like this program doesn't compile with icpc:
+ * class Foo {
+ *   public:
+ *     __attribute__ ((target ("avx2"))) Foo() {}
+ * };
+ * int main() { Foo a; }
+ *
+ * It appears to be erroneously activating function multiversioning when only
+ * one version of a constructor with target attributes is defined.  Normal
+ * methods with one target attribute work fine.  The Intel compiler also allows
+ * intrinsics without any target attributes so we just leave them blank.
  */
   #define INTGEMM_SSE2
   #define INTGEMM_SSSE3
@@ -17,23 +30,14 @@
   #define INTGEMM_AVX512DQ
   #define INTGEMM_AVX512VNNI
 #else
-  /* gcc, clang, and Intel compiler */
+  /* gcc and clang take lists of all the flavors */
   #define INTGEMM_SSE2 __attribute__ ((target ("sse2")))
   #define INTGEMM_SSSE3 __attribute__ ((target ("ssse3")))
   #define INTGEMM_AVX2 __attribute__ ((target ("avx2")))
-  #if defined(__INTEL_COMPILER)
-    /* Intel compiler might not have AVX512 flavors but lets you use them anyway */
-    #define INTGEMM_AVX512F __attribute__ ((target ("avx512f")))
-    #define INTGEMM_AVX512BW __attribute__ ((target ("avx512f")))
-    #define INTGEMM_AVX512DQ __attribute__ ((target ("avx512f")))
-    #define INTGEMM_AVX512VNNI __attribute__ ((target ("avx512f")))
-  #else
-    /* gcc and clang take lists of all the flavors */
-    #define INTGEMM_AVX512F __attribute__ ((target ("avx512f")))
-    #define INTGEMM_AVX512BW __attribute__ ((target ("avx512f,avx512bw,avx512dq")))
-    #define INTGEMM_AVX512DQ __attribute__ ((target ("avx512f,avx512bw,avx512dq")))
-    #define INTGEMM_AVX512VNNI __attribute__ ((target ("avx512f,avx512bw,avx512dq,avx512vnni")))
-  #endif
+  #define INTGEMM_AVX512F __attribute__ ((target ("avx512f")))
+  #define INTGEMM_AVX512BW __attribute__ ((target ("avx512f,avx512bw,avx512dq")))
+  #define INTGEMM_AVX512DQ __attribute__ ((target ("avx512f,avx512bw,avx512dq")))
+  #define INTGEMM_AVX512VNNI __attribute__ ((target ("avx512f,avx512bw,avx512dq,avx512vnni")))
 #endif
 namespace intgemm {
 
