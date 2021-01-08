@@ -74,6 +74,11 @@ if (USE_OPENMP)
   target_link_libraries(intgemm PUBLIC OpenMP::OpenMP_CXX)
 endif()
 
+option(WORMHOLE "Use WASM wormhole https://bugzilla.mozilla.org/show_bug.cgi?id=1672160" OFF)
+if (WORMHOLE)
+  target_compile_definitions(intgemm PUBLIC INTGEMM_WORMHOLE)
+endif()
+
 if(INTGEMM_DONT_BUILD_TESTS)
   return()
 endif()
