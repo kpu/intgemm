@@ -9,6 +9,9 @@
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 #include <immintrin.h>
 #endif
+#ifdef INTGEMM_WORMHOLE
+#include <wasm_simd128.h>
+#endif
 
 #include <cstdint>
 
