@@ -1,0 +1,27 @@
+name: Intel 19.1 
+
+on:
+  push:
+    branches: [master, static]
+  pull_request:
+    branches: [master, static]
+
+jobs:
+  build:
+    runs-on: self-hosted
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: environment
+      run: source /opt/intel/bin/compilervars.sh intel64 
+    - name: cmake
+      run: |
+        mkdir -p build
+        cd build
+        cmake  -DCMAKE_C_COMPILER=icc -DCMAKE_CXX_COMPILER=icpc -DCMAKE_BUILD_TYPE=Debug ..
+    - name: Compile
+      working-directory: build
+      run: make -j2
+    - name: Test
+      working-directory: build
+      run: ctest -j2
