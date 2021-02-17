@@ -1,0 +1,35 @@
+name: Intel Compiler 
+
+on:
+  push:
+    branches: [master, static]
+  pull_request:
+    branches: [master, static]
+jobs:
+  build_linux_apt_cpp:
+    runs-on: ubuntu-20.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+    - uses: actions/checkout@v2
+    - name: setup repo
+      run: |
+        wget https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB
+        sudo apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB
+        sudo echo "deb https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
+        sudo apt-get update 
+    - name: install
+      run: sudo apt-get install -y intel-oneapi-compiler-dpcpp-cpp-and-cpp-classic
+    - name: cmake
+      run: |
+        source /opt/intel/oneapi/setvars.sh
+        mkdir -p build
+        cd build
+        cmake  -DCMAKE_C_COMPILER=icc -DCMAKE_CXX_COMPILER=icpc ..
+    - name: Compile
+      working-directory: build
+      run: make -j2
+    - name: Test
+      working-directory: build
+      run: ctest -j

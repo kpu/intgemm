@@ -6,6 +6,7 @@
 ![Build Ubuntu OpenMP](https://github.com/kpu/intgemm/workflows/Ubuntu%20OpenMP/badge.svg)
 ![Build Windows](https://github.com/kpu/intgemm/workflows/Windows/badge.svg)
 ![Build Mac](https://github.com/kpu/intgemm/workflows/Mac/badge.svg)
+![Intel Compilers](https://github.com/kpu/intgemm/workflows/Intel%2019.1/badge.svg)
 
 # Integer Matrix Multiplication
 
