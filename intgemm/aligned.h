@@ -5,22 +5,37 @@
 #include <malloc.h>
 #endif
 
-// 64-byte aligned simple vector.
+// Aligned simple vector.
 
 namespace intgemm {
 
 template <class T> class AlignedVector {
   public:
-    explicit AlignedVector(std::size_t size)
+    AlignedVector() : mem_(nullptr), size_(0) {}
+
+    explicit AlignedVector(std::size_t size, std::size_t alignment = 64 /* CPU cares about this */)
       : size_(size) {
 #ifdef _MSC_VER
-      mem_ = static_cast<T*>(_aligned_malloc(size * sizeof(T), 64));
+      mem_ = static_cast<T*>(_aligned_malloc(size * sizeof(T), alignment));
       if (!mem_) throw std::bad_alloc();
 #else      
-      if (posix_memalign(reinterpret_cast<void **>(&mem_), 64, size * sizeof(T))) {
+      if (posix_memalign(reinterpret_cast<void **>(&mem_), alignment, size * sizeof(T))) {
         throw std::bad_alloc();
       }
 #endif
+    }
+
+    AlignedVector(AlignedVector &&from) : mem_(from.mem_), size_(from.size_) {
+      from.mem_ = nullptr;
+      from.size_ = 0;
+    }
+
+    AlignedVector &operator=(AlignedVector &&from) {
+      mem_ = from.mem_;
+      size_ = from.size_;
+      from.mem_ = nullptr;
+      from.size_ = 0;
+      return *this;
     }
 
     AlignedVector(const AlignedVector&) = delete;
