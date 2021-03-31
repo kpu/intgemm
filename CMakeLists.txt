@@ -74,6 +74,11 @@ if (USE_OPENMP)
   target_link_libraries(intgemm PUBLIC OpenMP::OpenMP_CXX)
 endif()
 
+if (COMPILE_WASM)
+    # A compile defintion to compile intgemm on WASM platform
+    target_compile_definitions(intgemm PUBLIC WASM)
+endif()
+
 option(WORMHOLE "Use WASM wormhole https://bugzilla.mozilla.org/show_bug.cgi?id=1672160" OFF)
 if (WORMHOLE)
   target_compile_definitions(intgemm PUBLIC INTGEMM_WORMHOLE)

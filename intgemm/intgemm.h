@@ -49,7 +49,7 @@
 #include "avx512_gemm.h"
 #include "avx512vnni_gemm.h"
 
-#if defined(__EMSCRIPTEN__)
+#if defined(WASM)
 // No header for CPUID since it's hard-coded.
 #elif defined(__INTEL_COMPILER)
 #include <immintrin.h>
@@ -171,15 +171,15 @@ template <class T> T ChooseCPU(T
     avx2
 #endif
     , T ssse3, T
-#ifndef __EMSCRIPTEN__
+#ifndef WASM
     sse2
 #endif
     , T
-#ifndef __EMSCRIPTEN__
+#ifndef WASM
     unsupported
 #endif
     ) {
-#if defined(__EMSCRIPTEN__)
+#if defined(WASM)
   // emscripten does SSE4.1 but we only use up to SSSE3.
   return ssse3;
 #elif defined(__INTEL_COMPILER)
