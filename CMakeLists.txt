@@ -61,7 +61,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 target_include_directories(intgemm PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
 # This isn't necessary since intgemm uses entirely relative paths but source code depending on it may want to #include <intgemm/intgemm.h>
-target_include_directories(intgemm INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(intgemm INTERFACE .)
 
 option(USE_OPENMP "Use OpenMP" OFF)
 if (USE_OPENMP)
