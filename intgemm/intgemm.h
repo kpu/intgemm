@@ -144,6 +144,7 @@ typedef Unsupported_16bit Kernels16;
 } // namespace AVX2
 #endif
 
+CPUType GetCPUID();
 
 /* Returns:
  * axx512vnni if the CPU supports AVX512VNNI
@@ -158,91 +159,9 @@ typedef Unsupported_16bit Kernels16;
  *
  * unsupported otherwise
  */
-template <class T> T ChooseCPU(T
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
-    avx512vnni
-#endif
-    , T
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-    avx512bw
-#endif
-    , T
-#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
-    avx2
-#endif
-    , T ssse3, T
-#ifndef WASM
-    sse2
-#endif
-    , T
-#ifndef WASM
-    unsupported
-#endif
-    ) {
-#if defined(WASM)
-  // emscripten does SSE4.1 but we only use up to SSSE3.
-  return ssse3;
-#elif defined(__INTEL_COMPILER)
-#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
-  if (_may_i_use_cpu_feature(_FEATURE_AVX512_VNNI)) return avx512vnni;
-#  endif
-#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-  if (_may_i_use_cpu_feature(_FEATURE_AVX512BW)) return avx512bw;
-#  endif
-#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
-  if (_may_i_use_cpu_feature(_FEATURE_AVX2)) return avx2;
-#  endif
-  if (_may_i_use_cpu_feature(_FEATURE_SSSE3)) return ssse3;
-  if (_may_i_use_cpu_feature(_FEATURE_SSE2)) return sse2;
-  return unsupported;
-#else
-// Not emscripten, not Intel compiler
-#  if defined(_MSC_VER)
-  int regs[4];
-  int &eax = regs[0], &ebx = regs[1], &ecx = regs[2], &edx = regs[3];
-  __cpuid(regs, 0);
-  int m = eax;
-#  else
-  /* gcc and clang.
-   * If intgemm is compiled by gcc 6.4.1 then dlopened into an executable
-   * compiled by gcc 7.3.0, there will be a undefined symbol __cpu_info.
-   * Work around this by calling the intrinsics more directly instead of
-   * __builtin_cpu_supports.
-   *
-   * clang 6.0.0-1ubuntu2 supports vnni but doesn't have
-   *   __builtin_cpu_supports("avx512vnni")
-   * so use the hand-coded CPUID for clang.
-   */
-  unsigned int m = __get_cpuid_max(0, 0);
-  unsigned int eax, ebx, ecx, edx;
-#  endif
-  if (m >= 7) {
-#  if defined(_MSC_VER)
-    __cpuid(regs, 7);
-#  else
-    __cpuid_count(7, 0, eax, ebx, ecx, edx);
-#  endif
-#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
-    if (ecx & (1 << 11)) return avx512vnni;
-#  endif
-#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-    if (ebx & (1 << 30)) return avx512bw;
-#  endif
-#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
-    if (ebx & (1 << 5)) return avx2;
-#   endif
-  }
-  if (m >= 1) {
-#  if defined(_MSC_VER)
-    __cpuid(regs, 1);
-#  else
-    __cpuid_count(1, 0, eax, ebx, ecx, edx);
-#  endif
-    if (ecx & (1 << 9)) return ssse3;
-    if (edx & (1 << 26)) return sse2;
-  }
-  return unsupported;
-#endif
+template <class T> T ChooseCPU(T avx512vnni, T avx512bw, T avx2, T ssse3, T sse2, T unsupported) {
+  const T ret[] = {unsupported, sse2, ssse3, avx2, avx512bw, avx512vnni};
+  return ret[(int)GetCPUID()];
 }
 
 struct TileInfo {

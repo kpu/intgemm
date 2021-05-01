@@ -1,7 +1,100 @@
 #include "intgemm.h"
 #include "stats.h"
 
+#include <stdlib.h>
+
+#include <iostream>
+
 namespace intgemm {
+
+namespace {
+
+// Return the maximum CPU model that's found and supported at compile time.
+CPUType RealCPUID() {
+#if defined(WASM)
+  // emscripten does SSE4.1 but we only use up to SSSE3.
+  return CPUType::SSSE3;
+#elif defined(__INTEL_COMPILER)
+#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
+  if (_may_i_use_cpu_feature(_FEATURE_AVX512_VNNI)) return CPUType::AVX512VNNI;
+#  endif
+#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
+  if (_may_i_use_cpu_feature(_FEATURE_AVX512BW)) return CPUType::AVX512BW;
+#  endif
+#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
+  if (_may_i_use_cpu_feature(_FEATURE_AVX2)) return CPUType::AVX2;
+#  endif
+  if (_may_i_use_cpu_feature(_FEATURE_SSSE3)) return CPUType::SSSE3;
+  if (_may_i_use_cpu_feature(_FEATURE_SSE2)) return CPUType::SSE2;
+  return CPUType::UNSUPPORTED;
+#else
+// Not emscripten, not Intel compiler
+#  if defined(_MSC_VER)
+  int regs[4];
+  int &eax = regs[0], &ebx = regs[1], &ecx = regs[2], &edx = regs[3];
+  __cpuid(regs, 0);
+  int m = eax;
+#  else
+  /* gcc and clang.
+   * If intgemm is compiled by gcc 6.4.1 then dlopened into an executable
+   * compiled by gcc 7.3.0, there will be a undefined symbol __cpu_info.
+   * Work around this by calling the intrinsics more directly instead of
+   * __builtin_cpu_supports.
+   *
+   * clang 6.0.0-1ubuntu2 supports vnni but doesn't have
+   *   __builtin_cpu_supports("avx512vnni")
+   * so use the hand-coded CPUID for clang.
+   */
+  unsigned int m = __get_cpuid_max(0, 0);
+  unsigned int eax, ebx, ecx, edx;
+#  endif
+  if (m >= 7) {
+#  if defined(_MSC_VER)
+    __cpuid(regs, 7);
+#  else
+    __cpuid_count(7, 0, eax, ebx, ecx, edx);
+#  endif
+#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
+    if (ecx & (1 << 11)) return CPUType::AVX512VNNI;
+#  endif
+#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
+    if (ebx & (1 << 30)) return CPUType::AVX512BW;
+#  endif
+#  ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
+    if (ebx & (1 << 5)) return CPUType::AVX2;
+#   endif
+  }
+  if (m >= 1) {
+#  if defined(_MSC_VER)
+    __cpuid(regs, 1);
+#  else
+    __cpuid_count(1, 0, eax, ebx, ecx, edx);
+#  endif
+    if (ecx & (1 << 9)) return CPUType::SSSE3;
+    if (edx & (1 << 26)) return CPUType::SSE2;
+  }
+  return CPUType::UNSUPPORTED;
+#endif
+}
+
+CPUType EnvironmentCPUID() {
+  const char *env_override = getenv("INTGEMM_CPUID");
+  if (!env_override) return CPUType::AVX512VNNI; /* This will be capped to actual ID */
+  if (!strcmp(env_override, "AVX512VNNI")) return CPUType::AVX512VNNI;
+  if (!strcmp(env_override, "AVX512BW")) return CPUType::AVX512BW;
+  if (!strcmp(env_override, "AVX2")) return CPUType::AVX2;
+  if (!strcmp(env_override, "SSSE3")) return CPUType::SSSE3;
+  if (!strcmp(env_override, "SSE2")) return CPUType::SSE2;
+  std::cerr << "Unrecognized INTGEMM_CPUID " << env_override << std::endl;
+  return CPUType::AVX512VNNI;
+}
+
+} // namespace
+
+CPUType GetCPUID() {
+  static const CPUType kCPU = std::min(RealCPUID(), EnvironmentCPUID());
+  return kCPU;
+}
 
 float Unsupported_MaxAbsolute(const float * /*begin*/, const float * /*end*/) {
   throw UnsupportedCPU();
