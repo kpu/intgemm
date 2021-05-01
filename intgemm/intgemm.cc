@@ -82,10 +82,11 @@ CPUType EnvironmentCPUID() {
   char env_override[11];
   size_t len = 0;
   if (getenv_s(&len, env_override, sizeof(env_override), "INTGEMM_CPUID")) return CPUType::AVX512VNNI;
+  if (!len) return CPUType::AVX512VNNI;
 #else
   const char *env_override = getenv("INTGEMM_CPUID");
-#endif
   if (!env_override) return CPUType::AVX512VNNI; /* This will be capped to actual ID */
+#endif
   if (!strcmp(env_override, "AVX512VNNI")) return CPUType::AVX512VNNI;
   if (!strcmp(env_override, "AVX512BW")) return CPUType::AVX512BW;
   if (!strcmp(env_override, "AVX2")) return CPUType::AVX2;
