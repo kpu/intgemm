@@ -78,8 +78,15 @@ CPUType RealCPUID() {
 }
 
 CPUType EnvironmentCPUID() {
+#if defined(_MSC_VER)
+  char env_override[11];
+  size_t len = 0;
+  if (getenv_s(&len, env_override, sizeof(env_override), "INTGEMM_CPUID")) return CPUType::AVX512VNNI;
+  if (!len) return CPUType::AVX512VNNI;
+#else
   const char *env_override = getenv("INTGEMM_CPUID");
   if (!env_override) return CPUType::AVX512VNNI; /* This will be capped to actual ID */
+#endif
   if (!strcmp(env_override, "AVX512VNNI")) return CPUType::AVX512VNNI;
   if (!strcmp(env_override, "AVX512BW")) return CPUType::AVX512BW;
   if (!strcmp(env_override, "AVX2")) return CPUType::AVX2;
@@ -92,9 +99,11 @@ CPUType EnvironmentCPUID() {
 } // namespace
 
 CPUType GetCPUID() {
-  static const CPUType kCPU = std::min(RealCPUID(), EnvironmentCPUID());
-  return kCPU;
+  static const CPUType kLocalCPU = std::min(RealCPUID(), EnvironmentCPUID());
+  return kLocalCPU;
 }
+
+const CPUType kCPU = GetCPUID();
 
 float Unsupported_MaxAbsolute(const float * /*begin*/, const float * /*end*/) {
   throw UnsupportedCPU();
@@ -133,8 +142,6 @@ const char *const Int8::kName = ChooseCPU(AVX512VNNI::Kernels8::kName, AVX512BW:
 void (*Int8Shift::QuantizeU)(const float *input, uint8_t *output, float quant_mult, Index size) = ChooseCPU(AVX512VNNI::Kernels8::QuantizeU, AVX512BW::Kernels8::QuantizeU, AVX2::Kernels8::QuantizeU, SSSE3::Kernels8::QuantizeU, Unsupported_8bit::QuantizeU, Unsupported_8bit::QuantizeU);
 
 const char *const Int8Shift::kName = ChooseCPU(AVX512VNNI::Kernels8::kName, AVX512BW::Kernels8::kName, AVX2::Kernels8::kName, SSSE3::Kernels8::kName, Unsupported_8bit::kName, Unsupported_8bit::kName);
-
-const CPUType kCPU = ChooseCPU(CPUType::AVX512VNNI, CPUType::AVX512BW, CPUType::AVX2, CPUType::SSSE3, CPUType::SSE2, CPUType::UNSUPPORTED);
 
 #if !defined(INTGEMM_COMPILER_SUPPORTS_AVX2)
 namespace AVX2{
