@@ -153,6 +153,33 @@ private:
 };
 
 /*
+ * UnquantizeAndWriteRelu
+ */
+template <> class CallbackImpl<CPUType::CPU_NAME, UnquantizeAndWriteRelu> {
+public:
+  explicit INTGEMM_TARGET_CONSTRUCTOR CallbackImpl(const UnquantizeAndWriteRelu& config) : config(config) {
+    unquant_mult = set1_ps<vf>(config.unquant_mult);
+  }
+
+  INTGEMM_TARGET void Run(vi input, const OutputBufferInfo& info) {
+    // Workaround gcc 5 internal compiler error that can't read register members in debug.
+    vf mult_reg;
+#if !defined(__OPTIMIZE__) && (__GNUC__ == 5) && !defined(__clang__) && !defined(__INTEL_COMPILER)
+    asm ("vmovdqa %1, %0" : "=x" (mult_reg) : "m" (unquant_mult));
+#else
+    mult_reg = unquant_mult;
+#endif
+    auto result = kernels::relu<float>(kernels::unquantize(input, mult_reg));
+    kernels::write(result, config.output_addr, info.row_idx * info.cols + info.col_idx);
+  }
+
+private:
+  vf unquant_mult;
+  UnquantizeAndWriteRelu config;
+};
+
+
+/*
  * AddBiasAndWrite
  */
 template <> class CallbackImpl<CPUType::CPU_NAME, AddBiasAndWrite> {
@@ -192,6 +219,33 @@ public:
 private:
   vf unquant_mult;
   UnquantizeAndAddBiasAndWrite config;
+};
+
+/*
+ * UnquantizeAndAddBiasAndWrite
+ */
+template <> class CallbackImpl<CPUType::CPU_NAME, UnquantizeAndAddBiasAndWriteRelu> {
+public:
+  explicit INTGEMM_TARGET_CONSTRUCTOR CallbackImpl(const UnquantizeAndAddBiasAndWriteRelu& config) : config(config) {
+    unquant_mult = set1_ps<vf>(config.unquant_mult);
+  }
+
+  INTGEMM_TARGET void Run(vi input, const OutputBufferInfo& info) {
+    // Workaround gcc 5 internal compiler error that can't read register members in debug.
+    vf mult_reg;
+#if !defined(__OPTIMIZE__) && (__GNUC__ == 5) && !defined(__clang__) && !defined(__INTEL_COMPILER)
+    asm ("vmovdqa %1, %0" : "=x" (mult_reg) : "m" (unquant_mult));
+#else
+    mult_reg = unquant_mult;
+#endif
+    auto result = kernels::unquantize(input, mult_reg);
+    result = kernels::add_bias(result, config.bias_addr, info.col_idx);
+    result = kernels::relu<float>(result);
+    kernels::write(result, config.output_addr, info.row_idx * info.cols + info.col_idx);
+  }
+private:
+  vf unquant_mult;
+  UnquantizeAndAddBiasAndWriteRelu config;
 };
 
 }
