@@ -39,6 +39,13 @@ struct UnquantizeAndWrite {
   UnquantizeAndWrite(float unquant_mult, float* output_addr) : unquant_mult(unquant_mult), output_addr(output_addr) {}
 };
 
+struct UnquantizeAndWriteRelu {
+  float unquant_mult;
+  float* output_addr;
+
+  UnquantizeAndWriteRelu(float unquant_mult, float* output_addr) : unquant_mult(unquant_mult), output_addr(output_addr) {}
+};
+
 struct AddBiasAndWrite {
   const int* bias_addr;
   int* output_addr;
@@ -52,6 +59,14 @@ struct UnquantizeAndAddBiasAndWrite {
   float* output_addr;
 
   UnquantizeAndAddBiasAndWrite(float unquant_mult, const float* bias_addr, float* output_addr) : unquant_mult(unquant_mult), bias_addr(bias_addr), output_addr(output_addr) {}
+};
+
+struct UnquantizeAndAddBiasAndWriteRelu {
+  float unquant_mult;
+  const float* bias_addr;
+  float* output_addr;
+
+  UnquantizeAndAddBiasAndWriteRelu(float unquant_mult, const float* bias_addr, float* output_addr) : unquant_mult(unquant_mult), bias_addr(bias_addr), output_addr(output_addr) {}
 };
 
 }
