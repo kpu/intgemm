@@ -83,6 +83,7 @@ struct Kernels8 : public AVX512BW::Kernels8 {
   template <typename Callback>
   INTGEMM_AVX512VNNI static void Multiply8Shift(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
     assert(width % sizeof(Register) == 0);
+    //std::div_t results = std::div(B_cols, 8);
     assert(B_cols % 8 == 0);
     assert(reinterpret_cast<uintptr_t>(A) % sizeof(Register) == 0);
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0);
