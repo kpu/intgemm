@@ -196,7 +196,7 @@ struct Kernels8 : public AVX512BW::Kernels8 {
     if (results.rem != 0) {
       const Register *B0_col = reinterpret_cast<const Register*>(B) + (B_cols_trimmed * width)/(sizeof(Register));
       const Register *B_live = B0_col; //In order to make the code look as much as possible as the above function
-      const Register *B_end = B_live + simd_width*8;
+      const Register *B_end = B_live + simd_width*results.rem;
 
       // TODO: separate first step.
       Register sum0 = zeros, sum1 = zeros, sum2 = zeros, sum3 = zeros, sum4 = zeros, sum5 = zeros, sum6 = zeros, sum7 = zeros;
@@ -209,7 +209,7 @@ struct Kernels8 : public AVX512BW::Kernels8 {
       Register pack0123 = Pack0123(sum0, sum1, sum2, sum3);
       Register pack4567 = Pack0123(sum4, sum5, sum6, sum7);
       auto total = PermuteSummer(pack0123, pack4567);
-      callback_impl.Run(total, callbacks::OutputBufferInfo(0, B0_colidx, 1, B_cols));
+      callback_impl.RunPartial(total, callbacks::OutputBufferInfo(0, B0_colidx, 1, B_cols), (Index)results.rem);
     }
   }
 
