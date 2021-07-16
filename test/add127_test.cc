@@ -484,8 +484,11 @@ TEST_CASE ("Multiply AVX512VNNI 8bit Shift vs Int", "[Add127]") {
   TestMultiplyShiftInt<AVX512VNNI::Kernels8>(1, 64, 13, 0.0001f, 0.05f, 0.03f, 0.0001f);
   TestMultiplyShiftInt<AVX512VNNI::Kernels8>(1, 64, 83, 0.0001f, 0.077f, 0.032f, 0.0001f);
   TestMultiplyShiftInt<AVX512VNNI::Kernels8>(1, 256, 270, 0.0001f, 0.61f, 0.17f, 0.0001f);
+  TestMultiplyShiftInt<AVX512VNNI::Kernels8>(8, 256, 233, 0.0001f, 0.23f, 0.06f, 0.0001f);
   TestMultiplyShiftInt<AVX512VNNI::Kernels8>(8, 256, 256, 0.0001f, 0.22f, 0.06f, 0.0001f);
+  TestMultiplyShiftInt<AVX512VNNI::Kernels8>(8, 256, 270, 0.0001f, 0.23f, 0.06f, 0.0001f);
   TestMultiplyShiftInt<AVX512VNNI::Kernels8>(8, 2048, 256, 0.0001f, 0.61f, 0.17f, 0.0001f);
+  TestMultiplyShiftInt<AVX512VNNI::Kernels8>(320, 256, 211, 0.0001f, 0.27f, 0.06f, 0.0001f);
   TestMultiplyShiftInt<AVX512VNNI::Kernels8>(320, 256, 256, 0.0001f, 0.27f, 0.06f, 0.0001f);
   TestMultiplyShiftInt<AVX512VNNI::Kernels8>(472, 256, 256, 0.0001f, 0.33f, 0.06f, 0.0001f);
   TestMultiplyShiftInt<AVX512VNNI::Kernels8>(248, 256, 256, 0.0001f, 0.27f, 0.06f, 0.0001f);

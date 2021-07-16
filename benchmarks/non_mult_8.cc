@@ -145,5 +145,5 @@ int main() {
     //prepBtst<SSSE3::Kernels8>(32, 35);
     //prepBtst<AVX512VNNI::Kernels8>(64, 9);
     //padMatrixTst(32, 35);
-    smallMultTst<AVX512VNNI::Kernels8>(1, 64, 2);
+    smallMultTst<AVX512VNNI::Kernels8>(2, 64, 9);
 }
