@@ -47,6 +47,39 @@ CPU_ATTR static inline void write(vd input, double* output, Index offset) {
 }
 
 /*
+ * Non-Vector write
+ */
+CPU_ATTR static inline void writePartial(vi input, int8_t* output, Index offset, Index partial) {
+  for (Index i = 0; i < partial; i++) {
+    *(output + offset + i) = input[i];
+  }
+}
+
+CPU_ATTR static inline void writePartial(vi input, int16_t* output, Index offset, Index partial) {
+  for (Index i = 0; i < partial; i++) {
+    *(output + offset + i) = input[i];
+  }
+}
+
+CPU_ATTR static inline void writePartial(vi input, int* output, Index offset, Index partial) {
+  for (Index i = 0; i < partial; i++) {
+    *(output + offset + i) = input[i];
+  }
+}
+
+CPU_ATTR static inline void writePartial(vf input, float* output, Index offset, Index partial) {
+  for (Index i = 0; i < partial; i++) {
+    *(output + offset + i) = input[i];
+  }
+}
+
+CPU_ATTR static inline void writePartial(vd input, double* output, Index offset, Index partial) {
+  for (Index i = 0; i < partial; i++) {
+    *(output + offset + i - 1) = input[i];
+  }
+}
+
+/*
  * Quantize
  */
 CPU_ATTR static inline vi quantize(vf input, vf quant_mult) {

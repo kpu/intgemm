@@ -104,10 +104,46 @@ void padMatrixTst(Index width, Index B_cols) {
     prepBtst<SSSE3::Kernels8>(width, 8, padded.begin());
 }
 
+
+template <class Routine>
+void smallMultTst(Index A_rows, Index width, Index B_cols) {
+  AlignedVector<float> A(A_rows* width);
+  AlignedVector<float> B(width * B_cols);
+  AlignedVector<float> C(A_rows * B_cols);
+
+
+  for (Index i = 0; i<width*B_cols; i++) {
+      B[i] = (float)(i%127);
+  }
+
+  for (Index i = 0; i<A_rows*width; i++) {
+      A[i] = (float)(i%127);
+  }
+
+  float alpha = 127.0f;
+  float quant_mult = 127.0f / alpha;
+  float unquant_mult = 1.0f / (quant_mult*quant_mult);
+
+  printMat(A.begin(), A_rows, width, "Raw A", 3);
+  printMat(B.begin(), width, B_cols, "Raw B", 3);
+
+  AlignedVector<int8_t> A_prep(A.size());
+  AlignedVector<int8_t> B_prep(B.size());
+
+  Routine::PrepareA(A.begin(), A_prep.begin(), quant_mult, A_rows, width); // A is strictly positive here
+  Routine::PrepareB(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
+  printMat(B_prep.begin(), B_cols, width, "Prep Mat B", 3);
+
+  Routine::Multiply8Shift((uint8_t*)A_prep.begin(), B_prep.begin(), A_rows, width, B_cols, callbacks::UnquantizeAndWrite(unquant_mult, C.begin()));
+  printMat(C.begin(), A_rows, B_cols, "Prep Mat C", 5);
+
+}
+
 } // namespace intgemm;
 int main() {
     using namespace intgemm;
     //prepBtst<SSSE3::Kernels8>(32, 35);
-    prepBtst<SSSE3::Kernels8>(16, 3);
+    //prepBtst<AVX512VNNI::Kernels8>(64, 9);
     //padMatrixTst(32, 35);
+    smallMultTst<AVX512VNNI::Kernels8>(1, 64, 13);
 }

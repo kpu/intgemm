@@ -147,6 +147,18 @@ public:
     kernels::write(result, config.output_addr, info.row_idx * info.cols + info.col_idx);
   }
 
+  INTGEMM_TARGET void RunPartial(vi input, const OutputBufferInfo& info, Index partial) {
+    // Workaround gcc 5 internal compiler error that can't read register members in debug.
+    vf mult_reg;
+#if !defined(__OPTIMIZE__) && (__GNUC__ == 5) && !defined(__clang__) && !defined(__INTEL_COMPILER)
+    asm ("vmovdqa %1, %0" : "=x" (mult_reg) : "m" (unquant_mult));
+#else
+    mult_reg = unquant_mult;
+#endif
+    auto result = kernels::unquantize(input, mult_reg);
+    kernels::writePartial(result, config.output_addr, info.row_idx * info.cols + info.col_idx, partial);
+  }
+
 private:
   vf unquant_mult;
   UnquantizeAndWrite config;
@@ -172,6 +184,7 @@ public:
     auto result = kernels::relu<float>(kernels::unquantize(input, mult_reg));
     kernels::write(result, config.output_addr, info.row_idx * info.cols + info.col_idx);
   }
+  INTGEMM_TARGET void RunPartial(vi /*input*/, const OutputBufferInfo& /*info*/, Index /*partial*/) {}
 
 private:
   vf unquant_mult;
@@ -190,6 +203,8 @@ public:
     auto result = kernels::add_bias(input, config.bias_addr, info.col_idx);
     kernels::write(result, config.output_addr, info.row_idx * info.cols + info.col_idx);
   }
+
+  INTGEMM_TARGET void RunPartial(vi /*input*/, const OutputBufferInfo& /*info*/, Index /*partial*/) {}
 
 private:
   AddBiasAndWrite config;
@@ -216,6 +231,7 @@ public:
     result = kernels::add_bias(result, config.bias_addr, info.col_idx);
     kernels::write(result, config.output_addr, info.row_idx * info.cols + info.col_idx);
   }
+  INTGEMM_TARGET void RunPartial(vi /*input*/, const OutputBufferInfo& /*info*/, Index /*partial*/) {}
 private:
   vf unquant_mult;
   UnquantizeAndAddBiasAndWrite config;
@@ -243,6 +259,7 @@ public:
     result = kernels::relu<float>(result);
     kernels::write(result, config.output_addr, info.row_idx * info.cols + info.col_idx);
   }
+  INTGEMM_TARGET void RunPartial(vi /*input*/, const OutputBufferInfo& /*info*/, Index /*partial*/) {}
 private:
   vf unquant_mult;
   UnquantizeAndAddBiasAndWriteRelu config;
