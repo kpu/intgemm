@@ -95,9 +95,9 @@ struct Kernels8 : public AVX512BW::Kernels8 {
     const Index simd_width = width / sizeof(Register);
     Register zeros = setzero_si<Register>();
     // Go over 8 columns of B at a time.
-    Index B0_colidx = 0;
+    Index B0_colidx;
 #pragma omp for
-    for (; B0_colidx < B_cols_trimmed; B0_colidx += 8) {
+    for (B0_colidx = 0; B0_colidx < B_cols_trimmed; B0_colidx += 8) {
       const Register *B0_col = reinterpret_cast<const Register*>(B) + B0_colidx * simd_width;
       // Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.
       for (Index A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) {
@@ -167,9 +167,9 @@ struct Kernels8 : public AVX512BW::Kernels8 {
     Register zeros = setzero_si<Register>();
     const Register a = set1_epi8<Register>(1);
     // Go over 8 columns of B at a time.
-    Index B0_colidx = 0;
+    Index B0_colidx;
 #pragma omp for
-    for (; B0_colidx < B_cols_trimmed; B0_colidx += 8) {
+    for (B0_colidx = 0; B0_colidx < B_cols_trimmed; B0_colidx += 8) {
       const Register *B0_col = reinterpret_cast<const Register*>(B) + B0_colidx * simd_width;
       const Register *B_live = B0_col; //In order to make the code look as much as possible as the above function
       const Register *B_end = B_live + simd_width*8;

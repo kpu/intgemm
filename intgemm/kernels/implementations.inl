@@ -56,31 +56,31 @@ CPU_ATTR static inline void write(vd input, double* output, Index offset) {
  */
 CPU_ATTR static inline void write_partial(vi input, int8_t* output, Index offset, Index partial) {
   for (Index i = 0; i < partial; i++) {
-    *(output + offset + i) = input[i];
+    *(output + offset + i) = reinterpret_cast<int8_t *>(&input)[i];
   }
 }
 
 CPU_ATTR static inline void write_partial(vi input, int16_t* output, Index offset, Index partial) {
   for (Index i = 0; i < partial; i++) {
-    *(output + offset + i) = input[i];
+    *(output + offset + i) = reinterpret_cast<int16_t *>(&input)[i];
   }
 }
 
 CPU_ATTR static inline void write_partial(vi input, int* output, Index offset, Index partial) {
   for (Index i = 0; i < partial; i++) {
-    *(output + offset + i) = input[i];
+    *(output + offset + i) = reinterpret_cast<int *>(&input)[i];
   }
 }
 
 CPU_ATTR static inline void write_partial(vf input, float* output, Index offset, Index partial) {
   for (Index i = 0; i < partial; i++) {
-    *(output + offset + i) = input[i];
+    *(output + offset + i) = reinterpret_cast<float *>(&input)[i];
   }
 }
 
 CPU_ATTR static inline void write_partial(vd input, double* output, Index offset, Index partial) {
   for (Index i = 0; i < partial; i++) {
-    *(output + offset + i - 1) = input[i];
+    *(output + offset + i - 1) = reinterpret_cast<double *>(&input)[i];
   }
 }
 
