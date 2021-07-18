@@ -95,7 +95,7 @@ struct Kernels8 : public AVX512BW::Kernels8 {
     const Index simd_width = width / sizeof(Register);
     Register zeros = setzero_si<Register>();
     // Go over 8 columns of B at a time.
-    Index B0_colidx;
+    Index B0_colidx = 0; // OMP can't deal with this variable being asigned outside of the loop, hence we declare it once and asign to 0 twice
 #pragma omp for
     for (B0_colidx = 0; B0_colidx < B_cols_trimmed; B0_colidx += 8) {
       const Register *B0_col = reinterpret_cast<const Register*>(B) + B0_colidx * simd_width;
@@ -167,7 +167,7 @@ struct Kernels8 : public AVX512BW::Kernels8 {
     Register zeros = setzero_si<Register>();
     const Register a = set1_epi8<Register>(1);
     // Go over 8 columns of B at a time.
-    Index B0_colidx;
+    Index B0_colidx = 0;  // OMP can't deal with this variable being asigned outside of the loop, hence we declare it once and asign to 0 twice
 #pragma omp for
     for (B0_colidx = 0; B0_colidx < B_cols_trimmed; B0_colidx += 8) {
       const Register *B0_col = reinterpret_cast<const Register*>(B) + B0_colidx * simd_width;
