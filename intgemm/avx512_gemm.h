@@ -255,17 +255,21 @@ struct Kernels8 {
 
   INTGEMM_AVX512BW static void QuantizeU(const float *input, uint8_t *output, float quant_mult, Index size) {
     assert(size % 16 == 0);
+    std::div_t result = std::div(size, 16);
     assert(reinterpret_cast<uintptr_t>(input) % 64 == 0);
     const __m512i pos127 = _mm512_set1_epi32(127);
     const __m512i zero = _mm512_setzero_si512();
     const __m512 quant_mult_reg = _mm512_set1_ps(quant_mult);
-    const float *end = input + size;
+    const float *end = input + result.quot*16; // Do the majority using AVX512
     for (; input < end; input += 16, output += 16) {
       __m512i asint = QuantizerGrab(input, quant_mult_reg);
       asint = _mm512_min_epi32(asint, pos127);
       asint = _mm512_add_epi32(asint, pos127);
       asint = _mm512_max_epi32(asint, zero);
       _mm512_mask_cvtusepi32_storeu_epi8(output, 0xffff, asint);
+    }
+    for (int i = 0; i < result.rem; i++) {  // Fill in the gaps linearly
+      output[i] = static_cast<uint8_t>(std::max(roundf(std::max(input[i]*quant_mult, 0.0f)), 255.0f));
     }
   }
 
