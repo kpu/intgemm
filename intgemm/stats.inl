@@ -65,9 +65,9 @@ INTGEMM_TARGET static inline float MaxAbsolute(const float *begin_float, const f
 INTGEMM_TARGET static inline MeanStd VectorMeanStd(const float *begin_float, const float *end_float, bool absolute) {
   assert(end_float > begin_float);
   // Make sure we deal with any number of elements
-  long num_items = end_float - begin_float;
-  const long constexpr width = sizeof(FRegister) / sizeof(float);
-  std::ldiv_t result = std::ldiv(num_items, width);
+  size_t num_items = end_float - begin_float;
+  const size_t constexpr width = sizeof(FRegister) / sizeof(float);
+  std::ldiv_t result = std::ldiv((long)num_items, (long)width);
 
   const FRegister *begin = reinterpret_cast<const FRegister*>(begin_float);
   const FRegister *end = reinterpret_cast<const FRegister*>(begin_float + result.quot*width);
