@@ -254,7 +254,6 @@ struct Kernels8 {
   /* Only INTGEMM_AVX512F is necessary but due to GCC 5.4 bug we have to set INTGEMM_AVX512BW */
 
   INTGEMM_AVX512BW static void QuantizeU(const float *input, uint8_t *output, float quant_mult, Index size) {
-    assert(size % 16 == 0);
     std::div_t result = std::div(size, 16);
     assert(reinterpret_cast<uintptr_t>(input) % 64 == 0);
     const __m512i pos127 = _mm512_set1_epi32(127);
