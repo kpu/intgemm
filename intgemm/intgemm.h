@@ -64,62 +64,64 @@
 
 namespace intgemm {
 
+void UnsupportedCPUError();
+
 struct Unsupported_16bit {
   static void Quantize(const float *, int16_t *, float, Index) {
-    throw UnsupportedCPU();
+    UnsupportedCPUError();
   }
   static void PrepareB(const float *, int16_t *, float, Index, Index) {
-    throw UnsupportedCPU();
+    UnsupportedCPUError();
   }
   static void PrepareBQuantizedTransposed(const int16_t *, int16_t *, Index, Index) {
-    throw UnsupportedCPU();
+    UnsupportedCPUError();
   }
   static void PrepareBTransposed(const float *, int16_t *, float, Index, Index) {
-    throw UnsupportedCPU();
+    UnsupportedCPUError();
   }
   static void SelectColumnsB(const int16_t *, int16_t *, Index, const Index *, const Index *) {
-    throw UnsupportedCPU();
+    UnsupportedCPUError();
   }
   template <typename Callback>
   static void Multiply(const int16_t *, const int16_t *, Index, Index, Index, Callback) {
-    throw UnsupportedCPU();
+    UnsupportedCPUError();
   }
   constexpr static const char *const kName = "16-bit Unsupported";
 };
 
 struct Unsupported_8bit {
   static void Quantize(const float *, int8_t *, float, Index) {
-    throw UnsupportedCPU();
+    UnsupportedCPUError();
   }
   static void QuantizeU(const float *, uint8_t *, float, Index) {
-    throw UnsupportedCPU();
+    UnsupportedCPUError();
   }
   static void PrepareA(const float *, int8_t *, float, Index, Index) {
-    throw UnsupportedCPU();
+    UnsupportedCPUError();
   }
   static void PrepareBQuantizedTransposed(const int8_t *, int8_t *, Index, Index) {
-    throw UnsupportedCPU();
+    UnsupportedCPUError();
   }
   static void PrepareBTransposed(const float *, int8_t *, float, Index, Index) {
-    throw UnsupportedCPU();
+    UnsupportedCPUError();
   }
   static void PrepareB(const float *, int8_t *, float, Index, Index) {
-    throw UnsupportedCPU();
+    UnsupportedCPUError();
   }
   template<class Callback>
   static void PrepareBias(const int8_t *, Index, Index, Callback) {
-    throw UnsupportedCPU();
+    UnsupportedCPUError();
   }
   static void SelectColumnsB(const int8_t *, int8_t *, Index, const Index *, const Index *) {
-    throw UnsupportedCPU();
+    UnsupportedCPUError();
   }
   template <typename Callback>
   static void Multiply(const int8_t *, const int8_t *, Index, Index, Index, Callback) {
-    throw UnsupportedCPU();
+    UnsupportedCPUError();
   }
   template<class Callback>
   static void Multiply8Shift(const uint8_t *, const int8_t *, Index, Index, Index, Callback) {
-    throw UnsupportedCPU();
+    UnsupportedCPUError();
   }
 
   constexpr static const char *const kName = "8-bit Unsupported";

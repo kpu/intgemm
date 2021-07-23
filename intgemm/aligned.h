@@ -5,6 +5,10 @@
 #include <malloc.h>
 #endif
 
+#if defined(_MSC_VER) ? !defined(_HAS_EXCEPTIONS) : !defined(__EXCEPTIONS)
+#include <cstdlib>
+#endif
+
 // Aligned simple vector.
 
 namespace intgemm {
@@ -17,10 +21,20 @@ template <class T> class AlignedVector {
       : size_(size) {
 #ifdef _MSC_VER
       mem_ = static_cast<T*>(_aligned_malloc(size * sizeof(T), alignment));
-      if (!mem_) throw std::bad_alloc();
+      if (!mem_) {
+#  ifdef __EXCEPTIONS
+        throw std::bad_alloc();
+#  else
+        std::abort();
+#  endif
+      }
 #else      
       if (posix_memalign(reinterpret_cast<void **>(&mem_), alignment, size * sizeof(T))) {
+#  ifdef __EXCEPTIONS
         throw std::bad_alloc();
+#  else
+        std::abort();
+#  endif
       }
 #endif
     }

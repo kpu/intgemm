@@ -105,12 +105,23 @@ CPUType GetCPUID() {
 
 const CPUType kCPU = GetCPUID();
 
-float Unsupported_MaxAbsolute(const float * /*begin*/, const float * /*end*/) {
+void UnsupportedCPUError() {
+#if defined(_MSC_VER) ? defined(_HAS_EXCEPTIONS) : defined(__EXCEPTIONS)
   throw UnsupportedCPU();
+#else
+  std::cerr << "intgemm does not support this CPU" << std::endl;
+  abort();
+#endif
+}
+
+float Unsupported_MaxAbsolute(const float * /*begin*/, const float * /*end*/) {
+  UnsupportedCPUError();
+  return 0.0f;
 }
 
 MeanStd Unsupported_VectorMeanStd(const float * /*begin*/, const float * /*end*/, bool /*absolute*/) {
-  throw UnsupportedCPU();
+  UnsupportedCPUError();
+  return MeanStd();
 }
 
 void (*Int16::Quantize)(const float *input, int16_t *output, float quant_mult, Index size) = ChooseCPU(AVX512BW::Kernels16::Quantize, AVX512BW::Kernels16::Quantize, AVX2::Kernels16::Quantize, SSE2::Kernels16::Quantize, SSE2::Kernels16::Quantize, Unsupported_16bit::Quantize);
