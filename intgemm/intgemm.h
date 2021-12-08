@@ -41,24 +41,12 @@
 
 #include <cstdint>
 
-#include "intgemm/intgemm_config.h"
 #include "types.h"
 #include "sse2_gemm.h"
 #include "ssse3_gemm.h"
 #include "avx2_gemm.h"
 #include "avx512_gemm.h"
 #include "avx512vnni_gemm.h"
-
-#if defined(WASM)
-// No header for CPUID since it's hard-coded.
-#elif defined(__INTEL_COMPILER)
-#include <immintrin.h>
-#elif defined(_MSC_VER)
-#include <intrin.h>
-#else
-// Assume GCC and clang style.
-#include <cpuid.h>
-#endif
 
 /* Dispatch to functions based on runtime CPUID.  This adds one call-by-variable to each call. */
 

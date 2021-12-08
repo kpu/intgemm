@@ -1,3 +1,14 @@
+#if defined(WASM)
+// No header for CPUID since it's hard-coded.
+#elif defined(__INTEL_COMPILER)
+#include <immintrin.h>
+#elif defined(_MSC_VER)
+#include <intrin.h>
+#else
+// Assume GCC and clang style.
+#include <cpuid.h>
+#endif
+
 #include "intgemm.h"
 #include "stats.h"
 
