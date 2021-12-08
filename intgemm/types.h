@@ -1,4 +1,6 @@
 #pragma once
+#include "intgemm/intgemm_config.h"
+
 #include <exception>
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 #include <immintrin.h>
