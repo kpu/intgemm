@@ -117,7 +117,7 @@ CPUType GetCPUID() {
 const CPUType kCPU = GetCPUID();
 
 void UnsupportedCPUError() {
-#if defined(_MSC_VER) ? defined(_HAS_EXCEPTIONS) : defined(__EXCEPTIONS)
+#if (defined(_MSC_VER) && !defined(__clang__)) ? defined(_HAS_EXCEPTIONS) : defined(__EXCEPTIONS)
   throw UnsupportedCPU();
 #else
   std::cerr << "intgemm does not support this CPU" << std::endl;
