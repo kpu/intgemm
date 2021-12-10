@@ -7,9 +7,22 @@
 #endif
 #include <emmintrin.h>
 
-#if defined(_MSC_VER) || defined(__INTEL_COMPILER)
-/* MSVC does not appear to have target attributes but is also fine with just
- * using intrinsics anywhere.
+// clang-cl bug doesn't include these headers when pretending to be MSVC
+// https://github.com/llvm/llvm-project/blob/e9a294449575a1e1a0daca470f64914695dc9adc/clang/lib/Headers/immintrin.h#L69-L72
+#if defined(_MSC_VER) && defined(__clang__)
+#include <avxintrin.h>
+#include <avx2intrin.h>
+#include <smmintrin.h>
+#include <avx512fintrin.h>
+#include <avx512dqintrin.h>
+#include <avx512bwintrin.h>
+#include <avx512vnniintrin.h>
+#endif
+
+#if (defined(_MSC_VER) && !defined(__clang__)) || defined(__INTEL_COMPILER)
+/* Real MSVC does not appear to have target attributes but is also fine with
+ * just using intrinsics anywhere.  clang-cl pretending to be MSVC requires
+ * target attributes, so it's excluded from the above.
  *
  * The Intel compiler has a bug whereby constructors with target attributes do
  * not link.  Like this program doesn't compile with icpc:
