@@ -2,10 +2,12 @@
 #include <cstdlib>
 #include <new>
 #ifdef _MSC_VER
+// Ensure _HAS_EXCEPTIONS is defined
+#include <vcruntime.h>
 #include <malloc.h>
 #endif
 
-#if defined(_MSC_VER) ? !_HAS_EXCEPTIONS : !__EXCEPTIONS
+#if !(defined(_MSC_VER) ? (_HAS_EXCEPTIONS) : (__EXCEPTIONS))
 #include <cstdlib>
 #endif
 
@@ -22,7 +24,7 @@ template <class T> class AlignedVector {
 #ifdef _MSC_VER
       mem_ = static_cast<T*>(_aligned_malloc(size * sizeof(T), alignment));
       if (!mem_) {
-#  if _HAS_EXCEPTIONS != 0
+#  if _HAS_EXCEPTIONS
         throw std::bad_alloc();
 #  else
         std::abort();
@@ -30,7 +32,7 @@ template <class T> class AlignedVector {
       }
 #else
       if (posix_memalign(reinterpret_cast<void **>(&mem_), alignment, size * sizeof(T))) {
-#  if __EXCEPTIONS != 0
+#  if __EXCEPTIONS
         throw std::bad_alloc();
 #  else
         std::abort();
