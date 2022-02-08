@@ -12,9 +12,8 @@
 #include "intgemm.h"
 #include "stats.h"
 
+#include <stdio.h>
 #include <stdlib.h>
-
-#include <iostream>
 
 namespace intgemm {
 
@@ -103,7 +102,7 @@ CPUType EnvironmentCPUID() {
   if (!strcmp(env_override, "AVX2")) return CPUType::AVX2;
   if (!strcmp(env_override, "SSSE3")) return CPUType::SSSE3;
   if (!strcmp(env_override, "SSE2")) return CPUType::SSE2;
-  std::cerr << "Unrecognized INTGEMM_CPUID " << env_override << std::endl;
+  fprintf(stderr, "Ignoring unrecognized INTGEMM_CPUID %s\n", env_override);
   return CPUType::AVX512VNNI;
 }
 
@@ -120,7 +119,7 @@ void UnsupportedCPUError() {
 #if (defined(_MSC_VER) && !defined(__clang__)) ? (_HAS_EXCEPTIONS) : (__EXCEPTIONS)
   throw UnsupportedCPU();
 #else
-  std::cerr << "intgemm does not support this CPU" << std::endl;
+  fprintf(stderr, "intgemm does not support this CPU.\n");
   abort();
 #endif
 }
