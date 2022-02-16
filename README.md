@@ -54,7 +54,7 @@ The last argument of `Multiply` is a callback which is usually used to performs 
    - in [callbacks/implementations.inl](callbacks/implementations.inl) if you want to implement it for all architecturs at the same time.
    - in `callbacks/ARCHITECTURE.h` (e.g. [callbacks/sse2.h](callbacks/sse2.h)) if you want to implement it only for the specific architecture.
 
-For 8-bit, you can make use a of a slightly faster implementation, assuming you can determine tha quantization multipliers and prepare the biases offline:
+For 8-bit, you can make use a of a slightly faster implementation, assuming you can determine the quantization multipliers and prepare the biases offline:
 
 ```C++
 #include "intgemm/intgemm.h"
