@@ -178,29 +178,29 @@ struct Int8 {
   }
 
   // Multiply floats by quant_mult then convert to 8-bit integers with saturation.
-  static void (*Quantize)(const float *input, int8_t *output, float quant_mult, Index size);
+  static void (*const Quantize)(const float *input, int8_t *output, float quant_mult, Index size);
 
   // Multiply floats by quant_mult then convert to 8-bit integers with saturation.
   // A version that adds 127 to each number, making sure that all numbers are positive
-  static void (*QuantizeU)(const float *input, uint8_t *output, float quant_mult, Index size);
+  static void (*const QuantizeU)(const float *input, uint8_t *output, float quant_mult, Index size);
 
   // Warning: the output of PrepareB depends on the CPU.
   // It will match the Multiply function on the same CPU though.
-  static void (*PrepareB)(const float *input, int8_t *output, float quant_mult, Index rows, Index cols);
+  static void (*const PrepareB)(const float *input, int8_t *output, float quant_mult, Index rows, Index cols);
 
   // Convert from a B that was already transposed (routine not provided) and
   // quantized (e.g. with Quantize) to the CPU-dependent format used for
   // Multiply.  This is useful for storing a quantized model on disk then in a
   // CPU-independent fashion.
-  static void (*PrepareBQuantizedTransposed)(const int8_t *input, int8_t *output, Index inner, Index B_untransposed_cols);
+  static void (*const PrepareBQuantizedTransposed)(const int8_t *input, int8_t *output, Index inner, Index B_untransposed_cols);
 
   // Convert from a B that was already transposed (routine not provided) to
   // the CPU-dependent format used for Multiply.  This is useful for storing
   // a quantized model on disk then in a CPU-independent fashion.
-  static void (*PrepareBTransposed)(const float *input, int8_t *output, float quant_mul, Index inner, Index B_untransposed_cols);
+  static void (*const PrepareBTransposed)(const float *input, int8_t *output, float quant_mul, Index inner, Index B_untransposed_cols);
 
   // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8.
-  static void (*SelectColumnsB)(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
+  static void (*const SelectColumnsB)(const int8_t *input, int8_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
 
   // Multiply C = A * B, presuming A and B have been prepared.
   template <typename Callback>
@@ -213,12 +213,12 @@ struct Int8 {
 private:
   template <typename Callback>
   struct MultiplyImpl {
-    static void (*run)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
+    static void (*const run)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
   };
 };
 
 template <typename Callback>
-void (*Int8::MultiplyImpl<Callback>::run)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(OMPParallelWrap<Callback, AVX512VNNI::Kernels8>, OMPParallelWrap<Callback, AVX512BW::Kernels8>, OMPParallelWrap<Callback, AVX2::Kernels8>, OMPParallelWrap<Callback, SSSE3::Kernels8>, Unsupported_8bit::Multiply<Callback>, Unsupported_8bit::Multiply<Callback>);
+void (*const Int8::MultiplyImpl<Callback>::run)(const int8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(OMPParallelWrap<Callback, AVX512VNNI::Kernels8>, OMPParallelWrap<Callback, AVX512BW::Kernels8>, OMPParallelWrap<Callback, AVX2::Kernels8>, OMPParallelWrap<Callback, SSSE3::Kernels8>, Unsupported_8bit::Multiply<Callback>, Unsupported_8bit::Multiply<Callback>);
 
 /*
  * 8-bit matrix multiplication with shifting A by 127
@@ -236,7 +236,7 @@ struct Int8Shift {
 
   // Multiply floats by quant_mult then convert to 8-bit integers with saturation.
   // A version that adds 127 to each number, making sure that all numbers are positive
-  static void (*QuantizeU)(const float *input, uint8_t *output, float quant_mult, Index size);
+  static void (*const QuantizeU)(const float *input, uint8_t *output, float quant_mult, Index size);
   
   // Warning: the output of PrepareB depends on the CPU.
   // It will match the Multiply function on the same CPU though.
@@ -271,17 +271,17 @@ struct Int8Shift {
 private:
   template <typename Callback>
   struct MultiplyImpl {
-    static void (*run)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
+    static void (*const run)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
   };
 
   template <typename Callback>
   struct PrepareBiasImpl {
-    static void (*run)(const int8_t *B, Index width, Index B_cols, Callback callback);
+    static void (*const run)(const int8_t *B, Index width, Index B_cols, Callback callback);
   };
 };
 
 template <class Callback>
-void (*Int8Shift::MultiplyImpl<Callback>::run)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(
+void (*const Int8Shift::MultiplyImpl<Callback>::run)(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(
     OMPParallelWrap8Shift<Callback, AVX512VNNI::Kernels8>,
     OMPParallelWrap8Shift<Callback, AVX512BW::Kernels8>,
     OMPParallelWrap8Shift<Callback, AVX2::Kernels8>,
@@ -289,7 +289,7 @@ void (*Int8Shift::MultiplyImpl<Callback>::run)(const uint8_t *A, const int8_t *B
     Unsupported_8bit::Multiply8Shift<Callback>, Unsupported_8bit::Multiply8Shift<Callback>);
 
 template <class Callback>
-void (*Int8Shift::PrepareBiasImpl<Callback>::run)(const int8_t *B, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512VNNI::Kernels8::PrepareBias<Callback>, AVX512BW::Kernels8::PrepareBias<Callback>, AVX2::Kernels8::PrepareBias<Callback>, SSSE3::Kernels8::PrepareBias<Callback>, SSSE3::Kernels8::PrepareBias<Callback>, Unsupported_8bit::PrepareBias);
+void (*const Int8Shift::PrepareBiasImpl<Callback>::run)(const int8_t *B, Index width, Index B_cols, Callback callback) = ChooseCPU(AVX512VNNI::Kernels8::PrepareBias<Callback>, AVX512BW::Kernels8::PrepareBias<Callback>, AVX2::Kernels8::PrepareBias<Callback>, SSSE3::Kernels8::PrepareBias<Callback>, SSSE3::Kernels8::PrepareBias<Callback>, Unsupported_8bit::PrepareBias);
 
 /*
  * 16-bit matrix multiplication
@@ -309,25 +309,25 @@ struct Int16 {
 
   // Multiply floats by quant_mult then convert to 16-bit integers with saturation.
   // input
-  static void (*Quantize)(const float *input, int16_t *output, float quant_mult, Index size);
+  static void (*const Quantize)(const float *input, int16_t *output, float quant_mult, Index size);
 
   // Warning: the output of PrepareB depends on the CPU.
   // It will match the Multiply function on the same CPU though.
-  static void (*PrepareB)(const float *input, int16_t *output, float quant_mult, Index rows, Index cols);
+  static void (*const PrepareB)(const float *input, int16_t *output, float quant_mult, Index rows, Index cols);
 
   // Convert from a B that was already transposed (routine not provided) and
   // quantized (e.g. with Quantize) to the CPU-dependent format used for
   // Multiply.  This is useful for storing a quantized model on disk then in a
   // CPU-independent fashion.
-  static void (*PrepareBQuantizedTransposed)(const int16_t *input, int16_t *output, Index inner, Index B_untransposed_cols);
+  static void (*const PrepareBQuantizedTransposed)(const int16_t *input, int16_t *output, Index inner, Index B_untransposed_cols);
 
   // Convert from a B that was already transposed (routine not provided) to
   // the CPU-dependent format used for Multiply.  This is useful for storing
   // a quantized model on disk then in a CPU-independent fashion.
-  static void (*PrepareBTransposed)(const float *input, int16_t *output, float quant_mul, Index inner, Index B_untransposed_cols);
+  static void (*const PrepareBTransposed)(const float *input, int16_t *output, float quant_mul, Index inner, Index B_untransposed_cols);
 
   // Select columns from a prepared B matrix.  The number of selected columns must be a multiple of 8. 
-  static void (*SelectColumnsB)(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
+  static void (*const SelectColumnsB)(const int16_t *input, int16_t *output, Index rows, const Index *cols_begin, const Index *cols_end);
 
   // Multiply C = A * B, presuming A and B have been prepared.
   template <typename Callback>
@@ -340,20 +340,20 @@ struct Int16 {
 private:
   template <typename Callback>
   struct MultiplyImpl {
-    static void (*run)(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
+    static void (*const run)(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback);
   };
 };
 
 template <typename Callback>
-void (*Int16::MultiplyImpl<Callback>::run)(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(OMPParallelWrap<Callback, AVX512BW::Kernels16> /*TODO VNNI 16-bit. */, OMPParallelWrap<Callback, AVX512BW::Kernels16>, OMPParallelWrap<Callback, AVX2::Kernels16>, OMPParallelWrap<Callback, SSE2::Kernels16>, OMPParallelWrap<Callback, SSE2::Kernels16>, Unsupported_16bit::Multiply<Callback>);
+void (*const Int16::MultiplyImpl<Callback>::run)(const int16_t *A, const int16_t *B, Index A_rows, Index width, Index B_cols, Callback callback) = ChooseCPU(OMPParallelWrap<Callback, AVX512BW::Kernels16> /*TODO VNNI 16-bit. */, OMPParallelWrap<Callback, AVX512BW::Kernels16>, OMPParallelWrap<Callback, AVX2::Kernels16>, OMPParallelWrap<Callback, SSE2::Kernels16>, OMPParallelWrap<Callback, SSE2::Kernels16>, Unsupported_16bit::Multiply<Callback>);
 
 extern const CPUType kCPU;
 
 // Get the maximum absolute value of an array of floats. The number of floats must be a multiple of 16 and 64-byte aligned.
-extern float (*MaxAbsolute)(const float *begin, const float *end);
+extern float (*const MaxAbsolute)(const float *begin, const float *end);
 
 // Get a Quantization value that is equant to the mean of the data +N standard deviations. Use 2 by default
-extern MeanStd (*VectorMeanStd)(const float *begin, const float *end, bool);
+extern MeanStd (*const VectorMeanStd)(const float *begin, const float *end, bool);
 
 /* Returns the Mean and the Standard deviation of a vector. 
  * If "absolute" is set to true, it computes the mean and the standard deviation of the absolute values of the vector */
