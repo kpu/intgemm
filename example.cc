@@ -33,10 +33,13 @@ int main() {
   }
 
   // Compute the top left corner of C as a sanity check.
+  // Since we are only checking this with debug builds, disable it by default as it causes compilation failure with recent compilers
+#ifdef DNDEBUG
   float top_left_reference = 0.0f;
   for (Index w = 0; w < width; ++w) {
     top_left_reference += A[w] * B[w * B_cols];
   }
+#endif
 
   // 16-bit multiplication.
   {
