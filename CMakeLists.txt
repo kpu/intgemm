@@ -22,6 +22,13 @@ else()
   endif()
 endif()
 
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    # GCC 12.1 erroneously detects a bunch unitialised values
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL 12.1)
+        add_compile_options(-Wno-uninitialized -Wno-maybe-uninitialized)
+    endif()
+endif()
+
 # Check if compiler supports AVX2 (this should only catch emscripten)
 try_compile(INTGEMM_COMPILER_SUPPORTS_AVX2
   ${CMAKE_CURRENT_BINARY_DIR}/compile_tests
