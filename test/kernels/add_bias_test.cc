@@ -23,7 +23,11 @@ void kernel_add_bias_test() {
 
   *output.template as<vec_t>() = kernels::add_bias(*input.template as<vec_t>(), bias.begin(), 0);
   for (std::size_t i = 0; i < output.size(); ++i)
+#if !defined( __EXCEPTIONS) && defined(__GNUC__) && (__GNUC__ == 9) && (__GNUC_MINOR__ == 3)
+    CHECK(output[i] == static_cast<ElemType_>(bias[i] + input[i])); // GCC 9.3 - exceptions breaks std::iota with newer check.
+#else
     CHECK(output[i] == ElemType_(100 + i));
+#endif
 }
 
 template INTGEMM_SSE2 void kernel_add_bias_test<CPUType::SSE2, int8_t>();
