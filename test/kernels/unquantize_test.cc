@@ -22,7 +22,7 @@ void kernel_unquantize_test() {
 
   *output.template as<output_vec_t>() = kernels::unquantize(*input.template as<input_vec_t>(), unquant_mult);
   for (std::size_t i = 0; i < output.size(); ++i)
-#if !defined( __EXCEPTIONS) && defined(__GNUC__) && (__GNUC__ == 9) && (__GNUC_MINOR__ == 3)
+#if !defined( __EXCEPTIONS) && defined(__GNUC__) && (__GNUC__ == 9) && ((__GNUC_MINOR__ == 3) || (__GNUC_MINOR__ == 4))
     CHECK(output[i] == input[i] * 0.5f); // GCC 9.3 - exceptions breaks std::iota with newer check.
 #else
     CHECK(output[i] == i * 0.5f);

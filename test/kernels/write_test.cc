@@ -22,7 +22,7 @@ void kernel_write_test() {
 
   kernels::write(*input.template as<vec_t>(), output.begin(), 0);
   for (std::size_t i = 0; i < VECTOR_LENGTH; ++i)
-#if !defined( __EXCEPTIONS) && defined(__GNUC__) && (__GNUC__ == 9) && (__GNUC_MINOR__ == 3)
+#if !defined( __EXCEPTIONS) && defined(__GNUC__) && (__GNUC__ == 9) && ((__GNUC_MINOR__ == 3) || (__GNUC_MINOR__ == 4))
     CHECK(output[i] == input[i]); // GCC 9.3 - exceptions breaks std::iota with newer check.
 #else
     CHECK(output[i] == ElemType_(i));
