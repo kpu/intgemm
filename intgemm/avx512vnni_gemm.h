@@ -10,13 +10,9 @@
 namespace intgemm {
 namespace AVX512VNNI {
 
-// Workaround extra vmovdqa64 https://gcc.gnu.org/bugzilla/show_bug.cgi?id=94663
+// Apparently newer gcc got better about the extra vmovdqa64 https://gcc.gnu.org/bugzilla/show_bug.cgi?id=94663
 INTGEMM_AVX512VNNI static inline void VNNI8(__m512i &c, __m512i a, __m512i b) {
-#if defined(__GNUC__) && !defined(__clang__) && !defined(__INTEL_COMPILER)
-    asm ("vpdpbusds %2, %1, %0" : "+x"(c) : "x"(a), "mx"(b));
-#else
     c = _mm512_dpbusds_epi32(c, a, b);
-#endif
 }
 
 struct Kernels8 : public AVX512BW::Kernels8 {
@@ -81,8 +77,9 @@ struct Kernels8 : public AVX512BW::Kernels8 {
     }
   }
 
-  template <typename Callback, std::size_t width, std::size_t B_col_batch>
-  INTGEMM_AVX512VNNI static void Multiply8ShiftSingleARow(const uint8_t *A, const int8_t *B, Index B_cols, Callback callback) {
+  template <typename Callback, std::size_t width>
+  INTGEMM_AVX512VNNI static void Multiply8ShiftSingleARow(const uint8_t *__restrict__ A, const int8_t *__restrict__ B, Index B_cols, Callback callback) {
+    constexpr std::size_t B_col_batch = 8; // TODO genericize with packer.
     assert(width % sizeof(Register) == 0);
     assert(B_cols % B_col_batch == 0);
     auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
@@ -98,7 +95,7 @@ struct Kernels8 : public AVX512BW::Kernels8 {
       Register sums[B_col_batch] = {setzero_si<Register>()};
       StaticLoop<simd_width>([&](std::size_t inner) {
         StaticLoop<B_col_batch>([&](std::size_t batch) {
-          VNNI8(sums[batch], A_reg[inner], B0_col++);
+          VNNI8(sums[batch], A_reg[inner], *(B0_col++));
         });
       });
       Register pack0123 = Pack0123(sums[0], sums[1], sums[2], sums[3]);
@@ -114,6 +111,25 @@ struct Kernels8 : public AVX512BW::Kernels8 {
     assert(B_cols % 8 == 0);
     assert(reinterpret_cast<uintptr_t>(A) % sizeof(Register) == 0);
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0);
+    if (A_rows == 1) {
+      switch (width) {
+        case 64:
+          Multiply8ShiftSingleARow<Callback, 64>(A, B, B_cols, callback);
+          return;
+        case 128:
+          Multiply8ShiftSingleARow<Callback, 128>(A, B, B_cols, callback);
+          return;
+        case 196:
+          Multiply8ShiftSingleARow<Callback, 196>(A, B, B_cols, callback);
+          return;
+        case 256:
+          Multiply8ShiftSingleARow<Callback, 256>(A, B, B_cols, callback);
+          return;
+        case 512:
+          Multiply8ShiftSingleARow<Callback, 512>(A, B, B_cols, callback);
+          return;; 
+      }
+    }
     auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
     const Index simd_width = width / sizeof(Register);
     Register zeros = setzero_si<Register>();
