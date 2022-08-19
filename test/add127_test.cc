@@ -479,6 +479,9 @@ TEST_CASE ("Multiply AVX512F 8bit Shift vs Int", "[Add127]") {
 TEST_CASE ("Multiply AVX512VNNI 8bit Shift vs Int", "[Add127]") {
   if (kCPU < CPUType::AVX512VNNI) return;
   TestMultiplyShiftInt<AVX512VNNI::Kernels8>(1, 64, 8, 0.0001f, 0.05f, 0.03f, 0.0001f);
+  TestMultiplyShiftInt<AVX512VNNI::Kernels8>(1, 128, 8, 0.0001f, 0.07f, 0.05f, 0.0001f);
+  TestMultiplyShiftInt<AVX512VNNI::Kernels8>(1, 192, 8, 0.0001f, 0.09f, 0.05f, 0.0001f);
+  TestMultiplyShiftInt<AVX512VNNI::Kernels8>(1, 256, 8, 0.0001f, 0.12f, 0.07f, 0.0001f);
   TestMultiplyShiftInt<AVX512VNNI::Kernels8>(8, 256, 256, 0.0001f, 0.22f, 0.06f, 0.0001f);
   TestMultiplyShiftInt<AVX512VNNI::Kernels8>(8, 2048, 256, 0.0001f, 0.61f, 0.17f, 0.0001f);
   TestMultiplyShiftInt<AVX512VNNI::Kernels8>(320, 256, 256, 0.0001f, 0.27f, 0.06f, 0.0001f);
