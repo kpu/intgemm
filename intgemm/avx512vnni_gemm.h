@@ -4,6 +4,7 @@
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
 #include "avx512_gemm.h"
+#include "static_loop.h"
 #include "types.h"
 
 namespace intgemm {
@@ -77,6 +78,33 @@ struct Kernels8 : public AVX512BW::Kernels8 {
         auto total = PermuteSummer(pack0123, pack4567);
         callback_impl.Run(total, callbacks::OutputBufferInfo(A_rowidx, B0_colidx, A_rows, B_cols));
       }
+    }
+  }
+
+  template <typename Callback, std::size_t width, std::size_t B_col_batch>
+  INTGEMM_AVX512VNNI static void Multiply8ShiftSingleARow(const uint8_t *A, const int8_t *B, Index B_cols, Callback callback) {
+    assert(width % sizeof(Register) == 0);
+    assert(B_cols % B_col_batch == 0);
+    auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
+    constexpr std::size_t simd_width = width / sizeof(Register);
+    const Register *A_regmem = reinterpret_cast<const Register*>(A);
+    Register A_reg[simd_width];
+    StaticLoop<simd_width>([A_regmem, &A_reg](std::size_t i) {
+      A_reg[i] = A_regmem[i];
+    });
+#pragma omp for
+    for (Index B0_colidx = 0; B0_colidx < B_cols; B0_colidx += B_col_batch) {
+      const Register *B0_col = reinterpret_cast<const Register*>(B) + B0_colidx * simd_width;
+      Register sums[B_col_batch] = {setzero_si<Register>()};
+      StaticLoop<simd_width>([&](std::size_t inner) {
+        StaticLoop<B_col_batch>([&](std::size_t batch) {
+          VNNI8(sums[batch], A_reg[inner], B0_col++);
+        });
+      });
+      Register pack0123 = Pack0123(sums[0], sums[1], sums[2], sums[3]);
+      Register pack4567 = Pack0123(sums[4], sums[5], sums[6], sums[7]);
+      auto total = PermuteSummer(pack0123, pack4567);
+      callback_impl.Run(total, callbacks::OutputBufferInfo(0, B0_colidx, 1, B_cols));
     }
   }
 
