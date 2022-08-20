@@ -78,7 +78,35 @@ struct Kernels8 : public AVX512BW::Kernels8 {
   }
 
   template <typename Callback, std::size_t width>
-  INTGEMM_AVX512VNNI static void Multiply8ShiftSingleARow(const uint8_t *__restrict__ A, const int8_t *__restrict__ B, Index B_cols, Callback callback) {
+  INTGEMM_AVX512VNNI static void Multiply8ShiftSingleARowWrite8(const uint8_t *__restrict__ A, const int8_t *__restrict__ B, Index B_cols, Callback callback) {
+    constexpr std::size_t B_col_batch = 8; // TODO genericize with packer.
+    assert(width % sizeof(Register) == 0);
+    assert(B_cols % B_col_batch == 0);
+    auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
+    constexpr std::size_t simd_width = width / sizeof(Register);
+    const Register *A_regmem = reinterpret_cast<const Register*>(A);
+    Register A_reg[simd_width];
+    StaticLoop<simd_width>([A_regmem, &A_reg](std::size_t i) {
+      A_reg[i] = A_regmem[i];
+    });
+#pragma omp for
+    for (Index B0_colidx = 0; B0_colidx < B_cols; B0_colidx += B_col_batch) {
+      const Register *B0_col = reinterpret_cast<const Register*>(B) + B0_colidx * simd_width;
+      Register sums[B_col_batch] = {setzero_si<Register>()};
+      StaticLoop<simd_width>([&](std::size_t inner) {
+        StaticLoop<B_col_batch>([&](std::size_t batch) {
+          VNNI8(sums[batch], A_reg[inner], *(B0_col++));
+        });
+      });
+      Register pack0123 = Pack0123(sums[0], sums[1], sums[2], sums[3]);
+      Register pack4567 = Pack0123(sums[4], sums[5], sums[6], sums[7]);
+      auto total = PermuteSummer(pack0123, pack4567);
+      callback_impl.Run(total, callbacks::OutputBufferInfo(0, B0_colidx, 1, B_cols));
+    }
+  }
+
+  template <typename Callback, std::size_t width>
+  INTGEMM_AVX512VNNI static void Multiply8ShiftSingleARowWrite16(const uint8_t *__restrict__ A, const int8_t *__restrict__ B, Index B_cols, Callback callback) {
     constexpr std::size_t B_col_batch = 8; // TODO genericize with packer.
     assert(width % sizeof(Register) == 0);
     assert(B_cols % (B_col_batch * 2) == 0);
@@ -133,25 +161,25 @@ struct Kernels8 : public AVX512BW::Kernels8 {
     assert(B_cols % 8 == 0);
     assert(reinterpret_cast<uintptr_t>(A) % sizeof(Register) == 0);
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0);
-    if (A_rows == 1 && !(B_cols % 16)) {
+/*    if (A_rows == 1 && !(B_cols % 16)) {
       switch (width) {
         case 64:
-          Multiply8ShiftSingleARow<Callback, 64>(A, B, B_cols, callback);
+          Multiply8ShiftSingleARowWrite8<Callback, 64>(A, B, B_cols, callback);
           return;
         case 128:
-          Multiply8ShiftSingleARow<Callback, 128>(A, B, B_cols, callback);
+          Multiply8ShiftSingleARowWrite8<Callback, 128>(A, B, B_cols, callback);
           return;
         case 196:
-          Multiply8ShiftSingleARow<Callback, 196>(A, B, B_cols, callback);
+          Multiply8ShiftSingleARowWrite8<Callback, 196>(A, B, B_cols, callback);
           return;
         case 256:
-          Multiply8ShiftSingleARow<Callback, 256>(A, B, B_cols, callback);
+          Multiply8ShiftSingleARowWrite8<Callback, 256>(A, B, B_cols, callback);
           return;
         case 512:
-          Multiply8ShiftSingleARow<Callback, 512>(A, B, B_cols, callback);
+          Multiply8ShiftSingleARowWrite8<Callback, 512>(A, B, B_cols, callback);
           return;
       }
-    }
+    }*/
     auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
     const Index simd_width = width / sizeof(Register);
     Register zeros = setzero_si<Register>();
