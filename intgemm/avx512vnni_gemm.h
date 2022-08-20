@@ -135,15 +135,15 @@ struct Kernels8 : public AVX512BW::Kernels8 {
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0);
     if (A_rows == 1 && !(B_cols % 16)) {
       switch (width) {
-/*        case 64:
+        case 64:
           Multiply8ShiftSingleARow<Callback, 64>(A, B, B_cols, callback);
-          return;*/
+          return;
         case 128:
           Multiply8ShiftSingleARow<Callback, 128>(A, B, B_cols, callback);
           return;
-/*        case 196:
+        case 196:
           Multiply8ShiftSingleARow<Callback, 196>(A, B, B_cols, callback);
-          return; */
+          return;
         case 256:
           Multiply8ShiftSingleARow<Callback, 256>(A, B, B_cols, callback);
           return;
