@@ -108,6 +108,8 @@ endforeach()
 add_executable(example example.cc)
 target_link_libraries(example intgemm)
 
+add_library(simple STATIC simple.cc)
+
 add_executable(tests
   test/test.cc
 

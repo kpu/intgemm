@@ -16,10 +16,14 @@
   #define vi vector_t<CPUType::SSE2, int>
   #define vf vector_t<CPUType::SSE2, float>
   #define vd vector_t<CPUType::SSE2, double>
-#else
+#elif defined(CALLBACKS_THIS_IS_AVX2)
   #define vi vector_t<CPUType::AVX2, int>
   #define vf vector_t<CPUType::AVX2, float>
   #define vd vector_t<CPUType::AVX2, double>
+#elif defined(CALLBACKS_THIS_IS_AVX512BW)
+  #define vi vector_t<CPUType::AVX512BW, int>
+  #define vf vector_t<CPUType::AVX512BW, float>
+  #define vd vector_t<CPUType::AVX512BW, double>
 #endif
 
 /* Intel compiler 19.1.0.166 20191121 fails to link constructors with target attributes */

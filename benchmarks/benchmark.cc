@@ -113,7 +113,10 @@ int main(int, char ** argv) {
 
   using namespace intgemm;
   RandomMatrices matrices[] = {
-    {1, 64, 8},
+    {1, 512, 512},
+    {1, 512, 2048},
+//    {1, 64, 8},
+/*    {1, 64, 8},
     {8, 256, 256},
     {8, 2048, 256},
     {8, 256, 2048},
@@ -124,13 +127,13 @@ int main(int, char ** argv) {
     // Additional stuff
     {256, 256, 256},
     {512, 512, 512},
-    {1024, 1024, 1024},
+    {1024, 1024, 1024},*/
 /*    {4096, 4096, 4096},
     {4096, 4096, 2048},
     {4096, 4096, 1024},
     {4096, 4096, 512},
     {4096, 4096, 256},*/
-    {4096, 4096, 128}
+    /*{4096, 4096, 128}*/
   };
   RandomMatrices *matrices_end = (RandomMatrices*)matrices + sizeof(matrices) / sizeof(RandomMatrices);
   // Only do full sampling for <1024 rows.
@@ -139,10 +142,10 @@ int main(int, char ** argv) {
   ++full_sample;
 
   BackendStats stats;
-  const int kSamples = 100;
+  const int kSamples = 10000;
   // Realistically, we don't expect different architectures or different precisions to run in the
   // same run of an application. Benchmark per architecture and per precision level.
-  std::cerr << "SSSE3 8bit, 100 samples..." << std::endl;
+/*  std::cerr << "SSSE3 8bit, 100 samples..." << std::endl;
   for (int samples = 0; samples < kSamples; ++samples) {
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
     RunAll<SSSE3::Kernels8>(matrices, end, stats.ssse3_8bit);
@@ -179,7 +182,7 @@ int main(int, char ** argv) {
     RandomMatrices *end = (samples < 4) ? matrices_end : full_sample;
     RunAll<AVX512BW::Kernels16>(matrices, end, stats.avx512_16bit);
   }
-#endif
+#endif*/
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
   std::cerr << "AVX512VNNI 8bit, 100 samples..." << std::endl;
   for (int samples = 0; samples < kSamples; ++samples) {
@@ -188,24 +191,24 @@ int main(int, char ** argv) {
   }
 #endif
 
-  if (stats.sse2_16bit.empty()) {
+/*  if (stats.sse2_16bit.empty()) {
     std::cerr << "No CPU support." << std::endl;
     return 1;
-  }
+  }*/
   for (std::size_t i = 0; i < sizeof(matrices) / sizeof(RandomMatrices); ++i) {
-    std::cout << "Multiply\t" << matrices[i].A_rows << '\t' << matrices[i].width << '\t' << matrices[i].B_cols << '\t' << "Samples=" << (kOutlierThreshold * stats.sse2_16bit[i].size()) << '\n';
-    Print<SSSE3::Kernels8>(stats.ssse3_8bit, i);
-    Print<AVX2::Kernels8>(stats.avx2_8bit, i);
+    std::cout << "Multiply\t" << matrices[i].A_rows << '\t' << matrices[i].width << '\t' << matrices[i].B_cols << '\t' << "Samples=" << (kOutlierThreshold * stats.avx512vnni_8bit[i].size()) << '\n';
+//    Print<SSSE3::Kernels8>(stats.ssse3_8bit, i);
+//    Print<AVX2::Kernels8>(stats.avx2_8bit, i);
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-    Print<AVX512BW::Kernels8>(stats.avx512_8bit, i);
+//    Print<AVX512BW::Kernels8>(stats.avx512_8bit, i);
 #endif
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
     Print<AVX512VNNI::Kernels8>(stats.avx512vnni_8bit, i);
 #endif
-    Print<SSE2::Kernels16>(stats.sse2_16bit, i);
-    Print<AVX2::Kernels16>(stats.avx2_16bit, i);
+//    Print<SSE2::Kernels16>(stats.sse2_16bit, i);
+//    Print<AVX2::Kernels16>(stats.avx2_16bit, i);
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
-    Print<AVX512BW::Kernels16>(stats.avx512_16bit, i);
+//    Print<AVX512BW::Kernels16>(stats.avx512_16bit, i);
 #endif
   }
   return 0;
