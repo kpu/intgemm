@@ -161,25 +161,28 @@ struct Kernels8 : public AVX512BW::Kernels8 {
     assert(B_cols % 8 == 0);
     assert(reinterpret_cast<uintptr_t>(A) % sizeof(Register) == 0);
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0);
-/*    if (A_rows == 1 && !(B_cols % 16)) {
+    if (A_rows == 1 && !(B_cols % 16)) {
       switch (width) {
         case 64:
-          Multiply8ShiftSingleARowWrite8<Callback, 64>(A, B, B_cols, callback);
+          Multiply8ShiftSingleARowWrite16<Callback, 64>(A, B, B_cols, callback);
           return;
         case 128:
-          Multiply8ShiftSingleARowWrite8<Callback, 128>(A, B, B_cols, callback);
+          Multiply8ShiftSingleARowWrite16<Callback, 128>(A, B, B_cols, callback);
           return;
         case 196:
-          Multiply8ShiftSingleARowWrite8<Callback, 196>(A, B, B_cols, callback);
+          Multiply8ShiftSingleARowWrite16<Callback, 196>(A, B, B_cols, callback);
           return;
         case 256:
-          Multiply8ShiftSingleARowWrite8<Callback, 256>(A, B, B_cols, callback);
+          Multiply8ShiftSingleARowWrite16<Callback, 256>(A, B, B_cols, callback);
           return;
         case 512:
-          Multiply8ShiftSingleARowWrite8<Callback, 512>(A, B, B_cols, callback);
+          Multiply8ShiftSingleARowWrite16<Callback, 512>(A, B, B_cols, callback);
+          return;
+        case 1024:
+          Multiply8ShiftSingleARowWrite16<Callback, 1024>(A, B, B_cols, callback);
           return;
       }
-    }*/
+    }
     auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
     const Index simd_width = width / sizeof(Register);
     Register zeros = setzero_si<Register>();
