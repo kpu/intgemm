@@ -224,7 +224,12 @@ template <float (*Backend) (const float *, const float *)> void TestMaxAbsolute(
 }
 
 void CompareMinAbs(const float *begin, const float *end, float test, std::size_t offset) {
-  float minabs = std::reduce(begin, end, begin[0], [&](float a, float b){return std::min(std::fabs(a), std::fabs(b));});
+  float minabs = std::abs(begin[0]);
+  for (const float * it = begin; it < end; it++) {
+      minabs = std::min(minabs, std::abs(*it));
+  }
+  // For when we get C++17
+  //float minabs = std::reduce(begin, end, begin[0], [&](float a, float b){return std::min(std::fabs(a), std::fabs(b));});
   CHECK_MESSAGE(minabs == test, "Error: " << minabs << " versus " << test << " in length " << (end - begin) << " offset " << offset);
 }
 
