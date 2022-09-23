@@ -136,6 +136,11 @@ float Unsupported_MaxAbsolute(const float * /*begin*/, const float * /*end*/) {
   return 0.0f;
 }
 
+float Unsupported_MinAbsolute(const float * /*begin*/, const float * /*end*/) {
+  UnsupportedCPUError();
+  return 0.0f;
+}
+
 MeanStd Unsupported_VectorMeanStd(const float * /*begin*/, const float * /*end*/, bool /*absolute*/) {
   UnsupportedCPUError();
   return MeanStd();
@@ -185,6 +190,8 @@ using AVX2::VectorMeanStd;
 #endif
 
 float (*const MaxAbsolute)(const float *begin, const float *end) = ChooseCPU(AVX512BW::MaxAbsolute, AVX512BW::MaxAbsolute, AVX2::MaxAbsolute, SSE2::MaxAbsolute, SSE2::MaxAbsolute, Unsupported_MaxAbsolute);
+
+float (*const MinAbsolute)(const float *begin, const float *end) = ChooseCPU(AVX512BW::MinAbsolute, AVX512BW::MinAbsolute, AVX2::MinAbsolute, SSE2::MinAbsolute, SSE2::MinAbsolute, Unsupported_MinAbsolute);
 
 MeanStd (*const VectorMeanStd)(const float *begin, const float *end, bool absolute) = ChooseCPU(AVX512BW::VectorMeanStd, AVX512BW::VectorMeanStd, AVX2::VectorMeanStd, SSE2::VectorMeanStd, SSE2::VectorMeanStd, Unsupported_VectorMeanStd);
 
