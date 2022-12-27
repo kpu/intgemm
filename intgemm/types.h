@@ -88,6 +88,11 @@ struct MeanStd {
   float stddev;
 };
 
+struct BExperts {
+  const int8_t ** ptrs;
+  const int size;
+};
+
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
 namespace AVX512VNNI {
 typedef __m512i Register;
