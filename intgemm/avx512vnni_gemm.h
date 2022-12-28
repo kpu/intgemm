@@ -121,8 +121,8 @@ struct Kernels8 : public AVX512BW::Kernels8 {
     }
   }
 
-    template <typename Callback>
-  INTGEMM_AVX512VNNI static void Multiply8ShiftAvgExp(const uint8_t *A, BExperts experts, Index A_rows, Index width, Index B_cols, Callback callback) {
+  template <typename Callback>
+  INTGEMM_AVX512VNNI static void Multiply8ShiftSumExp(const uint8_t *A, BExperts experts, Index A_rows, Index width, Index B_cols, Callback callback) {
     assert(width % sizeof(Register) == 0);
     assert(B_cols % 8 == 0);
     assert(reinterpret_cast<uintptr_t>(A) % sizeof(Register) == 0);
@@ -167,8 +167,6 @@ struct Kernels8 : public AVX512BW::Kernels8 {
             VNNI8(sum5, a, *(B_live + 5));
             VNNI8(sum6, a, *(B_live + 6));
             VNNI8(sum7, a, *(B_live + 7));
-          }
-          for (int i = 0; i< experts.size; i++) {
             B_lives[i] += 8;
           }
         }
