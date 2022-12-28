@@ -147,6 +147,22 @@ public:
     kernels::write(result, config.output_addr, info.row_idx * info.cols + info.col_idx);
   }
 
+  INTGEMM_TARGET void RunExperts(vi * input, vf * weights, int size, const OutputBufferInfo& info) {
+    // Workaround gcc 5 internal compiler error that can't read register members in debug.
+    vf mult_reg;
+#if !defined(__OPTIMIZE__) && (__GNUC__ == 5) && !defined(__clang__) && !defined(__INTEL_COMPILER)
+    asm ("vmovdqa %1, %0" : "=x" (mult_reg) : "m" (unquant_mult));
+#else
+    mult_reg = unquant_mult;
+#endif
+    vf sum = setzero_ps<vf>();
+    for (int i = 0; i< size; i++) {
+      auto result = kernels::unquantize(input[i], mult_reg);
+      sum = add_ps(sum, mul_ps(result, weights[i]));
+    }
+    kernels::write(sum, config.output_addr, info.row_idx * info.cols + info.col_idx);
+  }
+
 private:
   vf unquant_mult;
   UnquantizeAndWrite config;

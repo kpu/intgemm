@@ -180,6 +180,81 @@ struct Kernels8 : public AVX512BW::Kernels8 {
     free(B_lives);
   }
 
+    template <typename Callback>
+  INTGEMM_AVX512VNNI static void Multiply8ShiftExp(const uint8_t *A, BExperts experts, Index A_rows, Index width, Index B_cols, Callback callback) {
+    assert(width % sizeof(Register) == 0);
+    assert(B_cols % 8 == 0);
+    assert(reinterpret_cast<uintptr_t>(A) % sizeof(Register) == 0);
+    assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0);
+    auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
+    const Index simd_width = width / sizeof(Register);
+    Register zeros = setzero_si<Register>();
+    // setup some arrays
+    const Register ** B0_cols = reinterpret_cast<const Register**>(aligned_alloc(512, experts.size*sizeof(const Register *)));
+    const Register ** B_lives = reinterpret_cast<const Register**>(aligned_alloc(512, experts.size*sizeof(const Register *)));
+    // set up weights.
+    __m256 * weights = reinterpret_cast<__m256*>(aligned_alloc(512, experts.size*sizeof(__m256)));
+    for (int i = 0; i < experts.size; i++) {
+      weights[i] = set1_ps<__m256>(experts.weights[i]);
+    }
+    // set up sums. 8 sums at a time, number of experts at a time
+    Register * sums = reinterpret_cast<Register*>(aligned_alloc(512, experts.size*sizeof(Register)*8));
+    __m256i * totals = reinterpret_cast<__m256i*>(aligned_alloc(512, experts.size*sizeof(__m256i)));
+    // Go over 8 columns of B at a time.
+#pragma omp for
+    for (Index B0_colidx = 0; B0_colidx < B_cols; B0_colidx += 8) {
+    //  std::array<const Register *, experts.size> B0_cols;
+      for (int i = 0; i < experts.size; i++) {
+        B0_cols[i] = reinterpret_cast<const Register*>(experts.ptrs[i]) + B0_colidx * simd_width;
+      }
+      // const Register *B0_col = reinterpret_cast<const Register*>(B) + B0_colidx * simd_width;
+      // Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.
+      for (Index A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) {
+        // Iterate over shared (inner) dimension.
+        const Register *A_live = reinterpret_cast<const Register *>(A + A_rowidx * width);
+        const Register *A_end = A_live + simd_width;
+        //std::array<const Register *, experts.size> B_lives;
+        for (int i = 0; i< experts.size; i++) {
+          B_lives[i] = B0_cols[i];
+        }
+        //const Register *B_live = B0_col;
+        // TODO: separate first step.
+        //Register sum0 = zeros, sum1 = zeros, sum2 = zeros, sum3 = zeros, sum4 = zeros, sum5 = zeros, sum6 = zeros, sum7 = zeros;
+        for (int i = 0; i < experts.size*8; i++) {
+          sums[i] = zeros;
+        }
+        for (; A_live != A_end; ++A_live) {
+          Register a = *A_live;
+          //MultiplyAdd
+          for (int i = 0; i< experts.size; i++) {
+            const Register *B_live = B_lives[i];
+            VNNI8(sums[i + 0], a, *B_live);
+            VNNI8(sums[i + 1], a, *(B_live + 1));
+            VNNI8(sums[i + 2], a, *(B_live + 2));
+            VNNI8(sums[i + 3], a, *(B_live + 3));
+            VNNI8(sums[i + 4], a, *(B_live + 4));
+            VNNI8(sums[i + 5], a, *(B_live + 5));
+            VNNI8(sums[i + 6], a, *(B_live + 6));
+            VNNI8(sums[i + 7], a, *(B_live + 7));
+            B_lives[i] += 8;
+          }
+        }
+        for (int i = 0; i < experts.size; i++) {
+          Register pack0123 = Pack0123(sums[i + 0], sums[i + 1], sums[i + 2], sums[i + 3]);
+          Register pack4567 = Pack0123(sums[i + 4], sums[i + 5], sums[i + 6], sums[i + 7]);
+          totals[i] = PermuteSummer(pack0123, pack4567);
+        }
+
+        callback_impl.RunExperts(totals, weights, experts.size, callbacks::OutputBufferInfo(A_rowidx, B0_colidx, A_rows, B_cols));
+      }
+    }
+    free(B0_cols);
+    free(B_lives);
+    free(weights);
+    free(sums);
+    free(totals);
+  }
+
   template <typename Callback>
   INTGEMM_AVX512VNNI static void PrepareBias(const int8_t *B, Index width, Index B_cols, Callback callback) {
     assert(width % sizeof(Register) == 0);

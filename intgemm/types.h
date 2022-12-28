@@ -91,6 +91,7 @@ struct MeanStd {
 struct BExperts {
   const int8_t ** ptrs;
   const int size;
+  const float * weights;
 };
 
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI

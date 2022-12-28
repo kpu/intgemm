@@ -326,7 +326,7 @@ void TestVNNIMiXExpMultiply(Index A_rows, Index width, Index B_cols, int num_tim
   for (int i = 0; i < num_times; i++) {
     expert_arr[i] = const_cast<const int8_t *>(B_prep.begin());
   }
-  BExperts experts{expert_arr, num_times};
+  BExperts experts{expert_arr, num_times, nullptr};
   unquant_mult = unquant_mult/num_times;
   // We made sure A is positive, so just reinterpretting here
   AVX512VNNI::Kernels8::Multiply8ShiftSumExp(reinterpret_cast<const uint8_t *>(A_prep.begin()), experts, A_rows, width, B_cols, callbacks::UnquantizeAndWrite(unquant_mult, test_C.begin()));
@@ -334,6 +334,67 @@ void TestVNNIMiXExpMultiply(Index A_rows, Index width, Index B_cols, int num_tim
   CompareMSE(slowint_C.begin(), slowint_C.begin(), test_C.begin(), test_C.size(), info.str(),
    int_tolerance, float_tolerance, MSE_float_tolerance, MSE_int_tolerance);
    free(expert_arr);
+}
+
+void TestVNNIMiXExpWeightMultiply(Index A_rows, Index width, Index B_cols, int num_times=1,
+ float int_tolerance=.1, float float_tolerance=1, float MSE_float_tolerance=0, float MSE_int_tolerance=0) {
+  std::ostringstream info;
+  info << "Multiply8ShiftSumExp" << "\t" << A_rows << '\t' << width << '\t' << B_cols << '\n';
+
+  // Initialize A and B.
+  AlignedVector<float> A(A_rows * width);
+  AlignedVector<float> B(width * B_cols);
+  std::mt19937 gen;
+  std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+  for (auto& it : A) {
+    it = dist(gen);
+  }
+  std::uniform_real_distribution<float> dist_neg(-1.0f, 1.0f);
+  for (auto& it : B) {
+    it = dist_neg(gen);
+  }
+
+  float alpha = 2.0f;
+  float quant_mult = 127.0f / alpha;
+  float unquant_mult = 1.0f / (quant_mult*quant_mult);
+
+  AlignedVector<int8_t> A_prep(A.size());
+  AlignedVector<int8_t> B_prep(B.size());
+  AVX512BW::Kernels8::PrepareA(A.begin(), A_prep.begin(), quant_mult, A_rows, width);
+  AVX512BW::Kernels8::PrepareB(B.begin(), B_prep.begin(), quant_mult, width, B_cols);
+
+  AlignedVector<float> test_C(A_rows * B_cols);
+
+  /*REFERENCE MULTIPLICATION
+  *
+  *
+  */
+  AlignedVector<int8_t> B_quant(B.size());
+  AVX512BW::Kernels8::Quantize(B.begin(), B_quant.begin(), quant_mult, static_cast<Index>(B.size()));
+  AlignedVector<float> slowint_C(test_C.size());
+  references::Multiply(A_prep.begin(), B_quant.begin(), slowint_C.begin(), A_rows, width, B_cols, [&](int32_t sum, const callbacks::OutputBufferInfo& ) {
+    return sum * unquant_mult;
+  });
+
+
+  /*ACTUAL MULTIPLICATION
+  *
+  */
+  const int8_t ** expert_arr = reinterpret_cast<const int8_t**>(aligned_alloc(512, num_times*sizeof(int8_t*)));
+  float * weights = reinterpret_cast<float *>(aligned_alloc(512, num_times*sizeof(float)));
+  for (int i = 0; i < num_times; i++) {
+    expert_arr[i] = const_cast<const int8_t *>(B_prep.begin());
+    weights[i] = 1;
+  }
+  BExperts experts{expert_arr, num_times, weights};
+  unquant_mult = unquant_mult/num_times;
+  // We made sure A is positive, so just reinterpretting here
+  AVX512VNNI::Kernels8::Multiply8ShiftExp(reinterpret_cast<const uint8_t *>(A_prep.begin()), experts, A_rows, width, B_cols, callbacks::UnquantizeAndWrite(unquant_mult, test_C.begin()));
+
+  CompareMSE(slowint_C.begin(), slowint_C.begin(), test_C.begin(), test_C.size(), info.str(),
+   int_tolerance, float_tolerance, MSE_float_tolerance, MSE_int_tolerance);
+   free(expert_arr);
+   free(weights);
 }
 
 
@@ -550,6 +611,7 @@ TEST_CASE ("Multiply AVX512VNNI Mixture of Experts", "[MixExpert]") {
   TestVNNIMiXExpMultiply(200, 256, 256, 1, 0.0001f, 0.28f, 0.06f, 0.0001f);
   TestVNNIMiXExpMultiply(200, 256, 256, 2, 0.0001f, 0.28f, 0.06f, 0.0001f);
   TestVNNIMiXExpMultiply(200, 256, 256, 4, 0.0001f, 0.28f, 0.06f, 0.0001f);
+  TestVNNIMiXExpWeightMultiply(200, 256, 256, 1, 0.0001f, 0.28f, 0.06f, 0.0001f);
 }
 #endif
 
