@@ -131,6 +131,7 @@ struct Kernels8 : public AVX512BW::Kernels8 {
     const Index simd_width = width / sizeof(Register);
     Register zeros = setzero_si<Register>();
     // setup some arrays
+    // unique_ptr ignores attributes on templated argument
     const Register ** B0_cols = reinterpret_cast<const Register**>(aligned_alloc(512, experts.size*sizeof(const Register *)));
     const Register ** B_lives = reinterpret_cast<const Register**>(aligned_alloc(512, experts.size*sizeof(const Register *)));
 
@@ -228,23 +229,22 @@ struct Kernels8 : public AVX512BW::Kernels8 {
           //MultiplyAdd
           for (int i = 0; i< experts.size; i++) {
             const Register *B_live = B_lives[i];
-            VNNI8(sums[i + 0], a, *B_live);
-            VNNI8(sums[i + 1], a, *(B_live + 1));
-            VNNI8(sums[i + 2], a, *(B_live + 2));
-            VNNI8(sums[i + 3], a, *(B_live + 3));
-            VNNI8(sums[i + 4], a, *(B_live + 4));
-            VNNI8(sums[i + 5], a, *(B_live + 5));
-            VNNI8(sums[i + 6], a, *(B_live + 6));
-            VNNI8(sums[i + 7], a, *(B_live + 7));
+            VNNI8(sums[8*i + 0], a, *B_live);
+            VNNI8(sums[8*i + 1], a, *(B_live + 1));
+            VNNI8(sums[8*i + 2], a, *(B_live + 2));
+            VNNI8(sums[8*i + 3], a, *(B_live + 3));
+            VNNI8(sums[8*i + 4], a, *(B_live + 4));
+            VNNI8(sums[8*i + 5], a, *(B_live + 5));
+            VNNI8(sums[8*i + 6], a, *(B_live + 6));
+            VNNI8(sums[8*i + 7], a, *(B_live + 7));
             B_lives[i] += 8;
           }
         }
         for (int i = 0; i < experts.size; i++) {
-          Register pack0123 = Pack0123(sums[i + 0], sums[i + 1], sums[i + 2], sums[i + 3]);
-          Register pack4567 = Pack0123(sums[i + 4], sums[i + 5], sums[i + 6], sums[i + 7]);
+          Register pack0123 = Pack0123(sums[8*i + 0], sums[8*i + 1], sums[8*i + 2], sums[8*i + 3]);
+          Register pack4567 = Pack0123(sums[8*i + 4], sums[8*i + 5], sums[8*i + 6], sums[8*i + 7]);
           totals[i] = PermuteSummer(pack0123, pack4567);
         }
-
         callback_impl.RunExperts(totals, weights, experts.size, callbacks::OutputBufferInfo(A_rowidx, B0_colidx, A_rows, B_cols));
       }
     }

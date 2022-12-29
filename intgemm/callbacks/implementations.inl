@@ -158,7 +158,8 @@ public:
     vf sum = setzero_ps<vf>();
     for (int i = 0; i< size; i++) {
       auto result = kernels::unquantize(input[i], mult_reg);
-      sum = add_ps(sum, mul_ps(result, weights[i]));
+      auto scaled = mul_ps(result, weights[i]);
+      sum = add_ps(sum, scaled);
     }
     kernels::write(sum, config.output_addr, info.row_idx * info.cols + info.col_idx);
   }

@@ -327,7 +327,7 @@ void TestVNNIMiXExpMultiply(Index A_rows, Index width, Index B_cols, int num_tim
     expert_arr[i] = const_cast<const int8_t *>(B_prep.begin());
   }
   BExperts experts{expert_arr, num_times, nullptr};
-  unquant_mult = unquant_mult/num_times;
+  unquant_mult = unquant_mult/num_times; // Since we just sum up the multiple arrays, we scale them down equally through the unquant_multiplier
   // We made sure A is positive, so just reinterpretting here
   AVX512VNNI::Kernels8::Multiply8ShiftSumExp(reinterpret_cast<const uint8_t *>(A_prep.begin()), experts, A_rows, width, B_cols, callbacks::UnquantizeAndWrite(unquant_mult, test_C.begin()));
 
@@ -384,10 +384,9 @@ void TestVNNIMiXExpWeightMultiply(Index A_rows, Index width, Index B_cols, int n
   float * weights = reinterpret_cast<float *>(aligned_alloc(512, num_times*sizeof(float)));
   for (int i = 0; i < num_times; i++) {
     expert_arr[i] = const_cast<const int8_t *>(B_prep.begin());
-    weights[i] = 1;
+    weights[i] = 1.0f/num_times; // For testing purposes we weight down each array equally but they could be different in principle with a more advanced testcase @TODO
   }
   BExperts experts{expert_arr, num_times, weights};
-  unquant_mult = unquant_mult/num_times;
   // We made sure A is positive, so just reinterpretting here
   AVX512VNNI::Kernels8::Multiply8ShiftExp(reinterpret_cast<const uint8_t *>(A_prep.begin()), experts, A_rows, width, B_cols, callbacks::UnquantizeAndWrite(unquant_mult, test_C.begin()));
 
@@ -612,6 +611,8 @@ TEST_CASE ("Multiply AVX512VNNI Mixture of Experts", "[MixExpert]") {
   TestVNNIMiXExpMultiply(200, 256, 256, 2, 0.0001f, 0.28f, 0.06f, 0.0001f);
   TestVNNIMiXExpMultiply(200, 256, 256, 4, 0.0001f, 0.28f, 0.06f, 0.0001f);
   TestVNNIMiXExpWeightMultiply(200, 256, 256, 1, 0.0001f, 0.28f, 0.06f, 0.0001f);
+  TestVNNIMiXExpWeightMultiply(200, 256, 256, 2, 0.0001f, 0.28f, 0.06f, 0.0001f);
+  TestVNNIMiXExpWeightMultiply(200, 256, 256, 4, 0.0001f, 0.28f, 0.06f, 0.0001f);
 }
 #endif
 
