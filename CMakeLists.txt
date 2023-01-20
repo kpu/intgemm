@@ -23,9 +23,9 @@ else()
 endif()
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    # GCC 12.1 erroneously detects a bunch unitialised values
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL 12.1)
-        add_compile_options(-Wno-uninitialized -Wno-maybe-uninitialized)
+    # GCC 12.* erroneously detects a bunch unitialised values
+    if (CMAKE_CXX_COMPILER_VERSION MATCHES "^12.*")
+       add_compile_options(-Wno-uninitialized -Wno-maybe-uninitialized)
     endif()
 endif()
 
