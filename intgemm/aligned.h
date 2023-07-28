@@ -41,6 +41,11 @@ template <class T> class AlignedVector {
 #endif
     }
 
+    template <class InputIt> AlignedVector(InputIt first, InputIt last)
+      : AlignedVector(last - first) {
+      std::copy(first, last, begin());
+    }
+
     AlignedVector(AlignedVector &&from) : mem_(from.mem_), size_(from.size_) {
       from.mem_ = nullptr;
       from.size_ = 0;
@@ -70,6 +75,9 @@ template <class T> class AlignedVector {
     const T *begin() const { return mem_; }
     T *end() { return mem_ + size_; }
     const T *end() const { return mem_ + size_; }
+
+    T *data() { return mem_; }
+    const T *data() const { return mem_; }
 
     template <typename ReturnType>
     ReturnType *as() { return reinterpret_cast<ReturnType*>(mem_); }
