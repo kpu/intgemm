@@ -9,9 +9,6 @@
 #ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
 #include <immintrin.h>
 #endif
-#ifdef INTGEMM_WORMHOLE
-#include <wasm_simd128.h>
-#endif
 
 #include <cstdint>
 
@@ -98,12 +95,7 @@ INTGEMM_SSE2 static inline __m128i madd_epi16(__m128i first, __m128i second) {
   return _mm_madd_epi16(first, second);
 }
 INTGEMM_SSSE3 static inline __m128i maddubs_epi16(__m128i first, __m128i second) {
-// https://bugzilla.mozilla.org/show_bug.cgi?id=1672160
-#ifdef INTGEMM_WORMHOLE
-  return wasm_v8x16_shuffle(first, second, 31, 0, 30, 2, 29, 4, 28, 6, 27, 8, 26, 10, 25, 12, 24, 1 /* PMADDUBSW */);
-#else
   return _mm_maddubs_epi16(first, second);
-#endif
 }
 /*
  * Missing max_epi8 for SSE2

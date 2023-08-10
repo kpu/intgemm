@@ -86,11 +86,6 @@ if (COMPILE_WASM)
     target_compile_definitions(intgemm PUBLIC WASM)
 endif()
 
-option(WORMHOLE "Use WASM wormhole https://bugzilla.mozilla.org/show_bug.cgi?id=1672160" OFF)
-if (WORMHOLE)
-  target_compile_definitions(intgemm PUBLIC INTGEMM_WORMHOLE)
-endif()
-
 option(INTGEMM_CPUID_ENVIRONMENT "Allow INTGEMM_CPUID environment variable to downgrade CPU model, which is mainly for testing." ON)
 if (INTGEMM_CPUID_ENVIRONMENT)
   target_compile_definitions(intgemm PRIVATE INTGEMM_CPUID_ENVIRONMENT)
