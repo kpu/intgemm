@@ -11,6 +11,7 @@
 #else
 #error Included with unexpected architecture
 #endif
+#include <iostream>
 
 namespace intgemm {
 namespace INTGEMM_ARCH {
@@ -63,12 +64,17 @@ INTGEMM_TARGET static inline float MaxAbsolute(const float *begin_float, const f
 /* Computes the euclidean norm and returns the mean and the standard deviation. Optionally it can be the mean and standard deviation in absolute terms. */
 INTGEMM_TARGET static inline MeanStd VectorMeanStd(const float *begin_float, const float *end_float, bool absolute) {
   assert(end_float > begin_float);
-  assert((end_float - begin_float) % (sizeof(FRegister) / sizeof(float)) == 0);
+  // Make sure we deal with any number of elements
   size_t num_items = end_float - begin_float;
+  const size_t constexpr width = sizeof(FRegister) / sizeof(float);
+  std::ldiv_t result = std::ldiv((long)num_items, (long)width);
+
   const FRegister *begin = reinterpret_cast<const FRegister*>(begin_float);
-  const FRegister *end = reinterpret_cast<const FRegister*>(end_float);
+  const FRegister *end = reinterpret_cast<const FRegister*>(begin_float + result.quot*width);
   FRegister squares = set1_ps<FRegister>(0);
   FRegister sums = set1_ps<FRegister>(0);
+  float squares_sum = 0;
+  float normal_sums = 0;
   if (absolute) {
     const FRegister abs_mask = cast_ps(set1_epi32<Register>(kFloatAbsoluteMask));
     for (; begin != end; begin++) {
@@ -76,15 +82,25 @@ INTGEMM_TARGET static inline MeanStd VectorMeanStd(const float *begin_float, con
       squares = add_ps(squares, mul_ps(vec, vec));
       sums = add_ps(sums, vec);
     }
+    for (long i = 0; i < result.rem; i++) {
+      size_t index = result.quot*width + i;
+      squares_sum += begin_float[index]*begin_float[index];
+      normal_sums += std::fabs(begin_float[index]);
+    }
   } else {
     for (; begin != end; begin++) {
       FRegister vec = *begin;
       squares = add_ps(squares, mul_ps(vec, vec));
       sums = add_ps(sums, vec);
     }
+    for (long i = 0; i < result.rem; i++) {
+      size_t index = result.quot*width + i;
+      squares_sum += begin_float[index]*begin_float[index];
+      normal_sums += begin_float[index];
+    }
   }
-  float squares_sum = AddFloat32(squares);
-  float normal_sums = AddFloat32(sums);
+  squares_sum += AddFloat32(squares);
+  normal_sums += AddFloat32(sums);
   MeanStd ret;
   ret.mean = normal_sums/num_items;
   ret.stddev = std::sqrt((squares_sum/num_items) - (ret.mean*ret.mean));

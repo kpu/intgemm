@@ -24,26 +24,64 @@ namespace intgemm {
 namespace kernels {
 
 /*
- * Write
+ * Write. Potentially unaligned memory, hence use storeu
  */
 CPU_ATTR static inline void write(vi input, int8_t* output, Index offset) {
-  *reinterpret_cast<vi*>(output + offset) = input;
+  storeu_ps(reinterpret_cast<float *>(output + offset), *reinterpret_cast<vf *>(&input));
+  //*reinterpret_cast<vi*>(output + offset) = input;
 }
 
 CPU_ATTR static inline void write(vi input, int16_t* output, Index offset) {
-  *reinterpret_cast<vi*>(output + offset) = input;
+  storeu_ps(reinterpret_cast<float *>(output + offset), *reinterpret_cast<vf *>(&input));
+  //*reinterpret_cast<vi*>(output + offset) = input;
 }
 
 CPU_ATTR static inline void write(vi input, int* output, Index offset) {
-  *reinterpret_cast<vi*>(output + offset) = input;
+  storeu_ps(reinterpret_cast<float *>(output + offset), *reinterpret_cast<vf *>(&input));
+  //*reinterpret_cast<vi*>(output + offset) = input;
 }
 
 CPU_ATTR static inline void write(vf input, float* output, Index offset) {
-  *reinterpret_cast<vf*>(output + offset) = input;
+  storeu_ps(reinterpret_cast<float *>(output + offset), input);
+  //*reinterpret_cast<vf*>(output + offset) = input;
 }
 
 CPU_ATTR static inline void write(vd input, double* output, Index offset) {
-  *reinterpret_cast<vd*>(output + offset) = input;
+  storeu_ps(reinterpret_cast<float *>(output + offset), *reinterpret_cast<vf *>(&input));
+  //*reinterpret_cast<vd*>(output + offset) = input;
+}
+
+/*
+ * Non-Vector write
+ */
+CPU_ATTR static inline void write_partial(vi input, int8_t* output, Index offset, Index partial) {
+  for (Index i = 0; i < partial; i++) {
+    *(output + offset + i) = reinterpret_cast<int8_t *>(&input)[i];
+  }
+}
+
+CPU_ATTR static inline void write_partial(vi input, int16_t* output, Index offset, Index partial) {
+  for (Index i = 0; i < partial; i++) {
+    *(output + offset + i) = reinterpret_cast<int16_t *>(&input)[i];
+  }
+}
+
+CPU_ATTR static inline void write_partial(vi input, int* output, Index offset, Index partial) {
+  for (Index i = 0; i < partial; i++) {
+    *(output + offset + i) = reinterpret_cast<int *>(&input)[i];
+  }
+}
+
+CPU_ATTR static inline void write_partial(vf input, float* output, Index offset, Index partial) {
+  for (Index i = 0; i < partial; i++) {
+    *(output + offset + i) = reinterpret_cast<float *>(&input)[i];
+  }
+}
+
+CPU_ATTR static inline void write_partial(vd input, double* output, Index offset, Index partial) {
+  for (Index i = 0; i < partial; i++) {
+    *(output + offset + i - 1) = reinterpret_cast<double *>(&input)[i];
+  }
 }
 
 /*
@@ -85,6 +123,50 @@ CPU_ATTR static inline vf add_bias(vf input, const float* bias_addr, Index bias_
 
 CPU_ATTR static inline vd add_bias(vd input, const double* bias_addr, Index bias_offset) {
   auto bias_term = *reinterpret_cast<const vd*>(bias_addr + bias_offset);
+  return add_pd(input, bias_term);
+}
+
+/*
+ * Non vector bias add
+ */
+
+CPU_ATTR static inline vi add_bias_partial(vi input, const int8_t* bias_addr, Index bias_offset, Index partial) {
+  vi bias_term = set1_epi8<vi>(0);
+  for (Index i = 0; i<partial; i++) {
+    reinterpret_cast<int8_t *>(&bias_term)[i] = *(bias_addr + bias_offset + i);
+  }
+  return add_epi8(input, bias_term);
+}
+
+CPU_ATTR static inline vi add_bias_partial(vi input, const int16_t* bias_addr, Index bias_offset, Index partial) {
+  vi bias_term = set1_epi16<vi>(0);
+  for (Index i = 0; i<partial; i++) {
+    reinterpret_cast<int16_t *>(&bias_term)[i] = *(bias_addr + bias_offset + i);
+  }
+  return add_epi16(input, bias_term);
+}
+
+CPU_ATTR static inline vi add_bias_partial(vi input, const int* bias_addr, Index bias_offset, Index partial) {
+  vi bias_term = set1_epi32<vi>(0);
+  for (Index i = 0; i<partial; i++) {
+    reinterpret_cast<int32_t *>(&bias_term)[i] = *(bias_addr + bias_offset + i);
+  }
+  return add_epi32(input, bias_term);
+}
+
+CPU_ATTR static inline vf add_bias_partial(vf input, const float* bias_addr, Index bias_offset, Index partial) {
+  vf bias_term = set1_ps<vf>(0);
+  for (Index i = 0; i<partial; i++) {
+    reinterpret_cast<float *>(&bias_term)[i] = *(bias_addr + bias_offset + i);
+  }
+  return add_ps(input, bias_term);
+}
+
+CPU_ATTR static inline vd add_bias_partial(vd input, const double* bias_addr, Index bias_offset, Index partial) {
+  vd bias_term = set1_pd<vd>(0);
+  for (Index i = 0; i<partial; i++) {
+    reinterpret_cast<double *>(&bias_term)[i] = *(bias_addr + bias_offset + i);
+  }
   return add_pd(input, bias_term);
 }
 

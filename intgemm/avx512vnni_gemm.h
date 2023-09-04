@@ -83,15 +83,21 @@ struct Kernels8 : public AVX512BW::Kernels8 {
   template <typename Callback>
   INTGEMM_AVX512VNNI static void Multiply8Shift(const uint8_t *A, const int8_t *B, Index A_rows, Index width, Index B_cols, Callback callback) {
     assert(width % sizeof(Register) == 0);
-    assert(B_cols % 8 == 0);
+    std::div_t results = std::div(B_cols, 8);
+    Index B_cols_trimmed = B_cols;
+    if (results.rem != 0) {
+      B_cols_trimmed = results.quot*8;
+    }
+    assert(B_cols_trimmed % 8 == 0);
     assert(reinterpret_cast<uintptr_t>(A) % sizeof(Register) == 0);
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0);
     auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
     const Index simd_width = width / sizeof(Register);
     Register zeros = setzero_si<Register>();
     // Go over 8 columns of B at a time.
+    Index B0_colidx = 0; // OMP can't deal with this variable being asigned outside of the loop, hence we declare it once and asign to 0 twice
 #pragma omp for
-    for (Index B0_colidx = 0; B0_colidx < B_cols; B0_colidx += 8) {
+    for (B0_colidx = 0; B0_colidx < B_cols_trimmed; B0_colidx += 8) {
       const Register *B0_col = reinterpret_cast<const Register*>(B) + B0_colidx * simd_width;
       // Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.
       for (Index A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) {
@@ -119,20 +125,51 @@ struct Kernels8 : public AVX512BW::Kernels8 {
         callback_impl.Run(total, callbacks::OutputBufferInfo(A_rowidx, B0_colidx, A_rows, B_cols));
       }
     }
+    // Final bit, if we have a non-mult-of-eight matrix
+    if (results.rem != 0) {
+      const Register *B0_col = reinterpret_cast<const Register*>(B) + (B_cols_trimmed * width)/(sizeof(Register));
+      // Process one row of A at a time.  Doesn't seem to be faster to do multiple rows of A at once.
+      for (Index A_rowidx = 0; A_rowidx < A_rows; ++A_rowidx) {
+        // Iterate over shared (inner) dimension.
+        const Register *A_live = reinterpret_cast<const Register *>(A + A_rowidx * width);
+        const Register *A_end = A_live + simd_width;
+        const Register *B_live = B0_col;
+        // TODO: separate first step.
+        Register sum0 = zeros, sum1 = zeros, sum2 = zeros, sum3 = zeros, sum4 = zeros, sum5 = zeros, sum6 = zeros, sum7 = zeros;
+        Register * sums[8] = {&sum0, &sum1, &sum2, &sum3, &sum4, &sum5, &sum6, &sum7};
+        for (; A_live != A_end; ++A_live, B_live += results.rem) {
+          Register a = *A_live;
+          //MultiplyAdd
+          for (int i = 0; i < results.rem; i++) {
+            VNNI8(*sums[i], a,*(B_live + i));
+          }
+        }
+        Register pack0123 = Pack0123(sum0, sum1, sum2, sum3);
+        Register pack4567 = Pack0123(sum4, sum5, sum6, sum7);
+        auto total = PermuteSummer(pack0123, pack4567);
+        callback_impl.RunPartial(total, callbacks::OutputBufferInfo(A_rowidx, B0_colidx, A_rows, B_cols), (Index)results.rem);
+      }
+    }
   }
 
   template <typename Callback>
   INTGEMM_AVX512VNNI static void PrepareBias(const int8_t *B, Index width, Index B_cols, Callback callback) {
     assert(width % sizeof(Register) == 0);
-    assert(B_cols % 8 == 0);
+    std::div_t results = std::div(B_cols, 8);
+    Index B_cols_trimmed = B_cols;
+    if (results.rem != 0) {
+      B_cols_trimmed = results.quot*8;
+    }
+    assert(B_cols_trimmed % 8 == 0);
     assert(reinterpret_cast<uintptr_t>(B) % sizeof(Register) == 0);
     auto callback_impl = callbacks::CallbackImpl<CPUType::AVX2, Callback>(callback);
     Index simd_width = width / sizeof(Register);
     Register zeros = setzero_si<Register>();
     const Register a = set1_epi8<Register>(1);
     // Go over 8 columns of B at a time.
+    Index B0_colidx = 0;  // OMP can't deal with this variable being asigned outside of the loop, hence we declare it once and asign to 0 twice
 #pragma omp for
-    for (Index B0_colidx = 0; B0_colidx < B_cols; B0_colidx += 8) {
+    for (B0_colidx = 0; B0_colidx < B_cols_trimmed; B0_colidx += 8) {
       const Register *B0_col = reinterpret_cast<const Register*>(B) + B0_colidx * simd_width;
       const Register *B_live = B0_col; //In order to make the code look as much as possible as the above function
       const Register *B_end = B_live + simd_width*8;
@@ -154,6 +191,25 @@ struct Kernels8 : public AVX512BW::Kernels8 {
       Register pack4567 = Pack0123(sum4, sum5, sum6, sum7);
       auto total = PermuteSummer(pack0123, pack4567);
       callback_impl.Run(total, callbacks::OutputBufferInfo(0, B0_colidx, 1, B_cols));
+    }
+    // Final bit, if we have a non-mult-of-eight matrix
+    if (results.rem != 0) {
+      const Register *B0_col = reinterpret_cast<const Register*>(B) + (B_cols_trimmed * width)/(sizeof(Register));
+      const Register *B_live = B0_col; //In order to make the code look as much as possible as the above function
+      const Register *B_end = B_live + simd_width*results.rem;
+
+      // TODO: separate first step.
+      Register sum0 = zeros, sum1 = zeros, sum2 = zeros, sum3 = zeros, sum4 = zeros, sum5 = zeros, sum6 = zeros, sum7 = zeros;
+      Register * sums[8] = {&sum0, &sum1, &sum2, &sum3, &sum4, &sum5, &sum6, &sum7};
+      for (; B_live != B_end; B_live += results.rem) {
+        for (int i = 0; i < results.rem; i++) {
+          VNNI8(*sums[i], a,*(B_live + i));
+        }
+      }
+      Register pack0123 = Pack0123(sum0, sum1, sum2, sum3);
+      Register pack4567 = Pack0123(sum4, sum5, sum6, sum7);
+      auto total = PermuteSummer(pack0123, pack4567);
+      callback_impl.RunPartial(total, callbacks::OutputBufferInfo(0, B0_colidx, 1, B_cols), (Index)results.rem);
     }
   }
 

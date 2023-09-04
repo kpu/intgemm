@@ -63,7 +63,9 @@ template <class T> class AlignedVector {
     }
 
     AlignedVector(const AlignedVector&) = delete;
+    AlignedVector(AlignedVector&) = delete;
     AlignedVector& operator=(const AlignedVector&) = delete;
+    AlignedVector& operator=(AlignedVector&) = delete;
 
     ~AlignedVector() { release(); }
 

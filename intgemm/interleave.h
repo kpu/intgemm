@@ -1,11 +1,15 @@
 #pragma once
 
 #include "intgemm/intgemm_config.h"
+#include "aligned.h"
 #include "intrinsics.h"
 #include "types.h"
 
 #include <algorithm>
 #include <cassert>
+#include <memory>
+#include <cstring>
+#include <cmath>
 
 namespace intgemm {
 
@@ -150,6 +154,56 @@ template <class Register> static inline void Transpose8InLane(
   r11 = tmp;
 }
 
+/**
+ * @brief Pads the last bit of a row major matrix so that it is a multiple of 8
+ *        After preparing, we can discard the final bits that are written by writing
+ *        into the output matrix at the approriate index. Memory management is done by the
+ *        aligned vector class.
+ * @param in matrix ptr
+ * @param rows
+ * @param cols
+ * @return AlignedVector<float> Returns a float * containing rows x 8 padded matrix
+ */
+static inline AlignedVector<float> padMatrix(const float * in, Index rows, Index cols) {
+  std::div_t results = std::div(cols, 8);
+
+  // Create a padded "right" small matrix that will contain the extra part
+  // that is non-multiple of 8. It is basically a rows*8 matrix
+  AlignedVector<float> padded_matrix(8*rows);
+  for (unsigned int i = 0; i< 8*rows; i++) {
+    padded_matrix[i] = std::nanf("1");
+  }
+
+  // Copy the remainder of the big matrix onto the new small matrix
+  for (Index i = 0; i < rows; i++) {
+    for (int j = 0; j<results.rem; j++) {
+      padded_matrix[i*8 + j] = in[i*cols + cols - results.rem + j];
+    }
+  }
+  return padded_matrix;
+}
+/**
+ * @brief Shrinks a row-major matrix, removing its last, non-mult-of-8 columns
+ *
+ * @param in Input matrix in float that is about to lose its last non multiple of 8 columns
+ * @param rows
+ * @param cols
+ * @return AlignedVector<float> Returns a float * containing a shrinked version of the original matrix.
+ */
+static inline AlignedVector<float> shrinkMat(const float * in, Index rows, Index cols) {
+  std::div_t results = std::div(cols, 8);
+  Index stride = results.quot*8;
+  AlignedVector<float> shrunk_matrix(rows*stride);
+  Index consecutive = 0;
+  for (Index i = 0; i < rows; i++) {
+    for (Index j = 0; j<stride; j++) {
+      shrunk_matrix[consecutive] = in[i*cols + j];
+      consecutive++;
+    }
+  }
+  return shrunk_matrix;
+}
+
 // PREPARE B: quantize and rearrange.  B is presumed to be constantparameters
 // so we can take our time rearranging it in order to save during the multiply.
 //
@@ -187,6 +241,16 @@ template <class Register> static inline void Transpose8InLane(
 #define INTGEMM_PREPARE_B_8(target, QuantClass) \
 target static inline void PrepareB(const float *input, int8_t *output_shadow, float quant_mult, Index rows, Index cols) { \
   FRegister q = set1_ps<FRegister>(quant_mult); \
+  /* Check if have padding to do */ \
+  std::div_t results = std::div(cols, 8); \
+  AlignedVector<float> padded_matrix; \
+  AlignedVector<float> shrunk_matrix; \
+  if (results.rem != 0) { \
+    padded_matrix = padMatrix(input, rows, cols); \
+    shrunk_matrix = shrinkMat(input, rows, cols); \
+    input = shrunk_matrix.begin(); \
+    cols = results.quot*8; \
+  } \
   /* Currently all multipliers have a stride of 8 columns.*/ \
   const Index kColStride = 8; \
   assert(cols % kColStride == 0); \
@@ -213,6 +277,22 @@ target static inline void PrepareB(const float *input, int8_t *output_shadow, fl
       Interleave8(output[4], output[5]); \
       Interleave8(output[6], output[7]); \
       Transpose16InLane(output[0], output[1], output[2], output[3], output[4], output[5], output[6], output[7]); \
+    } \
+  } \
+  if (results.rem != 0) { \
+    /*Prepare the remaider matrix*/ \
+    AlignedVector<int8_t> padded_matrix_int8(8*rows); \
+    PrepareB(padded_matrix.begin(), padded_matrix_int8.begin(), quant_mult, rows, 8); \
+    /* Copy non-NAN at the back of the current matrix \
+     * That means we write every i%8 < rem width elements and skip the rest. \
+       For example we have 3 extra columns, we write 3 widths, skip 5 widths, write 3 widths*/ \
+    Index consecutive = rows*cols; \
+    for (unsigned int i = 0; i < 8*rows; i++) { \
+      int consecutive_width = std::div((int)i, (int)sizeof(Register)).quot; \
+      if (consecutive_width%8 < results.rem) { \
+        output_shadow[consecutive] = padded_matrix_int8[i]; \
+        consecutive++; \
+      } \
     } \
   } \
 } \
