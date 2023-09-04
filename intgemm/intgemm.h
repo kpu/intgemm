@@ -352,6 +352,9 @@ extern const CPUType kCPU;
 // Get the maximum absolute value of an array of floats. The number of floats must be a multiple of 16 and 64-byte aligned.
 extern float (*const MaxAbsolute)(const float *begin, const float *end);
 
+// Get the maximum absolute value of an array of floats. The number of floats must be a multiple of 16 and 64-byte aligned.
+extern float (*const MinAbsolute)(const float *begin, const float *end);
+
 // Get a Quantization value that is equant to the mean of the data +N standard deviations. Use 2 by default
 extern MeanStd (*const VectorMeanStd)(const float *begin, const float *end, bool);
 

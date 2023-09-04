@@ -223,6 +223,36 @@ template <float (*Backend) (const float *, const float *)> void TestMaxAbsolute(
   }
 }
 
+void CompareMinAbs(const float *begin, const float *end, float test, std::size_t offset) {
+  float minabs = std::abs(begin[0]);
+  for (const float * it = begin; it < end; it++) {
+      minabs = std::min(minabs, std::abs(*it));
+  }
+  // For when we get C++17
+  //float minabs = std::reduce(begin, end, begin[0], [&](float a, float b){return std::min(std::fabs(a), std::fabs(b));});
+  CHECK_MESSAGE(minabs == test, "Error: " << minabs << " versus " << test << " in length " << (end - begin) << " offset " << offset);
+}
+
+template <float (*Backend) (const float *, const float *)> void TestMinAbsolute() {
+  std::mt19937 gen;
+  std::uniform_real_distribution<float> dist(-8.0, 8.0);
+  const std::size_t kLengthMax = 65;
+  AlignedVector<float> test(kLengthMax);
+  for (std::size_t len = 1; len < kLengthMax; ++len) {
+    for (std::size_t t = 0; t < len; ++t) {
+      // Fill with [-8, 8).
+      for (auto& it : test) {
+        it = dist(gen);
+      }
+      CompareMinAbs(test.begin(), test.begin() + len, Backend(test.begin(), test.begin() + len), t);
+      test[t] = -32.0;
+      CompareMinAbs(test.begin(), test.begin() + len, Backend(test.begin(), test.begin() + len), t);
+      test[t] = 32.0;
+      CompareMinAbs(test.begin(), test.begin() + len, Backend(test.begin(), test.begin() + len), t);
+    }
+  }
+}
+
 TEST_CASE("MaxAbsolute SSE2", "[max]") {
   if (kCPU < CPUType::SSE2) return;
   TestMaxAbsolute<SSE2::MaxAbsolute>();
@@ -239,6 +269,25 @@ TEST_CASE("MaxAbsolute AVX2", "[max]") {
 TEST_CASE("MaxAbsolute AVX512BW", "[max]") {
   if (kCPU < CPUType::AVX512BW) return;
   TestMaxAbsolute<AVX512BW::MaxAbsolute>();
+}
+#endif
+
+TEST_CASE("MinAbsolute SSE2", "[min]") {
+  if (kCPU < CPUType::SSE2) return;
+  TestMinAbsolute<SSE2::MinAbsolute>();
+}
+
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX2
+TEST_CASE("MinAbsolute AVX2", "[min]") {
+  if (kCPU < CPUType::AVX2) return;
+  TestMinAbsolute<AVX2::MinAbsolute>();
+}
+#endif
+
+#ifdef INTGEMM_COMPILER_SUPPORTS_AVX512BW
+TEST_CASE("MinAbsolute AVX512BW", "[min]") {
+  if (kCPU < CPUType::AVX512BW) return;
+  TestMinAbsolute<AVX512BW::MinAbsolute>();
 }
 #endif
 

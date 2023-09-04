@@ -60,6 +60,42 @@ INTGEMM_TARGET static inline float MaxAbsolute(const float *begin_float, const f
   return ret;
 }
 
+/* Compute the minimum absolute value over floats aligned to register size.
+ * Do not call this function directly; it's a subroutine of MinAbsolute.
+ */
+INTGEMM_TARGET static inline float MinAbsoluteThread(const FRegister *begin, const FRegister *end) {
+  const FRegister abs_mask = cast_ps(set1_epi32<Register>(kFloatAbsoluteMask));
+  // Technically not the lowest but we don't have set_inf_ps. Instead we want a low POSITIVE number
+  FRegister lowest = and_ps(abs_mask, set1_ps<FRegister>(*reinterpret_cast<const float *>(begin)));
+#pragma omp for
+  for (const FRegister *i = begin; i < end; ++i) {
+    FRegister reg = and_ps(abs_mask, *i);
+    lowest = min_ps(lowest, reg);
+  }
+  return MinFloat32(lowest);
+}
+
+/* Compute the minimum absolute value of an array of floats.
+ * begin_float must be aligned to a multiple of the register size.
+*/
+INTGEMM_TARGET static inline float MinAbsolute(const float *begin_float, const float *end_float) {
+  assert(reinterpret_cast<uintptr_t>(begin_float) % sizeof(FRegister) == 0);
+  const float *end_reg = end_float - (reinterpret_cast<uintptr_t>(end_float) % sizeof(FRegister)) / sizeof(float);
+  float ret = std::abs(begin_float[0]);
+#pragma omp parallel reduction(min:ret) num_threads(std::max<int>(1, std::min<int>(omp_get_max_threads(), (end_float - begin_float) / 16384)))
+  {
+    float shard_max = MinAbsoluteThread(
+        reinterpret_cast<const FRegister*>(begin_float),
+        reinterpret_cast<const FRegister*>(end_reg));
+    ret = std::min(ret, shard_max);
+  }
+  // Overhang, don't bother with vectorising it
+  for (const float *i = end_reg; i < end_float; ++i) {
+    ret = std::min(ret, std::fabs(*i));
+  }
+  return ret;
+}
+
 /* Computes the euclidean norm and returns the mean and the standard deviation. Optionally it can be the mean and standard deviation in absolute terms. */
 INTGEMM_TARGET static inline MeanStd VectorMeanStd(const float *begin_float, const float *end_float, bool absolute) {
   assert(end_float > begin_float);
