@@ -21,8 +21,9 @@ namespace {
 
 // Return the maximum CPU model that's found and supported at compile time.
 CPUType RealCPUID() {
-#if defined(WASM)
+#if defined(WASM) || defined(__ANDROID__)
   // emscripten does SSE4.1 but we only use up to SSSE3.
+  // Android supports up to SSSE3.
   return CPUType::SSSE3;
 #elif defined(__INTEL_COMPILER)
 #  ifdef INTGEMM_COMPILER_SUPPORTS_AVX512VNNI
